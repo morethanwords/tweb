@@ -15,6 +15,7 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import styles from '@components/popups/storySettings.module.scss';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export type {StorySettings} from '@appManagers/utils/stories/storySettings';
 
@@ -24,7 +25,7 @@ export async function showStorySettingsForStory(props: {
   onClose?: () => void,
   isRelevant?: () => boolean
 }) {
-  const manager = rootScope.managers.appStoriesManager;
+  const manager = bindManagersToSession(rootScope.managers).appStoriesManager;
   const initial = await manager.getStorySettings(props.peerId, props.storyId);
   if(props.isRelevant && !props.isRelevant()) {
     props.onClose?.();

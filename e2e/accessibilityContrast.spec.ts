@@ -25,7 +25,7 @@ for(const theme of ['day', 'night', 'light', 'tinted']) test(`contrast mode rest
   expect(original['primary-button-color']).toBe(original['primary-color']);
   const savedThemes = () => page.evaluate(async() => {
     const path = '/src/stores/appSettings.ts';
-    return JSON.stringify((await import(path)).appSettings.themes);
+    return JSON.stringify((await window.e2eImport(path)).appSettings.themes);
   });
   const before = await savedThemes();
 

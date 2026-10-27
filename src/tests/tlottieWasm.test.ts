@@ -273,3 +273,230 @@ describe('tlottie WebAssembly', () => {
     });
   }
 });
+
+// * A WebAssembly heap never shrinks, and tlottie keeps several frame-sized buffers per animation, so
+// * TLottieWasm holds only what is in use: idle animations sleep (their instance dropped, re-created
+// * from the source on the next render) and an oversized heap is replaced by a fresh instance. The
+// * numbers these tests lean on are the constants at the top of tlottieWasm.ts.
+describe('tlottie memory', () => {
+  const MB = 1024 * 1024;
+  const readAsset = (name: string) => readFileSync(resolve(ASSETS_PATH, name), 'utf8');
+  const hashFrames = (tlottie: TLottieWasm, handle: number, frameCount: number, size = 96) => {
+    return [0, Math.floor(frameCount / 2), frameCount - 1].map((frame) => {
+      return createHash('sha256').update(tlottie.render(handle, frame, size, size)).digest('hex');
+    });
+  };
+
+  let fetchMock: ReturnType<typeof vi.spyOn>;
+  let tlottie: TLottieWasm;
+  beforeEach(async() => {
+    vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout', 'Date', 'performance']});
+    fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(createWasmResponse());
+    tlottie = await TLottieWasm.create('/tlottie.wasm');
+  });
+
+  afterEach(() => {
+    fetchMock.mockRestore();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  // * the heap a sticker-heavy moment leaves behind: big frames, many at once, then gone
+  const growHeap = (count: number) => {
+    const json = readAsset('UtyanSearch.json');
+    const handles = Array.from({length: count}, () => {
+      const {handle} = tlottie.createAnimation(json);
+      tlottie.render(handle, 0, 1024, 1024);
+      return handle;
+    });
+    handles.forEach((handle) => tlottie.destroyAnimation(handle));
+  };
+
+  test('a fresh instance gives the heap back and every animation draws the same frames', () => {
+    // * an animation gone before the swap shifts where the others land in the fresh heap - a fresh
+    // * allocator would otherwise hand them their old addresses and hide a stale pointer
+    const leading = tlottie.createAnimation(readAsset('UtyanSearch.json'));
+    tlottie.render(leading.handle, 0, 256, 256);
+    const animations = ['Cake.json', 'hand_stop.json', 'Diamond.json'].map((name) => tlottie.createAnimation(readAsset(name)));
+    const golden = tlottie.createAnimation(GOLDEN_ANIMATION);
+    tlottie.destroyAnimation(leading.handle);
+    const before = animations.map(({handle, frameCount}) => hashFrames(tlottie, handle, frameCount));
+
+    growHeap(8);
+    const grownHeap = tlottie.heapBytes;
+    expect(grownHeap).toBeGreaterThan(64 * MB);
+
+    expect(tlottie.recycle()).toBe(true);
+    expect(tlottie.stats).toMatchObject({awake: 0, recycles: 1});
+    expect(tlottie.heapBytes).toBeLessThan(grownHeap / 4);
+
+    // * the same handles wake on their next render and draw the same pixels - a static composition included
+    expect(animations.map(({handle, frameCount}) => hashFrames(tlottie, handle, frameCount))).toEqual(before);
+    expect(createHash('sha256').update(tlottie.render(golden.handle, golden.frameCount - 1, 32, 32)).digest('hex'))
+    .toBe('cefc5c9d0f0bbefec60b856458dd3fdab66c5e03ebceb2057c9d77c2a57e0dec');
+    expect(tlottie.stats).toMatchObject({awake: 4, wakes: 4});
+    expect(tlottie.heapBytes).toBeLessThan(grownHeap / 4);
+
+    animations.forEach(({handle}) => tlottie.destroyAnimation(handle));
+    expect(() => tlottie.render(animations[0].handle, 0, 32, 32)).toThrow('tlottie animation is destroyed');
+  });
+
+  test('an animation nobody renders sleeps, and wakes with the same frames', () => {
+    const animation = tlottie.createAnimation(readAsset('Cake.json'));
+    const before = hashFrames(tlottie, animation.handle, animation.frameCount);
+
+    vi.advanceTimersByTime(2 * 60 * 1000 - 1);
+    expect(tlottie.stats.awake).toBe(1);
+    vi.advanceTimersByTime(15 * 1000);
+    expect(tlottie.stats).toMatchObject({animations: 1, awake: 0, wakes: 0});
+
+    expect(hashFrames(tlottie, animation.handle, animation.frameCount)).toEqual(before);
+    expect(tlottie.stats).toMatchObject({awake: 1, wakes: 1});
+  });
+
+  test('past the budget the longest idle sleep first, and a playing one never does', () => {
+    const json = readAsset('hand_stop.json');
+    // * 768 px: about 7.7 MB each of the estimate, so the 24 MB budget holds three
+    const handles = Array.from({length: 5}, () => tlottie.createAnimation(json).handle);
+    handles.forEach((handle, index) => {
+      tlottie.render(handle, 0, 768, 768);
+      vi.advanceTimersByTime(100 * (index + 1));
+    });
+
+    // * handles[4] keeps playing; the rest go idle in the order they were last drawn
+    for(let i = 0; i < 30; ++i) {
+      tlottie.render(handles[4], i, 768, 768);
+      vi.advanceTimersByTime(100);
+    }
+
+    expect(tlottie.stats).toMatchObject({awake: 3, wakes: 0});
+    const wakes = (handle: number) => {
+      const before = tlottie.stats.wakes;
+      tlottie.render(handle, 0, 768, 768);
+      return tlottie.stats.wakes - before;
+    };
+    // * the two drawn last are still awake, the playing one never slept, the oldest did
+    expect(wakes(handles[3])).toBe(0);
+    expect(wakes(handles[2])).toBe(0);
+    expect(wakes(handles[4])).toBe(0);
+    expect(wakes(handles[0])).toBe(1);
+  });
+
+  test('playing animations past the budget are left alone rather than re-created over and over', () => {
+    const json = readAsset('hand_stop.json');
+    const handles = Array.from({length: 5}, () => tlottie.createAnimation(json).handle);
+    for(let i = 0; i < 100; ++i) {
+      handles.forEach((handle) => tlottie.render(handle, i, 768, 768));
+      vi.advanceTimersByTime(100);
+    }
+
+    expect(tlottie.stats).toMatchObject({awake: 5, wakes: 0});
+  });
+
+  test('a fresh instance replaces an oversized heap by itself, at most once a minute', () => {
+    // * awake and small enough to re-parse at once
+    const kept = tlottie.createAnimation(readAsset('hand_stop.json'));
+    const before = hashFrames(tlottie, kept.handle, kept.frameCount);
+
+    growHeap(8);
+    const grownHeap = tlottie.heapBytes;
+    expect(tlottie.stats.recycles).toBe(0);
+    vi.advanceTimersByTime(5000);
+    expect(tlottie.stats.recycles).toBe(1);
+    expect(tlottie.heapBytes).toBeLessThan(grownHeap / 4);
+    expect(hashFrames(tlottie, kept.handle, kept.frameCount)).toEqual(before);
+
+    // * another burst within the minute, and nothing awake after it: nothing but the wait itself is
+    // * left to bring the fresh instance once it is allowed
+    tlottie.destroyAnimation(kept.handle);
+    growHeap(8);
+    vi.advanceTimersByTime(30 * 1000);
+    expect(tlottie.stats).toMatchObject({awake: 0, recycles: 1});
+    vi.advanceTimersByTime(45 * 1000);
+    expect(tlottie.stats.recycles).toBe(2);
+    expect(tlottie.heapBytes).toBeLessThan(grownHeap / 4);
+  });
+
+  test('with nothing awake a modest heap is given back too - it costs nothing', () => {
+    const json = readAsset('UtyanSearch.json');
+    const handles = Array.from({length: 3}, () => tlottie.createAnimation(json).handle);
+    handles.forEach((handle) => tlottie.render(handle, 0, 512, 512));
+    const heap = tlottie.heapBytes;
+    expect(heap).toBeGreaterThan(8 * MB);
+    expect(heap).toBeLessThan(32 * MB);
+
+    // * one still awake: below the size where re-creating it would pay
+    handles.slice(1).forEach((handle) => tlottie.destroyAnimation(handle));
+    vi.advanceTimersByTime(5000);
+    expect(tlottie.stats.recycles).toBe(0);
+
+    tlottie.destroyAnimation(handles[0]);
+    vi.advanceTimersByTime(5000);
+    expect(tlottie.stats.recycles).toBe(1);
+    expect(tlottie.heapBytes).toBeLessThan(heap / 4);
+  });
+
+  test('no fresh instance while what is awake would be costly to re-create', () => {
+    // * five animations of ~300 KB of JSON each, playing: well past the re-parse cap
+    const playing = Array.from({length: 5}, () => tlottie.createAnimation(readAsset('Gift12.json')).handle);
+    growHeap(8);
+    for(let i = 0; i < 100; ++i) {
+      playing.forEach((handle) => tlottie.render(handle, i, 64, 64));
+      vi.advanceTimersByTime(100);
+    }
+
+    expect(tlottie.heapBytes).toBeGreaterThan(64 * MB);
+    expect(tlottie.stats.recycles).toBe(0);
+  });
+
+  test('remembers when the heap set a record and what was awake then, and again after a fresh instance', () => {
+    expect(tlottie.peaks.events).toHaveLength(0);
+    growHeap(8);
+    const [first] = tlottie.peaks.events;
+    expect(first.value).toBeGreaterThanOrEqual(16 * MB);
+    expect(first.details).toMatchObject({frameBytes: 1024 * 1024 * 4});
+    expect(first.details.awake).toBeGreaterThan(0);
+    const recorded = tlottie.peaks.events.length;
+
+    tlottie.recycle();
+    growHeap(8);
+    expect(tlottie.peaks.events.length).toBeGreaterThan(recorded);
+  });
+
+  test('wakes from the Blob it was given, read back synchronously', () => {
+    const json = readAsset('Cake.json');
+    const blob = new Blob([json]);
+    const readAsText = vi.fn((source: Blob) => {
+      expect(source).toBe(blob);
+      return json;
+    });
+    vi.stubGlobal('FileReaderSync', class {
+      public readAsText = readAsText;
+    });
+
+    const animation = tlottie.createAnimation(json, 0, blob);
+    const before = hashFrames(tlottie, animation.handle, animation.frameCount);
+    expect(tlottie.recycle()).toBe(true);
+    expect(hashFrames(tlottie, animation.handle, animation.frameCount)).toEqual(before);
+    expect(readAsText).toHaveBeenCalledTimes(1);
+  });
+
+  test('a source that cannot be read fails that one render and leaves the animation asleep', () => {
+    const json = readAsset('Cake.json');
+    vi.stubGlobal('FileReaderSync', class {
+      public readAsText(): string {
+        throw new Error('NotReadableError');
+      }
+    });
+
+    const broken = tlottie.createAnimation(json, 0, new Blob([json]));
+    const fine = tlottie.createAnimation(json);
+    const before = hashFrames(tlottie, fine.handle, fine.frameCount);
+    tlottie.recycle();
+
+    expect(() => tlottie.render(broken.handle, 0, 96, 96)).toThrow('NotReadableError');
+    expect(tlottie.stats).toMatchObject({awake: 0, wakes: 0});
+    expect(hashFrames(tlottie, fine.handle, fine.frameCount)).toEqual(before);
+  });
+});

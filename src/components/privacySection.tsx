@@ -9,14 +9,15 @@ import getPrivacyRulesDetails from '@appManagers/utils/privacy/getPrivacyRulesDe
 import PrivacyType from '@appManagers/utils/privacy/privacyType';
 import {i18n, join, LangPackKey, _i18n} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
-import showPremiumPopup from '@components/popups/premium';
 import RadioFieldTsx from '@components/radioFieldTsx';
 import Row from '@components/rowTsx';
 import Scrollable from '@components/scrollable';
 import Section, {SectionParts} from '@components/section';
-import {AppAddMembersTab} from '@components/solidJsTabs';
 import {SliderSuperTabEventable} from '@components/sliderTab';
 import {hideToast, toastNew} from '@components/toast';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import bindManagersToAccount from '@lib/accounts/bindManagersToAccount';
+import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 
 type PrivacyKey = InputPrivacyKey['_'];
 type PrivacyExceptionKey = 'allow' | 'disallow';
@@ -119,7 +120,7 @@ export default class PrivacySection {
                       langPackArguments: [
                         anchorCallback(() => {
                           hideToast();
-                          showPremiumPopup();
+                          hotReloadGuard.showPremiumPopup();
                         })
                       ]
                     });
@@ -186,7 +187,7 @@ export default class PrivacySection {
                 promise.then(() => {
                   const _peerIds = this.peerIds[exception.key];
                   const _extras = this.extras[exception.key] ?? (this.extras[exception.key] = new Set());
-                  options.tab.slider.createTab(AppAddMembersTab).open({
+                  options.tab.slider.createTab(hotReloadGuard.tabs.AppAddMembersTab).open({
                     type: 'privacy',
                     skippable: true,
                     title: exception.titleLangKey,
@@ -277,6 +278,8 @@ export default class PrivacySection {
   }
 
   public onTabDestroy = async() => {
+    // * a save on the way out reaches the account it was made in, even once the tab is on another one
+    const managers = bindManagersToAccount(rootScope.managers, getCurrentAccount());
     if(this.isLocked()) {
       return;
     }
@@ -330,7 +333,7 @@ export default class PrivacySection {
         if(splitted.users.length) {
           rules.push({
             _: usersKey,
-            users: await Promise.all(splitted.users.map((id) => rootScope.managers.appUsersManager.getUserInput(id)))
+            users: await Promise.all(splitted.users.map((id) => managers.appUsersManager.getUserInput(id)))
           });
         }
 
@@ -340,7 +343,7 @@ export default class PrivacySection {
       }
     }
 
-    rootScope.managers.appPrivacyManager.setPrivacy(this.options.inputKey, rules);
+    managers.appPrivacyManager.setPrivacy(this.options.inputKey, rules);
   };
 
   private replaceCaption(caption: PrivacySectionStr = this.isLocked() ? this.options.premiumCaption : this.options.captions[this.type]) {

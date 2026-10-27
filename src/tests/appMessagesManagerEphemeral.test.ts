@@ -1348,6 +1348,31 @@ describe('AppMessagesManager ephemeral messages', () => {
     expect(baseHistory.replyMarkup?.mid).toBe(601);
   });
 
+  it('gives a keyboard sent to a topic to that topic, and takes it back from both', () => {
+    const {baseHistory, dispatchEvent, manager, threadHistories} = makeManager();
+    manager.onUpdateNewEphemeralMessage({_: 'updateNewEphemeralMessage', message: makeEphemeralMessage(50, {
+      top_msg_id: 42,
+      reply_markup: {_: 'replyKeyboardMarkup', pFlags: {}, rows: []}
+    })});
+    const stored = manager.getEphemeralMessage(PEER_ID, 50) as Message.message;
+
+    // a topic's input reads the topic's storage, the chat's own still takes every keyboard
+    expect(threadHistories.get(42)?.replyMarkup?.mid).toBe(stored.mid);
+    expect(baseHistory.replyMarkup?.mid).toBe(stored.mid);
+    expect(threadHistories.get(43)).toBeUndefined();
+    expect(dispatchEvent).toHaveBeenCalledWith('history_reply_markup', {peerId: PEER_ID});
+
+    dispatchEvent.mockClear();
+    manager.onUpdateDeleteEphemeralMessages({
+      _: 'updateDeleteEphemeralMessages',
+      peer: {_: 'peerChannel', channel_id: CHAT_ID},
+      ids: [50]
+    });
+    expect(threadHistories.get(42).replyMarkup).toBeUndefined();
+    expect(baseHistory.replyMarkup).toBeUndefined();
+    expect(dispatchEvent).toHaveBeenCalledWith('history_reply_markup', {peerId: PEER_ID});
+  });
+
   it('spends a force-reply by the answer to it, in a way the tab mirror sees', () => {
     const {baseHistory, manager} = makeManager();
     const now = Date.now() / 1000 | 0;

@@ -42,6 +42,7 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   manager: (payload: MTProtoManagerTaskPayload) => any,
   singleManager: (payload: MTProtoSingleManagerTaskPayload) => any,
   toggleStorages: (payload: {enabled: boolean, clearWrite: boolean}) => ReturnType<typeof toggleStorages>,
+  mirrorAll: (payload: {accountNumber: ActiveAccountNumber}, source: MessageEventSource) => MaybePromise<void>,
   serviceWorkerOnline: (online: boolean) => void,
   serviceWorkerPort: (payload: void, source: MessageEventSource, event: MessageEvent) => void,
   threadedPort: (payload: ThreadedWorkerType, source: MessageEventSource, event: MessageEvent) => void,

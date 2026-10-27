@@ -14,7 +14,7 @@
   line-height: var(--size) !important;
   padding: 0 var(--padding);
   
-  @include animation-level(2) {
+  @include animation-level(1) {
     transition: background-color .2s ease-in-out;
   }
 
@@ -70,5 +70,17 @@
     align-items: center;
     gap: .25rem;
     padding-inline-start: 3px;
+  }
+
+  &-new {
+    display: inline-block;
+    flex: 0 0 auto;
+    margin-inline-start: .375rem;
+    text-transform: uppercase;
+    vertical-align: middle;
+
+    :where(.a11y.high-contrast) & {
+      color: var(--primary-text-color);
+    }
   }
 }

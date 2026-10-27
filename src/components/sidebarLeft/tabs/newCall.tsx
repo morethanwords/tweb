@@ -19,13 +19,14 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import IS_CONFERENCE_CALL_SUPPORTED from '@environment/conferenceCallSupport';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
-import appImManager, {ConferenceInviteRequest} from '@lib/appImManager';
+import {ConferenceInviteRequest} from '@lib/appImManager';
 import {i18n} from '@lib/langPack';
 import noop from '@helpers/noop';
 import {toastNew} from '@components/toast';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import showCallLinkPopup from '@components/call/callLinkPopup';
 import styles from '@components/sidebarLeft/tabs/newCall.module.scss';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 /** Handset + camera, the two ways to pick one person. */
 function CallModeButtons(props: {
@@ -84,11 +85,11 @@ const NewCall = () => {
       // One person is not a conference — tdesktop rings them directly
       // (calls_group_invite_controller.cpp:1192).
       const {peerId, video} = invite[0];
-      appImManager.callUser(peerId.toUserId(), video ? 'video' : 'voice').catch(noop);
+      hotReloadGuard.appImManager.callUser(peerId.toUserId(), video ? 'video' : 'voice').catch(noop);
       return;
     }
 
-    appImManager.createConference({invite, confirm: false}).catch(noop);
+    hotReloadGuard.appImManager.createConference({invite, confirm: false}).catch(noop);
   };
 
   const createLink = async() => {

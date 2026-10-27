@@ -12,7 +12,8 @@
  * that is retracted, answered elsewhere or deleted stops ringing.
  */
 
-import {beforeAll, beforeEach, describe, expect, it, vi} from 'vitest';
+import deferredPromise from '@helpers/cancellablePromise';
+import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from 'vitest';
 import '@helpers/peerIdPolyfill';
 
 vi.mock('@environment/groupCallSupport', () => ({default: true}));
@@ -71,6 +72,15 @@ import CALL_STATE from '@lib/calls/callState';
 import GROUP_CALL_STATE from '@lib/calls/groupCallState';
 import conferenceInvitesController from '@lib/calls/conferenceInvitesController';
 import type ConferenceInviteInstance from '@lib/calls/conferenceInviteInstance';
+import * as mocked1 from '@lib/appImManager';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {getCurrentAccount, setCurrentAccount} from '@lib/accounts/getCurrentAccount';
+import {CALL_REQUEST_TIMEOUT} from '@lib/calls/constants';
+
+// the code under test reads the top level from the registry, not from the modules mocked above
+registerHotReloadGuard({
+  appImManager: (mocked1 as any).default
+});
 
 const MY_ID = 100;
 const INVITER_ID = 200;
@@ -309,13 +319,108 @@ describe('ConferenceInvitesController', () => {
     await receive(makeInvite());
     await rung[0].acceptCall();
 
+    // * joined on the account invited, whichever the tab shows by then
+    const {accountNumber, managers, myId} = rung[0];
     expect(appImManagerMock.joinConference).toHaveBeenCalledWith(
       {_: 'inputGroupCallInviteMessage', msg_id: 1},
-      {confirmed: true}
+      {confirmed: true, account: {accountNumber, managers, myId}}
     );
     expect(declineConferenceCallInvite).not.toHaveBeenCalled();
     expect(rung[0].connectionState).toBe(CALL_STATE.CLOSED);
     expect(audioAsset.stop).toHaveBeenCalled();
+  });
+
+  describe('once the tab shows another account', () => {
+    let invited: ReturnType<typeof getCurrentAccount>;
+    const switchTo = (to: ReturnType<typeof getCurrentAccount>) => {
+      const from = getCurrentAccount();
+      setCurrentAccount(to);
+      (listeners as any).account_switched({from, to});
+    };
+    const switchAway = () => switchTo(invited === 1 ? 2 : 1);
+
+    beforeEach(() => {
+      invited = getCurrentAccount();
+    });
+
+    afterEach(() => {
+      setCurrentAccount(invited);
+      vi.useRealTimers();
+    });
+
+    it('keeps the invitation answerable on the account invited', async() => {
+      await receive(makeInvite());
+      switchAway();
+
+      // the other account's history has a message under the same ids: it is not the invitation
+      listeners.history_delete({peerId: INVITER_ID.toPeerId(), msgs: new Set([1])});
+      expect(rung[0].connectionState).toBe(CALL_STATE.PENDING);
+
+      await rung[0].hangUp();
+      expect(declineConferenceCallInvite).toHaveBeenCalledWith(1);
+    });
+
+    it('rings out on its own: the edit that ends it comes from a history the tab no longer follows', async() => {
+      vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout']});
+      listeners.history_multiappend(makeInvite());
+      await vi.advanceTimersByTimeAsync(0);
+      expect(rung).toHaveLength(1);
+
+      switchAway();
+      await vi.advanceTimersByTimeAsync(CALL_REQUEST_TIMEOUT);
+
+      expect(rung[0].connectionState).toBe(CALL_STATE.CLOSED);
+      // * rung out, not declined: the other devices may still answer it
+      expect(declineConferenceCallInvite).not.toHaveBeenCalled();
+    });
+
+    it('rings out on its own after a switch away and back: the edit missed meanwhile does not come again', async() => {
+      vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout']});
+      listeners.history_multiappend(makeInvite());
+      await vi.advanceTimersByTimeAsync(0);
+
+      switchAway();
+      switchTo(invited);
+      await vi.advanceTimersByTimeAsync(CALL_REQUEST_TIMEOUT);
+
+      expect(rung[0].connectionState).toBe(CALL_STATE.CLOSED);
+      expect(declineConferenceCallInvite).not.toHaveBeenCalled();
+    });
+
+    it('rings out on its own when it starts ringing only after the tab left its account', async() => {
+      vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout']});
+      const flag = deferredPromise<boolean>();
+      isCallRequestsDisabled.mockReturnValueOnce(flag);
+      listeners.history_multiappend(makeInvite());
+
+      switchAway();
+      flag.resolve(false);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(rung).toHaveLength(1);
+
+      await vi.advanceTimersByTimeAsync(CALL_REQUEST_TIMEOUT);
+      expect(rung[0].connectionState).toBe(CALL_STATE.CLOSED);
+    });
+
+    it('leaves an invitation of the account shown to the edit that ends it', async() => {
+      vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout']});
+      listeners.history_multiappend(makeInvite());
+      await vi.advanceTimersByTimeAsync(CALL_REQUEST_TIMEOUT);
+
+      expect(rung[0].connectionState).toBe(CALL_STATE.PENDING);
+    });
+
+    it('rings out at a switch away when its window ran out while its account was shown', async() => {
+      vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout']});
+      listeners.history_multiappend(makeInvite());
+      await vi.advanceTimersByTimeAsync(CALL_REQUEST_TIMEOUT);
+      expect(rung[0].connectionState).toBe(CALL_STATE.PENDING);
+
+      // * the edit that would end it comes from the history the tab leaves now
+      switchAway();
+      expect(rung[0].connectionState).toBe(CALL_STATE.CLOSED);
+      expect(declineConferenceCallInvite).not.toHaveBeenCalled();
+    });
   });
 
   it('closes the invitation when the join it started fails', async() => {

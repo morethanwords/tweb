@@ -1,5 +1,6 @@
 import {openEditor, settleNativeSelection as settle} from './fixtures/chatInputEditorTest';
-import {expect, test} from '@playwright/test';
+import {expect} from '@playwright/test';
+import {test} from './workerContext';
 import type {ChatInputEditorBrowserHarness} from './fixtures/chatInputEditor';
 
 declare global {
@@ -233,8 +234,7 @@ for(const level of [1, 2, 3, 4, 5, 6]) test(`native heading level ${level} suppo
 for(const {marker, type, mark} of [
   {marker: '* ', type: 'bulletList'}, {marker: '+ ', type: 'bulletList'},
   {marker: '[ ] ', type: 'taskList'}, {marker: '[X] ', type: 'taskList'},
-  {marker: '**abc**', mark: 'bold'}, {marker: '__abc__', mark: 'bold'},
-  {marker: '*abc*', mark: 'italic'}, {marker: '~~abc~~', mark: 'strike'}
+  {marker: '**abc**', mark: 'bold'}, {marker: '__abc__', mark: 'italic'}, {marker: '~~abc~~', mark: 'strike'}
 ]) test(`native additional input rule ${JSON.stringify(marker)}`, async({page}) => {
   await page.keyboard.type(marker);
   await settle(page);
@@ -247,4 +247,20 @@ for(const {marker, type, mark} of [
   await settle(page);
   expect((await page.evaluate(() => window.chatInputEditorHarness.document())).content?.[0])
   .toEqual({type: 'paragraph', content: [{type: 'text', text: marker}]});
+});
+
+// Telegram's markdown rather than upstream's CommonMark: `__` is italic, as in every official client
+// and in the parser a sent message goes through, and a single `*` or `_` marks nothing — it would
+// also eat the `_-_` of an underline.
+for(const how of ['typed', 'pasted'] as const) for(const {marker, mark} of [
+  {marker: '**abc**', mark: 'bold'}, {marker: '__abc__', mark: 'italic'},
+  {marker: '*abc*'}, {marker: '_abc_'}, {marker: '_-_abc_-_'}
+]) test(`${how} ${JSON.stringify(marker)} is read as Telegram's markdown`, async({page}) => {
+  if(how === 'typed') await page.keyboard.type(marker);
+  else await page.evaluate((text) => window.chatInputEditorHarness.pasteClipboard({text}), marker);
+  await settle(page);
+  expect((await page.evaluate(() => window.chatInputEditorHarness.document())).content?.[0]).toEqual({
+    type: 'paragraph',
+    content: [mark ? {type: 'text', text: 'abc', marks: [{type: mark}]} : {type: 'text', text: marker}]
+  });
 });

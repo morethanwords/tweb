@@ -6,7 +6,7 @@ import listenMessagePort from '@helpers/listenMessagePort';
 import makeError from '@helpers/makeError';
 import safeAssign from '@helpers/object/safeAssign';
 import lottieMessagePort, {LottieOffscreenInit} from '@lib/lottie/lottieMessagePort';
-import loadTLottieWasm, {getTLottieHeapBytes, TLottieFitzModifier, TLottieHandle, TLottieWasm} from '@lib/lottie/tlottieWasm';
+import loadTLottieWasm, {getTLottieMemoryStats, TLottieFitzModifier, TLottieHandle, TLottieWasm} from '@lib/lottie/tlottieWasm';
 import {canvasBytes, readThreadMemory} from '@lib/debug/memoryStats';
 import SuperMessagePort from '@lib/superMessagePort';
 
@@ -89,7 +89,7 @@ export class TLottieItem {
     }
   }
 
-  public init(json: string, tlottie: TLottieWasm, fitzModifier: TLottieFitzModifier) {
+  public init(json: string, tlottie: TLottieWasm, fitzModifier: TLottieFitzModifier, source: Blob) {
     if(this.dead) {
       throw makeError('ITEM_DESTROYED');
     }
@@ -105,7 +105,7 @@ export class TLottieItem {
     }, 1000 / this.fps); */
 
     try {
-      const animation = this.tlottie.createAnimation(json, fitzModifier);
+      const animation = this.tlottie.createAnimation(json, fitzModifier, source);
       this.handle = animation.handle;
       this.frameCount = animation.frameCount;
       this.fps = Math.max(1, Math.min(60, animation.frameRate));
@@ -538,7 +538,7 @@ lottieMessagePort.addMultipleEventsListeners({
 
       // console.log('Rendering sticker:', reqId, 'now rendered:', Object.keys(items).length);
 
-      return item.init(json, tlottie, fitzModifier);
+      return item.init(json, tlottie, fitzModifier, blob);
     } catch(err) {
       destroyItem(reqId);
       console.error('Unable to load lottie animation:', err);
@@ -585,7 +585,7 @@ lottieMessagePort.addMultipleEventsListeners({
     forEachItemOfSource(source, (item) => item.suspendFreeRun());
   },
 
-  debugTag: () => 'tlottie-simd-4', // bump on worker edits to verify the running bundle
+  debugTag: () => 'tlottie-simd-5', // bump on worker edits to verify the running bundle
 
   memoryStats: () => {
     let cachedFrames = 0, cachedFrameBytes = 0, itemCanvasBytes = 0, orphanedCaches = 0;
@@ -604,6 +604,7 @@ lottieMessagePort.addMultipleEventsListeners({
       item.canvases?.forEach((canvas) => itemCanvasBytes += canvasBytes(canvas));
     }
 
+    const wasm = getTLottieMemoryStats();
     return readThreadMemory('lottie', {
       items: itemsArr.length,
       tabs: compositorPorts.size,
@@ -612,8 +613,12 @@ lottieMessagePort.addMultipleEventsListeners({
       cachedFrames,
       cachedFrameGpuBytes: cachedFrameBytes,
       itemCanvasGpuBytes: itemCanvasBytes,
-      wasmHeapBytes: getTLottieHeapBytes()
-    });
+      wasmHeapBytes: wasm.heapBytes,
+      wasmAwake: wasm.awake,
+      wasmAsleep: wasm.animations - wasm.awake,
+      wasmWakes: wasm.wakes,
+      wasmRecycles: wasm.recycles
+    }, wasm.events);
   },
 
   resumeTab: (_, source) => {

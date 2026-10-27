@@ -1,12 +1,15 @@
 import {Component, createRenderEffect, mergeProps, onCleanup, onMount} from 'solid-js';
 
-import type {LottieAssetName, LottieLoader} from '@lib/lottie/lottieLoader';
+import type {LottieAssetName, LottieLoader, PreloadedLottieAsset} from '@lib/lottie/lottieLoader';
 import LottiePlayer, {LottieOptions} from '@lib/lottie/lottiePlayer';
 
 const LottieAnimation: Component<{
   lottieLoader: LottieLoader,
   class?: string,
-  name: LottieAssetName,
+  /** A built-in asset to fetch now. Mutually exclusive with `animationData`. */
+  name?: LottieAssetName,
+  /** An asset whose fetch started earlier (a tab's `getInitArgs`). */
+  animationData?: PreloadedLottieAsset,
   size?: number,
   needRaf?: boolean,
   restartOnClick?: boolean,
@@ -41,18 +44,18 @@ const LottieAnimation: Component<{
       return
     }
 
-    animationPromise = props.lottieLoader.loadAnimationAsAsset(
-      {
-        container: div,
-        loop: false,
-        autoplay: true,
-        width: props.size,
-        height: props.size,
-        group: 'none',
-        ...props.lottieOptions
-      },
-      props.name
-    );
+    const params: Omit<LottieOptions, 'animationData' | 'name'> = {
+      container: div,
+      loop: false,
+      autoplay: true,
+      width: props.size,
+      height: props.size,
+      group: 'none',
+      ...props.lottieOptions
+    };
+    animationPromise = props.animationData ?
+      props.animationData.then((load) => load(params)) :
+      props.lottieLoader.loadAnimationAsAsset(params, props.name);
     props.onPromise?.(animationPromise);
   }
 

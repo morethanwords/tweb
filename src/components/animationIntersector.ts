@@ -13,7 +13,7 @@ import {getAppWindow, onAppWindowChange} from '@helpers/appWindow';
 
 export type AnimationItemGroup = '' | 'none' | 'chat' | 'lock' |
   'STICKERS-POPUP' | 'emoticons-dropdown' | 'STICKERS-SEARCH' | 'GIFS-SEARCH' |
-  `CHAT-MENU-REACTIONS-${number}` | 'INLINE-HELPER' | 'GENERAL-SETTINGS' | 'STICKER-VIEWER' | 'EMOJI' |
+  `CHAT-MENU-REACTIONS-${number}` | 'INLINE-HELPER' | 'GENERAL-SETTINGS' | 'MEDIA-PEEK' | 'EMOJI' |
   'EMOJI-STATUS' | `chat-${number}` | 'PREMIUM-PROMO' | 'NEW-MEDIA' | 'BLUFF-SPOILER' | 'CHAT-TIPS';
 export interface AnimationItem {
   el: HTMLElement,
@@ -56,6 +56,8 @@ export class AnimationIntersector {
 
   private overrideIdleGroups: Set<string>;
   private byGroups: {[group in AnimationItemGroup]?: AnimationItem[]};
+  // * subtrees out of sight while still in the viewport (see holdUnder)
+  private heldUnder: Set<Node>;
   private byPlayer: Map<AnimationItem['animation'], AnimationItem>;
   // Element → its AnimationItems, kept in lockstep with byGroups/byPlayer (see add/removeAnimation).
   // The IntersectionObserver callback (onObserve) and getAnimations() resolve target → item via this
@@ -132,6 +134,7 @@ export class AnimationIntersector {
 
     this.intersectionLockedGroups = {};
     this.videosLocked = false;
+    this.heldUnder = new Set();
 
     // An IntersectionObserver's implicit root is the viewport of the realm that constructed it. When
     // the client pops into a Document PiP window the whole app DOM (incl. every observed sticker / gif
@@ -180,12 +183,18 @@ export class AnimationIntersector {
   // ancestor transform), so off-screen detection alone never stops avatar videos
   // animating inside the closed panel. Driven by 'right_sidebar_toggle'.
   public toggleVideosUnder(element: HTMLElement, paused: boolean) {
+    this.toggleAnimationsUnder(element, paused, 'video');
+  }
+
+  // The same for every animation (or every one of a type) inside `element`: what is sent flies its message's
+  // own sticker, GIF or emoji held still on the frame it starts at, and lets it go on once it is in its place.
+  public toggleAnimationsUnder(element: HTMLElement, paused: boolean, type?: AnimationItemType) {
     if(!element) {
       return;
     }
 
     this.byPlayer.forEach((item) => {
-      if(item.type !== 'video' || !element.contains(item.el)) {
+      if((type && item.type !== type) || !element.contains(item.el)) {
         return;
       }
 
@@ -311,7 +320,8 @@ export class AnimationIntersector {
     group?: AnimationItemGroup,
     destroy?: boolean,
     imitateIntersection?: boolean,
-    exceptGroup?: AnimationItemGroup
+    exceptGroup?: AnimationItemGroup,
+    exceptUnder?: Node
   ) {
     // if(rootScope.idle.isIDLE) return;
 
@@ -334,13 +344,19 @@ export class AnimationIntersector {
       const animations = this.byGroups[group];
 
       forEachReverse(animations, (animation) => {
+        if(exceptUnder?.contains(animation.el)) {
+          return;
+        }
+
         this.checkAnimation(animation, blurred, destroy);
       });
     }
   }
 
-  public checkAnimations2(blurred?: boolean, exceptGroup?: AnimationItemGroup) {
-    this.checkAnimations(blurred, undefined, undefined, true, exceptGroup);
+  // * `exceptUnder`: what stands in it is left as it is - the content of a popup that pauses what is
+  // * under it
+  public checkAnimations2(blurred?: boolean, exceptGroup?: AnimationItemGroup, exceptUnder?: Node) {
+    this.checkAnimations(blurred, undefined, undefined, true, exceptGroup, exceptUnder);
   }
 
   public checkAnimation(player: AnimationItem, blurred?: boolean, destroy?: boolean) {
@@ -395,7 +411,8 @@ export class AnimationIntersector {
     if(
       blurred ||
       (this.onlyOnePlayableGroup && this.onlyOnePlayableGroup !== group) ||
-      (player.type === 'video' && this.videosLocked)
+      (player.type === 'video' && this.videosLocked) ||
+      this.isHeld(el)
     ) {
       if(!animation.paused) {
         // console.warn('pause animation:', animation);
@@ -415,6 +432,40 @@ export class AnimationIntersector {
 
   public getOnlyOnePlayableGroup() {
     return this.onlyOnePlayableGroup;
+  }
+
+  private isHeld(el: HTMLElement) {
+    if(!this.heldUnder.size) return false;
+    for(const root of this.heldUnder) {
+      if(root.contains(el)) return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Nothing under `root` plays until the returned release, whatever asks it to - the window coming back
+   * into focus, a popup closing: `root` stays in the viewport but out of sight (the app under an account's
+   * sign-in). What is elsewhere plays as before.
+   */
+  public holdUnder(root: Node) {
+    this.heldUnder.add(root);
+    this.checkAnimationsUnder(root);
+    return () => {
+      if(this.heldUnder.delete(root)) {
+        this.checkAnimationsUnder(root);
+      }
+    };
+  }
+
+  private checkAnimationsUnder(root: Node) {
+    for(const group in this.byGroups) {
+      forEachReverse(this.byGroups[group as AnimationItemGroup], (player) => {
+        if(root.contains(player.el)) {
+          this.checkAnimation(player);
+        }
+      });
+    }
   }
 
   public setOnlyOnePlayableGroup(group: AnimationItemGroup = '') {
@@ -508,5 +559,6 @@ export class AnimationIntersector {
 }
 
 const animationIntersector = new AnimationIntersector();
+if(import.meta.hot) import.meta.hot.accept();
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.animationIntersector = animationIntersector);
 export default animationIntersector;

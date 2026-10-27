@@ -10,9 +10,8 @@ import {archiveDialogTagName} from './archiveDialog';
 import confirmationPopup from './confirmationPopup';
 import createFeatureDetailsIconSticker from './featureDetailsIconSticker';
 import showFeatureDetailsPopup from './popups/featureDetails';
-import appSidebarLeft from './sidebarLeft';
-import {AppArchiveSettingsTab} from './solidJsTabs/tabs';
 import {ButtonMenuItemOptionsVerifiable} from './buttonMenu';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 
 type CreateArchiveDialogContextMenuArgs = {
@@ -48,6 +47,13 @@ export const getArchiveContextMenuButtons = (): ButtonMenuItemOptionsVerifiable[
   const markAllAsRead = createMarkAllAsReadHandler();
 
   return [
+    {
+      icon: 'search',
+      text: 'Search',
+      onClick: () => {
+        hotReloadGuard.appSidebarLeft.openArchiveSearch();
+      }
+    },
     {
       icon: 'movetomenu',
       text: 'Archive.HideFromChatList',
@@ -88,7 +94,7 @@ export const getArchiveContextMenuButtons = (): ButtonMenuItemOptionsVerifiable[
       icon: 'tools',
       text: 'ArchiveSettings',
       onClick: () => {
-        appSidebarLeft.createTab(AppArchiveSettingsTab).open();
+        hotReloadGuard.appSidebarLeft.createTab(hotReloadGuard.tabs.AppArchiveSettingsTab).open();
       }
     },
     {
@@ -132,7 +138,7 @@ function openFeatureDetails() {
     title: i18n('ArchiveFeatureDetails.Title'),
     subtitle: i18n('ArchiveFeatureDetails.Subtitle', [anchorCallback(() => {
       close();
-      appSidebarLeft.createTab(AppArchiveSettingsTab).open();
+      hotReloadGuard.appSidebarLeft.createTab(hotReloadGuard.tabs.AppArchiveSettingsTab).open();
     })]),
     rows: [
       {

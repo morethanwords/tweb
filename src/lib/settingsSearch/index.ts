@@ -1,6 +1,7 @@
 import SearchIndex from '@lib/searchIndex';
 import I18n, {LangPackKey} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
+import {hotListen} from '@helpers/hotModule';
 import {
   bumpSettingsSearchVersion,
   getEntries,
@@ -163,8 +164,8 @@ const ensureBuilt = () => {
 // Titles and keywords both come from the language pack, so a new pack means a
 // new index — including keywords a translator added for a language we ship no
 // English fallback for.
-rootScope.addEventListener('language_change', bumpSettingsSearchVersion);
-rootScope.addEventListener('language_apply', bumpSettingsSearchVersion);
+hotListen(import.meta.hot, rootScope, 'language_change', bumpSettingsSearchVersion);
+hotListen(import.meta.hot, rootScope, 'language_apply', bumpSettingsSearchVersion);
 
 /**
  * Ranks a title-first: whole-title prefix beats a match somewhere inside, and

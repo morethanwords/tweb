@@ -1,7 +1,7 @@
 import {createResource, createSignal, For, Show, JSX} from 'solid-js';
 import Row from '@components/rowTsx';
 import Section from '@components/section';
-import {i18n, LangPackKey} from '@lib/langPack';
+import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import {IS_APPLE} from '@environment/userAgent';
 import rootScope from '@lib/rootScope';
 import {useAppSettings} from '@stores/appSettings';
@@ -25,8 +25,14 @@ const KEY_LABELS: {[k: string]: {mac: string, pc: string}} = {
   minus: {mac: '−', pc: '−'}
 };
 
+// * keys along the line: the arrow toward its end goes on, the left one in a right-to-left layout
+const INLINE_KEYS: {[k: string]: () => string} = {
+  next: () => I18n.isRTL() ? 'left' : 'right',
+  previous: () => I18n.isRTL() ? 'right' : 'left'
+};
+
 function labelFor(key: string): string {
-  const lower = key.toLowerCase();
+  const lower = INLINE_KEYS[key]?.() ?? key.toLowerCase();
   const lookup = KEY_LABELS[lower];
   if(lookup) return IS_APPLE ? lookup.mac : lookup.pc;
   return key.length === 1 ? key.toUpperCase() : key;
@@ -196,11 +202,11 @@ const MediaViewerSection = () => (
   <Section name="KeyboardShortcuts.Section.MediaViewer">
     <ShortcutRow
       action="KeyboardShortcuts.Action.NextMedia"
-      keys={<KeyCombo keys={['right']} />}
+      keys={<KeyCombo keys={['next']} />}
     />
     <ShortcutRow
       action="KeyboardShortcuts.Action.PreviousMedia"
-      keys={<KeyCombo keys={['left']} />}
+      keys={<KeyCombo keys={['previous']} />}
     />
     <ShortcutRow
       action="KeyboardShortcuts.Action.ZoomIn"
@@ -217,11 +223,11 @@ const StoriesSection = () => (
   <Section name="KeyboardShortcuts.Section.Stories">
     <ShortcutRow
       action="KeyboardShortcuts.Action.NextStory"
-      keys={<KeyCombo keys={['right']} />}
+      keys={<KeyCombo keys={['next']} />}
     />
     <ShortcutRow
       action="KeyboardShortcuts.Action.PreviousStory"
-      keys={<KeyCombo keys={['left']} />}
+      keys={<KeyCombo keys={['previous']} />}
     />
     <ShortcutRow
       action="KeyboardShortcuts.Action.PlayPauseStory"

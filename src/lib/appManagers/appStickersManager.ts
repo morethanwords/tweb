@@ -13,6 +13,7 @@ import fixEmoji, {cleanEmoji} from '@lib/richTextProcessor/fixEmoji';
 import ctx from '@environment/ctx';
 import {getEnvironment} from '@environment/utils';
 import getDocumentInput from '@appManagers/utils/docs/getDocumentInput';
+import getPhotoInput from '@appManagers/utils/photos/getPhotoInput';
 import getStickerEffectThumb from '@appManagers/utils/stickers/getStickerEffectThumb';
 import tsNow from '@helpers/tsNow';
 import SearchIndex from '@lib/searchIndex';
@@ -44,6 +45,8 @@ export class AppStickersManager extends AppManager {
   private recentStickers: MyDocument[];
 
   private names: Record<string, InputStickerSet.inputStickerSetID>;
+
+  private attachedStickers: Map<string, Promise<StickerSet.stickerSet[]>>;
 
   private indexes: Partial<{
     stickers: SearchIndex<DocId>,
@@ -123,6 +126,7 @@ export class AppStickersManager extends AppManager {
     this.sounds = {};
     this.names = {};
     this.indexes = {};
+    this.attachedStickers = new Map();
   };
 
   private async onStickersUpdated(type: 'faved' | 'recent', overwrite: boolean) {
@@ -958,6 +962,36 @@ export class AppStickersManager extends AppManager {
         }
       });
     });
+  }
+
+  /**
+   * The packs of the stickers put on a photo or a video (one with `has_stickers`, or a document with
+   * `documentAttributeHasStickers`), as a story says where its stickers come from
+   */
+  public getAttachedStickers(type: 'photo' | 'document', id: Long) {
+    const key = type + '_' + id;
+    let promise = this.attachedStickers.get(key);
+    if(promise) {
+      return promise;
+    }
+
+    promise = this.apiManager.invokeApi('messages.getAttachedStickers', {
+      media: type === 'photo' ? {
+        _: 'inputStickeredMediaPhoto',
+        id: getPhotoInput(this.appPhotosManager.getPhoto(id))
+      } : {
+        _: 'inputStickeredMediaDocument',
+        id: getDocumentInput(this.appDocsManager.getDoc(id))
+      }
+    }).then((coveredSets) => {
+      return coveredSets.map((covered) => covered.set as StickerSet.stickerSet);
+    }, (err) => {
+      this.attachedStickers.delete(key);
+      throw err;
+    });
+
+    this.attachedStickers.set(key, promise);
+    return promise;
   }
 
   public getStickerSetByDice(emoticon: string) {

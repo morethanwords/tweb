@@ -1,7 +1,7 @@
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import {i18n} from '@lib/langPack';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
-import {StarsBalance} from '@components/popups/stars';
+import {StarsBalance} from '@components/stars/starsAmount';
 import {DelimiterWithText} from '@components/chat/giveaway';
 import {createEffect, createMemo, createSignal, For, on, onCleanup} from 'solid-js';
 import {easeOutCircApply} from '@helpers/easing/easeOutCirc';
@@ -14,7 +14,6 @@ import {AvatarNewTsx} from '@components/avatarNew';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {IconTsx} from '@components/iconTsx';
 import classNames from '@helpers/string/classNames';
-import appImManager from '@lib/appImManager';
 import {Ripple} from '@components/rippleTsx';
 import clamp from '@helpers/number/clamp';
 import {fastRaf} from '@helpers/schedulers';
@@ -31,22 +30,24 @@ import findAndSplice from '@helpers/array/findAndSplice';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import {LimitLineTsx} from '@components/limitLineTsx';
 import {I18nTsx} from '@helpers/solid/i18n';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export default async function showStarReactionPopup(peerId: PeerId, mid: number, chat: Chat) {
+  const managers = bindManagersToSession(rootScope.managers);
   // * cancel all pending paid reactions
   PENDING_PAID_REACTIONS.forEach((it) => it.abortController.abort());
 
   const [peerTitle, message, defaultSendAs] = await Promise.all([
     wrapPeerTitle({peerId}),
-    rootScope.managers.appMessagesManager.getMessageByPeer(peerId, mid) as Promise<Message.message>,
-    rootScope.managers.appReactionsManager.getPaidReactionPrivacy()
+    managers.appMessagesManager.getMessageByPeer(peerId, mid) as Promise<Message.message>,
+    managers.appReactionsManager.getPaidReactionPrivacy()
   ]);
 
   // the senders list opens a profile, and that has to close the popup from outside a button
   const [show, setShow] = createSignal(true);
 
   createPopup(() => {
-    const managers = rootScope.managers;
     const [appState] = useAppState();
     const maximumStars = appState.appConfig.stars_paid_reaction_amount_max;
     const [starsSliderValue, setStarsSliderValue] = createSignal<number>(0.1); // 50 stars
@@ -162,7 +163,7 @@ export default async function showStarReactionPopup(peerId: PeerId, mid: number,
           class={classNames('popup-star-reaction-senders-item', !anonymous && 'is-clickable')}
           onClick={() => {
             if(anonymous) return;
-            appImManager.setInnerPeer({
+            hotReloadGuard.appImManager.setInnerPeer({
               peerId: senderPeerId,
               stack: {peerId, mid}
             });
@@ -207,6 +208,7 @@ export default async function showStarReactionPopup(peerId: PeerId, mid: number,
 
     return (
       <PopupElement
+        managers={managers}
         class="popup-stars popup-star-reaction"
         closable
         old

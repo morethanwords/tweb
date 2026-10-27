@@ -8,11 +8,12 @@ import {StoriesProfileList, profileStoriesButtonMenu} from '@components/stories/
 import {StoriesSelection} from '@components/stories/selection';
 import {StoriesContextActions, StoriesContextState} from '@components/stories/store';
 import {getFirstChild} from '@solid-primitives/refs';
-import {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import createSharedMediaScrollDateBadge from '@components/sharedMediaScrollDateBadge';
+import type {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const MyStories: Component = () => {
   const [tab] = useSuperTab<typeof AppMyStoriesTab>();
@@ -38,7 +39,7 @@ const MyStories: Component = () => {
   );
 
   const openArchive = () => {
-    tab.slider.createTab(AppMyStoriesTab).open({...AppMyStoriesTab.getInitArgs(), isArchive: true, chatId});
+    tab.slider.createTab(hotReloadGuard.tabs.AppMyStoriesTab).open({...hotReloadGuard.tabs.AppMyStoriesTab.getInitArgs(), isArchive: true, chatId});
   };
 
   onMount(() => {

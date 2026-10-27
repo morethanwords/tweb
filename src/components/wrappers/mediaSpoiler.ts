@@ -13,6 +13,8 @@ import Modes from '@config/modes';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import makeMediaPreviewsAccessible, {MEDIA_PREVIEW_SELECTOR} from '@helpers/dom/mediaPreviewAccessibility';
 import {doubleRaf} from '@helpers/schedulers';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import {getAccountSession} from '@lib/accounts/getCurrentAccount';
 
 // * the dot canvas is decoration on top of an already-covering blurred thumbnail; never let it
 // * hold up the message batch for longer than this
@@ -142,6 +144,8 @@ async function onSensitiveMediaSpoilerClick(options: {
   mediaSpoiler: HTMLElement,
   event: Event
 }) {
+  // * the account session the media was opened on: rootScope comes with the rest, once loaded
+  const session = getAccountSession();
   const {mediaSpoiler} = options;
   const [
     {default: useContentSettings},
@@ -156,15 +160,26 @@ async function onSensitiveMediaSpoilerClick(options: {
     import('@components/toast'),
     import('@lib/rootScope')
   ]);
-  if(!mediaSpoiler.isConnected || !mediaSpoiler.dataset.isSensitive) return;
+  if(session.ended || !mediaSpoiler.isConnected || !mediaSpoiler.dataset.isSensitive) return;
+  // oxlint-disable-next-line tweb/managers-before-await -- read in the session the click was made in, just checked
+  const managers = bindManagersToSession(rootScope.managers);
   const contentSettings = useContentSettings();
 
-  if(!contentSettings.sensitiveCanChange()) {
-    toastNew({langPackKey: 'SensitiveContentUnavailable'});
+  // * drawn before the switch was turned on, in this tab or another one: there is nothing left to ask
+  if(contentSettings.sensitiveEnabled()) {
+    clearSensitiveSpoilers();
     return;
   }
 
-  if(contentSettings.needAgeVerification() && !contentSettings.ageVerified()) {
+  const canChange = contentSettings.sensitiveCanChange();
+  // * the age comes first, by the server's word (a mark kept on this device could be set by anyone), and only an
+  // * account that may turn the filter off can get past it
+  if(contentSettings.needAgeVerification()) {
+    if(!canChange) {
+      toastNew({langPackKey: 'SensitiveContentUnavailable'});
+      return;
+    }
+
     createAgeVerification().then((verified) => {
       if(verified) {
         clearSensitiveSpoilers();
@@ -173,22 +188,29 @@ async function onSensitiveMediaSpoilerClick(options: {
     return;
   }
 
+  // * an account that may not turn the filter off still opens one media at a time, with nothing to remember
   confirmationPopup({
     titleLangKey: '18Plus',
     descriptionLangKey: 'SensitiveContentDesc',
     button: {
       langKey: 'SensitiveContentConfirm'
     },
-    checkbox: {
+    checkbox: canChange ? {
       text: 'SensitiveContentRemember'
-    }
-  }).then((remember) => {
+    } : undefined
+  }).then(async(remember) => {
     if(remember) {
-      rootScope.managers.appPrivacyManager.setContentSettings({sensitive_enabled: true});
-      clearSensitiveSpoilers();
-      return;
+      // * all of them only once the server has accepted the switch: it may refuse it
+      try {
+        await managers.appPrivacyManager.setContentSettings({sensitive_enabled: true});
+        clearSensitiveSpoilers();
+        return;
+      } catch(err) {
+        toastNew({langPackKey: 'Error.AnError'});
+      }
     }
 
+    // * this one was asked for either way
     delete mediaSpoiler.dataset.isSensitive;
     onMediaSpoilerClick(options);
   });
@@ -229,6 +251,11 @@ function wrapMediaSpoilerWithImage(options: {
   container.append(image, canvas);
 
   return {container, readyResult};
+}
+
+// * still hidden behind a spoiler: a revealed one is removed
+export function hasMediaSpoiler(container: HTMLElement) {
+  return container.querySelector('.media-spoiler-container') != null;
 }
 
 export function hasSensitiveSpoiler(container: HTMLElement) {

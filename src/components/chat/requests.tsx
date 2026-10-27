@@ -4,14 +4,13 @@ import I18n from '@lib/langPack';
 import {ChatFull} from '@layer';
 import {AppManagers} from '@lib/managers';
 import StackedAvatars from '@components/stackedAvatars';
-import appSidebarRight from '@components/sidebarRight';
-import {AppChatRequestsTab} from '@components/solidJsTabs/tabs';
 import callbackify from '@helpers/callbackify';
 import {ONE_DAY} from '@helpers/date';
 import {MiddlewareHelper, getMiddleware} from '@helpers/middleware';
 import {AckedResult} from '@lib/superMessagePort';
 import {Accessor, createEffect, createSignal, Show} from 'solid-js';
 import TopbarPlate, {createTopbarPlate, TopbarPlateController} from '@components/chat/topbarPlate';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 /** Matches the plate's buttons — the stack mirrors the close button's slot. */
 const AVATAR_SIZE = 40;
@@ -79,10 +78,10 @@ export default function createChatRequestsPlate(
   let currentPeerId: PeerId | undefined;
 
   const onOpen = async() => {
-    if(appSidebarRight.isTabExists(AppChatRequestsTab)) return;
-    const tab = appSidebarRight.createTab(AppChatRequestsTab);
+    if(hotReloadGuard.appSidebarRight.isTabExists(hotReloadGuard.tabs.AppChatRequestsTab)) return;
+    const tab = hotReloadGuard.appSidebarRight.createTab(hotReloadGuard.tabs.AppChatRequestsTab);
     await tab.open(chat.peerId.toChatId());
-    appSidebarRight.toggleSidebar(true);
+    hotReloadGuard.appSidebarRight.toggleSidebar(true);
   };
 
   const onClose = () => {

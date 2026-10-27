@@ -1,28 +1,19 @@
 import type SortedDialogList from '@components/sortedDialogList';
 import type {ScrollableBase} from '@components/scrollable';
-import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
-import Sortable from '@helpers/dom/sortable';
+import Sortable, {DRAG_SLACK, PRESSABLE_DRAG_THRESHOLD} from '@helpers/dom/sortable';
 import {Middleware} from '@helpers/middleware';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import {logger} from '@lib/logger';
 import movePinnedKey, {PinnedKey} from '@appManagers/utils/dialogs/movePinnedKey';
 
 /**
- * How far the pointer travels before a press on a row becomes a drag. The rows of a chat list are
- * not inert - a press on one opens the chat, or toggles it while chats are being selected - so
- * neither the reorder nor the selection may start under an ordinary click; this is the usual few
- * pixels of slack. The row is then taken at the pointer, so the slack is neither waited out nor
- * jumped over. (tdesktop asks for 30px and animates the row's catch-up instead - the same
- * protection, paid for with a visible lag at the start.)
+ * The rows of a chat list are not inert - a press on one opens the chat, or toggles it while chats
+ * are being selected - so neither the reorder nor the selection may start under an ordinary click.
+ * (tdesktop asks for 30px and animates the row's catch-up instead - the same protection, paid for
+ * with a visible lag at the start.) On touch the same long press drags a pinned chat while the list
+ * is in selection mode, as it does on Android.
  */
-export const DRAG_SLACK = 8;
-
-/**
- * On touch the reorder starts from a long press instead (`SwipeHandler`'s `withDelay`), which has
- * already said what it is, so the row is picked up right away - as it is on Android, where the same
- * long press drags a pinned chat while the list is in selection mode.
- */
-const REORDER_THRESHOLD = IS_TOUCH_SUPPORTED ? 0 : DRAG_SLACK;
+export {DRAG_SLACK};
 
 /** Carried by a row whose dialog is pinned in the list it is rendered in */
 export const PINNED_DIALOG_CLASS_NAME = 'is-pinned';
@@ -47,7 +38,7 @@ export default function attachPinnedDialogsReorder({list, scrollable, middleware
   scrollable: ScrollableBase,
   middleware: Middleware,
   sortedList: SortedDialogList,
-  managers: AppManagers,
+  managers: ReadingManagers,
   /** the list the pins belong to, in `dialogsStorage`'s own filter id space */
   getFilterId: () => number,
   /** the key a row is held under in `sortedList` - the list's own `getDialogKeyFromElement` */
@@ -70,7 +61,7 @@ export default function attachPinnedDialogsReorder({list, scrollable, middleware
     list,
     middleware,
     scrollable,
-    threshold: REORDER_THRESHOLD,
+    threshold: PRESSABLE_DRAG_THRESHOLD,
     moveInDom: false,
     sortableClassName: PINNED_DIALOG_CLASS_NAME,
     enabled: canReorder,
@@ -113,7 +104,7 @@ export default function attachPinnedDialogsReorder({list, scrollable, middleware
  * slots it travelled.
  */
 async function pinnedOrderAfterDrag({managers, filterId, key, reordered, to}: {
-  managers: AppManagers,
+  managers: ReadingManagers,
   filterId: number,
   key: PinnedKey,
   reordered: PinnedKey[],

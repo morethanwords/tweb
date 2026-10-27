@@ -21,6 +21,12 @@ export const AutoHeight = (inProps: {
 
   onMount(() => {
     const observer = new ResizeObserver(() => {
+      // * a hidden screen (a sidebar tab under another) reports nothing to measure: keep the height
+      // * it had, or it would grow back from zero every time the screen shows again
+      if(!contentRef.getClientRects().length) {
+        return;
+      }
+
       batch(() => {
         setCanHaveHeight(true);
         setHeight(contentRef.offsetHeight);

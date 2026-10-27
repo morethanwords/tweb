@@ -35,6 +35,10 @@ vi.mock('@lib/calls/groupCallInstance', () => {
     public attachE2eSendTransform = vi.fn();
     public attachE2eRecvTransformLate = vi.fn();
     public hangUp = vi.fn(async() => {});
+    public removeEventListener = vi.fn();
+    public get isConference() {
+      return this.selfUserId !== undefined;
+    }
     private listeners = new Map<string, Array<(payload: any) => void>>();
     public addEventListener = vi.fn((event: string, listener: (payload: any) => void) => {
       const listeners = this.listeners.get(event) || [];
@@ -53,9 +57,22 @@ vi.mock('@lib/calls/groupCallInstance', () => {
       } : undefined;
     }
 
-    constructor(options: {id: string, chatId: PeerId}) {
+    // the account the controller joined the call on: its managers and identity are the call's own
+    public managers: any;
+    public accountNumber: number;
+    public myId: PeerId;
+
+    // As the real getter: the manager's cached roster.
+    public get participants() {
+      return this.managers.appGroupCallsManager.getCachedParticipants(this.id);
+    }
+
+    constructor(options: {id: string, chatId: PeerId, managers: any, accountNumber?: number, myId?: PeerId}) {
       this.id = options.id;
       this.chatId = options.chatId;
+      this.managers = options.managers;
+      this.accountNumber = options.accountNumber;
+      this.myId = options.myId;
       callMocks.instances.push(this);
     }
 
@@ -69,6 +86,7 @@ vi.mock('@lib/calls/groupCallInstance', () => {
       const connection = {
         iceConnectionState: 'new',
         connectionState: 'new',
+        removeEventListener: vi.fn(),
         addEventListener: vi.fn(),
         close: vi.fn()
       };
@@ -109,6 +127,7 @@ vi.mock('@lib/calls/groupCallInstance', () => {
 import {GroupCallsController} from '@lib/calls/groupCallsController';
 import rootScope from '@lib/rootScope';
 import type {InputGroupCall} from '@layer';
+import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 
 const INPUT: Extract<InputGroupCall, {_: 'inputGroupCall'}> = {
   _: 'inputGroupCall',
@@ -120,6 +139,12 @@ const SLUG_INPUT: Extract<InputGroupCall, {_: 'inputGroupCallSlug'}> = {
   slug: 'conference'
 };
 const SELF_USER_ID = BigInt(42);
+
+// * the managers of the controller made last: a call joined through it is that account's
+let lastManagers: any;
+function callAccount(managers = lastManagers) {
+  return {accountNumber: getCurrentAccount(), managers, myId: rootScope.myId};
+}
 
 function makeController() {
   const audioAsset = {
@@ -137,6 +162,7 @@ function makeController() {
       access_hash: INPUT.access_hash
     })),
     getGroupCallParticipants: vi.fn(async() => []),
+    getCachedParticipants: vi.fn(async() => new Map()),
     refreshConferenceParticipants: vi.fn(async() => ({complete: true, userIds: []})),
     hangUp: vi.fn(async() => {}),
     leaveGroupCall: vi.fn(async() => {}),
@@ -155,6 +181,7 @@ function makeController() {
   };
   const controller = new GroupCallsController();
   Object.assign(controller as any, {audioAsset, log, managers});
+  lastManagers = managers;
   return {audioAsset, appGroupCallsManager, controller, log};
 }
 
@@ -165,15 +192,18 @@ async function flushPromises() {
 
 function makeLiveConferenceInstance(connection: any) {
   return {
+    ...callAccount(),
     id: INPUT.id,
     chatId: 99 as PeerId,
     selfUserId: SELF_USER_ID,
+    isConference: true,
     isClosing: false,
     joined: true,
     isMuted: true,
     isSharingVideo: false,
     connections: {main: {connection, sources: {audio: {source: 777}}}},
     toInputGroupCall: vi.fn(() => INPUT),
+    removeEventListener: vi.fn(),
     addEventListener: vi.fn(),
     hangUp: vi.fn(async() => {})
   } as any;
@@ -289,6 +319,7 @@ async function joinConferenceFixture(
   callMocks.createMainStreamManager.mockResolvedValue(streamManager);
 
   return (controller as any).joinConferenceCommon({
+    account: callAccount(),
     input: options.input ?? INPUT,
     expectedCanonicalInput: options.expectedCanonicalInput,
     worker,
@@ -356,6 +387,7 @@ describe('GroupCallsController conference transactions', () => {
     callMocks.negotiationError = joinError;
 
     const joining = (controller as any).joinConferenceCommon({
+      account: callAccount(),
       input: INPUT,
       worker,
       publicKey: new Uint8Array(32),
@@ -395,6 +427,7 @@ describe('GroupCallsController conference transactions', () => {
     appGroupCallsManager.leaveGroupCall.mockRejectedValue(leaveError);
 
     await expect((controller as any).joinConferenceCommon({
+      account: callAccount(),
       input: INPUT,
       worker,
       publicKey: new Uint8Array(32),
@@ -423,6 +456,7 @@ describe('GroupCallsController conference transactions', () => {
     callMocks.acceptedCallInput = INPUT;
 
     await expect((controller as any).joinConferenceCommon({
+      account: callAccount(),
       input: SLUG_INPUT,
       worker,
       publicKey: new Uint8Array(32),
@@ -449,6 +483,7 @@ describe('GroupCallsController conference transactions', () => {
     callMocks.acceptedCallInput = INPUT;
 
     await expect((controller as any).joinConferenceCommon({
+      account: callAccount(),
       createConference: true,
       worker,
       publicKey: new Uint8Array(32),
@@ -475,6 +510,7 @@ describe('GroupCallsController conference transactions', () => {
     callMocks.negotiationError = joinError;
 
     await expect((controller as any).joinConferenceCommon({
+      account: callAccount(),
       input: INPUT,
       worker,
       publicKey: new Uint8Array(32),
@@ -495,13 +531,14 @@ describe('GroupCallsController conference transactions', () => {
     const connection = {
       connectionState: 'connected',
       iceConnectionState: 'connected',
+      removeEventListener: vi.fn(),
       addEventListener: vi.fn()
     };
     const instance = makeLiveConferenceInstance(connection);
     const joinSpy = vi.spyOn(controller, 'joinConference').mockResolvedValue({} as any);
     controller.setCurrentGroupCall(instance);
 
-    (controller as any).startConferenceLiveness(instance);
+    (controller as any).startTransportLiveness(instance);
 
     expect(setTimeoutSpy).not.toHaveBeenCalled();
     expect(instance.hangUp).not.toHaveBeenCalled();
@@ -515,6 +552,7 @@ describe('GroupCallsController conference transactions', () => {
     const connection = {
       connectionState: 'connected',
       iceConnectionState: 'connected',
+      removeEventListener: vi.fn(),
       addEventListener: vi.fn(),
       getStats: vi.fn(async() => makeProgressingAudioStats(sample++))
     };
@@ -522,7 +560,7 @@ describe('GroupCallsController conference transactions', () => {
     const joinSpy = vi.spyOn(controller, 'joinConference').mockResolvedValue({} as any);
     controller.setCurrentGroupCall(instance);
 
-    (controller as any).startConferenceLiveness(instance);
+    (controller as any).startTransportLiveness(instance);
     await flushPromises();
     await advanceMediaSamples(4);
 
@@ -541,7 +579,8 @@ describe('GroupCallsController conference transactions', () => {
       muted: false,
       joinVideo: false,
       transitionGeneration: expect.any(Number),
-      outboundMediaRecoveryUsed: true
+      outboundMediaRecoveryUsed: true,
+      account: {accountNumber: instance.accountNumber, managers: instance.managers, myId: instance.myId}
     });
     expect(log.warn).toHaveBeenCalledWith('rejoining conference', {
       reason: 'outbound-media-blackhole',
@@ -560,6 +599,7 @@ describe('GroupCallsController conference transactions', () => {
     const connection = {
       connectionState: 'connected',
       iceConnectionState: 'connected',
+      removeEventListener: vi.fn(),
       addEventListener: vi.fn(),
       getStats: vi.fn(async() => makeProgressingAudioStats(sample++))
     };
@@ -567,7 +607,7 @@ describe('GroupCallsController conference transactions', () => {
     const joinSpy = vi.spyOn(controller, 'joinConference').mockResolvedValue({} as any);
     controller.setCurrentGroupCall(instance);
 
-    (controller as any).startConferenceLiveness(instance);
+    (controller as any).startTransportLiveness(instance);
     await flushPromises();
     await advanceMediaSamples(1);
 
@@ -591,6 +631,7 @@ describe('GroupCallsController conference transactions', () => {
     const connection = {
       connectionState: 'connected',
       iceConnectionState: 'connected',
+      removeEventListener: vi.fn(),
       addEventListener: vi.fn((event: string, listener: () => void) => {
         listeners[event] = listener;
       }),
@@ -605,7 +646,7 @@ describe('GroupCallsController conference transactions', () => {
     const joinSpy = vi.spyOn(controller, 'joinConference').mockResolvedValue({} as any);
     controller.setCurrentGroupCall(instance);
 
-    (controller as any).startConferenceLiveness(instance);
+    (controller as any).startTransportLiveness(instance);
     await flushPromises();
     await advanceMediaSamples(3);
     await advanceMediaSamples(12);
@@ -635,6 +676,7 @@ describe('GroupCallsController conference transactions', () => {
     const connection = {
       connectionState: 'connected',
       iceConnectionState: 'connected',
+      removeEventListener: vi.fn(),
       addEventListener: vi.fn(),
       getStats: vi.fn(async() => makeProgressingAudioStats(sample++, {pairId: 'wifi-pair'}))
     };
@@ -642,7 +684,7 @@ describe('GroupCallsController conference transactions', () => {
     const joinSpy = vi.spyOn(controller, 'joinConference').mockResolvedValue({} as any);
     controller.setCurrentGroupCall(instance);
 
-    (controller as any).startConferenceLiveness(instance);
+    (controller as any).startTransportLiveness(instance);
     await flushPromises();
     await advanceMediaSamples(12);
 
@@ -658,6 +700,7 @@ describe('GroupCallsController conference transactions', () => {
     const connection = {
       connectionState: 'connected',
       iceConnectionState: 'connected',
+      removeEventListener: vi.fn(),
       addEventListener: vi.fn(),
       getStats: vi.fn(async() => {
         const currentSample = sample++;
@@ -670,7 +713,7 @@ describe('GroupCallsController conference transactions', () => {
     const joinSpy = vi.spyOn(controller, 'joinConference').mockResolvedValue({} as any);
     controller.setCurrentGroupCall(instance);
 
-    (controller as any).startConferenceLiveness(instance);
+    (controller as any).startTransportLiveness(instance);
     await flushPromises();
     await advanceMediaSamples(12);
 
@@ -686,6 +729,7 @@ describe('GroupCallsController conference transactions', () => {
     const connection = {
       connectionState: 'connected',
       iceConnectionState: 'connected',
+      removeEventListener: vi.fn(),
       addEventListener: vi.fn(),
       getStats: vi.fn(async() => {
         const currentSample = sample++;
@@ -698,7 +742,7 @@ describe('GroupCallsController conference transactions', () => {
     const joinSpy = vi.spyOn(controller, 'joinConference').mockResolvedValue({} as any);
     controller.setCurrentGroupCall(instance);
 
-    (controller as any).startConferenceLiveness(instance);
+    (controller as any).startTransportLiveness(instance);
     await flushPromises();
     await advanceMediaSamples(12);
 
@@ -716,6 +760,7 @@ describe('GroupCallsController conference transactions', () => {
     const connection = {
       connectionState: 'connected',
       iceConnectionState: 'connected',
+      removeEventListener: vi.fn(),
       addEventListener: vi.fn(),
       getStats: vi.fn(async() => makeProgressingAudioStats(sample++, statsOverrides))
     };
@@ -723,7 +768,7 @@ describe('GroupCallsController conference transactions', () => {
     const joinSpy = vi.spyOn(controller, 'joinConference').mockResolvedValue({} as any);
     controller.setCurrentGroupCall(instance);
 
-    (controller as any).startConferenceLiveness(instance);
+    (controller as any).startTransportLiveness(instance);
     await flushPromises();
     await advanceMediaSamples(12);
 
@@ -747,6 +792,7 @@ describe('GroupCallsController conference transactions', () => {
     const connection = {
       connectionState: 'connected',
       iceConnectionState: 'connected',
+      removeEventListener: vi.fn(),
       addEventListener: vi.fn(),
       getStats: vi.fn(async() => makeProgressingAudioStats(0))
     };
@@ -755,7 +801,7 @@ describe('GroupCallsController conference transactions', () => {
     const joinSpy = vi.spyOn(controller, 'joinConference').mockResolvedValue({} as any);
     controller.setCurrentGroupCall(instance);
 
-    (controller as any).startConferenceLiveness(instance);
+    (controller as any).startTransportLiveness(instance);
     await advanceMediaSamples(12);
 
     expect(connection.getStats).toHaveBeenCalledTimes(13);
@@ -770,6 +816,7 @@ describe('GroupCallsController conference transactions', () => {
     const connection = {
       connectionState: 'connected',
       iceConnectionState: 'connected',
+      removeEventListener: vi.fn(),
       addEventListener: vi.fn(),
       getStats: vi.fn().mockRejectedValue(statsError)
     };
@@ -777,7 +824,7 @@ describe('GroupCallsController conference transactions', () => {
     const joinSpy = vi.spyOn(controller, 'joinConference').mockResolvedValue({} as any);
     controller.setCurrentGroupCall(instance);
 
-    (controller as any).startConferenceLiveness(instance);
+    (controller as any).startTransportLiveness(instance);
     await flushPromises();
     await advanceMediaSamples(8);
 
@@ -797,6 +844,7 @@ describe('GroupCallsController conference transactions', () => {
     const connection = {
       connectionState: 'connected',
       iceConnectionState: 'connected',
+      removeEventListener: vi.fn(),
       addEventListener: vi.fn(),
       getStats: vi.fn(() => pendingStats)
     };
@@ -804,7 +852,7 @@ describe('GroupCallsController conference transactions', () => {
     const joinSpy = vi.spyOn(controller, 'joinConference').mockResolvedValue({} as any);
     controller.setCurrentGroupCall(instance);
 
-    (controller as any).startConferenceLiveness(instance);
+    (controller as any).startTransportLiveness(instance);
     await flushPromises();
     expect(connection.getStats).toHaveBeenCalledTimes(1);
 
@@ -827,6 +875,7 @@ describe('GroupCallsController conference transactions', () => {
     const connection = {
       connectionState: 'connected',
       iceConnectionState: 'connected',
+      removeEventListener: vi.fn(),
       addEventListener: vi.fn(),
       getStats: vi.fn(async() => makeProgressingAudioStats(sample++, {pairId, remoteInboundTimestamp}))
     };
@@ -835,7 +884,7 @@ describe('GroupCallsController conference transactions', () => {
     (controller as any).outboundMediaRecoveryUsed.add(instance);
     controller.setCurrentGroupCall(instance);
 
-    (controller as any).startConferenceLiveness(instance);
+    (controller as any).startTransportLiveness(instance);
     await flushPromises();
 
     // Route change + active outbound + no RTCP — the full blackhole pattern —
@@ -869,6 +918,7 @@ describe('GroupCallsController conference transactions', () => {
     const connection = {
       connectionState: 'connected',
       iceConnectionState: 'connected',
+      removeEventListener: vi.fn(),
       addEventListener: vi.fn((event: string, listener: () => void) => {
         listeners[event] = listener;
       })
@@ -877,7 +927,7 @@ describe('GroupCallsController conference transactions', () => {
     const joinSpy = vi.spyOn(controller, 'joinConference').mockResolvedValue({} as any);
     controller.setCurrentGroupCall(instance);
 
-    (controller as any).startConferenceLiveness(instance);
+    (controller as any).startTransportLiveness(instance);
     connection.connectionState = 'failed';
     listeners.connectionstatechange();
 
@@ -906,7 +956,8 @@ describe('GroupCallsController conference transactions', () => {
       chatId: 99,
       muted: true,
       joinVideo: false,
-      transitionGeneration: expect.any(Number)
+      transitionGeneration: expect.any(Number),
+      account: {accountNumber: instance.accountNumber, managers: instance.managers, myId: instance.myId}
     });
   });
 
@@ -930,7 +981,8 @@ describe('GroupCallsController conference transactions', () => {
       chatId: 99,
       muted: true,
       joinVideo: false,
-      transitionGeneration: expect.any(Number)
+      transitionGeneration: expect.any(Number),
+      account: {accountNumber: instance.accountNumber, managers: instance.managers, myId: instance.myId}
     });
   });
 
@@ -1032,7 +1084,8 @@ describe('GroupCallsController conference transactions', () => {
       chatId: 99,
       muted: true,
       joinVideo: false,
-      transitionGeneration: expect.any(Number)
+      transitionGeneration: expect.any(Number),
+      account: {accountNumber: instance.accountNumber, managers: instance.managers, myId: instance.myId}
     });
   });
 
@@ -1135,6 +1188,7 @@ describe('GroupCallsController conference transactions', () => {
     const connection = {
       connectionState: 'connected',
       iceConnectionState: 'connected',
+      removeEventListener: vi.fn(),
       addEventListener: vi.fn((event: string, listener: () => void) => {
         listeners[event] = listener;
       })
@@ -1143,7 +1197,7 @@ describe('GroupCallsController conference transactions', () => {
     const joinSpy = vi.spyOn(controller, 'joinConference').mockResolvedValue({} as any);
     controller.setCurrentGroupCall(instance);
 
-    (controller as any).startConferenceLiveness(instance);
+    (controller as any).startTransportLiveness(instance);
     connection.connectionState = 'disconnected';
     connection.iceConnectionState = 'disconnected';
     listeners.iceconnectionstatechange();
@@ -1249,6 +1303,7 @@ describe('GroupCallsController conference transactions', () => {
     (controller as any).conferenceTransitionGeneration = generation;
 
     const joining = (controller as any).joinConferenceCommon({
+      account: callAccount(),
       input: INPUT,
       worker,
       publicKey: new Uint8Array(32),
@@ -1316,6 +1371,7 @@ describe('GroupCallsController conference transactions', () => {
     const connection = {
       connectionState: 'new',
       iceConnectionState: 'new',
+      removeEventListener: vi.fn(),
       addEventListener: vi.fn()
     };
     const instance = makeLiveConferenceInstance(connection);
@@ -1323,7 +1379,7 @@ describe('GroupCallsController conference transactions', () => {
     const joinSpy = vi.spyOn(controller, 'joinConference').mockResolvedValue({} as any);
     controller.setCurrentGroupCall(instance);
 
-    (controller as any).startConferenceLiveness(instance);
+    (controller as any).startTransportLiveness(instance);
     const transportTimeout = setTimeoutSpy.mock.calls.find(([, delay]) => delay === 10000)?.[0];
     if(typeof transportTimeout !== 'function') throw new Error('initial transport timeout was not scheduled');
     await transportTimeout();
@@ -1431,7 +1487,9 @@ describe('GroupCallsController conference transactions', () => {
       lastBlockServer: zeroBlock,
       chatId: undefined,
       muted: true,
-      joinVideo: false
+      joinVideo: false,
+      // * started on the account the tab shows
+      account: callAccount()
     });
     expect(appGroupCallsManager.getGroupCallFull).not.toHaveBeenCalled();
     expect(appGroupCallsManager.discardGroupCall).not.toHaveBeenCalled();

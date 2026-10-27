@@ -1,6 +1,5 @@
 import {Component, onCleanup, onMount} from 'solid-js';
 import {MissingInvitee} from '@layer';
-import appDialogsManager from '@lib/appDialogsManager';
 import InputField from '@components/inputField';
 import AvatarEdit, {AvatarEditPayload} from '@components/avatarEdit';
 import I18n, {i18n} from '@lib/langPack';
@@ -17,6 +16,7 @@ import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type {AppNewGroupTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 interface OpenStreetMapInterface {
   place_id?: number;
@@ -57,7 +57,7 @@ const NewGroup: Component = () => {
     canBeEdited: false
   });
 
-  const list = appDialogsManager.createChatList({
+  const list = hotReloadGuard.appDialogsManager.createChatList({
     new: true
   });
 
@@ -228,7 +228,7 @@ const NewGroup: Component = () => {
 
     const a = usersPromise.then((users) => {
       users.forEach((user) => {
-        const {dom} = appDialogsManager.addDialogNew({
+        const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
           peerId: user.id.toPeerId(false),
           container: list,
           rippleEnabled: false,

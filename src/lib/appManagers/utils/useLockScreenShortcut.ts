@@ -4,9 +4,9 @@ import {joinDeepPath} from '@helpers/object/setDeepProperty';
 import {addShortcutListener} from '@helpers/shortcutListener';
 import {getAppWindow} from '@helpers/appWindow';
 import apiManagerProxy from '@lib/apiManagerProxy';
-import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
 import {createEffect, createResource, createRoot, createSignal, onCleanup} from 'solid-js';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 
 const _useLockScreenShortcut = () => {
@@ -54,7 +54,7 @@ const _useLockScreenShortcut = () => {
     const combo = [...shortcutKeys(), 'KeyL'].join('+');
 
     const isShiftLockShortcut = combo === 'Shift+KeyL';
-    appImManager.isShiftLockShortcut = isShiftLockShortcut;
+    hotReloadGuard.appImManager.isShiftLockShortcut = isShiftLockShortcut;
 
     const removeListener = addShortcutListener([combo], (_, event) => {
       const activeElement = getAppWindow().document.activeElement as HTMLElement;
@@ -75,7 +75,7 @@ const _useLockScreenShortcut = () => {
 
     onCleanup(() => {
       removeListener();
-      appImManager.isShiftLockShortcut = false;
+      hotReloadGuard.appImManager.isShiftLockShortcut = false;
     });
   });
 };

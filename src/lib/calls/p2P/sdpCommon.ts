@@ -167,6 +167,21 @@ export function parseSsrcs(section: SdpSection, shouldIncludeGroups = false) {
   return Array.from(values);
 }
 
+// Each side of a P2P call numbers its own m-sections (the peer's content is
+// keyed by its SSRC, not by a shared mid), so a MID/RID header extension would
+// name a section the receiver does not have — and libwebrtc drops a BUNDLE
+// packet with an unknown MID even when its SSRC is signalled. Native tgcalls
+// never negotiates these; neither side may, so incoming media is demuxed by SSRC.
+const P2P_UNSHARED_RTP_EXTENSIONS = new Set([
+  'urn:ietf:params:rtp-hdrext:sdes:mid',
+  'urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id',
+  'urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id'
+]);
+
+export function isP2pRtpExtensionShared(uri: string) {
+  return !P2P_UNSHARED_RTP_EXTENSIONS.has(uri);
+}
+
 export function parseExtmaps(section: SdpSection): RtpHdrexts[] {
   return section.attributes.get('extmap').lines.map((line) => {
     const [, rawId, uri] = line.match(/^(\d+)(?:\/[^\s]+)?\s(.+)$/) || [];
@@ -178,7 +193,7 @@ export function parseExtmaps(section: SdpSection): RtpHdrexts[] {
       id: Number(rawId),
       uri
     };
-  });
+  }).filter(({uri}) => isP2pRtpExtensionShared(uri));
 }
 
 export function parsePayloadTypes(section: SdpSection): P2PPayloadType[] {
@@ -225,29 +240,30 @@ export function summarizeSdp(sdp: string, shouldIncludeSsrcGroups = false): SdpS
   });
 }
 
-function parsePayloadParameters(section: SdpSection, payloadId: number) {
+// `a=fmtp` parameters — "key=value;key=value" — as a record.
+export function parseFmtpParameters(raw: string | undefined) {
   const parameters: Record<string, string> = {};
-  const prefix = `${payloadId} `;
-  const rawParameters = section.attributes.get('fmtp').lines.find((line) => line.startsWith(prefix))?.slice(prefix.length);
-  if(!rawParameters) {
-    return parameters;
-  }
-
-  rawParameters.split(';').forEach((item) => {
+  raw?.split(';').forEach((item) => {
     const trimmed = item.trim();
     const separatorIndex = trimmed.indexOf('=');
     if(separatorIndex === -1) {
       return;
     }
 
-    const key = trimmed.slice(0, separatorIndex);
-    const value = trimmed.slice(separatorIndex + 1);
+    const key = trimmed.slice(0, separatorIndex).trim();
+    const value = trimmed.slice(separatorIndex + 1).trim();
     if(key && value) {
       parameters[key] = value;
     }
   });
 
   return parameters;
+}
+
+function parsePayloadParameters(section: SdpSection, payloadId: number) {
+  const prefix = `${payloadId} `;
+  const rawParameters = section.attributes.get('fmtp').lines.find((line) => line.startsWith(prefix))?.slice(prefix.length);
+  return parseFmtpParameters(rawParameters);
 }
 
 function parseFeedbackTypes(section: SdpSection, payloadId: number): NonNullable<P2PPayloadType['feedbackTypes']> {

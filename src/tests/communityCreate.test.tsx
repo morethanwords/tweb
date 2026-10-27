@@ -106,6 +106,14 @@ vi.mock('@components/communities/communityPeerDialogList', () => ({
 }));
 
 import CreateCommunity from '@components/communities/createCommunity';
+import * as mocked1 from '@components/solidJsTabs/tabs';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+
+// the code under test reads the top level from the registry, not from the modules mocked above
+registerHotReloadGuard({
+  tabs: {...mocked1} as any
+});
+
 
 describe('CreateCommunity', () => {
   beforeEach(() => {

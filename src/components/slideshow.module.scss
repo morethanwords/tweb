@@ -7,6 +7,7 @@
   width: 100%;
   position: relative;
   cursor: pointer;
+  user-select: none; // a drag pages, it does not select
   background-color: var(--surface-color);
   z-index: 1;
   overflow: hidden;
@@ -53,7 +54,7 @@
   display: flex;
   align-items: center;
   flex-wrap: nowrap;
-  transform-origin: left top;
+  transform-origin: var(--transform-origin-inline-start) top;
   transition: transform .2s ease-in-out;
   position: absolute;
   inset: 0;
@@ -82,12 +83,7 @@
   transform: translateX(-50%);
   z-index: 3;
 
-  @include animation-level-global(2) {
-    opacity: 1;
-    transition:
-      bottom var(--transition-standard-in),
-      opacity var(--transition-standard-in);
-  }
+  @include animation-level-transition(bottom var(--transition-standard-in), opacity var(--transition-standard-in), $global: true);
 }
 
 .Dot {
@@ -120,13 +116,13 @@
 .Arrow {
   position: absolute;
   top: 0;
-  left: 0;
+  inset-inline-start: 0;
   bottom: 0;
   width: calc(100% / 3);
   opacity: 0;
   z-index: 2;
 
-  @include animation-level-global(2) {
+  @include animation-level-global(1) {
     transition: opacity .2s ease-in-out;
   }
 
@@ -140,7 +136,7 @@
     transform: translateY(-50%);
     font-size: 2.1875rem;
     color: #fff;
-    left: .625rem;
+    inset-inline-start: .625rem;
   }
 
   /* .Slideshow:not(.IsSwiping) & {
@@ -150,12 +146,10 @@
   } */
 
   &Next {
-    left: auto;
-    right: 0;
+    inset-inline: auto 0;
 
     .ArrowIcon {
-      left: auto;
-      right: .625rem;
+      inset-inline: auto .625rem;
     }
   }
 }

@@ -29,3 +29,8 @@ export function reconcilePeer(peerId: PeerId, peer?: NotEmptyPeer) {
 export function reconcilePeers(peers: {[peerId: PeerId]: NotEmptyPeer}) {
   setState(/* reconcile */(peers));
 }
+
+// * the tab switched accounts: none of the previous account's peers may stay
+export function resetPeers() {
+  setState(reconcile({}));
+}

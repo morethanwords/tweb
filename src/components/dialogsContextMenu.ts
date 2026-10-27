@@ -1,9 +1,7 @@
 import type {Dialog} from '@appManagers/appMessagesManager';
 import type {ForumTopic} from '@layer';
 import type {AnyDialog} from '@lib/storages/dialogs';
-import appDialogsManager, {
-  findDialogListElement
-} from '@lib/appDialogsManager';
+import {findDialogListElement} from '@components/dialogElement';
 import rootScope from '@lib/rootScope';
 import {useAppSettings} from '@stores/appSettings';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
@@ -11,14 +9,13 @@ import showDeleteDialogPopup from '@components/popups/deleteDialog';
 import {i18n, LangPackKey, _i18n} from '@lib/langPack';
 import {toastNew} from '@components/toast';
 import showMutePopup from '@components/popups/mute';
-import {AppManagers} from '@lib/managers';
+import {TabManagers} from '@lib/managers';
 import {CAN_HIDE_TOPIC, FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, REAL_FOLDER_ID, REAL_FOLDERS} from '@appManagers/constants';
 import showPinLimitReached from '@components/showPinLimitReached';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import showChatPreviewPopup, {chatPreviewAnchorFromDialogRow} from '@components/popups/chatPreview';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import IS_SHARED_WORKER_SUPPORTED from '@environment/sharedWorkerSupport';
-import appImManager from '@lib/appImManager';
 import {isDialog, isForumTopic, isMonoforumDialog, isSavedDialog} from '@appManagers/utils/dialogs/isDialog';
 import createSubmenuTrigger, {CreateSubmenuArgs} from '@components/createSubmenuTrigger';
 import type AddToFolderDropdownMenu from '@components/addToFolderDropdownMenu';
@@ -45,6 +42,8 @@ import {
   showCommunityMutePopup,
   unmuteCommunity
 } from '@components/communities/communityMute';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 /**
  * What an item does on a chat row inside a Community panel (`data-community-chat-kind`),
@@ -80,7 +79,7 @@ export default class DialogsContextMenu {
   private li: HTMLElement;
   private addToFolderMenu: InstanceType<typeof AddToFolderDropdownMenu>;
 
-  constructor(private managers: AppManagers, private options: {recentSearch?: boolean, useDialogFolder?: boolean} = {}) {
+  constructor(private managers: TabManagers, private options: {recentSearch?: boolean, useDialogFolder?: boolean} = {}) {
 
   }
 
@@ -89,6 +88,7 @@ export default class DialogsContextMenu {
       listenTo: element,
       buttons: this.getButtons(),
       onOpen: async(e, li) => {
+        const managers = bindManagersToSession(this.managers);
         this.li = li;
         li.classList.add('menu-open');
         this.peerId = li.dataset.peerId.toPeerId();
@@ -114,7 +114,7 @@ export default class DialogsContextMenu {
 
         // * Android shows no context menu while rows are being selected: the press belongs to the
         // * selection, and on touch it is also what starts a reorder of the pinned block
-        const selection = appDialogsManager.getSelectionForRow(li);
+        const selection = hotReloadGuard.appDialogsManager.getSelectionForRow(li);
         if(selection?.isSelecting && selection.canSelect(li)) {
           throw 'Selecting dialogs';
         }
@@ -122,13 +122,13 @@ export default class DialogsContextMenu {
         this.dialog = this.isCommunityDialog ?
           undefined :
           this.monoforumParentPeerId ?
-            await this.managers.monoforumDialogsStorage.getDialogByParent(this.monoforumParentPeerId, this.peerId):
-            await this.managers.dialogsStorage.getAnyDialog(this.peerId, this.threadId);
+            await managers.monoforumDialogsStorage.getDialogByParent(this.monoforumParentPeerId, this.peerId):
+            await managers.dialogsStorage.getAnyDialog(this.peerId, this.threadId);
         this.filterId = this.threadId ? undefined :
           this.options.useDialogFolder || this.options.recentSearch ?
             (isDialog(this.dialog) ? this.dialog.folder_id ?? 0 : 0) :
-            appDialogsManager.filterId;
-        this.canManageTopics = isForumTopic(this.dialog) ? await this.managers.dialogsStorage.canManageTopic(this.dialog) : undefined;
+            hotReloadGuard.appDialogsManager.filterId;
+        this.canManageTopics = isForumTopic(this.dialog) ? await managers.dialogsStorage.canManageTopic(this.dialog) : undefined;
         this.canDelete = await this.checkIfCanDelete();
         this.canRemoveFromCommunity = !!this.communityId &&
           canRemoveCommunityPeer(
@@ -179,7 +179,7 @@ export default class DialogsContextMenu {
       icon: 'newtab',
       text: 'OpenInNewTab',
       onClick: (e: MouseEvent | TouchEvent) => {
-        appDialogsManager.openDialogInNewTab(this.li);
+        hotReloadGuard.appDialogsManager.openDialogInNewTab(this.li);
         if(this.options.recentSearch) {
           this.managers.appUsersManager.pushRecentSearch(this.peerId);
         }
@@ -192,7 +192,7 @@ export default class DialogsContextMenu {
       icon: 'topics',
       text: 'Community.View',
       onClick: () => {
-        appDialogsManager.toggleForumTabByPeerId(
+        hotReloadGuard.appDialogsManager.toggleForumTabByPeerId(
           this.peerId,
           true,
           false
@@ -210,7 +210,7 @@ export default class DialogsContextMenu {
       icon: 'topics',
       text: 'TopicViewAsTopics',
       onClick: () => {
-        appImManager.toggleViewAsMessages(this.peerId, false);
+        hotReloadGuard.appImManager.toggleViewAsMessages(this.peerId, false);
       },
       // the flag outlives the forum it was set for, so ask the peer too
       verify: () => apiManagerProxy.isForum(this.peerId) &&
@@ -219,23 +219,23 @@ export default class DialogsContextMenu {
       icon: 'topics',
       text: 'SavedViewAsChats',
       onClick: () => {
-        appImManager.toggleViewAsMessages(this.peerId, false);
+        hotReloadGuard.appImManager.toggleViewAsMessages(this.peerId, false);
       },
       verify: () => this.peerId === rootScope.myId && !appSettings.savedAsForum && !this.threadId
     }, {
       icon: 'message',
       text: 'SavedViewAsMessages',
       onClick: () => {
-        appImManager.toggleViewAsMessages(this.peerId, true);
+        hotReloadGuard.appImManager.toggleViewAsMessages(this.peerId, true);
       },
       verify: () => this.peerId === rootScope.myId && appSettings.savedAsForum && !this.threadId
     }, {
       icon: 'select',
       text: 'Message.Context.Select',
       onClick: () => {
-        appDialogsManager.getSelectionForRow(this.li)?.toggleByElement(this.li);
+        hotReloadGuard.appDialogsManager.getSelectionForRow(this.li)?.toggleByElement(this.li);
       },
-      verify: () => !!appDialogsManager.getSelectionForRow(this.li)?.canSelect(this.li)
+      verify: () => !!hotReloadGuard.appDialogsManager.getSelectionForRow(this.li)?.canSelect(this.li)
     }, {
       icon: 'unread',
       text: 'MarkAsUnread',
@@ -321,15 +321,16 @@ export default class DialogsContextMenu {
       text: 'ChatList.Context.Mute',
       onClick: this.onMuteClick,
       verify: async() => {
+        const managers = bindManagersToSession(this.managers);
         if(this.isCommunityDialog) {
           // await it: the managers are async proxies, and `!promise` is always false
-          return !(await this.managers.appCommunitiesManager
+          return !(await managers.appCommunitiesManager
           .isCommunityMuted(this.communityId));
         }
         return !!this.dialog &&
           !this.monoforumParentPeerId &&
           this.peerId !== rootScope.myId &&
-          !(await this.managers.appNotificationsManager.isPeerLocalMuted({
+          !(await managers.appNotificationsManager.isPeerLocalMuted({
             peerId: this.peerId,
             threadId: this.threadId
           }));
@@ -486,7 +487,7 @@ export default class DialogsContextMenu {
     menu.feedProps({
       dialog: this.dialog,
       filters,
-      currentFilter: () => appDialogsManager.filterId,
+      currentFilter: () => hotReloadGuard.appDialogsManager.filterId,
       onNewDialog: (dialog) => {
         this.dialog = dialog;
       },
@@ -541,9 +542,10 @@ export default class DialogsContextMenu {
   }
 
   private onArchiveClick = async() => {
-    const dialog = await this.managers.appMessagesManager.getDialogOnly(this.peerId);
+    const managers = bindManagersToSession(this.managers);
+    const dialog = await managers.appMessagesManager.getDialogOnly(this.peerId);
     if(dialog) {
-      this.managers.appMessagesManager.editPeerFolders([dialog.peerId], +!dialog.folder_id as REAL_FOLDER_ID);
+      managers.appMessagesManager.editPeerFolders([dialog.peerId], +!dialog.folder_id as REAL_FOLDER_ID);
     }
   };
 
@@ -588,7 +590,7 @@ export default class DialogsContextMenu {
 
   private onUnmuteClick = () => {
     if(this.isCommunityDialog) {
-      unmuteCommunity(this.communityId, this.managers);
+      unmuteCommunity(this.communityId, bindManagersToSession(this.managers));
       return;
     }
 
@@ -615,9 +617,10 @@ export default class DialogsContextMenu {
   };
 
   private onUnreadClick = async() => {
+    const managers = bindManagersToSession(this.managers);
     const {peerId, dialog} = this;
     if(this.isCommunityDialog) {
-      await this.managers.appCommunitiesManager.markCommunityRead(
+      await managers.appCommunitiesManager.markCommunityRead(
         this.communityId
       );
       return;
@@ -626,19 +629,19 @@ export default class DialogsContextMenu {
     if(!isDialog(dialog) && !isForumTopic(dialog) && !isMonoforumDialog(dialog)) return;
 
     if(this.monoforumParentPeerId) {
-      this.managers.appMessagesManager.markDialogUnread({
+      managers.appMessagesManager.markDialogUnread({
         peerId: this.monoforumParentPeerId,
         monoforumThreadId: this.peerId,
         read: !!dialog.unread_count
       });
     } else if(dialog.unread_count) {
       if(!this.threadId) {
-        this.managers.appMessagesManager.markDialogUnread({peerId, read: true});
+        managers.appMessagesManager.markDialogUnread({peerId, read: true});
       } else {
-        this.managers.appMessagesManager.readHistory({peerId, maxId: dialog.top_message, threadId: this.threadId});
+        managers.appMessagesManager.readHistory({peerId, maxId: dialog.top_message, threadId: this.threadId});
       }
     } else if(!this.threadId) {
-      this.managers.appMessagesManager.markDialogUnread({peerId});
+      managers.appMessagesManager.markDialogUnread({peerId});
     }
   };
 
@@ -658,7 +661,7 @@ export default class DialogsContextMenu {
     if(!peerId || !parentPeerId) return;
 
     try {
-      await openRemoveFeePopup({peerId, parentPeerId, requirePayment, managers: this.managers})
+      await openRemoveFeePopup({peerId, parentPeerId, requirePayment, managers: bindManagersToSession(this.managers)})
     } catch{}
   }
 
@@ -672,21 +675,21 @@ export default class DialogsContextMenu {
     void removeChatFromCommunityWithConfirmation({
       communityId,
       peerId,
-      managers: this.managers
+      managers: bindManagersToSession(this.managers)
     });
   };
 
   private onLeaveCommunityClick = () => {
     void leaveCommunityWithConfirmation({
       communityId: this.communityId,
-      managers: this.managers
+      managers: bindManagersToSession(this.managers)
     });
   };
 
   private onClearHistoryClick = () => {
     void clearHistoryWithConfirmation({
       peerId: this.peerId,
-      managers: this.managers
+      managers: bindManagersToSession(this.managers)
     });
   };
 

@@ -9,7 +9,7 @@
  * sandbox surfaces that list, so "this popup renders empty" points straight at the call to fill in.
  */
 
-import type {AppManagers} from '@lib/managers';
+import type {AppManagers, TabManagers} from '@lib/managers';
 import {SETTINGS_INIT, STATE_INIT} from '@config/state';
 import {
   aiToneExample,
@@ -27,6 +27,7 @@ import {
   starGiftUpgradePreview,
   starGiftValueInfo,
   starsAmount,
+  validatedRequestedInfo,
   NOW,
   SELF_PEER_ID,
   SELF_USER_ID
@@ -79,7 +80,7 @@ export const mockAppConfig = {
   aicompose_tone_title_length_max: 32,
   aicompose_tone_saved_limit_default: 3,
   aicompose_tone_saved_limit_premium: 10,
-  premium_promo_order: ['stories', 'double_limits', 'more_upload', 'faster_download'],
+  premium_promo_order: ['stories', 'double_limits', 'more_upload', 'faster_download', 'wallpapers'],
   verify_age_bot_username: 'sandbox_bot',
   verify_age_country: 'GB',
   freeze_appeal_url: 'https://t.me/spambot',
@@ -186,11 +187,18 @@ function createDefaultHandlers(): ManagerHandlers {
       preloadAnimatedEmojiSticker: () => ({doc: undefined as any, animation: undefined as any, sound: undefined as any})
     },
     appPaymentsManager: {
+      // Answered so the checkout can be driven past its shipping step. The call hands the saved
+      // address to the bot, so the popup must only make it once the user has confirmed — see
+      // `payment/invoiceSavedInfo`.
+      validateRequestedInfo: () => validatedRequestedInfo,
       getStarsStatus: () => makeStarsStatus(starsAmount),
       getStarsStatusTon: () => makeStarsStatus({...starsAmount, amount: 0}),
       getStarsTransactions: () => makeStarsStatus(starsAmount),
       getStarsSubscriptions: () => makeStarsStatus(starsAmount),
       getPremiumPromo: () => premiumPromo,
+      // the Premium offer's statistics: answered, so the sandbox reports nothing
+      reportPremiumPromoShown: () => true,
+      reportPremiumPromoAccepted: () => true,
       getStarsTopupOptions: () => [100, 500, 1000].map((stars) => ({
         _: 'starsTopupOption',
         pFlags: {},
@@ -238,8 +246,8 @@ function createDefaultHandlers(): ManagerHandlers {
 }
 
 export type MockManagersController = {
-  /** Drop-in for `rootScope.managers`. */
-  managers: AppManagers,
+  /** Drop-in for `rootScope.managers` - and for whatever is bound from them, which they stay. */
+  managers: AppManagers & TabManagers,
   /** Every call the popups made, newest last. Handy for assertions in an automated run. */
   calls: ManagerCall[],
   /** Calls no handler answered — the to-do list for making a story render fully. */
@@ -303,7 +311,7 @@ export function createMockManagers(): MockManagersController {
   managers.all = createRootProxy((value) => [value]);
 
   const controller: MockManagersController = {
-    managers: managers as AppManagers,
+    managers: managers as AppManagers & TabManagers,
     calls,
     unhandled,
     override(handlers: ManagerHandlers) {

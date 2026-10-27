@@ -1,7 +1,7 @@
 import liteMode from '@helpers/liteMode';
 
 export default function shake(element: HTMLElement) {
-  if(!liteMode.isAvailable('animations')) {
+  if(!liteMode.isAvailable('motion')) {
     return;
   }
 

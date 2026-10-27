@@ -62,6 +62,11 @@ vi.mock('@components/inputField', () => ({
   }
 }));
 
+// * a community has no member tags, and the editor's preview would bring the whole chat in
+vi.mock('@components/memberTag/memberTagEditor', () => ({
+  default: (): undefined => undefined
+}));
+
 vi.mock('@components/popups/channelsTooMuch', () => ({
   handleChannelsTooMuch: (callback: () => Promise<unknown>) => callback()
 }));
@@ -142,6 +147,16 @@ vi.mock('@lib/rootScope', () => ({
 
 import UserPermissions
 from '@components/sidebarRight/tabs/userPermissions';
+import * as mocked1 from '@lib/appDialogsManager';
+import * as mocked2 from '@lib/appImManager';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+
+// the code under test reads the top level from the registry, not from the modules mocked above
+registerHotReloadGuard({
+  appDialogsManager: (mocked1 as any).default,
+  appImManager: (mocked2 as any).default
+});
+
 
 const communityId = 10 as ChatId;
 const participantId = (20 as UserId).toPeerId(false);

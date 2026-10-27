@@ -1,6 +1,7 @@
 import {createMemo, createSelector, For, JSX} from 'solid-js';
 import clamp from '@helpers/number/clamp';
 import I18n, {LangPackKey} from '@lib/langPack';
+import onRangeInlineArrowKey from '@helpers/dom/onRangeInlineArrowKey';
 
 
 export type StepInputStep<T = any> = {
@@ -44,6 +45,7 @@ export default function StepInput<T = any>(props: {
             const newValue = Math.round(clamp(e.currentTarget.valueAsNumber, 0, props.steps.length - 1)); // just in case
             props.onChange(props.steps[newValue].value);
           }}
+          onKeyDown={onRangeInlineArrowKey}
         />
         <For each={props.steps}>
           {(_, index) => <>

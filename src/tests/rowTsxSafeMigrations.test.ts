@@ -4,7 +4,7 @@ import {parseSync} from '@babel/core';
 import {describe, expect, it} from 'vitest';
 
 const rowControllerFiles = [
-  'src/lib/appDialogsManager.ts'
+  'src/components/dialogElement.ts'
 ].sort();
 
 const ignoredDirectories = new Set(['node_modules', 'solid', 'tests', 'vendor']);
@@ -354,7 +354,7 @@ describe('RowTsx migration boundary', () => {
 
     expect(source).toContain('element.dataset.peerId = String(iso2);');
     expect(source).toContain('{checkbox}');
-    expect(source).toContain('popup.selector.middlewareHelperLoader.get()');
+    expect(source).toContain('popup.selector.getRowsMiddleware()');
     expect(source).not.toContain('), popup.middleware);');
     expect(source).not.toMatch(/row\.append|row\.dataset/);
   });
@@ -365,7 +365,7 @@ describe('RowTsx migration boundary', () => {
 
     expect(rowSource).not.toContain('data-peer-id');
     expect(countrySource).toContain('element.dataset.peerId = String(iso2);');
-    expect(countrySource).toContain('popup.selector.middlewareHelperLoader.get()');
+    expect(countrySource).toContain('popup.selector.getRowsMiddleware()');
     expect(countrySource).not.toContain('), popup.middleware);');
   });
 
@@ -380,11 +380,12 @@ describe('RowTsx migration boundary', () => {
     expect(source).not.toContain('sectionContent.append(chatlist)');
   });
 
-  it('disposes forum-topic rows with their search result generation', () => {
+  it('disposes forum-topic rows with the list they are shown in', () => {
     const source = readFileSync(resolve(process.cwd(), 'src/components/popups/pickUser.tsx'), 'utf8');
 
     expect(source).toContain('const middleware = fs.middlewareHelperLoader.get();');
-    expect(source).toContain('wrapTopicRow({peerId, threadId, middleware})');
+    expect(source).toContain('const rowsMiddleware = fs.getRowsMiddleware();');
+    expect(source).toContain('wrapTopicRow({peerId, threadId, middleware: rowsMiddleware})');
     expect(source).toMatch(/await Promise\.all\(promises\);\s+if\(!middleware\(\)\)/);
     expect(source).not.toContain('wrapTopicRow({peerId, threadId, middleware: fsMiddleware})');
   });

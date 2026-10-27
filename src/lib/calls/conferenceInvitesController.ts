@@ -23,7 +23,7 @@ import {Message} from '@layer';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import {FullMid, makeFullMid} from '@appManagers/utils/messages/fullMid';
-import {AppManagers} from '@lib/managers';
+import {TabManagers} from '@lib/managers';
 import {logger} from '@lib/logger';
 import rootScope from '@lib/rootScope';
 import CALL_STATE from '@lib/calls/callState';
@@ -34,8 +34,19 @@ import GROUP_CALL_STATE from '@lib/calls/groupCallState';
 import {CALL_REQUEST_TIMEOUT} from '@lib/calls/constants';
 import {getConferenceCallState} from '@lib/calls/helpers/conferenceCallAction';
 import sameInputGroupCall from '@lib/calls/helpers/sameInputGroupCall';
+import {preloadNoiseSuppression} from '@lib/calls/noiseSuppression/noiseSuppression';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {CallAccount, captureCallAccount, getCallAccountOf} from '@lib/calls/callAccount';
+import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
+import type {ActiveAccountNumber} from '@lib/accounts/types';
+
+// * the same message ids exist in every account's history
+type InviteKey = `${ActiveAccountNumber}:${FullMid}`;
+const makeInviteKey = (accountNumber: ActiveAccountNumber, fullMid: FullMid): InviteKey => `${accountNumber}:${fullMid}`;
 
 type InviteEntry = {
+  /** The account invited: its own history, whichever account the tab shows later. */
+  account: CallAccount,
   peerId: PeerId,
   /** Local (tweb) mid — the id `history_delete` and `message_edit` speak in. */
   mid: number,
@@ -52,22 +63,32 @@ export class ConferenceInvitesController extends EventListenerBase<{
   instance: (instance: ConferenceInviteInstance) => void
 }> {
   private log: ReturnType<typeof logger>;
-  private managers: AppManagers;
+  private managers: TabManagers;
   private audioAsset: ReturnType<typeof getCallAudioAsset>;
 
-  /** Every known invite message, keyed by its full mid. */
-  private invites: Map<FullMid, InviteEntry>;
-  /** Incoming invite keys per conference — the unit decline works on. */
-  private incoming: Map<string, Set<FullMid>>;
+  /** Every known invite message, keyed by its account and full mid. */
+  private invites: Map<InviteKey, InviteEntry>;
+  /** Incoming invite keys per conference, of every account — the unit decline works on. */
+  private incoming: Map<string, Set<InviteKey>>;
   /** The conference currently ringing, if any. */
   private ringing: Map<string, ConferenceInviteInstance>;
+  /** Ringing invitations whose account the tab switched away from: the edit that ends one can be missed. */
+  private missedHistory: WeakSet<ConferenceInviteInstance>;
+  /** Ringing invitations whose ring window ran out while their account was shown: left to the edit that ends them. */
+  private ringWindowOver: WeakSet<ConferenceInviteInstance>;
 
-  public construct(managers: AppManagers) {
+  public get isRinging() {
+    return !!this.ringing?.size;
+  }
+
+  public construct(managers: TabManagers) {
     this.managers = managers;
     this.log = logger('CONFERENCE-INVITES');
     this.invites = new Map();
     this.incoming = new Map();
     this.ringing = new Map();
+    this.missedHistory = new WeakSet();
+    this.ringWindowOver = new WeakSet();
 
     if(!IS_GROUP_CALL_SUPPORTED) {
       return;
@@ -87,9 +108,25 @@ export class ConferenceInvitesController extends EventListenerBase<{
       this.onMessage(message as Message.messageService, false);
     });
 
+    // * the edit that ends an unanswered invitation comes from its account's history: the tab misses it while
+    // * it shows another account, and does not get it back on the way back
+    rootScope.addEventListener('account_switched', ({from}) => {
+      for(const instance of [...this.ringing.values()]) {
+        if(instance.accountNumber !== from) {
+          continue;
+        }
+
+        this.missedHistory.add(instance);
+        // * its window ran out already, the edit it waited for will not come now: it rings out
+        if(this.ringWindowOver.has(instance) && instance.connectionState === CALL_STATE.PENDING) {
+          instance.close();
+        }
+      }
+    });
+
     rootScope.addEventListener('history_delete', ({peerId, msgs}) => {
       for(const mid of msgs) {
-        this.unregister(makeFullMid(peerId, mid));
+        this.unregister(makeInviteKey(getCurrentAccount(), makeFullMid(peerId, mid)));
       }
     });
 
@@ -106,7 +143,7 @@ export class ConferenceInvitesController extends EventListenerBase<{
       return;
     }
 
-    const key = makeFullMid(message);
+    const key = makeInviteKey(getCurrentAccount(), makeFullMid(message));
     const conferenceId = '' + action.call_id;
     const isInvitation = getConferenceCallState(action) === 'invitation';
 
@@ -117,8 +154,13 @@ export class ConferenceInvitesController extends EventListenerBase<{
       return;
     }
 
+    if(this.invites.has(key)) {
+      return;
+    }
+
     const isOutgoing = !!message.pFlags.out;
     const entry: InviteEntry = {
+      account: captureCallAccount(this.managers),
       peerId: message.peerId,
       mid: message.mid,
       serverMsgId: getServerMessageId(message.mid),
@@ -129,10 +171,6 @@ export class ConferenceInvitesController extends EventListenerBase<{
       isOutgoing
     };
 
-    if(this.invites.has(key)) {
-      return;
-    }
-
     this.invites.set(key, entry);
     if(isOutgoing) {
       return;
@@ -140,7 +178,7 @@ export class ConferenceInvitesController extends EventListenerBase<{
 
     let set = this.incoming.get(conferenceId);
     if(!set) {
-      this.incoming.set(conferenceId, set = new Set<FullMid>());
+      this.incoming.set(conferenceId, set = new Set<InviteKey>());
     }
     set.add(key);
 
@@ -163,7 +201,7 @@ export class ConferenceInvitesController extends EventListenerBase<{
     return participants;
   }
 
-  private unregister(key: FullMid) {
+  private unregister(key: InviteKey) {
     const entry = this.invites.get(key);
     if(!entry) {
       return;
@@ -231,7 +269,7 @@ export class ConferenceInvitesController extends EventListenerBase<{
     // `callsDisabledForSession()` (calls_instance.cpp:1177): the session's own
     // "accept calls on this device" switch. tdesktop reads a cached flag; here
     // it is one round trip, after which the invitation is checked again.
-    void this.managers.appAccountManager.isCallRequestsDisabled().then((disabled) => {
+    void entry.account.managers.appAccountManager.isCallRequestsDisabled().then((disabled) => {
       if(disabled) {
         this.log('ignoring a conference invitation: call requests are disabled for this session', entry.serverMsgId);
         return;
@@ -246,7 +284,7 @@ export class ConferenceInvitesController extends EventListenerBase<{
 
     // The round trip above may have outlived the invitation.
     if(
-      !this.invites.has(makeFullMid(entry.peerId, entry.mid)) ||
+      !this.invites.has(makeInviteKey(entry.account.accountNumber, makeFullMid(entry.peerId, entry.mid))) ||
       this.ringing.has(conferenceId) ||
       this.isInConference(conferenceId)
     ) {
@@ -274,16 +312,38 @@ export class ConferenceInvitesController extends EventListenerBase<{
       conferenceId,
       participants: entry.participants,
       onAccept: (instance) => this.accept(instance),
-      onDecline: (instance) => this.declineIncoming(instance.conferenceId)
+      onDecline: (instance) => this.declineIncoming(instance.conferenceId),
+      ...entry.account
     });
 
     this.ringing.set(conferenceId, instance);
+    // * rung once the tab had already left its account: its ending can be missed the same way
+    if(instance.accountNumber !== getCurrentAccount()) {
+      this.missedHistory.add(instance);
+    }
+
     this.audioAsset.play({name: 'incoming', loop: true});
+    preloadNoiseSuppression();
+
+    // * an invitation whose ending the tab may have missed (see missedHistory) rings out on its own
+    const ringOut = window.setTimeout(() => {
+      if(instance.connectionState !== CALL_STATE.PENDING) {
+        return;
+      }
+
+      if(this.missedHistory.has(instance)) {
+        instance.close();
+      } else {
+        this.ringWindowOver.add(instance);
+      }
+    }, entry.date * 1000 + CALL_REQUEST_TIMEOUT - tsNow());
 
     instance.addEventListener('state', (state) => {
       if(state !== CALL_STATE.CLOSED) {
         return;
       }
+
+      clearTimeout(ringOut);
 
       if(this.ringing.get(conferenceId) === instance) {
         this.ringing.delete(conferenceId);
@@ -301,22 +361,21 @@ export class ConferenceInvitesController extends EventListenerBase<{
     // The ringtone belongs to the invitation, not to the call being joined.
     this.audioAsset.stop();
 
-    // Dynamic import: `appImManager` statically imports the call UI, so a
-    // static import here would close a cycle. It owns the whole join policy —
-    // support gate, dead-link toast, leaving whatever call is current — and
-    // `confirmed` skips the "join this call?" prompt, which pressing Accept on
-    // a ringing invitation has already answered.
-    const {default: appImManager} = await import('@lib/appImManager');
-    await appImManager.joinConference({
+    // From the registry: `appImManager` imports the call UI, so importing it here would close a cycle. It owns the
+    // whole join policy — support gate, dead-link toast, leaving whatever call is current — and `confirmed` skips
+    // the "join this call?" prompt, which pressing Accept on a ringing invitation has already answered.
+    await hotReloadGuard.appImManager.joinConference({
       _: 'inputGroupCallInviteMessage',
       msg_id: instance.msgId
-    }, {confirmed: true});
+    }, {confirmed: true, account: getCallAccountOf(instance)});
   }
 
   /**
-   * `Instance::declineIncomingConferenceInvites` (calls_instance.cpp:1099):
-   * one conference can have been offered by several invite messages, and
-   * declining the call declines all of them.
+   * `Instance::declineIncomingConferenceInvites` (calls_instance.cpp):
+   * one conference can have been offered by several invite messages, to any
+   * of the signed-in accounts, and declining the call declines all of them,
+   * each through its own account. tdesktop keys the invites by the conference
+   * alone, across its sessions, and so does `incoming`.
    */
   public async declineIncoming(conferenceId: string) {
     const set = this.incoming.get(conferenceId);
@@ -332,7 +391,7 @@ export class ConferenceInvitesController extends EventListenerBase<{
       }
 
       try {
-        await this.managers.appCallsManager.declineConferenceCallInvite(entry.serverMsgId);
+        await entry.account.managers.appCallsManager.declineConferenceCallInvite(entry.serverMsgId);
       } catch(err) {
         this.log.error('declineConferenceCallInvite failed', err, entry.serverMsgId);
       }
@@ -350,6 +409,9 @@ export class ConferenceInvitesController extends EventListenerBase<{
   }
 }
 
+// made once: a hot update keeps it and moves it onto the edited class (see @helpers/hotRegistry)
 const conferenceInvitesController = new ConferenceInvitesController();
 DEBUG && (MOUNT_CLASS_TO.conferenceInvitesController = conferenceInvitesController);
 export default conferenceInvitesController;
+
+if(import.meta.hot) import.meta.hot.accept();

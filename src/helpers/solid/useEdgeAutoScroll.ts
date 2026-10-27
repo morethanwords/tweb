@@ -1,4 +1,6 @@
 import {type Accessor, createEffect, onCleanup} from 'solid-js';
+import smoothScrollBehavior from '@helpers/dom/smoothScrollBehavior';
+import {isElementRTL} from '@helpers/dom/isDocumentRTL';
 
 export type ScrollAxis = 'horizontal' | 'vertical';
 
@@ -88,6 +90,7 @@ export function useEdgeAutoScroll(args: UseEdgeAutoScrollArgs): void {
     let currentInterval = 0;
 
     const isHorizontal = () => axis() === 'horizontal';
+    const isRTL = () => isElementRTL(el);
 
     /**
      * Given a direction (-1 = toward start, +1 = toward end), find the first
@@ -107,11 +110,15 @@ export function useEdgeAutoScroll(args: UseEdgeAutoScrollArgs): void {
       const epsilon = 1;
 
       let target: HTMLElement | null = null;
+      // * `direction` and the edges are physical (toward the right / bottom), while a right-to-left
+      // * row lays its children out from the right: walk them from the side being scrolled toward
+      const reversed = horizontal && isRTL();
 
       if(direction > 0) {
         // Scrolling toward the end: find the first child whose end edge is
         // past (or clipped by) the container's end edge.
-        for(const child of children) {
+        for(let i = 0; i < children.length; i++) {
+          const child = children[reversed ? children.length - 1 - i : i];
           if(!(child instanceof HTMLElement)) continue;
           const cr = child.getBoundingClientRect();
           const childEnd = horizontal ? cr.right : cr.bottom;
@@ -124,7 +131,7 @@ export function useEdgeAutoScroll(args: UseEdgeAutoScrollArgs): void {
         // Scrolling toward the start: find the last child whose start edge is
         // before the container's start edge.
         for(let i = children.length - 1; i >= 0; i--) {
-          const child = children[i];
+          const child = children[reversed ? children.length - 1 - i : i];
           if(!(child instanceof HTMLElement)) continue;
           const cr = child.getBoundingClientRect();
           const childStart = horizontal ? cr.left : cr.top;
@@ -150,7 +157,7 @@ export function useEdgeAutoScroll(args: UseEdgeAutoScrollArgs): void {
         delta = childStart - containerStart - padding();
       }
 
-      const behavior: ScrollBehavior = smooth() ? 'smooth' : 'auto';
+      const behavior: ScrollBehavior = smooth() ? smoothScrollBehavior() : 'auto';
       if(horizontal) {
         el.scrollBy({left: delta, behavior});
       } else {
@@ -160,10 +167,13 @@ export function useEdgeAutoScroll(args: UseEdgeAutoScrollArgs): void {
 
     const canScroll = (direction: -1 | 1): boolean => {
       const horizontal = isHorizontal();
-      const scrollPos = horizontal ? el.scrollLeft : el.scrollTop;
       const maxScroll = horizontal ?
         el.scrollWidth - el.clientWidth :
         el.scrollHeight - el.clientHeight;
+      // * from the left edge: a right-to-left row's `scrollLeft` runs from 0 down to -maxScroll
+      const scrollPos = horizontal ?
+        el.scrollLeft + (isRTL() ? maxScroll : 0) :
+        el.scrollTop;
       if(direction < 0) return scrollPos > 0;
       return scrollPos < maxScroll - 1;
     };

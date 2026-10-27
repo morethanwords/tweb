@@ -35,7 +35,7 @@
 
   .avatar-placeholder {
     position: absolute;
-    left: 0;
+    inset-inline-start: 0;
     top: 50%;
     transform: translateY(-50%);
   }

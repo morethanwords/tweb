@@ -1,8 +1,9 @@
 import {Chat, User} from '@layer';
+import {IgnoredRestrictionReasons} from '@helpers/restrictions';
 import isPeerRestricted from '@appManagers/utils/peers/isPeerRestricted';
 
-export default function getPeerPhoto(peer: User | Chat) {
-  if(!peer || isPeerRestricted(peer, false)) {
+export default function getPeerPhoto(peer: User | Chat, ignored?: IgnoredRestrictionReasons) {
+  if(!peer || isPeerRestricted(peer, false, ignored)) {
     return;
   }
 

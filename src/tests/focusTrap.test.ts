@@ -1,12 +1,17 @@
-import {afterEach, expect, it} from 'vitest';
+import {afterEach, expect, it, vi} from 'vitest';
 import createFocusTrap, {FOCUS_TRAP_ATTACHED_ATTRIBUTE, getFocusableElements} from '@helpers/dom/focusTrap';
 import {setAppWindow} from '@helpers/appWindow';
 import '@/tests/helpers/a11yLayer';
+
+// jsdom events are never trusted, so the modality is set by hand
+const modality = vi.hoisted(() => ({pointer: false}));
+vi.mock('@helpers/dom/inputModality', () => ({default: () => modality.pointer}));
 
 const mounted: HTMLElement[] = [];
 
 afterEach(() => {
   setAppWindow(window);
+  modality.pointer = false;
   mounted.splice(0).forEach((element) => element.remove());
 });
 
@@ -202,4 +207,53 @@ it('lets focus into an overlay attached to the dialog, pulls it back from anywhe
   elsewhere.focus();
   expect(document.activeElement).toBe(field);
   trap.deactivate(false);
+});
+
+function openMenuFrom(trigger: HTMLElement, isActive?: () => boolean) {
+  const menu = document.createElement('div');
+  const item = document.createElement('button');
+  menu.append(item);
+  document.body.append(trigger, menu);
+  mounted.push(trigger, menu);
+  makeVisible(item);
+  trigger.focus();
+  const trap = createFocusTrap(menu, isActive);
+  trap.activate();
+  return {trap, item};
+}
+
+it('gives the focus back without scrolling to the opener', () => {
+  // a message bubble half out of view: a scrolling focus drags the whole chat along with it
+  const bubble = document.createElement('div');
+  bubble.tabIndex = 0;
+  const {trap} = openMenuFrom(bubble);
+  const focus = vi.spyOn(bubble, 'focus');
+  trap.deactivate();
+  expect(document.activeElement).toBe(bubble);
+  expect(focus).toHaveBeenCalledWith({preventScroll: true});
+});
+
+it('gives the focus back without a ring when a pointer opened the menu', () => {
+  // the Escape that closes it would otherwise ring the opener for a mouse user
+  modality.pointer = true;
+  const trigger = document.createElement('button');
+  const {trap} = openMenuFrom(trigger);
+  modality.pointer = false;
+  const focus = vi.spyOn(trigger, 'focus');
+  trap.deactivate();
+  expect(focus).toHaveBeenCalledWith({preventScroll: true, focusVisible: false});
+});
+
+it('does not take the focus back from where it went while the trap stood aside', () => {
+  // a popup that is no longer the topmost one lets the focus go, and must not grab it on closing
+  let active = true;
+  const trigger = document.createElement('button');
+  const upper = document.createElement('button');
+  document.body.append(upper);
+  mounted.push(upper);
+  const {trap} = openMenuFrom(trigger, () => active);
+  active = false;
+  upper.focus();
+  trap.deactivate();
+  expect(document.activeElement).toBe(upper);
 });

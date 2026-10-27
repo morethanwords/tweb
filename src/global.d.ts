@@ -139,7 +139,10 @@ declare global {
     'translations' | 'animated_emoji' | 'more_upload' | 'emoji_status' | 'profile_badge' |
     'advanced_chat_management' | 'no_ads' | 'app_icons' | 'infinite_reactions' |
     'animated_userpics' | 'premium_stickers' | 'peer_colors' | 'wallpapers' |
-    'saved_tags' | 'last_seen' | 'message_privacy' | 'pm_noforwards';
+    'saved_tags' | 'last_seen' | 'message_privacy' | 'pm_noforwards' |
+    // Telegram Business — the `business_promo_order` set
+    'business_location' | 'business_hours' | 'quick_replies' | 'greeting_message' |
+    'away_message' | 'business_bots' | 'business_links' | 'business_intro' | 'folder_tags';
 
   type MTMimeType = 'video/quicktime' | 'image/gif' | 'image/jpeg' | 'application/pdf' |
     'video/mp4' | 'image/webp' | 'audio/aac' | 'audio/flac' | 'audio/mp4' | 'audio/mpeg' |
@@ -174,6 +177,13 @@ declare global {
     | 'ERROR_EMPTY'
     | 'MTPROTO_CLUSTER_INVALID'
     | 'BOT_PRECHECKOUT_TIMEOUT'
+    | 'BOT_PRECHECKOUT_FAILED'
+    | 'PAYMENT_FAILED'
+    | 'REQUESTED_INFO_INVALID'
+    | 'SHIPPING_OPTION_INVALID'
+    | 'SHIPPING_NOT_AVAILABLE'
+    | 'PAYMENT_CREDENTIALS_INVALID'
+    | 'PAYMENT_CREDENTIALS_ID_INVALID'
     | 'TMP_PASSWORD_INVALID'
     | 'PASSWORD_HASH_INVALID'
     | 'CHANNEL_PRIVATE'
@@ -217,6 +227,7 @@ declare global {
     | 'REACTION_INVALID'
     | 'INVITE_HASH_EXPIRED'
     | 'PHONE_NOT_OCCUPIED'
+    | 'PHONE_NUMBER_INVALID'
     | 'PARTICIPANT_ID_INVALID'
     | 'PREMIUM_ACCOUNT_REQUIRED'
     | 'BOOST_NOT_MODIFIED'

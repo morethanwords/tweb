@@ -1,5 +1,3 @@
-export const GROUP_CALL_AMPLITUDE_ANALYSE_COUNT_MAX = 50;
-export const GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS = 100;
 export const GROUP_CALL_PARTICIPANTS_LOAD_LIMIT = 100;
 // Enough to name a few people in the conference join confirmation and still
 // know there are more — the same page size tdesktop asks for there
@@ -54,3 +52,12 @@ export const CALL_WAITING_RING_VOLUME = 0.3;
 // t.me/call/<slug>: the slug is an opaque token the server minted. Anything
 // outside this alphabet is a malformed link, not something to resolve.
 export const CONFERENCE_CALL_SLUG_REGEXP = /^[A-Za-z0-9_-]{1,64}$/;
+
+// Signal bars of a 1-on-1 call, as native tgcalls reports them (0..4).
+export const CALL_SIGNAL_BARS_COUNT = 4;
+
+// How long an asked-for unmute stays armed while the server has yet to confirm it — a server
+// accepted one waiting for a self row (GroupCallInstance.changeSelfMuted), a press made before
+// the server listed us (the video chat panel). Short-lived so a much later row cannot
+// surprise-open the microphone.
+export const UNMUTE_INTENT_TTL_MS = 15000;

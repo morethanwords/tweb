@@ -1,13 +1,16 @@
-import type {AppManagers} from '@lib/managers';
+import type {ReadingManagers} from '@lib/managers';
 import type {AppChatFoldersTab} from '@components/solidJsTabs/tabs';
 import type {AppEditFolderTab} from '@components/solidJsTabs/tabs';
 import type {AppSidebarLeft} from '@components/sidebarLeft';
+import type {AppDialogsManager} from '@lib/appDialogsManager';
 import {FOLDER_ID_ALL, REAL_FOLDERS} from '@appManagers/constants';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import findUpClassName from '@helpers/dom/findUpClassName';
+import useChatListUnreadOnly from '@stores/chatListUnreadOnly';
 
 export default function createFolderContextMenu({
   appSidebarLeft,
+  appDialogsManager,
   AppChatFoldersTab: _AppChatFoldersTab,
   AppEditFolderTab: _AppEditFolderTab,
   managers,
@@ -15,9 +18,10 @@ export default function createFolderContextMenu({
   listenTo
 }: {
   appSidebarLeft: AppSidebarLeft,
+  appDialogsManager: AppDialogsManager,
   AppChatFoldersTab: typeof AppChatFoldersTab,
   AppEditFolderTab: typeof AppEditFolderTab,
-  managers: AppManagers,
+  managers: ReadingManagers,
   className: string,
   listenTo: HTMLElement
 }) {
@@ -29,6 +33,10 @@ export default function createFolderContextMenu({
       appSidebarLeft.createTab(_AppEditFolderTab).open({..._AppEditFolderTab.getInitArgs(), initFilter: filter});
     });
   }
+
+  const [unreadOnly] = useChatListUnreadOnly();
+  // * the folder is on screen with its unread chats only - any other one opens with them
+  const showsUnreadOnly = () => unreadOnly() && clickFilterId === appDialogsManager.filterId;
 
   let clickFilterId: number;
   const {destroy} = createContextMenu({
@@ -48,6 +56,20 @@ export default function createFolderContextMenu({
         });
       },
       verify: () => clickFilterId === FOLDER_ID_ALL
+    }, {
+      icon: 'unread',
+      text: 'ChatList.ShowUnreadOnly',
+      onClick: () => {
+        appDialogsManager.setUnreadOnly(true, clickFilterId);
+      },
+      verify: () => !showsUnreadOnly()
+    }, {
+      icon: 'unread',
+      text: 'ChatList.ShowAllChats',
+      onClick: () => {
+        appDialogsManager.setUnreadOnly(false);
+      },
+      verify: showsUnreadOnly
     }, {
       icon: 'readchats',
       text: 'MarkAllAsRead',

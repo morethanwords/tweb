@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{n as e}from"./schedulers-CsiwybLM.js";import{n as t}from"./cancellablePromise-CCgNT6Fl.js";var n=new Map;function r(e){a(e);let r={isCancelled:!1,deferred:t()};return n.set(e,r),r.deferred.then(()=>{i(e)===r&&n.delete(e)}),r}function i(e){return n.get(e)}function a(e){let t=i(e);t&&(t.isCancelled=!0,t.deferred.resolve())}function o(t,n,i){return i||(i=r(n)),e(()=>{i.isCancelled||(t()?o(t,n,i):i.deferred.resolve())}),i.deferred}function s(t){e(()=>{t()&&s(t)})}export{i as a,r as i,o as n,a as r,s as t};
+//# sourceMappingURL=animation-Dhwk8pbl.js.map

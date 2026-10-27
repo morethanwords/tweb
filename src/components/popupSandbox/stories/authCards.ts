@@ -13,6 +13,7 @@
 
 import type {AuthSentCodeType} from '@layer';
 import type {AuthState} from '@types';
+import rootScope from '@lib/rootScope';
 
 import {defineStories} from '../registry';
 import type {ManagerHandlers} from '../mockManagers';
@@ -59,7 +60,14 @@ const managers: ManagerHandlers = {
 async function mount(authState: Exclude<AuthState, AuthState.signedIn>) {
   // imported here rather than at the top: the auth flow pulls in the whole card graph
   const {mountAuthFlow} = await import('@/pages/mountAuthFlow');
-  return mountAuthFlow(authState);
+
+  // * the first account's sign-in, which goes nowhere from here
+  return mountAuthFlow(authState, {
+    accountNumber: 1,
+    managers: rootScope.managers,
+    toIm: () => {},
+    openAccount: () => {}
+  }).dispose;
 }
 
 function code(type: AuthSentCodeType, rest?: {next_type?: any, timeout?: number}) {
@@ -78,6 +86,31 @@ function code(type: AuthSentCodeType, rest?: {next_type?: any, timeout?: number}
 const surface = '#auth-pages';
 
 defineStories('SIGN IN', [
+  {
+    // the error shows once a number is typed and sent
+    id: 'auth/phoneFloodWait',
+    title: 'Phone number: too many attempts',
+    surface,
+    fixtureOnly: true,
+    managers: {
+      ...managers,
+      appAccountManager: {
+        ...managers.appAccountManager,
+        // the passkey button under the form asks for these as the card mounts
+        initPasskeyLogin: () => ({_: 'auth.passkeyLoginOptions', options: {_: 'dataJSON', data: '{}'}})
+      },
+      apiManager: {
+        invokeApi: (method: string) => {
+          if(method === 'help.getNearestDc') {
+            return {_: 'nearestDc', country: 'US', this_dc: 2, nearest_dc: 2};
+          }
+
+          throw {type: 'FLOOD_WAIT_22098'};
+        }
+      }
+    },
+    open: () => mount({_: 'authStateSignIn'})
+  },
   {
     id: 'auth/emailSetup',
     title: 'Add a login email',
@@ -114,6 +147,21 @@ defineStories('SIGN IN', [
     fixtureOnly: true,
     managers,
     open: code({_: 'auth.sentCodeTypeSms', length: 5}, {next_type: {_: 'auth.codeTypeCall'}, timeout: 20})
+  },
+  {
+    id: 'auth/codeFloodWait',
+    title: 'Too many attempts',
+    surface,
+    fixtureOnly: true,
+    managers: {
+      ...managers,
+      apiManager: {
+        invokeApi: (method: string) => {
+          throw {type: method === 'auth.signIn' ? 'FLOOD_WAIT_90' : 'PHONE_CODE_INVALID'};
+        }
+      }
+    },
+    open: code({_: 'auth.sentCodeTypeSms', length: 5})
   },
   {
     id: 'auth/codeWord',
@@ -177,3 +225,7 @@ defineStories('SIGN IN', [
     })
   }
 ]);
+
+// The sandbox reloads on an edit anyway (watchForEdits). Accepting here keeps an edit of a popup this story imports
+// from climbing through the story to the app's root once the sandbox has been opened on the dev server.
+if(import.meta.hot) import.meta.hot.accept();

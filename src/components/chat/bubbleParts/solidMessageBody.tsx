@@ -7,6 +7,7 @@ import {
   MessageTextRevealEvent,
   SolidMessageTextBody
 } from '@components/chat/bubbleParts/solidMessageText';
+import {setMessageTextSource} from '@components/chat/messageTextCopy';
 import {Middleware} from '@helpers/middleware';
 import {modifyAckedPromise} from '@helpers/modifyAckedResult';
 import usePeerTranslation from '@hooks/usePeerTranslation';
@@ -402,6 +403,8 @@ export function createSolidMessageBody(
   let disposed = false;
 
   element.classList.add(styles.Host);
+  // a selection in the text copies the message's own text and entities, as its Copy does
+  setMessageTextSource(element, () => currentSnapshot.text);
 
   const disposeRender = render(() => (
     <SolidJSHotReloadGuardProvider>

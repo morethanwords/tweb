@@ -12,6 +12,7 @@ import showDeleteMegagroupMessagesPopup from '@components/popups/deleteMegagroup
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
 import namedPromises from '@helpers/namedPromises';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export default async function showDeleteMessagesPopup(
   peerId: PeerId,
@@ -22,7 +23,7 @@ export default async function showDeleteMessagesPopup(
 ) {
   mids = mids.slice();
 
-  const managers = rootScope.managers;
+  const managers = bindManagersToSession(rootScope.managers);
 
   const {peerTitleElement, isBot, messages} = await namedPromises({
     peerTitleElement: wrapPeerTitle({peerId, threadId, onlyFirstName: true}),

@@ -16,7 +16,8 @@ export function useScrollPosition(
 
     requestRAF(() => {
       isRAFing = false;
-      setScrollPosition(axis === 'y' ? el.scrollTop : el.scrollLeft);
+      // * along x, how far from the inline start: `scrollLeft` goes negative in a right-to-left row
+      setScrollPosition(axis === 'y' ? el.scrollTop : Math.abs(el.scrollLeft));
     });
   };
 

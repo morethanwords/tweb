@@ -52,7 +52,7 @@ export function removeEmojiTone(input: string) {
 }
 
 const VIRTUAL_COUNTRIES_EMOJIS: Map<string, string> = new Map([
-  ['FT', '🏴‍☠']
+  ['FT', '💎']
 ]);
 
 export function getCountryEmoji(iso2: string) {

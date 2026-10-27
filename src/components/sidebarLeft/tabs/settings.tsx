@@ -1,34 +1,18 @@
 import {createSignal, For, onCleanup, onMount, Show} from 'solid-js';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
-import {AppPrivacyAndSecurityTab} from '@components/solidJsTabs/tabs';
-import {AppChatFoldersTab} from '@components/solidJsTabs/tabs';
-import {
-  AppEditProfileTab,
-  AppGeneralSettingsTab,
-  AppKeyboardShortcutsTab,
-  AppLanguageTab,
-  AppNotificationsTab,
-  AppSpeakersAndCameraTab,
-  getEditProfileInitArgs
-} from '@components/solidJsTabs';
 import lottieLoader from '@lib/lottie/lottieLoader';
-import {AppDataAndStorageTab} from '@components/solidJsTabs/tabs';
 import ButtonIcon from '@components/buttonIcon';
 import rootScope from '@lib/rootScope';
 import Row from '@components/rowTsx';
-import {AppActiveSessionsTab} from '@components/solidJsTabs/tabs';
 import {i18n, LangPackKey} from '@lib/langPack';
 import {SliderSuperTabConstructable, SliderSuperTabEventable} from '@components/sliderTab';
 import {AccountAuthorizations, Authorization, ConnectedBot} from '@layer';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import Section from '@components/section';
-import {AppStickersAndEmojiTab} from '@components/solidJsTabs/tabs';
-import showPremiumPopup from '@components/popups/premium';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import useStars, {hasTonTransactions} from '@stores/stars';
-import showStarsPopup from '@components/popups/stars';
 import {renderPeerProfile} from '@components/peerProfile';
-import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import showMyQrCodePopup from '@components/popups/myQrCode';
 import showSendGiftPicker from '@components/popups/sendGiftPicker';
 import {formatNanoton} from '@helpers/paymentsWrapCurrencyAmount';
@@ -47,6 +31,7 @@ import {SettingsSearchItem} from '@lib/settingsSearch';
 import {openSettingsSearchItem} from '@lib/settingsSearch/navigate';
 import {ROOT_SECTION_ID} from '@lib/settingsSearch/registry';
 import {bumpRecentSettingsSearch} from '@lib/settingsSearch/recent';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper — wraps a sub-tab declaration. If the tab has a static `getInitArgs`,
@@ -103,7 +88,7 @@ const Settings = () => {
       icon: 'edit',
       text: 'EditAccount.Title',
       // fresh args on every open, so a failed connected-bot request isn't retained
-      onClick: () => tab.slider.createTab(AppEditProfileTab).open(getEditProfileInitArgs(true))
+      onClick: () => tab.slider.createTab(hotReloadGuard.tabs.AppEditProfileTab).open(hotReloadGuard.tabs.getEditProfileInitArgs(true))
     }, {
       icon: 'qr',
       text: 'QRCode.Title',
@@ -249,13 +234,13 @@ const Settings = () => {
 
   // ── Sub-tab rows (notifications/data/privacy/general/folders/stickers).
   const subTabConfigs: SubTabConfig[] = [
-    makeSubTabConfig('bell_filled', 'AccountSettings.Notifications', AppNotificationsTab, tab),
-    makeSubTabConfig('data_filled', 'DataSettings', AppDataAndStorageTab, tab),
-    makeSubTabConfig('key_filled', 'AccountSettings.PrivacyAndSecurity', AppPrivacyAndSecurityTab, tab),
-    makeSubTabConfig('general_filled', 'Telegram.GeneralSettingsViewController', AppGeneralSettingsTab, tab),
-    makeSubTabConfig('limit_folders_filled', 'AccountSettings.Filters', AppChatFoldersTab, tab),
-    makeSubTabConfig('reactions_filled', 'StickersName', AppStickersAndEmojiTab, tab),
-    makeSubTabConfig('speaker_filled', 'AccountSettings.SpeakersAndCamera', AppSpeakersAndCameraTab, tab)
+    makeSubTabConfig('bell_filled', 'AccountSettings.Notifications', hotReloadGuard.tabs.AppNotificationsTab, tab),
+    makeSubTabConfig('data_filled', 'DataSettings', hotReloadGuard.tabs.AppDataAndStorageTab, tab),
+    makeSubTabConfig('key_filled', 'AccountSettings.PrivacyAndSecurity', hotReloadGuard.tabs.AppPrivacyAndSecurityTab, tab),
+    makeSubTabConfig('general_filled', 'Telegram.GeneralSettingsViewController', hotReloadGuard.tabs.AppGeneralSettingsTab, tab),
+    makeSubTabConfig('limit_folders_filled', 'AccountSettings.Filters', hotReloadGuard.tabs.AppChatFoldersTab, tab),
+    makeSubTabConfig('reactions_filled', 'StickersName', hotReloadGuard.tabs.AppStickersAndEmojiTab, tab),
+    makeSubTabConfig('speaker_filled', 'AccountSettings.SpeakersAndCamera', hotReloadGuard.tabs.AppSpeakersAndCameraTab, tab)
   ];
 
   const onSubTabClick = (item: SubTabConfig) => async() => {
@@ -320,19 +305,20 @@ const Settings = () => {
   updateActiveSessions();
 
   const onDevicesClick = async() => {
+    const managers = bindManagersToSession(rootScope.managers);
     if(!authorizations) {
       await updateActiveSessions();
     }
 
     try {
-      connectedBot = await rootScope.managers.appBusinessManager.getConnectedBot(true);
+      connectedBot = await managers.appBusinessManager.getConnectedBot(true);
       updateAuthCount();
     } catch{
       // Keep the latest event-backed snapshot. Active Sessions still exposes
       // device authorizations, and the next open retries the bot request.
     }
 
-    const subTab = tab.slider.createTab(AppActiveSessionsTab);
+    const subTab = tab.slider.createTab(hotReloadGuard.tabs.AppActiveSessionsTab);
     subTab.eventListener.addEventListener('destroy', () => {
       authorizations = undefined;
       authorizationTTLDays = undefined;
@@ -404,13 +390,13 @@ const Settings = () => {
               {i18n('Devices')}
             </Row.Title>
           </Row>
-          <Row clickable={() => tab.slider.createTab(AppLanguageTab).open()}>
+          <Row clickable={() => tab.slider.createTab(hotReloadGuard.tabs.AppLanguageTab).open()}>
             <Row.Icon icon="web_filled" />
             <Row.Title titleRight={i18n('LanguageName')} titleRightSecondary>
               {i18n('AccountSettings.Language')}
             </Row.Title>
           </Row>
-          <Row clickable={() => tab.slider.createTab(AppKeyboardShortcutsTab).open()}>
+          <Row clickable={() => tab.slider.createTab(hotReloadGuard.tabs.AppKeyboardShortcutsTab).open()}>
             <Row.Icon icon="keyboard_filled" />
             <Row.Title>{i18n('KeyboardShortcuts.Title')}</Row.Title>
           </Row>
@@ -418,12 +404,16 @@ const Settings = () => {
       </Section>
       <Show when={!premiumBlocked()}>
         <Section>
-          <Row clickable={() => showPremiumPopup()}>
+          <Row clickable={() => hotReloadGuard.showPremiumPopup()}>
             <Row.Icon icon="premium_badge" />
             <Row.Title>{i18n('Premium.Boarding.Title')}</Row.Title>
           </Row>
+          <Row clickable={() => hotReloadGuard.showBusinessPopup()}>
+            <Row.Icon icon="business_filled" />
+            <Row.Title>{i18n('TelegramBusiness')}</Row.Title>
+          </Row>
           <Show when={!!stars()}>
-            <Row clickable={() => showStarsPopup()}>
+            <Row clickable={() => hotReloadGuard.showStarsPopup()}>
               <Row.Icon icon="star_circle_filled" />
               <Row.Title titleRight={'' + stars()} titleRightSecondary>
                 {i18n('MenuTelegramStars')}
@@ -431,7 +421,7 @@ const Settings = () => {
             </Row>
           </Show>
           <Show when={hasTonTransactions() || String(starsTon()) !== '0'}>
-            <Row clickable={() => showStarsPopup({ton: true})}>
+            <Row clickable={() => hotReloadGuard.showStarsPopup({ton: true})}>
               <Row.Icon icon="gram_filled" />
               <Row.Title titleRight={formatNanoton(starsTon())} titleRightSecondary>
                 {i18n('MenuTelegramStarsTon')}

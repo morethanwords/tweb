@@ -18,7 +18,7 @@ $row-border-radius: $border-radius-medium;
     min-height: 3.375rem;
   }
 
-  @include animation-level(2) {
+  @include animation-level(1) {
     transition: opacity var(--transition-standard-in);
   }
 
@@ -41,6 +41,13 @@ $row-border-radius: $border-radius-medium;
     position: relative;
     z-index: 1;
     pointer-events: all;
+  }
+
+  // A toggle in the right column is a control of its own beside what the row's click does
+  // (a weekday's switch on a row that opens the day) — unlike the row's own toggle, which
+  // the whole row flips through its label.
+  &-right > .checkbox-field-toggle {
+    pointer-events: auto;
   }
 
   &-title-row,
@@ -189,7 +196,7 @@ $row-border-radius: $border-radius-medium;
 
       .input-clear {
         color: inherit;
-        text-align: right;
+        text-align: end;
         pointer-events: all;
         cursor: text;
       }
@@ -198,24 +205,9 @@ $row-border-radius: $border-radius-medium;
     &-row {
       &.with-delimiter {
         .row-title:first-child {
-          border-right: 1px solid var(--border-color);
+          border-inline-end: 1px solid var(--border-color);
         }
       }
-    }
-
-    &-badge {
-      text-transform: uppercase;
-      border-radius: 4px;
-      background-color: var(--primary-color);
-      color: #fff;
-      padding: .1875rem .3125rem;
-      font-size: 75%;
-      margin-inline-start: .375rem;
-      font-weight: var(--font-weight-bold);
-      display: inline-block;
-      line-height: 1;
-      position: relative;
-      top: -1px;
     }
   }
 

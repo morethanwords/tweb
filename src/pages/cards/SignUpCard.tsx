@@ -22,7 +22,7 @@ type Spec = Extract<CardSpec, {name: 'signUp'}>;
  * entered full name.
  */
 export default function SignUpCard(props: {spec: Spec}) {
-  const {managers, toIm} = useAuthFlow();
+  const {managers, toIm, isLeaving} = useAuthFlow();
 
   /* ---------- state ---------- */
 
@@ -34,10 +34,10 @@ export default function SignUpCard(props: {spec: Spec}) {
   let uploadAvatar: AvatarEditPayload | undefined;
 
   // the same picker + media editor every other avatar in the app goes through; the payload is
-  // a pair of thunks, so nothing is uploaded until the account exists
+  // a pair of thunks, so nothing is uploaded until the account exists - and then by it
   const avatarEdit = new AvatarEdit((payload) => {
     uploadAvatar = payload;
-  });
+  }, {managers, isAlive: () => !isLeaving()});
 
   /* ---------- inputs ---------- */
 

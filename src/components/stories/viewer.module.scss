@@ -85,6 +85,11 @@ $color-inactive: rgba(255, 255, 255, .5);
       --chat-input-background: #212121;
       --chat-input-focus-offset: 0px;
       --backdrop-filter: unset;
+
+      // * the field keeps clear of both edges of the screen
+      :global(.rows-wrapper-wrapper) {
+        justify-content: center;
+      }
     }
 
     // .ViewerStory {
@@ -140,9 +145,12 @@ $color-inactive: rgba(255, 255, 255, .5);
     position: relative;
     z-index: 0;
 
-    // shimmer
-    &:before {
+    // * the loading wave over the media, an element of its own so that it can fade out
+    &Shimmer {
+      position: absolute;
+      inset: 0;
       z-index: 1;
+      pointer-events: none;
     }
 
     @include animation-level-global(2) {
@@ -197,7 +205,7 @@ $color-inactive: rgba(255, 255, 255, .5);
 
     &Container .hideOnSmall,
     &Container &ContentMediaContainer {
-      @include animation-level-global(2) {
+      @include animation-level-global(1) {
         transition: opacity var(--transition-standard-out) !important;
       }
     }
@@ -218,7 +226,7 @@ $color-inactive: rgba(255, 255, 255, .5);
     &Container.small &Info {
       opacity: 1;
 
-      @include animation-level-global(2) {
+      @include animation-level-global(1) {
         transition: opacity var(--transition-standard-out);
       }
     }
@@ -232,7 +240,8 @@ $color-inactive: rgba(255, 255, 255, .5);
       top: .625rem;
       left: 0;
       right: 0;
-      padding: 0 .625rem 0 .4375rem;
+      padding-block: 0;
+      padding-inline: .4375rem .625rem;
       height: .125rem;
       display: flex;
 
@@ -246,19 +255,59 @@ $color-inactive: rgba(255, 255, 255, .5);
         min-width: .375rem;
         box-shadow: $shadow;
 
-        &:before {
+        // * what is filled, scaled from the inline start (StorySlide)
+        &Fill {
           position: absolute;
-          top: 0;
-          bottom: 0;
-          width: var(--progress);
+          inset: 0;
           border-radius: inherit;
           background-color: #fff;
-          content: " ";
+          transform-origin: var(--transform-origin-inline-start);
+          transform: scaleX(0);
         }
 
         // &.active {
         //   background-color: rgba(255, 255, 255, 1);
         // }
+      }
+    }
+
+    // * held and dragged along: the story's own line as wide as the strip, taller, and a hint under it
+    &Seek {
+      position: absolute;
+      top: .625rem;
+      inset-inline: .625rem;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      pointer-events: none;
+
+      &Bar {
+        position: relative;
+        align-self: stretch;
+        height: .3125rem;
+        border-radius: .3125rem;
+        overflow: hidden;
+        background-color: rgba(255, 255, 255, .3);
+        box-shadow: $shadow;
+
+        // * a video's time runs left to right, in either direction of the interface
+        &Fill {
+          position: absolute;
+          inset: 0;
+          background-color: #fff;
+          transform-origin: left center;
+          transform: scaleX(0);
+        }
+      }
+
+      &Hint {
+        margin-top: .75rem;
+        color: #fff;
+        font-size: var(--font-size-14);
+        font-weight: var(--font-weight-bold);
+        text-shadow: $shadow;
+        text-align: center;
       }
     }
 
@@ -340,7 +389,8 @@ $color-inactive: rgba(255, 255, 255, .5);
         white-space: pre-wrap;
       }
 
-      &Repost {
+      &Repost,
+      &Author {
         display: inline-flex;
         align-items: center;
         gap: .25rem;
@@ -414,7 +464,7 @@ $color-inactive: rgba(255, 255, 255, .5);
       padding: 0 .5rem;
       font-weight: var(--font-weight-bold);
 
-      @include animation-level-global(2) {
+      @include animation-level-global(1) {
         transition: color var(--transition-standard-in);
       }
 
@@ -428,13 +478,48 @@ $color-inactive: rgba(255, 255, 255, .5);
         align-items: center;
       }
 
+      &Left {
+        min-width: 0;
+      }
+
+      // * "you can't reply", where the field would be
+      &Text {
+        padding-inline: .5rem;
+        font-weight: var(--font-weight-normal);
+        @include text-overflow(true);
+      }
+
       &Icon {
         display: flex;
         align-items: center;
 
         &Icon {
           font-size: 1.5rem;
-          margin-inline-end: .375rem;
+        }
+      }
+
+      &Count {
+        margin-inline-start: .375rem;
+      }
+
+      // * the reactions in red and the reposts in green beside the views of one's own story (iOS, Android)
+      &Stat {
+        display: flex;
+        align-items: center;
+        flex: 0 0 auto;
+        margin-inline-start: .625rem;
+
+        &Icon {
+          font-size: 1.25rem;
+          margin-inline-end: .125rem;
+        }
+
+        &.reactions &Icon {
+          color: #FF3B30;
+        }
+
+        &.reposts &Icon {
+          color: #34C759;
         }
       }
 
@@ -447,8 +532,62 @@ $color-inactive: rgba(255, 255, 255, .5);
         @include hover-global(gray, background-color, false);
       }
 
-      &Reaction.isReacted &IconIcon {
-        color: #FF3B30;
+      // * the heart shows what is on it: ❤ in red, any other reaction as it is, and plays it as it is put on
+      &ReactionIcon {
+        --reaction-offset: 0px;
+        position: relative;
+        display: flex;
+
+        :global {
+          .btn-reaction-icon {
+            font-size: 1.5rem;
+          }
+
+          .btn-reaction-default {
+            color: #FF3B30;
+          }
+
+          .btn-reaction-sticker {
+            width: 26px;
+            height: 26px;
+            position: relative;
+          }
+        }
+      }
+
+      // * a group's story the member may not answer until the group is boosted: the plate stands where the
+      // * reply field would, and opens the boosts
+      &Locked {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        min-width: 0;
+        height: 2.5rem;
+        padding-inline: .5rem .375rem;
+        border-radius: $border-radius-medium;
+        cursor: pointer;
+        font-weight: var(--font-weight-normal);
+
+        @include hover-global(gray, background-color, false);
+
+        &Icon {
+          flex: 0 0 auto;
+          font-size: 1.25rem;
+        }
+
+        &Text {
+          @include text-overflow(true);
+        }
+
+        &Button {
+          flex: 0 0 auto;
+          padding: .125rem .5rem;
+          border-radius: 1rem;
+          background-color: rgba(255, 255, 255, .1);
+          color: #fff;
+          font-size: var(--font-size-14);
+          font-weight: var(--font-weight-bold);
+        }
       }
 
       :global {
@@ -498,7 +637,7 @@ $color-inactive: rgba(255, 255, 255, .5);
       pointer-events: none;
       max-width: 100%;
 
-      @include animation-level-global(2) {
+      @include animation-level-global(1) {
         transition: opacity .1s var(--transition-standard-easing);
       }
 
@@ -604,7 +743,7 @@ $color-inactive: rgba(255, 255, 255, .5);
       pointer-events: all;
       cursor: pointer;
       overflow: hidden;
-      border-radius: 6px;
+      border-radius: var(--area-radius);
       z-index: 1;
       pointer-events: all;
 
@@ -632,6 +771,11 @@ $color-inactive: rgba(255, 255, 255, .5);
           &.dark {
             background-color: #000;
             opacity: .5;
+          }
+
+          // the bubble's tail on the other side; the reaction in it stays as it is
+          &.flipped {
+            transform: scaleX(-1);
           }
         }
 
@@ -680,7 +824,7 @@ $color-inactive: rgba(255, 255, 255, .5);
           color: #000;
           opacity: 0;
 
-          @include animation-level-global(2) {
+          @include animation-level-global(1) {
             transition: opacity .15s ease-in-out;
           }
 
@@ -693,6 +837,18 @@ $color-inactive: rgba(255, 255, 255, .5);
           }
         }
       }
+    }
+
+    // the address under "Open Link" in a link area's tooltip, cut short at the tooltip's edge
+    &MediaAreaUrl {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: match-parent;
+      font-size: .875em;
+      font-weight: var(--font-weight-normal);
+      color: rgba(255, 255, 255, .6);
     }
 
     &MediaAreas {
@@ -715,10 +871,9 @@ $color-inactive: rgba(255, 255, 255, .5);
       backdrop-filter: var(--blur-off, blur(25px));
       opacity: 1 !important;
       visibility: visible !important;
-      // max-width: 355px;
-      // width: 355px;
-      max-width: 319px;
-      width: 319px;
+      // * as wide as the reactions and the button to the whole choice
+      width: max-content;
+      max-width: calc(100% - 1rem);
 
       :global {
         .btn-menu-reactions {
@@ -726,8 +881,9 @@ $color-inactive: rgba(255, 255, 255, .5);
             display: none;
           }
 
+          // * seven of them and the button to the whole choice fit a narrow story too
           &-reaction {
-            --size: 2.25rem;
+            --size: min(2.25rem, calc((var(--stories-width) - 5rem) / 7 - .5rem));
           }
 
           &-more {
@@ -738,8 +894,33 @@ $color-inactive: rgba(255, 255, 255, .5);
             margin-inline: .375rem 0;
             font-size: 1.25rem;
           }
+
+          &-description {
+            color: rgba(255, 255, 255, .6);
+          }
         }
       }
+
+      // * over the heart a long tap opened it on, at the end of the reply field or the footer
+      &.isLike {
+        left: auto;
+        inset-inline-end: .5rem;
+        transform: none;
+      }
+    }
+
+    // * where a reaction sent as a message plays, in the middle of the story; the reaction's own animation
+    // * fills it (its overlay stands by --reaction-offset, which only a message's reactions set)
+    &ReactionCenter {
+      --reaction-offset: 0px;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: var(--size);
+      height: var(--size);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 2;
     }
 
     // the small variant is the shared story pill — see storyPill.module.scss
@@ -774,71 +955,35 @@ $color-inactive: rgba(255, 255, 255, .5);
       max-width: var(--chat-input-max-width);
       opacity: 1;
 
-      @include animation-level-global(2) {
-        transition: opacity var(--transition-standard-out) !important;
-      }
-
-      // @include animation-level-global(2) {
-      //   transition: width var(--transition-standard-out), opacity var(--transition-standard-out) !important;
-      // }
+      // * and moves, as a drag up on the story raises it
+      @include animation-level-transition(
+        opacity var(--transition-standard-out),
+        transform var(--transition-standard-out),
+        $important: true,
+        $global: true
+      );
 
       // &.is-focused {
       //   width: var(--chat-input-max-width);
       // }
 
+      // * focused, the field grows towards both sides: wider by the offset, moved back by half of it
       .rows-wrapper-wrapper {
+        transform: translateX(calc(var(--focus-translateX) * -1 * var(--reflect)));
+        transform-origin: center left;
+
         @include animation-level-global(2) {
           transition: transform var(--transition-standard-out) !important;
         }
       }
 
-      .btn-send-container {
-        opacity: 1;
-        visibility: visible;
-
-        @include animation-level-global(2) {
-          transition: transform var(--transition-standard-out), opacity var(--transition-standard-out), visibility var(--transition-standard-out);
-          transition-delay: 0s, 0s, 0s;
-        }
-      }
-
-      .rows-wrapper-wrapper {
-        transform: translateX(calc(var(--focus-translateX) * -1));
-        transform-origin: center left;
-      }
-
-      .btn-send-container,
-      .chat-input-secondary-button {
-        transform: translateX(var(--focus-translateX));
-        transform-origin: center right;
-      }
-
-      &.is-private {
-        .btn-reaction {
-          --add-translateX: calc(var(--chat-input-height) + #{$btn-send-margin});
-        }
-
-        &:not(.is-focused) .btn-send-container {
-          opacity: 0;
-          visibility: hidden;
-          transition-delay: 0s, 0s, var(--transition-standard-out-time);
-        }
-      }
-
       &.is-focused {
         --focus-translateX: calc(var(--chat-input-focus-offset) / 2);
-
-        .btn-reaction {
-          opacity: 0;
-          visibility: hidden;
-          transition-delay: 0s, 0s, 0s, var(--transition-standard-out-time);
-        }
       }
 
       .rows-wrapper {
         width: var(--stories-width);
-        // max-width: calc(var(--chat-input-max-width) - var(--chat-input-size) - #{$btn-send-margin});
-        max-width: calc(var(--chat-input-max-width) - (var(--chat-input-height) + #{$btn-send-margin} + var(--chat-input-padding)));
+        max-width: var(--chat-input-max-width);
 
         @include animation-level-global(2) {
           transition: width var(--transition-standard-out) !important;
@@ -854,20 +999,11 @@ $color-inactive: rgba(255, 255, 255, .5);
         }
       }
 
+      // * the reaction is an icon of the field, as the emoji one is, and stands next to the text: going
+      // * away it only widens the text, the buttons at the end stay where they are
       .btn-reaction {
-        --add-translateX: 0px;
-        position: absolute;
-        transform: translateX(calc(var(--focus-translateX) + var(--add-translateX)));
-        inset-inline-end: calc(var(--chat-input-height) + var(--chat-input-padding) + #{$btn-send-margin});
-
-        @include animation-level-global(2) {
-          transition: .2s color, transform var(--transition-standard-out), opacity var(--transition-standard-out), visibility var(--transition-standard-out-time);
-          transition-delay: 0s, 0s, 0s, 0s;
-        }
-
-        &:after {
-          display: none;
-        }
+        --reaction-offset: 0px;
+        flex: 0 0 auto;
 
         &-default {
           color: #FF3B30 !important;
@@ -880,47 +1016,31 @@ $color-inactive: rgba(255, 255, 255, .5);
         }
       }
 
-      // .btn-send:not(:hover):not(:active) {
-      //   .btn-send-icon-forward {
-      //     color: var(--secondary-text-color) !important;
-      //   }
-      // }
-
-      .btn-send-icon-forward {
-        color: var(--secondary-text-color);
-      }
-
-      .btn-send.forward,
-      .btn-reaction {
-        --color: var(--secondary-text-color);
-        color: var(--color);
-        background: var(--chat-input-background) !important;
-
-        @include hover-global() {
-          --color: var(--primary-text-color);
-          color: var(--color) !important;
-          background: var(--chat-input-background) !important;
+      // * focused, or recording a voice message, the field has the send button to offer instead
+      &.is-focused,
+      &.is-recording {
+        .btn-reaction {
+          display: none;
         }
       }
 
+      // * a story shown to a few has no sharing, so the button only comes for something to send
+      &.is-private:not(.is-focused):not(.is-recording) .btn-send-container {
+        display: none;
+      }
+
+      // * sharing is an icon of the field like the others: the round send button is for what is typed
+      // * or recorded, and fills in as the one turns into the other
       .btn-send {
-        @include hover-global() {
-          .btn-send-icon-forward {
-            color: var(--primary-text-color) !important;
-          }
+        @include animation-level-global(1) {
+          transition: background-color .2s;
         }
 
-        @include animation-level-global(2) {
-          transition: .2s color, .2s background;
+        &.forward {
+          background-color: transparent !important;
 
-          .btn-send-icon-forward {
-            transition: .2s color;
-          }
-        }
-
-        &:not(.forward) {
-          .btn-send-icon-forward {
-            color: var(--primary-text-color) !important;
+          @include hover-global() {
+            background-color: var(--light-secondary-text-color) !important;
           }
         }
       }
@@ -935,13 +1055,8 @@ $color-inactive: rgba(255, 255, 255, .5);
 
       .rows-wrapper:before,
       .bubble-tail,
-      .chat-input-secondary-button,
       .emoji-dropdown {
         background-color: var(--chat-input-background) !important;
-        backdrop-filter: var(--backdrop-filter);
-      }
-
-      .btn-send {
         backdrop-filter: var(--backdrop-filter);
       }
 
@@ -961,12 +1076,10 @@ $color-inactive: rgba(255, 255, 255, .5);
         background: rgba(0, 0, 0, .25);
         backdrop-filter: var(--blur-off, blur(5px));
         opacity: 1;
-      }
-    }
+      }    }
 
     .emoji-dropdown {
       --translateX: 0px;
-      left: auto;
       bottom: calc(var(--chat-input-height) + .5rem);
       border-radius: var(--chat-input-border-radius);
       transform: translateX(var(--translateX)) scale(0);
@@ -975,9 +1088,14 @@ $color-inactive: rgba(255, 255, 255, .5);
         transform: translateX(var(--translateX)) scale(1);
       }
 
+      // reduced: it fades where it opens, its offset kept
+      @include animation-level-below-global(2) {
+        transform: translateX(var(--translateX));
+      }
+
       @media only screen and (max-height: 759px) {
-        --translateX: -50%;
-        left: 50%;
+        --translateX: calc(-50% * var(--reflect));
+        inset-inline: 50% auto;
         transform-origin: bottom center;
       }
     }
@@ -1005,7 +1123,7 @@ $color-inactive: rgba(255, 255, 255, .5);
   &Close {
     position: absolute;
     top: 1rem;
-    right: 1rem;
+    inset-inline-end: 1rem;
     color: $color-inactive;
     transition: none;
 

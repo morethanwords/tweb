@@ -1,16 +1,22 @@
-import type {Page} from '@playwright/test';
+import {expect, type Page} from '@playwright/test';
 
 type Story = {id: string, title: string, group: string, surface?: string};
+/** One recorded `rootScope.managers` call — what the sandbox answered, or did not. */
+type ManagerCall = {manager: string, method: string, args: unknown[]};
 
 declare global {
   interface Window {
+    /** The app's own instance of a module (`'/src/…'`, `'/e2e/fixtures/…'`) on an e2e server: vite.e2e.config.ts */
+    e2eImport(path: string): Promise<any>;
     popupSandbox: {
       ready(): Promise<void>,
       hide(): void,
       list(): Story[],
       open(id: string): Promise<void>,
       closePopups(): void,
-      unhandled(): Array<{manager: string, method: string}>
+      setDirection(dir: 'ltr' | 'rtl'): void,
+      calls(): ManagerCall[],
+      unhandled(): ManagerCall[]
     };
     /** Where `openStory` parks the outcome for the poller below to pick up. */
     popupSandboxOutcome: {error: string} | undefined;
@@ -26,6 +32,20 @@ const OPEN_TIMEOUT = 30_000;
  */
 export function takeStoryPart<T>(stories: T[], part: number, parts: number) {
   return stories.filter((_, index) => index % parts === part);
+}
+
+/**
+ * What is measured has to be set in its fonts first: Firefox can still be loading a link's when the popup has
+ * stopped, and the link widens and moves under a press already measured (a ripple 1.5px off where it was a moment
+ * ago); a popup measured twice, once each way, has its icon or its digits change width in between. Laying the page
+ * out is what starts them loading. Each face is asked rather than `document.fonts.status`, which WebKit leaves at
+ * "loading" for good once one of them has failed.
+ */
+export async function fontsLoaded(page: Page) {
+  await page.evaluate(() => {
+    document.body.getBoundingClientRect();
+  });
+  await page.waitForFunction(() => [...document.fonts].every((face) => face.status !== 'loading'));
 }
 
 /**
@@ -101,5 +121,25 @@ export async function closeStory(page: Page, story: Pick<Story, 'surface'>, {tim
     if(Date.now() > deadline) return false;
     await page.waitForTimeout(20);
   }
+
+  // A popup closed from a script rejects its caller's promise (a confirmation's "cancelled") in the task that
+  // removes it, and the page reports the unhandled rejection a task later: let that report arrive here, not in
+  // the window of whatever the caller checks next.
+  if(!leaveHiding) await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 10)));
   return true;
+}
+
+/** Opens a new-media story and its media editor, with the keyboard layer on; returns the editor's dialog */
+export async function openMediaEditor(page: Page, story = 'newMedia') {
+  page.setDefaultTimeout(30_000);
+  await preparePopupSandbox(page, true, {a11y: true});
+  expect(await openStory(page, story)).toBeNull();
+  const actions = page.getByRole('button', {name: 'Media actions', exact: true});
+  await expect(actions).toBeEnabled();
+  await actions.press('Enter');
+  await page.getByRole('menuitem', {name: 'Edit', exact: true}).press('Enter');
+  const editor = page.getByRole('dialog', {name: 'Edit', exact: true});
+  await expect(editor).toBeVisible({timeout: 30_000});
+  await expect(editor).toHaveAttribute('aria-busy', 'false', {timeout: 30_000});
+  return editor;
 }

@@ -13,6 +13,7 @@ import type {
   Document,
   HelpPremiumPromo,
   Message,
+  PaymentRequestedInfo,
   PaymentsPaymentForm,
   PaymentsValidatedRequestedInfo,
   Photo,
@@ -110,6 +111,24 @@ export const deletedUser = makeUser({
   pFlags: {deleted: true}
 });
 
+/** More people for the video chat stories, whose grids only show their layouts with a crowd. */
+export const videoChatUsers = [
+  ['Carol', 'Clark'],
+  ['Dave', 'Davis'],
+  ['Erin', 'Evans'],
+  ['Frank', 'Foster'],
+  ['Grace', 'Green'],
+  ['Heidi', 'Hill'],
+  ['Ivan', 'Ivanov'],
+  ['Judy', 'Jones']
+].map(([first_name, last_name], index) => makeUser({
+  id: 777011 + index,
+  access_hash: '' + (11 + index),
+  first_name,
+  last_name,
+  photo: {_: 'userProfilePhotoEmpty'}
+}));
+
 export const groupChat: Chat.chat = {
   _: 'chat',
   pFlags: {creator: true},
@@ -155,7 +174,8 @@ export const peers = {
   [DELETED_PEER_ID]: deletedUser,
   [GROUP_PEER_ID]: groupChat,
   [CHANNEL_PEER_ID]: channelChat,
-  [MEGAGROUP_PEER_ID]: megagroupChat
+  [MEGAGROUP_PEER_ID]: megagroupChat,
+  ...Object.fromEntries(videoChatUsers.map((user) => [user.id.toPeerId(false), user]))
 } as {[peerId: PeerId]: User.user | Chat};
 
 /** A legacy (private-chat) mid; the mirror keeps these in the global history storage. */
@@ -490,6 +510,25 @@ export const starsPaymentForm: PaymentsPaymentForm.paymentsPaymentFormStars = {
     prices: [{_: 'labeledPrice', label: 'Pack', amount: 250}]
   },
   users: [botUser]
+};
+
+/**
+  * What the account saved from an earlier order. The checkout fills its rows from this, and the
+  * invoice asks for exactly what it carries — a set the server would accept.
+  */
+export const savedPaymentInfo: PaymentRequestedInfo = {
+  _: 'paymentRequestedInfo',
+  name: 'Sandbox Buyer',
+  email: 'buyer@example.com',
+  shipping_address: {
+    _: 'postAddress',
+    street_line1: '1 Sandbox Street',
+    street_line2: '',
+    city: 'Sandboxville',
+    state: '',
+    country_iso2: 'DE',
+    post_code: '10115'
+  }
 };
 
 export const shippingOptions: ShippingOption.shippingOption[] = [

@@ -21,8 +21,9 @@ import ProgressivePreloader from '@components/preloader';
 import RTMP_STATE from '@lib/calls/rtmpState';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {ExportedChatInvite} from '@layer';
-import rootScope from '@lib/rootScope';
+import type {AppManagers} from '@lib/managers';
 import shareUrlToPeers from '@components/popups/shareUrl';
+import {showCallAccount} from '@lib/calls/callAccount';
 
 const REJOIN_INTERVAL = 15000;
 
@@ -91,6 +92,8 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
   }
 
   private onForward = async() => {
+    // * to the chats of the stream's account
+    await showCallAccount(this.joinedCall.accountNumber);
     shareUrlToPeers({
       url: this.shareUrl,
       multiSelect: true,
@@ -118,23 +121,18 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
     }
 
     this.joinedCall = joinedCall;
+    // * the stream's account: the tab may switch to another one while it plays
+    const managers = this.managers = joinedCall.managers;
     AppMediaViewerRtmp.activeInstance = this;
     this.peerId = params.peerId;
 
-    const chat = apiManagerProxy.getChat(chatId);
-    if(!getPeerActiveUsernames(chat)[0]) {
-      const chatFull = await this.managers.appProfileManager.getChatFull(chatId);
-      this.shareUrl = chatFull._ === 'communityFull' ?
-        undefined :
-        (chatFull.exported_invite as ExportedChatInvite.chatInviteExported)?.link;
-    } else {
-      this.shareUrl = getRtmpShareUrl(this.peerId);
-    }
+    this.shareUrl = await AppMediaViewerRtmp.getShareUrl(chatId, managers);
 
     this.assertOpeningCall(joinedCall);
 
     await this._openMedia({
       media: joinedCall.inputCall,
+      liveStreamAccount: joinedCall.accountNumber,
       mediaThumbnail: params.peerId === AppMediaViewerRtmp.previousPeerId ? AppMediaViewerRtmp.previousCapture : undefined,
       timestamp: 0,
       fromId: params.peerId,
@@ -182,7 +180,8 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
               showRtmpStartStreamPopup({
                 peerId: this.peerId,
                 active: true,
-                onEndStream: () => this.close(undefined, true)
+                onEndStream: () => this.close(undefined, true),
+                managers: this.managers
               });
             }
           }, {
@@ -235,7 +234,7 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
         this.adminPanel = adminPanelContainer;
         this.adminPanel.classList.add('admin-hidden');
 
-        this.disposeSolid = render(() => AdminStreamPopup({peerId: params.peerId}), this.adminPanel);
+        this.disposeSolid = render(() => AdminStreamPopup({peerId: params.peerId, managers: this.managers}), this.adminPanel);
       },
       onCanPlay: () => {
         // this.showLoader();
@@ -398,7 +397,7 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
           this.toggleAdminPanel(false);
         }
 
-        const url = getRtmpStreamUrl(joinedCall.inputCall);
+        const url = getRtmpStreamUrl(joinedCall.inputCall, joinedCall.accountNumber);
         if(video.getAttribute('src') !== url) {
           video.src = url;
           video.load();
@@ -541,15 +540,16 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
     });
   }
 
-  public static async getShareUrl(chatId: ChatId) {
-    const chat = apiManagerProxy.getChat(chatId);
+  // * `managers`: the stream's - the tab may show another account by now, whose mirrors know nothing of it
+  public static async getShareUrl(chatId: ChatId, managers: AppManagers) {
+    const chat = await managers.appChatsManager.getChat(chatId);
     if(!getPeerActiveUsernames(chat)[0]) {
-      const chatFull = await rootScope.managers.appProfileManager.getChatFull(chatId);
+      const chatFull = await managers.appProfileManager.getChatFull(chatId);
       return chatFull._ === 'communityFull' ?
         undefined :
         (chatFull.exported_invite as ExportedChatInvite.chatInviteExported)?.link;
     } else {
-      return getRtmpShareUrl(chatId.toPeerId(true));
+      return getRtmpShareUrl(chat);
     }
   }
 }

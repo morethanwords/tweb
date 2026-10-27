@@ -8,10 +8,14 @@ import prepareRichMediaUpload from '@components/chat/inputEditor/prepareRichMedi
 import {getRichMessageMediaFileType, groupRichMessageMediaEntries, normalizeRichMessageMediaFile} from '@helpers/files/richMessageMediaInsertPolicy';
 import type {ChatInputRichMediaUploadItem} from '@components/chat/inputEditor/types';
 import {createRichMediaPreviewUrl} from '@components/chat/inputEditor/mediaPreviewUrl';
-import type {SendFileDetails, UploadedRichMessageMedia} from '@appManagers/appMessagesManager';
+import type {PreparedRichMessageMedia, SendFileDetails, UploadedRichMessageMedia} from '@appManagers/appMessagesManager';
 import {loadRichMediaPreview} from '@components/richMessageInput/mediaPreview';
 
 export type RichMediaUploadTaskItem = ChatInputRichMediaUploadItem & {
+  /** Bumped by every start and by a cancel, so a superseded run drops its result. */
+  attempt: number,
+  /** What goes up: the file as prepared for it */
+  details?: SendFileDetails,
   file: File,
   /**
    * Owned by the `run` that started this item. The presented state is not a
@@ -27,10 +31,16 @@ export type RichMediaUploadTaskItem = ChatInputRichMediaUploadItem & {
 
 export type RichMediaUploadSession = {
   isCurrent: () => boolean,
-  authorize: (files: File[]) => Promise<boolean>,
-  upload: (details: SendFileDetails, fileName: string) => Promise<UploadedRichMessageMedia>,
+  authorize: (files: File[], asFile?: boolean) => Promise<boolean>,
+  // `asFile`: a file block (`uploadRichMessageMedia`)
+  prepare: (details: SendFileDetails, fileName: string, asFile?: boolean) => Promise<PreparedRichMessageMedia>,
+  upload: (details: SendFileDetails, fileName: string, asFile?: boolean) => Promise<UploadedRichMessageMedia>,
   cancel: (fileName: string) => void
 };
+
+// a file or an audio is a row, drawn as a bubble draws one: from the local document its upload is
+// prepared with, the upload shown and cancelled by the row
+const isRowItem = (item: RichMediaUploadTaskItem) => item.type === 'audio' || item.type === 'document';
 
 export type RichMediaUploadServices = {
   capture: () => RichMediaUploadSession,
@@ -41,7 +51,9 @@ type RichMediaUploadTask = {
   editor: ChatInputEditor,
   id: string,
   items: RichMediaUploadTaskItem[],
-  session: RichMediaUploadSession
+  session: RichMediaUploadSession,
+  /** Cancelled by the user, kept while Undo can bring the media back. */
+  stopped?: boolean
 };
 
 let richMediaUploadId = 0;
@@ -79,15 +91,10 @@ export default class RichMediaUploads {
   public handleAction(action: 'remove' | 'retry', uploadId: string) {
     const task = this.tasks.get(uploadId);
     if(!task) return;
-    if(action === 'remove') return this.cancel(task);
-    task.items.forEach((item) => {
-      if(item.uploaded || item.inFlight || item.state !== 'error') return;
-      item.progress = 0;
-      item.state = 'preparing';
-      item.uploadingFileName = undefined;
-    });
-    this.update(task);
-    void this.run(task);
+    if(action === 'remove') return this.stop(task);
+    this.restart(task, task.items.filter((item) => (
+      !item.uploaded && !item.inFlight && item.state === 'error'
+    )));
   }
 
   public clear() {
@@ -102,6 +109,7 @@ export default class RichMediaUploads {
 
   private presentation(task: RichMediaUploadTask) {
     return task.items.map(({
+      document,
       duration,
       fileName,
       fileSize,
@@ -111,8 +119,10 @@ export default class RichMediaUploads {
       progress,
       state,
       type,
+      uploadingFileName,
       width
     }) => ({
+      document,
       duration,
       fileName,
       fileSize,
@@ -122,6 +132,7 @@ export default class RichMediaUploads {
       progress,
       state,
       type,
+      uploadingFileName: document ? uploadingFileName : undefined,
       width
     }));
   }
@@ -144,6 +155,45 @@ export default class RichMediaUploads {
     });
   }
 
+  private restart(task: RichMediaUploadTask, items: RichMediaUploadTaskItem[]) {
+    items.forEach((item) => {
+      item.progress = 0;
+      item.state = 'preparing';
+      item.uploadingFileName = undefined;
+      item.document = undefined;
+    });
+    this.update(task);
+    void this.run(task);
+  }
+
+  /**
+   * The user's cancel. The transfer stops and the media leaves the document as
+   * an undoable edit; the task keeps its files for as long as history can bring
+   * the media back (`reconcile`), and starts over if it does.
+   */
+  private stop(task: RichMediaUploadTask) {
+    task.stopped = true;
+    task.items.forEach((item) => {
+      if(item.uploaded) return;
+      ++item.attempt;
+      item.inFlight = false;
+      if(!item.uploadingFileName) return;
+      this.uploadsByFileName.delete(item.uploadingFileName);
+      void task.session.cancel(item.uploadingFileName);
+      item.uploadingFileName = undefined;
+    });
+    task.editor.cancelRichMediaUpload(task.id);
+  }
+
+  private resume(task: RichMediaUploadTask) {
+    task.stopped = false;
+    if(!task.session.isCurrent()) {
+      this.cancel(task);
+      return;
+    }
+    this.restart(task, task.items.filter((item) => !item.uploaded));
+  }
+
   private cancel(task: RichMediaUploadTask, removeNode = true) {
     task.items.forEach((item) => {
       if(!item.uploadingFileName) return;
@@ -160,7 +210,7 @@ export default class RichMediaUploads {
     reconcileRichMediaUploads(editor, this.tasks, {
       cancel: (task, removeNode) => this.cancel(task, removeNode),
       complete: (task) => this.cleanup(task),
-      update: (task) => this.update(task)
+      update: (task) => task.stopped ? this.resume(task) : this.update(task)
     });
   }
 
@@ -168,51 +218,81 @@ export default class RichMediaUploads {
     task: RichMediaUploadTask,
     item: RichMediaUploadTaskItem
   ) {
+    const attempt = ++item.attempt;
+    const isCurrent = () => this.tasks.get(task.id) === task && item.attempt === attempt;
     item.inFlight = true;
     item.progress = 0;
     item.state = 'preparing';
     this.update(task);
     try {
-      const sendFileDetails = await prepareRichMediaUpload(item.file);
-      if(this.tasks.get(task.id) !== task) return;
-      const uploadFile = sendFileDetails.file;
-      if(!(uploadFile instanceof File) && !(uploadFile instanceof Blob)) {
-        throw new Error('RICH_MESSAGE_MEDIA_FILE_REQUIRED');
-      }
-      item.duration = sendFileDetails.duration;
-      item.height = sendFileDetails.height;
-      item.mimeType = getFileMimeType(uploadFile);
-      item.width = sendFileDetails.width;
-      const uploadingFileName = getFileNameForUpload(uploadFile);
-      item.uploadingFileName = uploadingFileName;
+      if(!isRowItem(item)) await this.prepareItem(item);
+      else if(!item.document) await this.prepareRow(task.session, item, isCurrent);
+      if(!isCurrent()) return;
+      const {uploadingFileName} = item;
       item.state = 'uploading';
       this.uploadsByFileName.set(uploadingFileName, {item, task});
       this.update(task);
-      const uploaded = await task.session.upload(sendFileDetails, uploadingFileName);
-      if(this.tasks.get(task.id) !== task) return;
+      const uploaded = await task.session.upload(item.details, uploadingFileName, item.type === 'document');
+      if(!isCurrent()) return;
       item.uploaded = uploaded;
       this.uploadsByFileName.delete(uploadingFileName);
       item.progress = 1;
       item.state = 'ready';
       this.update(task);
     } catch(err) {
+      if(!isCurrent()) return;
       if(item.uploadingFileName) {
         this.uploadsByFileName.delete(item.uploadingFileName);
       }
-      if(this.tasks.get(task.id) !== task) return;
+      // cancelled where a bubble's is, by its row: as the editor's own cancel does
+      if((err as ApiError)?.type === 'UPLOAD_CANCELED') {
+        this.stop(task);
+        return;
+      }
       console.error('rich message media upload error', err);
       item.state = 'error';
       this.update(task);
     } finally {
-      item.inFlight = false;
+      if(item.attempt === attempt) item.inFlight = false;
     }
+  }
+
+  private async prepareItem(item: RichMediaUploadTaskItem) {
+    const details = await prepareRichMediaUpload(item.file, item.type);
+    const uploadFile = details.file;
+    if(!(uploadFile instanceof File) && !(uploadFile instanceof Blob)) {
+      throw new Error('RICH_MESSAGE_MEDIA_FILE_REQUIRED');
+    }
+    item.details = details;
+    item.duration = details.duration;
+    item.height = details.height;
+    item.mimeType = getFileMimeType(uploadFile);
+    item.width = details.width;
+    return item.uploadingFileName = getFileNameForUpload(uploadFile);
+  }
+
+  /** A row's upload prepared: the local document the row is drawn from. */
+  private async prepareRow(
+    session: RichMediaUploadSession,
+    item: RichMediaUploadTaskItem,
+    isCurrent: () => boolean = () => true
+  ) {
+    const uploadingFileName = await this.prepareItem(item);
+    const {document} = await session.prepare(item.details, uploadingFileName, item.type === 'document');
+    // given up while it was prepared (a cleared composer, a newer attempt): its cancel found no
+    // upload yet, and nothing else will let this one go
+    if(!isCurrent()) {
+      void session.cancel(uploadingFileName);
+      return;
+    }
+    item.document = document;
   }
 
   private async run(task: RichMediaUploadTask) {
     await Promise.all(task.items.filter((item) => (
       !item.uploaded && !item.inFlight
     )).map((item) => this.uploadItem(task, item)));
-    if(this.tasks.get(task.id) !== task) return;
+    if(this.tasks.get(task.id) !== task || task.stopped) return;
     if(task.items.some((item) => !item.uploaded)) {
       this.update(task);
       return;
@@ -230,7 +310,8 @@ export default class RichMediaUploads {
   public async insert(
     files: File[],
     selection: ReturnType<ChatInputEditor['captureSelection']>,
-    itemAction?: RichMediaItemInsertAction
+    itemAction?: RichMediaItemInsertAction,
+    asFile?: boolean
   ) {
     const editor = this.editor;
     const session = this.options.services.capture();
@@ -255,15 +336,16 @@ export default class RichMediaUploads {
       return {
         file,
         mimeType,
-        type: getRichMessageMediaFileType(mimeType, file.name)
+        type: getRichMessageMediaFileType(mimeType, file.name, asFile)
       };
     });
-    if(entries.some(({type}) => !type) || itemAction && entries.some(({type}) => type === 'audio')) {
+    // a collage or a slideshow takes photos and videos only
+    if(itemAction && entries.some(({type}) => type !== 'photo' && type !== 'video')) {
       toastNew({langPackKey: 'RichMessage.Error.UnsupportedContent'});
       return false;
     }
 
-    const allowed = await session.authorize(entries.map(({file}) => file));
+    const allowed = await session.authorize(entries.map(({file}) => file), asFile);
     if(!allowed || !isCurrent()) return false;
     if(!selectionIsCurrent()) {
       toastNew({langPackKey: 'RichMessage.Error.InsertTargetChanged'});
@@ -277,6 +359,7 @@ export default class RichMediaUploads {
       const items = group.map((entry, index): RichMediaUploadTaskItem => {
         const preview = createRichMediaPreviewUrl(entry.file);
         return {
+          attempt: 0,
           file: entry.file,
           fileName: entry.file.name,
           fileSize: entry.file.size,
@@ -291,17 +374,23 @@ export default class RichMediaUploads {
       });
       return {editor, id, items, session};
     });
+    // what never went in: its previews, and the uploads prepared for its rows
     const releaseTaskPreviews = () => {
       tasks.forEach((task) => {
-        task.items.forEach((item) => item.releasePreviewUrl());
+        task.items.forEach((item) => {
+          item.releasePreviewUrl();
+          if(item.document) session.cancel(item.uploadingFileName);
+        });
       });
     };
-    try {
-      await Promise.all(tasks.flatMap((task) => task.items.map((item) => (
-        loadRichMediaPreview(item)
-      ))));
-    } catch(err) {
-      console.error('rich message media preview error', err);
+    // a row goes in drawn from the start, its upload prepared with it; every one settles before any
+    // is given up — a row prepared after the cleanup would keep its upload with nothing to cancel it
+    const prepared = await Promise.allSettled(tasks.flatMap((task) => task.items.map((item) => (
+      isRowItem(item) ? this.prepareRow(session, item) : loadRichMediaPreview(item)
+    ))));
+    const failed = prepared.find((result): result is PromiseRejectedResult => result.status === 'rejected');
+    if(failed) {
+      console.error('rich message media preview error', failed.reason);
       releaseTaskPreviews();
       if(isCurrent()) toastNew({langPackKey: 'RichMessage.Error.UnsupportedContent'});
       return false;

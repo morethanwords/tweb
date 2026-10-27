@@ -11,12 +11,13 @@ import type {
 import type {ChatRights} from '@appManagers/appChatsManager';
 import PopupElement, {createPopup, PopupContext, PopupContextValue} from './indexTsx';
 import {toastNew} from '@components/toast';
-import SendContextMenu from '@components/chat/sendContextMenu';
+import SendContextMenu, {mountSendMenu} from '@components/chat/sendContextMenu';
 import {createPosterFromMedia, createPosterFromVideo} from '@helpers/createPoster';
 import {MyDocument} from '@appManagers/appDocsManager';
 import {i18n, LangPackKey} from '@lib/langPack';
 import calcImageInBox from '@helpers/calcImageInBox';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
+import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import {shouldPreserveKeyboardFocus} from '@helpers/dom/isKeyboardControl';
 import Modes from '@config/modes';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
@@ -70,6 +71,7 @@ import {ChatType} from '@components/chat/chatType';
 import pause from '@helpers/schedulers/pause';
 import {Accessor, createMemo, createRoot, createSignal, onCleanup, onMount, Setter, Signal, useContext} from 'solid-js';
 import SelectedEffect from '@components/chat/selectedEffect';
+import {unwrapSolidElement} from '@helpers/solid/wrapSolidComponent';
 import showMakePaidPopup from '@components/popups/makePaid';
 import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
 import Icon from '@components/icon';
@@ -465,6 +467,7 @@ export default function showNewMediaPopup(
           messageInputField = inputField;
         },
         btnConfirm,
+        sendOnShortcut: true,
         ai: chat.input.getAiEditorContext()
       });
 
@@ -500,6 +503,7 @@ export default function showNewMediaPopup(
         callback: async(e) => {
           cancelEvent(e);
 
+          const middleware = context.middlewareHelper.get();
           const element = await ButtonMenu({
             buttons: [{
               text: 'MessageScheduleEditTime',
@@ -515,16 +519,22 @@ export default function showNewMediaPopup(
             }],
             listenerSetter: listenerSetter
           });
+          if(!middleware()) return;
           element.classList.add('menu-send', 'top-left');
 
-          containerEl.append(element);
+          mountSendMenu(element, btnConfirm, 'top-left', middleware);
 
           await fastRafPromise();
+          if(!middleware()) {
+            element.remove();
+            return;
+          }
+
           contextMenuController.openBtnMenu(element, () => {
             setTimeout(() => {
               element.remove();
             }, 400);
-          });
+          }, btnConfirm);
         },
         listenerSetter: listenerSetter
       });
@@ -536,8 +546,12 @@ export default function showNewMediaPopup(
         const [effect, setEffect] = createSignal<DocId>(wasDraft?.effect);
         effectAccessor = effect;
         setEffectAccessor = setEffect;
+<<<<<<< HEAD
         const unmount = render(() => SelectedEffect({effect: effectAccessor}), btnConfirm);
         chat.destroyMiddlewareHelper.onDestroy(unmount);
+=======
+        btnConfirm.append(unwrapSolidElement(SelectedEffect({effect: effectAccessor})) as HTMLElement);
+>>>>>>> b494470fa4ebbd7bb64fa9378f202944dc8158fd
       });
 
       const sendMenu = new SendContextMenu({
@@ -559,11 +573,9 @@ export default function showNewMediaPopup(
         onContextElement: btnConfirm,
         middleware: context.middlewareHelper.get(),
         canSendWhenOnline: chat.input.canSendWhenOnline,
-        onRef: (element) => {
-          containerEl.append(element);
-        },
         onOpen: () => !ephemeralComposer,
         withEffects: () => chat.peerId.isUser() && chat.peerId !== rootScope.myId,
+        effectsWithinMenu: () => true,
         effect: effectAccessor,
         onEffect: setEffectAccessor
       });
@@ -1006,6 +1018,11 @@ export default function showNewMediaPopup(
       files.splice(1);
       willAttach.sendFileDetails.splice(1);
       toastNew({langPackKey: 'Ephemeral.SingleAttachment'});
+    }
+
+    // * what the field it came from asks before a reply goes (Stealth Mode over a story)
+    if(!isEditing() && !(await input.isSendingConfirmed())) {
+      return;
     }
 
     const isSlowModeActive = () => input.showSlowModeTooltipIfNeeded({
@@ -1580,6 +1597,8 @@ export default function showNewMediaPopup(
             btnConfirm.disabled = true;
 
             const {openMediaEditorFromMedia} = await import('../mediaEditor');
+            // * the popup can be gone by the time the editor loads (closed, the account switched)
+            if(context.destroyed) return;
 
             isMediaEditorOpen = true;
             const mediaSrc = params.objectURLs.create(file);
@@ -2383,6 +2402,10 @@ export default function showNewMediaPopup(
       confirmShortcutIsSendShortcut
       animationGroup={animationGroup}
       btnConfirmOnEnter={() => btnConfirm}
+      // The caption, as in tdesktop's send box: typing lands there anyway, and Enter sends from it —
+      // from the close button, the first control, it closed the popup instead. Not on touch, where
+      // focusing a field raises the keyboard over the media.
+      initialFocus={() => IS_TOUCH_SUPPORTED ? undefined : messageInputField?.input}
       show={show()}
       containerProps={{ref: (element) => containerEl = element}}
       onClose={() => {

@@ -60,17 +60,20 @@ describe('Tiptap chat input editor: Core', () => {
     editor.setTextWithEntities('plain bold', entities);
     expect(editor.getLegacyValueIfLossless()).toEqual({value: 'plain bold', entities});
 
-    editor.setTextWithEntities('- list item');
-    expect(editor.getDocument().content?.[0].type).toBe('bulletList');
-    expect(editor.getLegacyValueIfLossless()).toEqual({value: '- list item', entities: []});
-
-    editor.setTextWithEntities('- [ ] pending');
-    expect(editor.getDocument().content?.[0].type).toBe('taskList');
-    expect(editor.getLegacyValueIfLossless()).toBeUndefined();
-
-    editor.setTextWithEntities('1. [ ] ordered pending');
-    expect(editor.getDocument().content?.[0].type).toBe('orderedList');
-    expect(editor.getLegacyValueIfLossless()).toBeUndefined();
+    // list-looking text stays text; a list is rich-only
+    for(const text of ['- list item', '- [ ] pending', '1. [ ] ordered pending']) {
+      editor.setTextWithEntities(text);
+      expect(editor.getDocument().content?.[0].type).toBe('paragraph');
+      expect(editor.getLegacyValueIfLossless()).toEqual({value: text, entities: []});
+    }
+    for(const type of ['bulletList', 'orderedList']) {
+      editor.setDocument({type: 'doc', content: [{type, content: [{
+        type: 'listItem',
+        content: [{type: 'paragraph', content: [{type: 'text', text: 'item'}]}]
+      }]}]});
+      expect(editor.getMode()).toBe('rich');
+      expect(editor.getLegacyValueIfLossless()).toBeUndefined();
+    }
 
     const collapsedQuote: MessageEntity[] = [{
       _: 'messageEntityBlockquote',

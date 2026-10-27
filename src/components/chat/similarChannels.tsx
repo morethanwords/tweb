@@ -11,8 +11,6 @@ import classNames from '@helpers/string/classNames';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpClassName from '@helpers/dom/findUpClassName';
-import showPremiumPopup from '@components/popups/premium';
-import appImManager from '@lib/appImManager';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import showPickUserPopup from '@components/popups/pickUser';
 import apiManagerProxy from '@lib/apiManagerProxy';
@@ -23,6 +21,7 @@ import showTooltip from '@components/tooltip';
 import {usePeer} from '@stores/peers';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 import Modes from '@config/modes';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 let canvas: HTMLCanvasElement, context: CanvasRenderingContext2D;
 export function SimilarPeer(props: {
@@ -241,14 +240,14 @@ export default function SimilarChannels(props: {
       cancelEvent(e);
       const chat = rendered.get(target);
       if(chat) {
-        appImManager.setInnerPeer({peerId: chat.id.toPeerId(true)});
+        hotReloadGuard.appImManager.setInnerPeer({peerId: chat.id.toPeerId(true)});
         return;
       }
 
       if(premium()) {
         showPickUserPopup({
           onSelect: ([first]) => {
-            appImManager.setInnerPeer(first);
+            hotReloadGuard.appImManager.setInnerPeer(first);
           },
           peerType: ['custom'],
           getMoreCustom: async() => {
@@ -265,7 +264,7 @@ export default function SimilarChannels(props: {
 
       const anchor = anchorCallback(() => {
         close();
-        showPremiumPopup();
+        hotReloadGuard.showPremiumPopup();
       });
       anchor.classList.add('primary');
 
@@ -276,8 +275,8 @@ export default function SimilarChannels(props: {
         textElement: i18n(
           'SimilarChannels.Unlock',
           [
-            anchor,
-            premiumLimit
+            premiumLimit,
+            anchor
           ]
         ),
         icon: 'star'

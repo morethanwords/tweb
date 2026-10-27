@@ -17,7 +17,7 @@ import debounce from '@helpers/schedulers/debounce';
 import overlayCounter from '@helpers/overlayCounter';
 import onMediaLoad from '@helpers/onMediaLoad';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
-import safePlay from '@helpers/dom/safePlay';
+import playOrPlayMuted from '@helpers/dom/playOrPlayMuted';
 import ButtonIcon from '@components/buttonIcon';
 import Button from '@components/button';
 import Icon from '@components/icon';
@@ -29,6 +29,7 @@ import simulateEvent from '@helpers/dom/dispatchEvent';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import {VideoTimestamp} from '@components/mediaViewer/base';
 import apiManagerProxy from '@lib/apiManagerProxy';
+import keepLeftToRight from '@helpers/dom/keepLeftToRight';
 import {Accessor, createSignal, Setter} from 'solid-js';
 
 import {createQualityLevelsSwitchButton} from './qualityLevelsSwitchButton';
@@ -194,7 +195,7 @@ export default class VideoPlayer extends ControlsHover {
         if(this.speedDragHandler?.controls.isChangingSpeed()) return false;
         return true;
       },
-      showOnLeaveToClassName: ['media-viewer-caption', 'media-viewer-topbar'],
+      showOnLeaveToClassName: ['media-viewer-caption', 'media-viewer-topbar', 'media-viewer-album-thumbs'],
       ignoreClickClassName: 'ckin__controls'
     });
 
@@ -254,13 +255,7 @@ export default class VideoPlayer extends ControlsHover {
     }
 
     if(play/*  && video.paused */) {
-      video.play().catch((err: Error) => {
-        if(err.name === 'NotAllowedError') {
-          video.muted = true;
-          video.autoplay = true;
-          safePlay(video);
-        }
-      }).finally(() => { // due to autoplay, play will not call
+      playOrPlayMuted(video).finally(() => { // due to autoplay, play will not call
         this.setIsPlaying(!this.video.paused);
       });
     } else {
@@ -303,6 +298,9 @@ export default class VideoPlayer extends ControlsHover {
 
     const html = this.buildControls();
     wrapper.insertAdjacentHTML('beforeend', html);
+    // * playback is never mirrored: the controls run left to right in an RTL layout too, the live
+    // * stream's included (its viewer count is text in the language's own direction, `dir="auto"`)
+    keepLeftToRight(wrapper.querySelector<HTMLElement>(`.${skin}__controls`));
     let timeDuration: HTMLElement;
 
     const onPlayCallbacks: (() => void)[] = [], onPauseCallbacks: (() => void)[] = [];
@@ -343,6 +341,7 @@ export default class VideoPlayer extends ControlsHover {
       const volumeSelector = this.volumeSelector = new VolumeSelector({
         listenerSetter,
         vertical: false,
+        keepLTR: true,
         media: video,
         useGlobalVolume: this.useGlobalVolume,
         onVolumeChange: this.onVolumeChange
@@ -605,7 +604,7 @@ export default class VideoPlayer extends ControlsHover {
 
     if(skin === 'default') {
       const time = this.live ? `
-      <span class="left-controls-watching"></span>
+      <span class="left-controls-watching" dir="auto"></span>
       ` : `
       <time class="ckin__time-elapsed">0:00</time>
       <span> / </span>

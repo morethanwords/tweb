@@ -4,7 +4,6 @@ import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import Modes from '@config/modes';
 import ButtonMenu, {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import showDeleteMessagesPopup from '@components/popups/deleteMessages';
-import showForwardPopup from '@components/popups/forward';
 import showPinMessagePopup from '@components/popups/unpinMessage';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import showSendNowPopup from '@components/popups/sendNow';
@@ -32,9 +31,10 @@ import positionMenu, {MenuPositionPadding, positionFloatingMenu} from '@helpers/
 import {getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import contextMenuController from '@helpers/contextMenuController';
 import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
+import {getLinkFirstChild, holdLinkPlate} from '@helpers/dom/linkPress';
 import filterAsync from '@helpers/array/filterAsync';
 import appDownloadManager, {DownloadBlob} from '@lib/appDownloadManager';
-import {SERVICE_PEER_ID} from '@appManagers/constants';
+import {NULL_PEER_ID, SERVICE_PEER_ID} from '@appManagers/constants';
 import {MessagesStorageKey, MyMessage} from '@appManagers/appMessagesManager';
 import replaceContent from '@helpers/dom/replaceContent';
 import wrapEmojiText, {wrapEmojiTextWithEntities} from '@lib/richTextProcessor/wrapEmojiText';
@@ -46,8 +46,6 @@ import {addToProfileMusic, getSavedMusicDocument, removeFromProfileMusic} from '
 import getGroupedText from '@appManagers/utils/messages/getGroupedText';
 import confirmationPopup, {PopupConfirmationOptions} from '@components/confirmationPopup';
 import Icon from '@components/icon';
-import cloneDOMRect from '@helpers/dom/cloneDOMRect';
-import showPremiumPopup from '@components/popups/premium';
 import {ChatInputReplyTo} from '@components/chat/input';
 import {makeFullMid} from '@components/chat/bubbles';
 import AppStatisticsTab from '@components/sidebarRight/tabs/statistics';
@@ -56,12 +54,15 @@ import {canEditMessageMediaWithEditor, getEditMediaLangKey} from './editMessageM
 import {formatFullSentTime} from '@helpers/date';
 import showToggleReadDatePopup from '@components/popups/toggleReadDate';
 import rootScope from '@lib/rootScope';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import {canEditMemberTag} from '@appManagers/utils/chats/memberTag';
+import openEditMemberTag from '@components/memberTag/openEditMemberTag';
 import ReactionElement from '@components/chat/reaction';
 import ReactionsElement from '@components/chat/reactions';
 import createReactionContextMenu from '@components/chat/reactionContextMenu';
 import InputField from '@components/inputField';
 import getMainGroupedMessage from '@appManagers/utils/messages/getMainGroupedMessage';
-import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import getRichSelection from '@helpers/dom/getRichSelection';
 import detectLanguageForTranslation from '@helpers/detectLanguageForTranslation';
 import {getMessageSourceText} from '@stores/peerLanguage';
@@ -95,12 +96,14 @@ import {pollOptionToLink} from './bubbleParts/pollMessageContent/pollToOptionLin
 import {getPollVoteRestrictionPeerId} from '@appManagers/utils/polls/pollVoteRestriction';
 import {getPollVoteRestrictionText} from './bubbleParts/pollMessageContent/pollVoteRestriction';
 import {canViewPollStatistics as canViewPollStatisticsForMessage} from './bubbleParts/pollMessageContent/pollStatistics';
-import {canCopyMediaToClipboard} from '@helpers/copyMediaToClipboard';
+import {canCopyMediaToClipboard, CopyableMedia} from '@helpers/copyMediaToClipboard';
+import {findRegisteredMediaPeekElement, getRegisteredMediaPeekSource} from '@components/mediaPeek/sources';
 import copyMessageMediaWithFeedback from '@components/copyMessageMediaWithFeedback';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 import isAnchoredEphemeralMessage from '@appManagers/utils/messages/isAnchoredEphemeralMessage';
 import canReplyToEphemeralMessage from '@appManagers/utils/messages/canReplyToEphemeralMessage';
 import {flattenRichMessageSummary} from '@lib/richMessage';
+import verifyMenuItem from '@helpers/verifyMenuItem';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -149,7 +152,7 @@ export function getSponsoredMessageButtons(options: {
       icon: 'hand',
       text: 'HideAd',
       onClick: () => {
-        showPremiumPopup({feature: 'no_ads'});
+        hotReloadGuard.showPremiumPopup({feature: 'no_ads'});
       },
       verify: () => extraVerify() && !canReport,
       isSponsored: true
@@ -163,7 +166,7 @@ export function getSponsoredMessageButtons(options: {
       icon: 'crossround',
       text: 'RemoveAds',
       onClick: () => {
-        showPremiumPopup({feature: 'no_ads'});
+        hotReloadGuard.showPremiumPopup({feature: 'no_ads'});
       },
       verify: () => extraVerify() && !!canReport,
       isSponsored: true
@@ -198,6 +201,11 @@ export default class ChatContextMenu {
   private isSelected: boolean;
   private target: HTMLElement;
   private isTargetAGroupedItem: boolean;
+  /**
+   * The media the pressed element shows when it belongs to a page rather than to the message - a rich
+   * message's photos and videos are its page's blocks, and `message.media` holds nothing of them.
+   */
+  private richMedia: CopyableMedia;
   private isTextSelected: boolean;
   private isTextFromMultipleMessagesSelected: boolean;
   private isAnchorTarget: boolean;
@@ -234,6 +242,7 @@ export default class ChatContextMenu {
   private selectedMessagesText: PartialByKeys<Awaited<ReturnType<ChatContextMenu['getSelectedMessagesText']>>, 'html'>;
   private selectedMessages: MyMessage[];
   private avatarPeerId: number;
+  private avatarElement: HTMLElement;
   private copyMediaButton: ChatContextMenuButton;
 
   private isLegacy: boolean;
@@ -470,7 +479,7 @@ export default class ChatContextMenu {
       this.reactionElement = tagReactionElement as ReactionElement;
 
       if(this.isTag && !rootScope.premium) {
-        showPremiumPopup({feature: 'saved_tags'});
+        hotReloadGuard.showPremiumPopup({feature: 'saved_tags'});
         return;
       }
 
@@ -503,14 +512,18 @@ export default class ChatContextMenu {
       this.isOverBubble = !!contentWrapper;
 
       this.avatarPeerId = avatar && avatar.dataset.peerId.toPeerId();
+      this.avatarElement = avatar;
 
+      // * an album item in the chat carries the mid of its own message; anything else wearing the class
+      // * (a rich message's collage, whose items are blocks of a page) has none and the menu is the
+      // * whole message's - `+undefined` as a mid left it with no message at all, and nothing opened
       const groupedItem = findUpClassName(this.target, 'grouped-item');
-      this.isTargetAGroupedItem = !!groupedItem;
-      if(groupedItem) {
-        this.mid = +groupedItem.dataset.mid;
-      } else {
-        this.mid = mid;
-      }
+      const groupedItemMid = groupedItem && +groupedItem.dataset.mid;
+      this.isTargetAGroupedItem = !!groupedItemMid;
+      this.mid = groupedItemMid || mid;
+
+      // * what the page registered for the element pressed, when a rich message's media was pressed
+      this.richMedia = this.getTargetRichMedia();
 
       this.isLegacy = this.messagePeerId && this.messagePeerId !== this.peerId;
       this.isSelected = this.chat.selection.isMidSelected(this.messagePeerId, this.mid);
@@ -585,6 +598,8 @@ export default class ChatContextMenu {
       // * the menu belongs to a message, not to an avatar — highlight it the way it gets selected
       const activeElement = bubble && getSelectionElementFromTarget(e.target);
       activeElement && this.chat.bubbles.toggleActiveBubble(activeElement, true);
+      // * and a link it was opened on lights its plate while it is open
+      const releaseLinkPlate = holdLinkPlate(e.target);
 
       // if(reactionsMenu) {
       //   reactionsMenu.widthContainer.style.top = element.style.top;
@@ -598,10 +613,13 @@ export default class ChatContextMenu {
         reactionsCallbacks?.onClose();
         cleanupHighlight?.();
         activeElement && this.chat.bubbles.toggleActiveBubble(activeElement, false);
+        releaseLinkPlate?.();
 
         this.mid = 0;
         this.peerId = undefined;
         this.target = null;
+        // * the chat outlives its bubbles: a kept bubble stayed in memory after it left the DOM
+        this.bubble = undefined;
         this.viewerPeerId = undefined;
         this.canOpenReactedList = undefined;
         cleanup();
@@ -741,12 +759,39 @@ export default class ChatContextMenu {
         good = false;
       } else {
         good = this.isOverBubble || IS_TOUCH_SUPPORTED || true ?
-          await button.verify() :
-          button.notDirect && await button.verify() && button.notDirect();
+          await verifyMenuItem(button) :
+          button.notDirect && await verifyMenuItem(button) && button.notDirect();
       }
 
       return !!good;
     });
+  }
+
+  /**
+   * "Add member tag" / "Edit member tag" under a sender's avatar (desktop): someone else's, with the
+   * right to set it, never in a channel's discussion group. An admin's needs that admin to be mine
+   * to edit, which only the participant itself tells
+   */
+  private getAvatarMemberTagButton(): ChatContextMenuButton {
+    const peerId = this.avatarPeerId;
+    const rank = this.avatarElement && this.chat.bubbles.getAvatarAuthorRank(this.avatarElement);
+    const chatId = this.chat.peerId.isAnyChat() ? this.chat.peerId.toChatId() : undefined;
+    return {
+      icon: rank ? 'edit' : 'tag_add',
+      text: rank ? 'MemberTag.EditMember' : 'MemberTag.AddMember',
+      onClick: () => openEditMemberTag(chatId, peerId),
+      verify: async() => {
+        const chat = chatId && apiManagerProxy.getChat(chatId);
+        if(!chat || !peerId.isUser() || peerId === rootScope.myId || (chat as MTChat.channel).pFlags.has_link) {
+          return false;
+        }
+
+        const participant = rank && rank.role !== 'member' ?
+          await this.managers.appProfileManager.getParticipant(chatId, peerId).catch((): undefined => undefined) :
+          undefined;
+        return canEditMemberTag(chat, peerId, rootScope.myId, participant);
+      }
+    };
   }
 
   private setButtons() {
@@ -832,14 +877,24 @@ export default class ChatContextMenu {
     }
 
     if(this.avatarPeerId !== undefined) {
+      const getStack = () => this.chat.appImManager.getStackFromElement(this.target);
       const openPeer = () => {
         this.chat.appImManager.setInnerPeer({
           peerId: this.avatarPeerId,
-          stack: this.chat.appImManager.getStackFromElement(this.target)
+          stack: getStack()
         });
       };
 
       this.buttons = [{
+        icon: 'user',
+        text: 'VoiceChat.OpenProfile',
+        onClick: () => void hotReloadGuard.showPeerProfilePopup({
+          peerId: this.avatarPeerId,
+          stack: getStack()
+        }),
+        // * a forward's hidden author has no profile to open
+        verify: () => this.avatarPeerId !== NULL_PEER_ID
+      }, {
         icon: 'message',
         text: 'SendMessage',
         onClick: openPeer,
@@ -868,7 +923,7 @@ export default class ChatContextMenu {
           this.chat.initSearch({filterPeerId: this.avatarPeerId});
         },
         verify: () => this.chat.isAnyGroup
-      }];
+      }, this.getAvatarMemberTagButton()];
       return;
     }
 
@@ -998,7 +1053,7 @@ export default class ChatContextMenu {
         (this.chat.bubbles.canForward(this.message) || this.chat.canSend()) &&
         (() => {
           const {date} = getMarkupInSelection(['date'], true);
-          return !date.elements[0] || isNodeFullyInsideRange(getAppWindow().getSelection().getRangeAt(0), date.elements[0].firstChild);
+          return !date.elements[0] || isNodeFullyInsideRange(getAppWindow().getSelection().getRangeAt(0), getLinkFirstChild(date.elements[0]));
         })()
     }, {
       icon: 'reply',
@@ -1108,12 +1163,14 @@ export default class ChatContextMenu {
       text: 'MediaViewer.Context.Copy',
       welcome: true,
       onClick: this.onCopyMediaClick,
-      verify: () => ChatContextMenu.canCopyMedia(
-        this.message,
-        this.target,
-        this.contentNoForwards,
-        this.chat.container
-      ),
+      verify: () => this.richMedia ?
+        !this.contentNoForwards && canCopyMediaToClipboard(this.richMedia) :
+        ChatContextMenu.canCopyMedia(
+          this.message,
+          this.target,
+          this.contentNoForwards,
+          this.chat.container
+        ),
       keepOpen: true
     }, {
       icon: 'search',
@@ -1186,7 +1243,7 @@ export default class ChatContextMenu {
         const isTextSelected = this.isTextSelected;
 
         if(!this.chat.peerTranslation.canTranslate(true)) {
-          showPremiumPopup({feature: 'translations'});
+          hotReloadGuard.showPremiumPopup({feature: 'translations'});
         } else {
           let textWithEntities: TextWithEntities;
           if(isTextSelected) {
@@ -1244,24 +1301,28 @@ export default class ChatContextMenu {
       icon: 'download',
       text: 'MediaViewer.Context.Download',
       welcome: true,
-      onClick: () => ChatContextMenu.onDownloadClick(
-        this.message,
-        this.contentNoForwards,
-        this.chat.container
-      ),
-      verify: () => ChatContextMenu.canDownload(
-        this.message,
-        this.target,
-        this.contentNoForwards,
-        this.chat.container
-      )
+      onClick: () => this.richMedia ?
+        appDownloadManager.downloadToDisc({media: this.richMedia}) :
+        ChatContextMenu.onDownloadClick(
+          this.message,
+          this.contentNoForwards,
+          this.chat.container
+        ),
+      verify: () => this.richMedia ?
+        !this.contentNoForwards :
+        ChatContextMenu.canDownload(
+          this.message,
+          this.target,
+          this.contentNoForwards,
+          this.chat.container
+        )
     }, {
-      icon: 'note_filled',
+      icon: 'note',
       text: 'SavedMusic.AddToProfile',
       onClick: () => addToProfileMusic(this.getSavedMusicDocId()),
       verify: () => this.verifySavedMusic(false)
     }, {
-      icon: 'delete',
+      icon: 'note_crossed',
       text: 'SavedMusic.RemoveFromProfile',
       onClick: () => removeFromProfileMusic(this.getSavedMusicDocId()),
       verify: () => this.verifySavedMusic(true)
@@ -1531,7 +1592,7 @@ export default class ChatContextMenu {
       }
     ];
 
-    const filteredButtons = await filterAsync(buttons, (button) => button.verify?.() ?? true);
+    const filteredButtons = await filterAsync(buttons, verifyMenuItem);
 
     if(!middleware()) return;
 
@@ -1577,7 +1638,7 @@ export default class ChatContextMenu {
       }
     ];
 
-    const filteredButtons = await filterAsync(buttons, (button) => button.verify?.() ?? true);
+    const filteredButtons = await filterAsync(buttons, verifyMenuItem);
 
     if(!middleware()) return;
 
@@ -1763,8 +1824,11 @@ export default class ChatContextMenu {
       const AVATAR_SIZE = 22;
       const MAX_AVATARS = 3;
       const PADDING_PER_AVATAR = 1.125;
+      // * room for the avatars at the item's inline end - by the layout's direction, as a name's
+      // * `dir="auto"` would turn a logical side around
+      const avatarsPaddingSide = I18n.getIsRTL() ? 'paddingLeft' : 'paddingRight';
       i18nElem.element.style.visibility = 'hidden';
-      i18nElem.element.style.paddingRight = isViewingReactions ? PADDING_PER_AVATAR * Math.min(MAX_AVATARS, recentReactions.length) + 'rem' : '1rem';
+      i18nElem.element.style[avatarsPaddingSide] = isViewingReactions ? PADDING_PER_AVATAR * Math.min(MAX_AVATARS, recentReactions.length) + 'rem' : '1rem';
       const middleware = this.middleware.get();
       this.managers.appMessagesManager.getMessageReactionsListAndReadParticipants(this.message as Message.message).then((result) => {
         if(!middleware()) {
@@ -1808,7 +1872,7 @@ export default class ChatContextMenu {
         }
 
         if(fakeElem) {
-          fakeElem.style.paddingRight = PADDING_PER_AVATAR * Math.min(MAX_AVATARS, reactedLength) + 'rem';
+          fakeElem.style[avatarsPaddingSide] = PADDING_PER_AVATAR * Math.min(MAX_AVATARS, reactedLength) + 'rem';
           fakeElem.classList.add('btn-menu-item-text-fake');
           viewsButton.element.append(fakeElem);
         }
@@ -1865,13 +1929,12 @@ export default class ChatContextMenu {
           }
 
           if(!rootScope.premium && tags) {
-            showPremiumPopup({feature: 'saved_tags'});
+            hotReloadGuard.showPremiumPopup({feature: 'saved_tags'});
             return;
           }
 
           this.chat.sendReaction({message: reactionsMessage, reaction});
         },
-        getOpenPosition: (hasMenu) => ChatContextMenu.getReactionsOpenPosition(reactionsMenu, hasMenu),
         isTags: tags
       });
       await reactionsMenu.init(reactionsMessage);
@@ -1984,6 +2047,11 @@ export default class ChatContextMenu {
       else url += '/' + msgId;
     }
 
+    // * the item of an album the menu was opened on, not the album as a whole (tdlib: !for_album)
+    if(this.isTargetAGroupedItem && this.groupedMessages?.length > 1) {
+      url += (url.includes('?') ? '&' : '?') + 'single';
+    }
+
     return {url, isPrivate: !username};
   }
 
@@ -2037,7 +2105,7 @@ export default class ChatContextMenu {
 
     return prepareTextWithEntitiesForCopying(messages.map((message) => {
       if(message.rich_message) {
-        const {text, entities} = flattenRichMessageSummary(message.rich_message, 0);
+        const {text, entities} = flattenRichMessageSummary(message.rich_message);
         return {text, entities};
       }
 
@@ -2213,9 +2281,17 @@ export default class ChatContextMenu {
   private onCopyMediaClick = () => {
     copyMessageMediaWithFeedback({
       message: this.message,
+      media: this.richMedia,
       button: this.copyMediaButton
     });
   };
+
+  /** What the page said the pressed element shows (`mediaPeek/sources`), for a rich message's media */
+  private getTargetRichMedia() {
+    const element = this.target && findRegisteredMediaPeekElement(this.target);
+    const media = element && getRegisteredMediaPeekSource(element)?.media;
+    return media as CopyableMedia;
+  }
 
   private onCopyAnchorLinkClick = () => {
     let href = (this.target as HTMLAnchorElement).href;
@@ -2248,7 +2324,7 @@ export default class ChatContextMenu {
 
   private onAddTaskClick = async() => {
     if(!rootScope.premium) {
-      showPremiumPopup();
+      hotReloadGuard.showPremiumPopup();
       return;
     }
 
@@ -2265,7 +2341,7 @@ export default class ChatContextMenu {
     } else {
       const peerId = this.messagePeerId;
       const mids = this.isTargetAGroupedItem ? [this.mid] : await this.chat.getMidsByMid(peerId, this.mid);
-      showForwardPopup({
+      hotReloadGuard.showForwardPopup({
         [peerId]: mids
       });
     }
@@ -2458,15 +2534,6 @@ export default class ChatContextMenu {
     return menuPadding;
   }
 
-  public static getReactionsOpenPosition(reactionsMenu: ChatReactionsMenu, hasMenu: boolean) {
-    const rect = reactionsMenu.container.getBoundingClientRect();
-    const newRect = cloneDOMRect(rect);
-    newRect.left -= 21 / 2;
-    newRect.top -= 121 / 2;
-    if(!hasMenu) newRect.top += 37;
-    return newRect;
-  }
-
   public static appendReactionsMenu({element, reactionsMenu, reactionsMenuPosition}: {
     element: HTMLElement,
     reactionsMenu: ChatReactionsMenu,
@@ -2590,3 +2657,6 @@ export default class ChatContextMenu {
     return concatTextsWithEntities(parts);
   }
 }
+
+// a method edited here takes effect on the open chats' context menus, without a reload (see @helpers/hotRegistry)
+if(import.meta.hot) import.meta.hot.accept();

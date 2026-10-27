@@ -1,0 +1,68 @@
+// The glyph keeps the box the font gives the icon but is not painted. `:where` leaves the position
+// to whatever already places the icon (the chat list sets it absolute).
+:where(.host) {
+  position: relative;
+}
+
+.host {
+  -webkit-text-fill-color: transparent;
+}
+
+// The icon's layers: its drawing (one per layer, built in sendingStatusIcon.ts) masks the text colour,
+// in the glyph's 1em box with the 19×14 drawing centred in it. They turn and scale about the clock's
+// centre, (10, 7) of the drawing - the check's and the disk's too.
+.host::before,
+.host::after {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 1em;
+  height: 1em;
+  margin-top: -.5em;
+  pointer-events: none;
+  background-color: currentColor;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  transform-origin: 52.632% 50%;
+}
+
+.host::before {
+  content: "";
+}
+
+// while a change lasts the span's own layers wait out of sight
+.moving::before,
+.moving::after {
+  visibility: hidden;
+}
+
+// the old icon and the new one while a change lasts, over the span's box: their layers fall in the
+// same places
+.layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  transform-origin: 52.632% 50%;
+}
+
+// the second check comes and goes about its own middle, (13.5, 7) of the drawing
+.second {
+  transform-origin: 71.053% 50%;
+}
+
+@keyframes turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Held for a moment to read the colour an icon had before its place switched it, to or from an error
+// (getColourBefore in sendingStatusIcon.ts).
+.hold {
+  transition: color 0s linear 1s;
+}

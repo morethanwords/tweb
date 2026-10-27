@@ -15,6 +15,7 @@ const media = (kind: string): PageBlock => {
   if(kind === 'photo') return photo();
   if(kind === 'video') return {_: 'pageBlockVideo', pFlags: {}, video_id: '124', caption: structuredClone(caption)};
   if(kind === 'audio') return {_: 'pageBlockAudio', audio_id: '125', caption: structuredClone(caption)};
+  if(kind === 'file') return {_: 'pageBlockDocument', document_id: '126', caption: structuredClone(caption)};
   return {_: kind === 'collage' ? 'pageBlockCollage' : 'pageBlockSlideshow', items: [photo(), photo()], caption: structuredClone(caption)};
 };
 const message = (block: PageBlock): RichMessage.richMessage => ({_: 'richMessage', pFlags: {}, blocks: [block], photos: [], documents: []});
@@ -27,7 +28,7 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
-test.each(['photo', 'video', 'audio', 'collage', 'slideshow', 'map'])(
+test.each(['photo', 'video', 'audio', 'file', 'collage', 'slideshow', 'map'])(
   'serializes %s repeatedly without changing source objects or credit text', kind => {
     const source = deepFreeze(message(media(kind)));
     const doc = deepFreeze(richMessageToTiptap(source));
@@ -43,7 +44,7 @@ test.each(['photo', 'video', 'audio', 'collage', 'slideshow', 'map'])(
 let mounted: ReturnType<typeof mountChatInputEditor>;
 afterEach(() => {mounted?.editor.destroy(); mounted?.input.remove();});
 
-test.each(['photo', 'video', 'audio', 'collage', 'slideshow', 'map'])(
+test.each(['photo', 'video', 'audio', 'file', 'collage', 'slideshow', 'map'])(
   'HTML copy/paste preserves %s caption, marks, breaks and credit', kind => {
     mounted = mountChatInputEditor();
     const {editor, tiptap} = mounted;

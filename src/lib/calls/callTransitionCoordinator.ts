@@ -47,5 +47,8 @@ export class CallTransitionCoordinator {
   }
 }
 
+// made once: a hot update keeps it and moves it onto the edited class (see @helpers/hotRegistry)
 const callTransitionCoordinator = new CallTransitionCoordinator();
 export default callTransitionCoordinator;
+
+if(import.meta.hot) import.meta.hot.accept();

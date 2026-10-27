@@ -1,7 +1,7 @@
 import type {Channel} from '@appManagers/appChatsManager';
 import type {AppSidebarRight} from '@components/sidebarRight';
 import type Chat from '@components/chat/chat';
-import {RIGHT_COLUMN_ACTIVE_CLASSNAME} from '@components/sidebarRight';
+import {RIGHT_COLUMN_ACTIVE_CLASSNAME, LEFT_COLUMN_ACTIVE_CLASSNAME} from '@lib/appColumns';
 import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
 import rootScope, {BroadcastEvents} from '@lib/rootScope';
 import ButtonIcon from '@components/buttonIcon';
@@ -12,7 +12,6 @@ import ListenerSetter from '@helpers/listenerSetter';
 import showDeleteDialogPopup from '@components/popups/deleteDialog';
 import {showPeerReport} from '@components/popups/reportAd';
 import appNavigationController from '@components/appNavigationController';
-import {LEFT_COLUMN_ACTIVE_CLASSNAME} from '@components/sidebarLeft';
 import PeerTitle from '@components/peerTitle';
 import I18n, {LangPackKey, i18n} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
@@ -22,9 +21,6 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {toastNew} from '@components/toast';
 import replaceContent from '@helpers/dom/replaceContent';
 import {ChatFull, Chat as MTChat, GroupCall, Dialog, InputGroupCall, User, UserFull} from '@layer';
-import {showSharingPickerPopup} from '@components/popups/pickUser';
-import showPeerPopup, {PopupPeerCheckboxOptions} from '@components/popups/peer';
-import {AppEditBotTab, AppEditContactTab} from '@components/solidJsTabs/tabs';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
 import IS_CALL_SUPPORTED from '@environment/callSupport';
 import {CallType} from '@lib/calls/types';
@@ -42,27 +38,26 @@ import callbackify from '@helpers/callbackify';
 import confirmationPopup from '@components/confirmationPopup';
 import noop from '@helpers/noop';
 import clearHistoryWithConfirmation from '@components/clearHistory';
+import blockUserWithConfirmation, {unblockUser} from '@components/blockUser';
+import shareContact, {canShareContact} from '@components/shareContact';
+import addContact from '@components/addContact';
 import canClearHistory from '@appManagers/utils/chats/canClearHistory';
 import IS_LIVE_STREAM_SUPPORTED from '@environment/liveStreamSupport';
 import {avatarNew, findUpAvatar} from '@components/avatarNew';
 import {Middleware, MiddlewareHelper, getMiddleware} from '@helpers/middleware';
-import setBadgeContent from '@helpers/setBadgeContent';
+import {setBadgeCount} from '@helpers/setBadgeContent';
 import createBadge from '@helpers/createBadge';
 import AppStatisticsTab from '@components/sidebarRight/tabs/statistics';
 import {ChatType} from './chatType';
 import {showRtmpStartStreamPopup} from '@components/rtmp/adminPopup';
 import showSendGiftPopup from '@components/popups/sendGift';
-import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import {openRemoveFeePopup} from '@components/chat/removeFee';
 import {createTopbarPlates, TopbarPlates} from '@components/chat/topbarPlates';
 import pause from '@helpers/schedulers/pause';
-import appImManager from '@lib/appImManager';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import namedPromises from '@helpers/namedPromises';
-import appDialogsManager from '@lib/appDialogsManager';
 import {createEffect, createRoot, on, untrack} from 'solid-js';
-import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
-import {AppAdminRecentActionsTab} from '@components/solidJsTabs/tabs';
+import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {setAppSettings} from '@stores/appSettings';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import liteMode from '@helpers/liteMode';
@@ -72,13 +67,13 @@ import {getCachedFullPeer} from '@stores/fullPeers';
 import Icon from '@components/icon';
 import {getDefaultOptions} from '@components/sidebarLeft/tabs/autoDeleteMessages/options';
 import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
-import showPremiumPopup from '@components/popups/premium';
 import showNoForwardsPopup from '@components/popups/noForwards';
 import showAddBotToChat from '@components/popups/addBotToChat';
 import openBoosts from '@components/openBoosts';
 import getAddBotToChatAction from '@appManagers/utils/bots/getAddBotToChatAction';
 import canReportBot from '@appManagers/utils/bots/canReportBot';
 import joinChat from '@components/chat/joinChat';
+import verifyMenuItem from '@helpers/verifyMenuItem';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -324,7 +319,7 @@ export default class ChatTopbar {
       const buttons = this.buttonsToVerify.concat(isMenuOpen ? this.menuButtons as any : []);
       const results = await Promise.all(buttons.map(async(button) => {
         return {
-          result: await button.verify(),
+          result: await verifyMenuItem(button),
           button
         }
       }));
@@ -571,9 +566,9 @@ export default class ChatTopbar {
       icon: 'message',
       text: 'ChannelDirectMessages.ViewChats',
       onClick: () => {
-        appDialogsManager.toggleForumTabByPeerId(this.peerId, true);
+        hotReloadGuard.appDialogsManager.toggleForumTabByPeerId(this.peerId, true);
       },
-      verify: () => this.chat.isMonoforum && !this.chat.monoforumThreadId && this.chat.canManageDirectMessages && !mediaSizes.isLessThanFloatingLeftSidebar && !appDialogsManager.hasForumOpenFor(this.peerId)
+      verify: () => this.chat.isMonoforum && !this.chat.monoforumThreadId && this.chat.canManageDirectMessages && !mediaSizes.isLessThanFloatingLeftSidebar && !hotReloadGuard.appDialogsManager.hasForumOpenFor(this.peerId)
     }, {
       icon: 'select',
       text: 'Chat.Menu.SelectMessages',
@@ -626,46 +621,8 @@ export default class ChatTopbar {
     }, {
       icon: 'forward',
       text: 'ShareContact',
-      onClick: () => {
-        const contactPeerId = this.peerId;
-        showSharingPickerPopup({
-          onSelect: async(chosen) => {
-            const {peerId, monoforumThreadId} = chosen[0];
-            const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
-            if(preparedPaymentResult === PAYMENT_REJECTED) throw new Error();
-
-            const send = () => {
-              this.managers.appMessagesManager.sendContact({peerId, contactPeerId, confirmedPaymentResult: preparedPaymentResult, monoforumThreadId});
-              this.chat.appImManager.setInnerPeer({peerId});
-            };
-
-            if(preparedPaymentResult) return void send();
-
-            return new Promise((resolve, reject) => {
-              showPeerPopup('', {
-                titleLangKey: 'SendMessageTitle',
-                descriptionLangKey: 'SendContactToGroupText',
-                descriptionLangArgs: [new PeerTitle({peerId, dialog: true}).element],
-                buttons: [{
-                  langKey: 'Send',
-                  callback: async() => {
-                    resolve();
-                    send();
-                  }
-                }, {
-                  langKey: 'Cancel',
-                  callback: () => {
-                    reject();
-                  },
-                  isCancel: true
-                }],
-                peerId
-              });
-            });
-          }
-        });
-      },
-      verify: async() => rootScope.myId !== this.peerId && this.peerId.isUser() && (await this.managers.appPeersManager.isContact(this.peerId)) && !!(await this.managers.appUsersManager.getUser(this.peerId.toUserId())).phone
+      onClick: () => shareContact(this.peerId),
+      verify: () => canShareContact(this.peerId)
     }, {
       icon: 'gift',
       text: 'Chat.Menu.SendGift',
@@ -701,7 +658,7 @@ export default class ChatTopbar {
       text: 'Settings',
       onClick: () => {
         // [ ] Bot with paid stars?
-        this.managers.appMessagesManager.sendText({peerId: this.peerId, text: '/settings'});
+        this.managers.appMessagesManager.sendText({peerId: this.peerId, threadId: this.chat.threadId, text: '/settings'});
       },
       verify: async() => {
         try {
@@ -746,11 +703,7 @@ export default class ChatTopbar {
     }, {
       icon: 'lockoff',
       text: 'Unblock',
-      onClick: () => {
-        this.managers.appUsersManager.toggleBlock(this.peerId, false).then(() => {
-          toastNew({langPackKey: 'UserUnblocked'});
-        });
-      },
+      onClick: () => unblockUser(this.peerId),
       verify: async() => {
         const userFull = await this.managers.appProfileManager.getCachedFullUser(this.peerId.toUserId());
         return !!userFull?.pFlags?.blocked;
@@ -760,7 +713,7 @@ export default class ChatTopbar {
       text: 'DisableSharing',
       onClick: () => {
         if(!rootScope.premium) {
-          showPremiumPopup({feature: 'pm_noforwards'});
+          hotReloadGuard.showPremiumPopup({feature: 'pm_noforwards'});
           return;
         }
 
@@ -831,7 +784,7 @@ export default class ChatTopbar {
 
         if(liteMode.isAvailable('animations')) await pause(100);
 
-        this.appSidebarRight.createTab(AppAdminRecentActionsTab).open({
+        this.appSidebarRight.createTab(hotReloadGuard.tabs.AppAdminRecentActionsTab).open({
           channelId: this.peerId.toChatId(),
           isBroadcast: this.chat.isBroadcast
         });
@@ -902,60 +855,20 @@ export default class ChatTopbar {
   }
 
   public addContact() {
-    if(!this.appSidebarRight.isTabExists(AppEditContactTab)) {
-      this.appSidebarRight.createTab(AppEditContactTab).open(this.peerId);
-
-      this.appSidebarRight.toggleSidebar(true);
-    }
+    addContact(this.peerId, this.appSidebarRight);
   }
 
   /** Bot we manage — opens the same tab as the profile's edit button. */
   public editBot() {
-    if(!this.appSidebarRight.isTabExists(AppEditBotTab)) {
-      this.appSidebarRight.createTab(AppEditBotTab).open(this.peerId);
+    if(!this.appSidebarRight.isTabExists(hotReloadGuard.tabs.AppEditBotTab)) {
+      this.appSidebarRight.createTab(hotReloadGuard.tabs.AppEditBotTab).open(this.peerId);
 
       this.appSidebarRight.toggleSidebar(true);
     }
   }
 
-  public async blockUser(showReport?: boolean, showDelete?: boolean, onConfirmed?: (promise: Promise<any>) => void) {
-    const peerId = this.peerId;
-    const checkboxes: PopupPeerCheckboxOptions[] = [
-      showReport && {
-        text: 'DeleteReportSpam',
-        checked: true
-      },
-      showDelete && {
-        text: 'DeleteThisChat',
-        checked: true
-      }
-    ];
-
-    const checked = await confirmationPopup({
-      peerId,
-      titleLangKey: 'BlockUser',
-      descriptionLangKey: 'AreYouSureBlockContact2',
-      descriptionLangArgs: [new PeerTitle({peerId}).element],
-      button: {
-        langKey: 'BlockUser',
-        isDanger: true
-      },
-      checkboxes: checkboxes.filter(Boolean)
-    });
-
-    const [reportSpam, deleteChat] = Array.isArray(checked) ? checked : [];
-
-    const promise = Promise.all([
-      reportSpam && this.managers.appMessagesManager.reportSpam(peerId),
-      deleteChat && this.managers.appMessagesManager.flushHistory({peerId, justClear: false, revoke: true}),
-      this.managers.appUsersManager.toggleBlock(peerId, true)
-    ]);
-
-    onConfirmed?.(promise);
-
-    await promise;
-
-    toastNew({langPackKey: 'UserBlocked'});
+  public blockUser(showReport?: boolean, showDelete?: boolean, onConfirmed?: (promise: Promise<any>) => void) {
+    return blockUserWithConfirmation({peerId: this.peerId, showReport, showDelete, onConfirmed});
   }
 
   public attachClickEvent(el: HTMLElement, cb: (e: MouseEvent) => void, noBlur?: boolean) {
@@ -1073,7 +986,8 @@ export default class ChatTopbar {
       }
 
       const size = folder.unreadUnmutedPeerIds.size;
-      setBadgeContent(this.btnBackBadge, size ? '' + formatNumber(size, 1) : '');
+      // * it is shown on handhelds only (`.back-unread-badge`): elsewhere a roll is for nobody
+      setBadgeCount(this.btnBackBadge, size, formatNumber(size, 1), mediaSizes.isMobile);
       // this.btnBack.classList.remove('tgico-left', 'tgico-previous');
       // this.btnBack.classList.add(size ? 'tgico-previous' : 'tgico-left');
     });
@@ -1212,7 +1126,7 @@ export default class ChatTopbar {
     const chat = this.chat.peer;
     if(chat._ !== 'channel') return;
 
-    appImManager.setInnerPeer({
+    hotReloadGuard.appImManager.setInnerPeer({
       peerId: chat.linked_monoforum_id.toPeerId(true)
     });
   };
@@ -1871,3 +1785,6 @@ export default class ChatTopbar {
     return menu;
   }
 }
+
+// a method edited here takes effect on the open chats' top bars, without a reload (see @helpers/hotRegistry)
+if(import.meta.hot) import.meta.hot.accept();

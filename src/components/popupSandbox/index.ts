@@ -20,10 +20,14 @@
 
 // First import on purpose — see the note in `bootstrapState.ts`.
 import './bootstrapState';
+import type {UpdatePayload} from 'vite';
 import {createSignal} from 'solid-js';
 import {render} from 'solid-js/web';
 import rootScope from '@lib/rootScope';
+import I18n from '@lib/langPack';
 import PopupElementTsx from '@components/popups/indexTsx';
+import appNavigationController, {USE_NAVIGATION_API} from '@components/appNavigationController';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import PopupSandboxPanel from './sandbox';
 import {installSandboxEnvironment, getLiveManagers, getMockManagers, useLiveManagers, useMockManagers} from './environment';
 import {isLiveSession} from './bootstrapState';
@@ -107,10 +111,12 @@ export async function openStory(story: PopupStory) {
 
   setActiveId(story.id);
   // The hash is what brings the story back after a reload — and the sandbox reloads on every edit
-  // (see `watchForEdits`). `replaceState` rather than assigning: no history entry, no `hashchange`.
+  // (see `watchForEdits`). It is the navigation controller's to keep, as the app's own hash is: a
+  // closed popup takes its history entry back, and that entry still holds the story the popup was
+  // opened in — the controller puts the current one back, which a bare `replaceState` it does not
+  // know about would not get.
   if(ownsLocationHash) {
-    const hash = '#' + encodeURIComponent(story.id);
-    if(location.hash !== hash) history.replaceState(null, '', hash);
+    appNavigationController.overrideHash('#' + encodeURIComponent(story.id));
   }
 
   const teardown = await story.open(ctx);
@@ -127,17 +133,23 @@ export async function openStory(story: PopupStory) {
  * comes straight back.
  *
  * CSS is left alone — Vite swaps stylesheets in place and that already works.
+ *
+ * Over a running app (`storiesOnly`) only for an edit a story module takes — the app's own edits stay hot. A story
+ * accepts its own updates (so that a popup's edit stops there), and run again it would leave the panel's rows
+ * holding the previous story and list one the edit removed.
  */
-function watchForEdits() {
+function watchForEdits(storiesOnly?: boolean) {
   if(!import.meta.hot) {
     return;
   }
 
-  import.meta.hot.on('vite:afterUpdate', ({updates}) => {
-    if(updates.some((update) => /\.[jt]sx?($|\?)/.test(update.path))) {
+  const onUpdate = ({updates}: UpdatePayload) => {
+    if(updates.some((update) => /\.[jt]sx?($|\?)/.test(update.path) && (!storiesOnly || update.path.includes('/popupSandbox/stories/')))) {
       location.reload();
     }
-  });
+  };
+  import.meta.hot.on('vite:afterUpdate', onUpdate);
+  return () => import.meta.hot.off('vite:afterUpdate', onUpdate);
 }
 
 /**
@@ -170,6 +182,11 @@ export function setAllowWrites(value: boolean) {
 /** Mounts the panel. `onClose` is what turns it into a closeable overlay over a running app. */
 async function mountPanel(onClose?: () => void) {
   const restoreOnUninstall = await installSandboxEnvironment();
+  // The app's top level, which a popup's <SolidJSHotReloadGuardProvider> hands out — no bootstrapIm registers it
+  // here when the sandbox owns the page or opens over the sign-in screens. Before `ready()` resolves, since a
+  // fixture may open a popup without a story. Not a static import: the sandbox's own modules would then wait for
+  // the whole app's, and so would the service worker's install.
+  await import('@lib/solidjs/hotReloadGuardValue');
 
   const container = document.createElement('div');
   document.body.append(container);
@@ -214,15 +231,40 @@ export function startPopupSandbox() {
 
     // Deep-link straight into a story: ?popups=1#deleteMessages/private. Editing the hash on an
     // open sandbox switches stories too — a same-document hash change never reloads the page.
-    const openFromHash = () => {
+    // A history step lands on whatever story its entry was made in: Back, and the navigation
+    // controller taking back a closed popup's entry — which happens a moment after the next story
+    // has opened, and would put the previous one back over it. Only a hash that is typed switches
+    // stories; the controller restores the current one after its own steps (`overrideHash` above).
+    // Where each pending step lands: other navigations (the next popup's own entry) can come
+    // between a step and its `hashchange`.
+    const traversals: string[] = [];
+    const onNavigate = (event: NavigateEvent) => {
+      // a step to the entry it is on already changes no hash: no `hashchange` comes for it
+      if(event.navigationType !== 'traverse' || event.destination.url === location.href) return;
+      const url = event.destination.url;
+      traversals.push(url);
+      // nor for one the controller cancels (a step forward), once every listener has had it
+      queueMicrotask(() => {
+        if(event.defaultPrevented) indexOfAndSplice(traversals, url);
+      });
+    };
+    const openFromHash = (event?: HashChangeEvent) => {
+      const traversal = event ? traversals.indexOf(event.newURL) : -1;
+      if(traversal !== -1) {
+        traversals.splice(0, traversal + 1);
+        return;
+      }
+
       const story = getStory(decodeURIComponent(location.hash.slice(1)));
       // Closing nested menus can restore the current hash through browser
       // history. It must not reopen the same story the user is closing.
       return story && story.id !== activeId() && openStory(story);
     };
 
+    if(USE_NAVIGATION_API) navigation.addEventListener('navigate', onNavigate);
     window.addEventListener('hashchange', openFromHash);
     closePanel = () => {
+      if(USE_NAVIGATION_API) navigation.removeEventListener('navigate', onNavigate);
       window.removeEventListener('hashchange', openFromHash);
       ownsLocationHash = false;
       close();
@@ -237,11 +279,16 @@ export function showPopupSandbox() {
   // The guard has to be in place before the first await — two calls in the same tick would
   // otherwise both get past it and mount a panel each.
   return showPromise ??= (async() => {
-    const close = await mountPanel(() => {
+    const unwatch = watchForEdits(true);
+    const unmount = await mountPanel(() => {
       showPromise = undefined;
       closePanel = undefined;
       close();
     });
+    const close = () => {
+      unwatch?.();
+      unmount();
+    };
 
     closePanel = close;
   })();
@@ -265,6 +312,8 @@ export const popupSandbox = {
     await openStory(story);
   },
   closePopups: closeAllPopups,
+  /** Lays the stories out right to left or back, for this page only (the panel's select persists). */
+  setDirection: (dir: 'ltr' | 'rtl') => I18n.forceRTL(dir === 'rtl'),
   /** 'fixtures' | 'live' — live needs a signed-in session. */
   setDataSource,
   setAllowWrites,

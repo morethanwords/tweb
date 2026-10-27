@@ -6,7 +6,7 @@ import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage
 import rootScope from '@lib/rootScope';
 import confirmationPopup from '@components/confirmationPopup';
 import {toastNew} from '@components/toast';
-import type {AppSidebarRight} from '@components/sidebarRight';
+import type SidebarSlider from '@components/slider';
 import AppSavedMusicTab from '@components/sidebarRight/tabs/savedMusic';
 
 /**
@@ -15,19 +15,20 @@ import AppSavedMusicTab from '@components/sidebarRight/tabs/savedMusic';
  * there rather than stack another copy on the slider; for a different peer the old one goes once
  * the new has slid in.
  *
- * The slider comes in as an argument because the profile takes its own from the hot-reload guard.
+ * The slider comes in as an argument: a profile opens it in the slider it stands in, the right
+ * sidebar or the profile popup's.
  */
-export function openSavedMusicTab(appSidebarRight: AppSidebarRight, peerId: PeerId) {
-  const prevTab = appSidebarRight.getTab(AppSavedMusicTab);
+export function openSavedMusicTab(slider: SidebarSlider, peerId: PeerId) {
+  const prevTab = slider.getTab(AppSavedMusicTab);
   if(prevTab?.peerId === peerId) {
-    appSidebarRight.toggleSidebar(true);
+    slider.reveal();
     return;
   }
 
-  const tab = appSidebarRight.createTab(AppSavedMusicTab);
+  const tab = slider.createTab(AppSavedMusicTab);
   tab.peerId = peerId;
   tab.open();
-  appSidebarRight.toggleSidebar(true);
+  slider.reveal();
   if(prevTab) {
     setTimeout(() => prevTab.close(), 300);
   }

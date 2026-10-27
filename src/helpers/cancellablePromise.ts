@@ -34,6 +34,14 @@ const deferredHelper = {
       callback(...this.lastNotify);
     }
 
+    // * A finished promise notifies nobody again, and onFinish has already emptied the list: one kept
+    // * now is only a reference to whoever added it. A finished download stays in the download
+    // * manager's cache, and every bubble that redraws its media attached a preloader here - with
+    // * the bubble it belonged to - for as long as the download stayed cached
+    if(this.isFulfilled || this.isRejected) {
+      return;
+    }
+
     (this.listeners ??= []).push(callback);
   },
 

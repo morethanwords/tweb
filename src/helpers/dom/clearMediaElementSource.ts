@@ -13,6 +13,14 @@ export default function clearMediaElementSource(element: HTMLImageElement | HTML
     media.src = '';
   }
 
+  // * An image that never was in the document (a loader for a decode or a canvas) and loses its src
+  // * attribute after loading shows the broken-image fallback, and Chrome keeps such an image alive
+  // * for good - with everything its listeners and properties hold. An empty src does not.
+  if(!isMedia && !element.isConnected) {
+    (element as HTMLImageElement).src = '';
+    return;
+  }
+
   element.removeAttribute('src');
   if(isMedia) {
     try {

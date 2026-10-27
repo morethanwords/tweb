@@ -1,11 +1,24 @@
 import {bindActiveWindowListener} from '@helpers/appWindow';
+import {IS_APPLE} from '@environment/userAgent';
 
 const positionKeyRegexp = /^key[a-zA-Z]$/i;
+const latinLetterRegexp = /^[a-z]$/i;
+const nonLatinLetterRegexp = /^(?!\p{Script=Latin})\p{L}$/u;
 
 function matchNonMetaKey(event: KeyboardEvent, key: string) {
   if(positionKeyRegexp.test(key)) return event.code.toLowerCase() === key.toLowerCase();
 
-  return event.key.toLowerCase() === key.toLowerCase();
+  if(event.key.toLowerCase() === key.toLowerCase()) return true;
+
+  // * a non-Latin layout (Cyrillic, Greek, Hebrew…) types its own letter: Ctrl+F gives 'а' on a Russian one,
+  // * so the letter is read from the key's place, as the browser's own shortcuts do. A Latin layout
+  // * (Dvorak, AZERTY) keeps matching by the letter it types, and a letter that AltGr or the Mac's Option
+  // * typed is text being entered, not a shortcut
+  return latinLetterRegexp.test(key) &&
+    nonLatinLetterRegexp.test(event.key) &&
+    !event.getModifierState('AltGraph') &&
+    !(IS_APPLE && event.altKey) &&
+    event.code.toLowerCase() === 'key' + key.toLowerCase();
 }
 
 function matchComboKey(event: KeyboardEvent, key: string) {

@@ -1,6 +1,5 @@
 import {Component} from 'solid-js';
 import {render} from 'solid-js/web';
-import appDialogsManager from '@lib/appDialogsManager';
 import {FOLDER_ID_ARCHIVE, REAL_FOLDER_ID} from '@appManagers/constants';
 import StoriesList from '@components/stories/list';
 import {AutonomousDialogList} from '@components/autonomousDialogList/dialogs';
@@ -11,13 +10,14 @@ import {i18n} from '@lib/langPack';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import type {AppArchivedTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const ArchivedTab: Component = () => {
   const [tab] = useSuperTab<typeof AppArchivedTab>();
   const promiseCollector = usePromiseCollector();
 
   const filterId: REAL_FOLDER_ID = FOLDER_ID_ARCHIVE;
-  const wasFilterId = appDialogsManager.filterId;
+  const wasFilterId = hotReloadGuard.appDialogsManager.filterId;
 
   let disposeStories: () => void;
   let resizeStoriesContainer: () => void;
@@ -58,13 +58,13 @@ const ArchivedTab: Component = () => {
   // вообще, так делать нельзя, но нет времени чтобы переделать главный чатлист на слайд...
   (tab as any)._onOpenAfterTimeout = () => {
     renderStories();
-    appDialogsManager.xds[wasFilterId].clear();
+    hotReloadGuard.appDialogsManager.xds[wasFilterId].clear();
   };
 
   (tab as any)._onClose = () => {
-    delete appDialogsManager.xds[filterId];
+    delete hotReloadGuard.appDialogsManager.xds[filterId];
     tab.scrollable.onAdditionalScroll = undefined;
-    appDialogsManager.setFilterIdAndChangeTab(wasFilterId);
+    hotReloadGuard.appDialogsManager.setFilterIdAndChangeTab(wasFilterId);
   };
 
   (tab as any)._onCloseAfterTimeout = () => {
@@ -83,8 +83,8 @@ const ArchivedTab: Component = () => {
 
   appendMenu();
 
-  if(!appDialogsManager.xds[filterId]) {
-    const {ul, scrollable} = appDialogsManager.l({
+  if(!hotReloadGuard.appDialogsManager.xds[filterId]) {
+    const {ul, scrollable} = hotReloadGuard.appDialogsManager.l({
       title: undefined,
       id: filterId,
       localId: FOLDER_ID_ARCHIVE
@@ -92,7 +92,7 @@ const ArchivedTab: Component = () => {
     scrollable.append(ul);
   }
 
-  autonomousDialogList = appDialogsManager.xds[filterId];
+  autonomousDialogList = hotReloadGuard.appDialogsManager.xds[filterId];
 
   const storiesListContainer = document.createElement('div');
   storiesListContainer.classList.add('stories-list');
@@ -105,7 +105,7 @@ const ArchivedTab: Component = () => {
   // ! DO NOT UNCOMMENT NEXT LINE - chats will stop loading on scroll after closing the tab
   // tab.scrollable = scrollable;
 
-  promiseCollector.collect(appDialogsManager.setFilterIdAndChangeTab(filterId).then((/* {cached, renderPromise} */) => {
+  promiseCollector.collect(hotReloadGuard.appDialogsManager.setFilterIdAndChangeTab(filterId).then((/* {cached, renderPromise} */) => {
     // if(cached) {
     //   return renderPromise;
     // }

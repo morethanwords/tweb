@@ -31,6 +31,7 @@ import {
   useAiComposerPromptInput,
   useAiComposerPromptMaxLength
 } from './composerParts';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 
 export const StyleTab = () => {
@@ -75,9 +76,10 @@ export const StyleTab = () => {
   const maxSavedTones = useMaxSavedTones();
 
   const scrollableSize = hasArrows ? useElementSize(tonesListEl) : {width: 0, height: 0};
-  const scrollLeft = hasArrows ? useScrollPosition(tonesListEl, 'x') : () => 0;
-  const isScrolledLeft = () => scrollLeft() <= 1;
-  const isScrolledRight = () => !tonesListEl() || tonesListEl().scrollWidth - scrollLeft() - scrollableSize.width <= 1;
+  // * the distance from the row's inline start: the right edge in RTL
+  const scrollFromStart = hasArrows ? useScrollPosition(tonesListEl, 'x') : () => 0;
+  const isScrolledToStart = () => scrollFromStart() <= 1;
+  const isScrolledToEnd = () => !tonesListEl() || tonesListEl().scrollWidth - scrollFromStart() - scrollableSize.width <= 1;
 
   const selectedToneAuthorId = createMemo(() => {
     const tone = selectedTone();
@@ -237,16 +239,16 @@ export const StyleTab = () => {
         {hasArrows && (
           <>
             <IconTsx
-              class={classNames(styles.sectionArrow, styles.sectionArrowLeft)}
+              class={classNames(styles.sectionArrow, styles.sectionArrowStart)}
               classList={{
-                [styles.hidden]: isScrolledLeft()
+                [styles.hidden]: isScrolledToStart()
               }}
               icon='arrowhead'
             />
             <IconTsx
-              class={classNames(styles.sectionArrow, styles.sectionArrowRight)}
+              class={classNames(styles.sectionArrow, styles.sectionArrowEnd)}
               classList={{
-                [styles.hidden]: isScrolledRight()
+                [styles.hidden]: isScrolledToEnd()
               }}
               icon='arrowhead'
             />
@@ -380,6 +382,7 @@ const useShareTone = ({tone}: UseShareToneArgs) => {
   return () => {
     showSharingPickerPopup({
       onSelect: async([peer]) => {
+        const managers = bindManagersToSession(rootScope.managers);
         if(!peer) return;
 
         const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({
@@ -390,7 +393,7 @@ const useShareTone = ({tone}: UseShareToneArgs) => {
         if(preparedPaymentResult === PaidMessagesInterceptor.PaymentRejectedSymbol) throw new Error();
 
         const link = 'https://t.me/addstyle/' + tone.slug;
-        rootScope.managers.appMessagesManager.sendText({
+        managers.appMessagesManager.sendText({
           peerId: peer.peerId,
           threadId: peer.threadId,
           replyToMonoforumPeerId: peer.monoforumThreadId,
@@ -416,9 +419,10 @@ const useDeleteTone = ({
   const {rootScope, toastNew, confirmationPopup} = useHotReloadGuard();
 
   return async() => {
+    const managers = bindManagersToSession(rootScope.managers);
     try {
       if(isSaved) {
-        await rootScope.managers.aiTonesManager.removeSavedTone(tone.id);
+        await managers.aiTonesManager.removeSavedTone(tone.id);
       } else {
         try {
           await confirmationPopup({
@@ -429,7 +433,7 @@ const useDeleteTone = ({
         } catch{
           return;
         }
-        await rootScope.managers.aiTonesManager.deleteTone(tone.id.toString());
+        await managers.aiTonesManager.deleteTone(tone.id.toString());
       }
 
       setTones(prev => prev.filter(t => t._ !== 'aiComposeTone' || t.id !== tone.id))

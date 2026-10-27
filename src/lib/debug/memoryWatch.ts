@@ -13,16 +13,28 @@
  * started. Point the snapshot at the suspect afterwards, early, while the heap is still small
  * enough to serialise.
  *
+ * Off unless asked for - by ?memoryWatch=1 in the URL, which a reload or a restored tab keeps, or by
+ * memoryWatch() in the console, which stays on for the origin until stopped. Each sample also says
+ * what the tab was doing (`ctx.*`), and the records the threads set in between - with what they held
+ * at that moment (see createPeakRecorder) - are kept beside the samples. downloadLogs() carries both,
+ * interleaved with the logs.
+ *
  * Console API (main thread only): memoryWatch(minutes) to start, memoryWatchSummary() to read what
  * moved, downloadMemoryWatch() to hand the samples over, memoryWatchStop() / clearMemoryWatch().
  */
 
 import {MOUNT_CLASS_TO} from '@config/debug';
+import Modes from '@config/modes';
 import createDownloadAnchor from '@helpers/dom/createDownloadAnchor';
+import {LogTypes} from '@lib/logger';
+import type {MemoryEvent} from './memoryStats';
+import type {LogEntry} from './logsBuffer';
 import memoryReport, {MemoryMetrics} from './memoryReport';
 
 const CONFIG_KEY = 'memory_watch';
 const LOG_KEY = 'memory_watch_log';
+const EVENTS_KEY = 'memory_watch_events';
+const MAX_EVENTS = 200;
 const DEFAULT_INTERVAL_MINUTES = 15;
 // * The app keeps its own state in localStorage, so a diagnostic must not be the reason a write of
 // * that state fails. Trimming by SIZE rather than by sample count is what bounds it: the oldest
@@ -32,6 +44,8 @@ const DEFAULT_INTERVAL_MINUTES = 15;
 const MAX_BYTES = 256 * 1024;
 // * a visibility change should not be able to spam samples on a tab the user keeps switching to
 const MIN_SAMPLE_GAP = 30 * 1000;
+// * started by the URL flag, the first sample waits for the app to be up - its workers answer the report
+const FLAG_FIRST_SAMPLE_DELAY = 60 * 1000;
 
 type WatchConfig = {intervalMinutes: number, startedAt: number};
 type WatchSample = {t: number, m: MemoryMetrics};
@@ -41,6 +55,7 @@ type WatchSample = {t: number, m: MemoryMetrics};
 type WatchLog = {v: 1, keys: string[], rows: number[][]};
 
 let interval: number;
+let firstSampleTimeout: number;
 let lastSampleAt = 0;
 let sampling = false;
 
@@ -102,13 +117,53 @@ function writeLog(log: WatchLog) {
   }
 }
 
+// * What the tab was doing, as numbers so they line up with the rest. `ctx.document` tells the tabs of
+// * one origin apart - they all write into the same log
+function readContext(): MemoryMetrics {
+  const peerId = (MOUNT_CLASS_TO as any).appImManager?.chat?.peerId;
+  return {
+    'ctx.document': Math.round(performance.timeOrigin / 1000),
+    'ctx.visible': document.visibilityState === 'visible' ? 1 : 0,
+    // * 1 a user or a bot, 2 a group or a channel, 0 no conversation
+    'ctx.chat': !peerId ? 0 : peerId > 0 ? 1 : 2,
+    'ctx.popups': document.querySelectorAll('.popup.active').length,
+    'ctx.emojiPanel': document.querySelector('.emoji-dropdown.active') ? 1 : 0
+  };
+}
+
+function readEvents(): MemoryEvent[] {
+  const events = readJSON<MemoryEvent[]>(EVENTS_KEY);
+  return Array.isArray(events) ? events : [];
+}
+
+// * A SharedWorker reports the same records to every tab and every sample: keep each once
+function saveEvents(events: MemoryEvent[]) {
+  if(!events?.length) {
+    return;
+  }
+
+  const saved = readEvents();
+  const seen = new Set(saved.map(({t, thread, name}) => `${t}|${thread}|${name}`));
+  const fresh = events.filter(({t, thread, name}) => !seen.has(`${t}|${thread}|${name}`));
+  if(!fresh.length) {
+    return;
+  }
+
+  try {
+    localStorage.setItem(EVENTS_KEY, JSON.stringify(saved.concat(fresh).slice(-MAX_EVENTS)));
+  } catch(e) {
+    console.error('[memoryWatch] cannot persist records', e);
+  }
+}
+
 async function sample(reason: string) {
   if(sampling) return;
   sampling = true;
   try {
     const report = await memoryReport({quiet: true});
     // * a report without metrics would otherwise throw below on a key an earlier sample recorded
-    const metrics = report.metrics || {};
+    const metrics = {...report.metrics, ...readContext()};
+    saveEvents(report.events);
     const log = readRaw();
     for(const key in metrics) {
       if(!log.keys.includes(key)) log.keys.push(key);
@@ -137,23 +192,30 @@ function onVisibilityChange() {
   sample('visibilitychange');
 }
 
-function start(intervalMinutes = DEFAULT_INTERVAL_MINUTES) {
+// * `byFlag`: started by ?memoryWatch=1 - the URL is what keeps it going, so nothing is persisted
+function start(intervalMinutes = DEFAULT_INTERVAL_MINUTES, byFlag?: boolean) {
   stopTimer();
 
-  // * keep the original start time across reloads - it dates the series, and a resumed watch is
-  // * still the same observation
-  const previous = readJSON<WatchConfig>(CONFIG_KEY);
-  const config: WatchConfig = {intervalMinutes, startedAt: previous?.startedAt || Date.now()};
-  try {
-    localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
-  } catch(e) {
-    console.error('[memoryWatch] cannot persist the config - the watch will not survive a reload', e);
+  if(!byFlag) {
+    // * keep the original start time across reloads - it dates the series, and a resumed watch is
+    // * still the same observation
+    const previous = readJSON<WatchConfig>(CONFIG_KEY);
+    const config: WatchConfig = {intervalMinutes, startedAt: previous?.startedAt || Date.now()};
+    try {
+      localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+    } catch(e) {
+      console.error('[memoryWatch] cannot persist the config - the watch will not survive a reload', e);
+    }
   }
 
   interval = window.setInterval(() => sample('interval'), intervalMinutes * 60 * 1000);
   document.addEventListener('visibilitychange', onVisibilityChange);
-  sample('start');
+  if(byFlag) {
+    firstSampleTimeout = window.setTimeout(() => sample('start'), FLAG_FIRST_SAMPLE_DELAY);
+    return;
+  }
 
+  sample('start');
   console.log(
     `[memoryWatch] sampling every ${intervalMinutes} min into localStorage['${LOG_KEY}']. ` +
     'It survives a reload and a renderer crash. memoryWatchSummary() to read it.'
@@ -165,6 +227,9 @@ function stopTimer() {
     clearInterval(interval);
     interval = undefined;
   }
+
+  clearTimeout(firstSampleTimeout);
+  firstSampleTimeout = undefined;
 
   document.removeEventListener('visibilitychange', onVisibilityChange);
 }
@@ -188,7 +253,8 @@ function summary() {
 
   const first = log[0], last = log[log.length - 1];
   const rows: Record<string, any> = {};
-  const keys = new Set([...Object.keys(first.m || {}), ...Object.keys(last.m || {})]);
+  // * what the tab was doing is not something that grows
+  const keys = new Set([...Object.keys(first.m || {}), ...Object.keys(last.m || {})].filter((key) => !key.startsWith('ctx.')));
   const growth: [string, number][] = [];
   for(const key of keys) {
     const from = first.m?.[key] ?? 0;
@@ -209,6 +275,13 @@ function summary() {
     `(${new Date(first.t).toLocaleString()} -> ${new Date(last.t).toLocaleString()}), biggest growth first:`
   );
   console.table(ordered);
+
+  const events = readEvents();
+  if(events.length) {
+    console.log('[memoryWatch] records the threads set, with what they held at that moment:');
+    console.table(events.map(({t, thread, name, value, details}) => ({at: new Date(t).toLocaleString(), thread, name, value, ...details})));
+  }
+
   return ordered;
 }
 
@@ -217,9 +290,13 @@ async function download(filename?: string) {
   // * dynamic, like mountLogExport does it: exportLogs statically imports apiManagerProxy, and that
   // * import must not be reachable from a module a worker bundle might pull in
   const {buildExportMeta} = await import('./exportLogs');
-  const meta = buildExportMeta(log.length, {watch: readJSON<WatchConfig>(CONFIG_KEY)});
+  const events = readEvents();
+  const meta = buildExportMeta(log.length, {watch: readJSON<WatchConfig>(CONFIG_KEY), events: events.length});
 
-  const payload = [JSON.stringify(meta)].concat(log.map((entry) => JSON.stringify(entry))).join('\n');
+  // * the records after the samples, one per line too: {t, e: {thread, name, value, details}}
+  const lines = log.map((entry) => JSON.stringify(entry))
+  .concat(events.map((event) => JSON.stringify({t: event.t, e: event})));
+  const payload = [JSON.stringify(meta)].concat(lines).join('\n');
   const url = URL.createObjectURL(new Blob([payload], {type: 'application/x-ndjson'}));
   const name = filename || `tweb-memory-${new Date().toISOString().replace(/[:.]/g, '-')}.ndjson`;
   createDownloadAnchor(url, name, () => setTimeout(() => URL.revokeObjectURL(url), 10000));
@@ -228,8 +305,17 @@ async function download(filename?: string) {
 function clear() {
   try {
     localStorage.removeItem(LOG_KEY);
+    localStorage.removeItem(EVENTS_KEY);
   } catch(e) {}
   console.log('[memoryWatch] samples dropped.');
+}
+
+// * For downloadLogs(): the samples and the records as log entries, so a memory jump reads in line
+// * with what the app was logging around it
+export function getMemoryLogEntries(): LogEntry[] {
+  const samples = readLog().map(({t, m}): LogEntry => ({t, src: 'memory', level: LogTypes.Log, prefix: '[memory]', args: [m]}));
+  const records = readEvents().map((event): LogEntry => ({t: event.t, src: 'memory', level: LogTypes.Log, prefix: '[memory record]', args: [event]}));
+  return samples.concat(records);
 }
 
 if(MOUNT_CLASS_TO) {
@@ -245,5 +331,7 @@ if(MOUNT_CLASS_TO) {
   const config = readJSON<WatchConfig>(CONFIG_KEY);
   if(config?.intervalMinutes) {
     start(config.intervalMinutes);
+  } else if(Modes.memoryWatch) {
+    start(DEFAULT_INTERVAL_MINUTES, true);
   }
 }

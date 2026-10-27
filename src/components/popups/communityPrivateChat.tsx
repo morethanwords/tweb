@@ -4,10 +4,10 @@ import {IconTsx} from '@components/iconTsx';
 import MediaHeader from '@components/mediaHeader';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
-import appImManager from '@lib/appImManager';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {i18n} from '@lib/langPack';
 import styles from '@components/popups/communityPrivateChat.module.scss';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export default function showCommunityPrivateChat(options: {
   peerId: PeerId,
@@ -93,7 +93,7 @@ export default function showCommunityPrivateChat(options: {
             color="secondary"
             langKey={kind() === 'channel' ? 'OpenChannel2' : 'OpenChat'}
             callback={() => {
-              void appImManager.setInnerPeer({peerId: options.peerId});
+              void hotReloadGuard.appImManager.setInnerPeer({peerId: options.peerId});
             }}
           />
         </Show>
@@ -101,7 +101,7 @@ export default function showCommunityPrivateChat(options: {
           disabled={!options.requestedByPeerId}
           callback={() => {
             if(options.requestedByPeerId) {
-              void appImManager.setInnerPeer({
+              void hotReloadGuard.appImManager.setInnerPeer({
                 peerId: options.requestedByPeerId
               });
             }

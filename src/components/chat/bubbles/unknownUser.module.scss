@@ -113,6 +113,11 @@
 
       .stacked-avatars-avatar-container:not(.is-last) .avatar {
         clip-path: path("M 8.999 -0.329 a 9 9 0 1 1 -4.11 17.006 a 10.22 10.22 0 0 0 3.856 -8.006 c 0 -3.24 -1.507 -6.13 -3.856 -8.006 A 8.96 8.96 0 0 1 8.999 -0.33");
+
+        // * the next avatar overlaps from the other side: the bite is mirrored (the picture is not)
+        :global(.is-rtl) & {
+          clip-path: path("M 9.001 -0.329 a 9 9 0 1 0 4.11 17.006 a 10.22 10.22 0 0 1 -3.856 -8.006 c 0 -3.24 1.507 -6.13 3.856 -8.006 A 8.96 8.96 0 0 0 9.001 -0.33");
+        }
       }
     }
   }

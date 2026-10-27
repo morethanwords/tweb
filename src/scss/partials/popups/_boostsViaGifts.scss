@@ -112,18 +112,22 @@
         --background-offset: 11px;
         display: inline-flex;
         vertical-align: middle;
-        margin-inline-start: -.25rem;
+        // * the pile is drawn left to right (`dir="ltr"`), so its own inline start is the left
+        margin-left: -.25rem;
+
+        :where(.is-rtl) & {
+          margin-left: 0;
+          margin-right: -.25rem;
+        }
       }
     }
   }
 
   .sidebar-left-section {
-    --link-color: var(--primary-color);
-
     &-name-right {
       height: 0;
       margin-top: -3px;
-      margin-right: -8px;
+      margin-inline-end: -8px;
     }
   }
 

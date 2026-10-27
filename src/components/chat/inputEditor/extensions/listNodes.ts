@@ -1,6 +1,5 @@
 import {Extension, NodeViewRendererProps, getRenderedAttributes, wrappingInputRule} from '@tiptap/core';
 import {ListItem, TaskItem, TaskList} from '@tiptap/extension-list';
-import {inputRegex as taskItemInputRegex} from '@tiptap/extension-list/task-item';
 import type {Node as ProseMirrorNode} from '@tiptap/pm/model';
 import {createComponent, createSignal} from 'solid-js';
 import {render} from 'solid-js/web';
@@ -10,6 +9,7 @@ import {deleteEmptyNonTerminalListItem, joinListItemParagraphBackward} from '@co
 import classNames from '@helpers/string/classNames';
 import I18n from '@lib/langPack';
 import {setElementAttributes} from '@components/chat/inputEditor/extensions/nodeViewHelpers';
+import {TASK_ITEM_INPUT_REGEXP} from '@components/chat/inputEditor/blockMarkers';
 
 function checkboxListItemNodeView(
   props: NodeViewRendererProps,
@@ -153,7 +153,7 @@ export const ChatTaskList = TaskList.configure({
 export const ChatTaskItem = TaskItem.extend({
   addInputRules() {
     return [wrappingInputRule({
-      find: new RegExp(taskItemInputRegex.source, 'i'),
+      find: TASK_ITEM_INPUT_REGEXP,
       type: this.type,
       getAttributes: (match) => ({checked: match[match.length - 1]?.toLowerCase() === 'x'})
     })];

@@ -1,8 +1,6 @@
 import Badge from '@components/badge';
 import Tabs from '@components/tabs';
-import wrapFolderTitle from '@components/wrappers/folderTitle';
-import documentFragmentToNodes from '@helpers/dom/documentFragmentToNodes';
-import createMiddleware from '@helpers/solid/createMiddleware';
+import FolderTitleTsx from '@components/folderTitleTsx';
 import {FOLDER_ID_ALL} from '@lib/appManagers/constants';
 import {i18n} from '@lib/langPack';
 import useFolders from '@stores/folders';
@@ -21,29 +19,22 @@ export default function FoldersTabs(props: {
         return i18n('FilterAllChatsShort');
       }
 
-      const fragment = wrapFolderTitle(
-        item.filter.title,
-        createMiddleware().get(),
-        true,
-        {textColor: 'secondary-text-color'}
-      );
-      return documentFragmentToNodes(fragment);
+      return <FolderTitleTsx title={item.filter.title} textColor="secondary-text-color" />;
     };
 
     return (
       <Tabs.MenuTab
         ref={(ref) => ref.dataset.filterId = '' + item.filter.id}
       >
-        <span class="text-super">
+        <span class="text-super" dir="auto">
           {title()}
         </span>
         <Badge
           tag="div"
           size={20}
           color={item.notifications.muted ? 'gray' : 'primary'}
-        >
-          {item.notifications.count}
-        </Badge>
+          count={item.notifications.count}
+        />
       </Tabs.MenuTab>
     );
   };

@@ -1,5 +1,13 @@
 import {expect} from '@playwright/test';
+import {readFileSync} from 'fs';
+import {resolve} from 'path';
 import {test} from './workerContext';
+
+// Roboto Serif and Merriweather are shipped only with `$serif-fonts` on (src/scss/variables.scss)
+const SERIF_FONTS = /\$serif-fonts:\s*true\b/.test(
+  readFileSync(resolve(__dirname, '..', 'src', 'scss', 'variables.scss'), 'utf8')
+);
+const SERIF_FAMILIES = ['Roboto Serif', 'Merriweather'];
 
 for(const options of [
   {fontSize: 16, width: 400, rtl: false, legacyHeadings: false},
@@ -17,7 +25,7 @@ for(const options of [
   await page.getByRole('button', {name: '◂ Hide', exact: true}).click();
   const selectors = await page.evaluate(async options => {
     const path = '/e2e/fixtures/richTextStyles.ts';
-    const {mountRichTextStyles} = await import(/* @vite-ignore */ path);
+    const {mountRichTextStyles} = await window.e2eImport(path);
     return mountRichTextStyles(options).selectors as Record<string, string>;
   }, options);
   await expect.poll(() => page.evaluate(() => [...document.fonts]
@@ -58,6 +66,7 @@ for(const options of [
 });
 
 test('Roboto Serif retains language ranges in compiled CSS and loads Cyrillic', async({page}) => {
+  test.skip(!SERIF_FONTS, '$serif-fonts is off');
   await page.goto('/?popups=1');
   await page.waitForFunction(() => !!window.popupSandbox);
   const result = await page.evaluate(async() => {
@@ -68,4 +77,31 @@ test('Roboto Serif retains language ranges in compiled CSS and loads Cyrillic', 
   expect(result.ranges).toHaveLength(18);
   expect(result.ranges).not.toContain('U+0-10FFFF');
   expect(result.loaded.some(range => /U\+0?400-0?45F/i.test(range))).toBe(true);
+});
+
+test('with $serif-fonts off, neither serif web font is shipped', async({page}) => {
+  test.skip(SERIF_FONTS, '$serif-fonts is on');
+  await page.goto('/?popups=1');
+  await page.waitForFunction(() => !!window.popupSandbox);
+  expect(await page.evaluate((families) => [...document.fonts]
+  .map((font) => font.family.replace(/"/g, ''))
+  .filter((family) => families.includes(family)), SERIF_FAMILIES)).toEqual([]);
+  // and nothing stands in for them: italic text and headings are in the app's own font, as before
+  // the serif fonts, rather than in a system serif that reads as the fonts turned off
+  expect(await page.evaluate(() => {
+    const em = document.createElement('em');
+    em.textContent = 'italic';
+    document.body.append(em);
+    const style = getComputedStyle(document.documentElement);
+    const fonts = {
+      italic: getComputedStyle(em).fontFamily,
+      heading: style.getPropertyValue('--font-heading').trim(),
+      regular: style.getPropertyValue('--font-regular').trim()
+    };
+    em.remove();
+    return fonts;
+  })).toEqual(expect.objectContaining({
+    italic: expect.stringMatching(/^"?Roboto"?,/),
+    heading: expect.stringMatching(/^"?Roboto"?,/)
+  }));
 });

@@ -1,0 +1,54 @@
+.popup {
+  --popup-width: 23.5rem;
+}
+
+.body {
+  padding: 0 1rem;
+}
+
+// a member's disc wears the accent, an admin's and the owner's their tag's colour
+.logo {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  color: var(--member-tag-color, var(--primary-color));
+  background-color: currentColor;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.75rem;
+
+  > :global(.tgico) {
+    color: #fff;
+  }
+}
+
+// the tag as it stands in the text: an admin's and the owner's on their pill, a member's grey
+.tag {
+  color: var(--member-tag-color, var(--secondary-text-color));
+  font-weight: var(--font-weight-normal);
+  unicode-bidi: isolate;
+}
+
+.previews {
+  display: flex;
+  gap: .5rem;
+  margin-top: 1rem;
+}
+
+.preview {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.footer {
+  flex-direction: column;
+}
+
+.adminsOnly {
+  padding-bottom: .75rem;
+  text-align: center;
+  font-size: var(--font-size-14);
+  line-height: var(--line-height-14);
+  color: var(--secondary-text-color);
+}

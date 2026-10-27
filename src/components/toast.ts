@@ -2,6 +2,7 @@ import replaceContent from '@helpers/dom/replaceContent';
 import OverlayClickHandler from '@helpers/overlayClickHandler';
 import {getOverlayRoot} from '@helpers/appWindow';
 import {FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
+import {hotListen} from '@helpers/hotModule';
 
 const toastsContainer = document.createElement('div');
 toastsContainer.classList.add('toasts-container');
@@ -15,7 +16,7 @@ let timeout: number;
 
 // a click anywhere hides the toast; a keyboard press still reaches its control
 const x = new OverlayClickHandler('toast', false, true);
-x.addEventListener('toggle', (open) => {
+hotListen(import.meta.hot, x, 'toggle', (open: boolean) => {
   if(!open) {
     hideToast();
   }

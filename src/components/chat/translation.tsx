@@ -11,7 +11,6 @@ import usePremium from '@stores/premium';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import Icon from '@components/icon';
 import showPickUserPopup from '@components/popups/pickUser';
-import showPremiumPopup from '@components/popups/premium';
 import RowTsx from '@components/rowTsx';
 import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import Chat from '@components/chat/chat';
@@ -21,6 +20,7 @@ import {toastNew} from '@components/toast';
 import {usePeer} from '@stores/peers';
 import {Chat as MTChat} from '@layer';
 import TopbarPlate, {createTopbarPlate, TopbarPlateController} from '@components/chat/topbarPlate';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export function pickLanguage<T extends boolean>(
   multi?: T,
@@ -39,7 +39,7 @@ export function pickLanguage<T extends boolean>(
   const popup = showPickUserPopup({
     peerType: ['custom'],
     renderResultsFunc: (iso2s) => {
-      const middleware = popup.selector.middlewareHelperLoader.get();
+      const middleware = popup.selector.getRowsMiddleware();
       iso2s.forEach((iso2) => {
         const [name, translated] = map.get(iso2 as any as string);
         const checkbox = multi ? popup.selector.checkbox(popup.selector.selected.has(iso2)) : undefined;
@@ -172,7 +172,7 @@ function TranslationPlateBody(props: {
         onClick={() => {
           const translation = peerTranslation();
           if(!translation.canTranslate()) {
-            showPremiumPopup({feature: 'translations'});
+            hotReloadGuard.showPremiumPopup({feature: 'translations'});
             return;
           }
           translation.toggle(!translation.enabled());

@@ -80,7 +80,7 @@
         transform: translateY(-50%);
         opacity: 1;
 
-        @include animation-level(2) {
+        @include animation-level(1) {
           transition: opacity var(--transition-standard-in);
         }
       }

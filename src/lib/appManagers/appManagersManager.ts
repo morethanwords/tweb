@@ -152,13 +152,17 @@ export class AppManagersManager {
     });
 
     rootScope.addEventListener('account_logged_in', async({accountNumber, userId}) => {
-      for(let i = 1; i < accountNumber; i++) {
-        const otherAccountNumber = i as ActiveAccountNumber;
-        const accountData = await AccountController.get(otherAccountNumber);
-        if(accountData.userId === userId) {
-          const managersByAccount = await this.getManagersByAccount();
-          managersByAccount[accountNumber].apiManager.logOut(otherAccountNumber);
-        }
+      // * a new account goes to the first free slot, and Web A leaves gaps: the same one may be after it
+      const existing = (await AccountController.getAccounts()).find(([otherAccountNumber, accountData]) => {
+        return otherAccountNumber !== accountNumber && accountData.userId === userId;
+      });
+      if(existing) {
+        const [otherAccountNumber] = existing;
+        const managersByAccount = await this.getManagersByAccount();
+        // * the slots after the one signed out move down by one
+        managersByAccount[accountNumber].apiManager.logOut(
+          (otherAccountNumber > accountNumber ? otherAccountNumber - 1 : otherAccountNumber) as ActiveAccountNumber
+        );
       }
     });
 

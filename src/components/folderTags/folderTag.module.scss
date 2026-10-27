@@ -1,0 +1,60 @@
+// * `layout.ts` measures a tag off these: keep its font, padding and emoji size in step
+
+.tag {
+  --custom-emoji-size: .8125rem;
+  --folder-tag-background-alpha: .1;
+
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  height: 1rem;
+  padding-inline: .3125rem;
+  border-radius: .25rem;
+  white-space: nowrap;
+
+  font-size: var(--font-size-11);
+  font-weight: var(--font-weight-bold);
+  line-height: 1rem;
+  text-transform: uppercase;
+
+  color: rgb(var(--folder-tag-color-rgb));
+  background-color: rgba(var(--folder-tag-color-rgb), var(--folder-tag-background-alpha));
+
+  :global(.night) & {
+    --folder-tag-background-alpha: .2;
+  }
+
+  // * the peer colours are what every client tags with, and some of them read poorly as text this
+  // * small; with the stronger contrast asked for, the text leans towards the theme's own
+  :global(.high-contrast) & {
+    color: color-mix(in srgb, rgb(var(--folder-tag-color-rgb)) 65%, var(--primary-text-color));
+  }
+
+  // * an emoji is a square the size of a custom one, however it is drawn - which is what lets a tag
+  // * be measured without being laid out
+  :global(.emoji) {
+    display: inline-block !important;
+    width: var(--custom-emoji-size);
+    height: var(--custom-emoji-size);
+    margin: 0 !important;
+    font-size: var(--custom-emoji-size);
+    line-height: 1 !important;
+    text-align: center;
+    vertical-align: middle;
+  }
+}
+
+.dot {
+  display: block;
+  width: .75rem;
+  height: .75rem;
+  border-radius: 50%;
+  background-color: rgb(var(--folder-tag-color-rgb));
+}
+
+// * the peer colours, as the server has them for the theme (`setPeerColors`) - FOLDER_TAG_COLORS_COUNT
+@for $i from 0 through 6 {
+  .color#{$i} {
+    --folder-tag-color-rgb: var(--peer-#{$i}-color-rgb);
+  }
+}

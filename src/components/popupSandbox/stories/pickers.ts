@@ -26,6 +26,20 @@ defineStories('Pickers', [
     }
   },
   {
+    id: 'timePicker',
+    title: 'Time picker — business hours',
+    open: async(ctx) => {
+      const {default: showTimePickerPopup} = await import('@components/popups/timePicker');
+      showTimePickerPopup({
+        titleLangKey: 'BusinessHoursDayOpenHourPicker',
+        value: 9 * 60,
+        min: 0,
+        max: 24 * 60 - 1,
+        onPick: noop
+      });
+    }
+  },
+  {
     id: 'scheduleSending',
     title: 'Schedule message',
     open: async(ctx) => {
@@ -110,6 +124,14 @@ defineStories('Pickers', [
     }
   },
   {
+    id: 'createContact/shared',
+    title: 'New contact — from a shared contact',
+    open: async() => {
+      const {default: showCreateContactPopup} = await import('@components/popups/createContact');
+      showCreateContactPopup({firstName: 'Johnny', lastName: 'Appleseed', phone: '+1 555 010 0100'});
+    }
+  },
+  {
     id: 'createPoll',
     title: 'New poll',
     open: async(ctx) => {
@@ -155,6 +177,19 @@ defineStories('Pickers', [
     }
   },
   {
+    id: 'forward/story',
+    title: 'Share a story',
+    open: async(ctx) => {
+      const {default: showForwardPopup} = await import('@components/popups/forward');
+      const peerId = ctx.peer('channel');
+      await showForwardPopup(undefined, undefined, undefined, undefined, {
+        peerId,
+        id: 1,
+        link: 'https://t.me/telegram/s/1'
+      });
+    }
+  },
+  {
     id: 'shareUrl',
     title: 'Share a link',
     open: async(ctx) => {
@@ -185,3 +220,7 @@ defineStories('Pickers', [
     }
   }
 ]);
+
+// The sandbox reloads on an edit anyway (watchForEdits). Accepting here keeps an edit of a popup this story imports
+// from climbing through the story to the app's root once the sandbox has been opened on the dev server.
+if(import.meta.hot) import.meta.hot.accept();

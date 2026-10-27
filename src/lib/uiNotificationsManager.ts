@@ -1,4 +1,5 @@
 import type {PushNotificationObject} from '@lib/serviceWorker/push';
+import {MOUNT_CLASS_TO} from '@config/debug';
 import getPeerTitle from '@components/wrappers/getPeerTitle';
 import wrapMessageForReply from '@components/wrappers/messageForReply';
 import {FontFamily} from '@config/font';
@@ -19,15 +20,14 @@ import {logger} from '@lib/logger';
 import LazyLoadQueueBase from '@components/lazyLoadQueueBase';
 import webPushApiManager from '@lib/webPushApiManager';
 import rootScope, {BroadcastEvents} from '@lib/rootScope';
-import appImManager from '@lib/appImManager';
-import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
+import {getAccountSwitchingTo, getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 import limitSymbols from '@helpers/string/limitSymbols';
 import apiManagerProxy, {NotificationBuildTaskPayload, NotificationBuildStoryTaskPayload, NotificationBuildStoryReactionTaskPayload} from '@lib/apiManagerProxy';
 import commonStateStorage from '@lib/commonStateStorage';
 import type {ActiveAccountNumber} from '@lib/accounts/types';
-import {createProxiedManagersForAccount, ProxiedManagers} from '@lib/getProxiedManagers';
+import {createProxiedManagersForAccount} from '@lib/getProxiedManagers';
+import type {AppManagers} from '@lib/managers';
 import AccountController from '@lib/accounts/accountController';
-import {createAppURLForAccount} from '@lib/accounts/createAppURLForAccount';
 import createNotificationImage from '@helpers/createNotificationImage';
 import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 import {FOLDER_ID_ALL} from '@appManagers/constants';
@@ -38,6 +38,8 @@ import {unwrap} from 'solid-js/store';
 import AudioAssetPlayer from '@helpers/audioAssetPlayer';
 import {createEffect, createRoot, on} from 'solid-js';
 import appNavigationController from '@components/appNavigationController';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 type MyNotification = Notification & {
   hidden?: boolean,
@@ -66,7 +68,7 @@ const STORY_REACTION_LOC_KEY = 'REACT_STORY';
 const CANCEL_FLUSH_TIMEOUT = 100;
 const MAX_PENDING_NOTIFICATIONS = 1000;
 
-type Account = {managers: ProxiedManagers};
+type Account = {managers: AppManagers};
 type NotificationKey = BroadcastEvents['notification_cancel'];
 type PendingNotifications = Partial<Record<ActiveAccountNumber, NotificationKey[]>>;
 /** peerId -> the message id everything is read up to */
@@ -362,14 +364,15 @@ export class UiNotificationsManager {
         return;
       }
 
+      // oxlint-disable-next-line tweb/managers-before-await -- the push is for the account shown now, as checked above
+      const managers = bindManagersToSession(rootScope.managers);
       this.topMessagesDeferred.then(async() => {
-        const managers = rootScope.managers;
-
         if(isStoryReaction) {
           // * the server sends the story id as msg_id, our own notification as story_id
           const storyId = +(custom?.story_id || custom?.msg_id) || undefined;
           const self = await managers.appUsersManager.getSelf();
-          appImManager.openStoriesForPeer(self.id.toPeerId(), storyId);
+          hotReloadGuard.closeAddAccount?.();
+          hotReloadGuard.appImManager.openStoriesForPeer(self.id.toPeerId(), storyId);
           return;
         }
 
@@ -387,14 +390,17 @@ export class UiNotificationsManager {
           return;
         }
 
+        // * what was clicked is shown: the sign-in of an account added over the app gives way to it
         if(custom.story_id) {
-          appImManager.openStoriesForPeer(peerId);
+          hotReloadGuard.closeAddAccount?.();
+          hotReloadGuard.appImManager.openStoriesForPeer(peerId);
           return;
         }
 
         const lastMsgId = await managers.appMessagesIdsManager.generateMessageId(+custom.msg_id, channelId);
 
-        appImManager.setInnerPeer({
+        hotReloadGuard.closeAddAccount?.();
+        hotReloadGuard.appImManager.setInnerPeer({
           peerId,
           lastMsgId
         });
@@ -511,17 +517,7 @@ export class UiNotificationsManager {
     const isDifferentAccount = accountNumber !== getCurrentAccount();
 
     notification.onclick = () => {
-      if(isDifferentAccount) {
-        const url = createAppURLForAccount(accountNumber, {
-          p: '' + peerId,
-          message: '' + (message.mid || ''),
-          thread: '' + (threadId || '')
-        });
-
-        window.open(url, '_blank');
-      } else {
-        appImManager.setInnerPeer({peerId, lastMsgId: message.mid, threadId});
-      }
+      this.openForAccount(accountNumber, () => hotReloadGuard.appImManager.setInnerPeer({peerId, lastMsgId: message.mid, threadId}));
     };
 
     notification.message = notificationMessage;
@@ -574,12 +570,7 @@ export class UiNotificationsManager {
         // * stories shouldn't play the notification sound nor bump the tab-title counter
         noIncrement: true,
         onclick: () => {
-          if(isDifferentAccount) {
-            const url = createAppURLForAccount(accountNumber, {p: '' + peerId, story: '1'});
-            window.open(url, '_blank');
-          } else {
-            appImManager.openStoriesForPeer(peerId);
-          }
+          this.openForAccount(accountNumber, () => hotReloadGuard.appImManager.openStoriesForPeer(peerId));
         }
       },
       account,
@@ -630,16 +621,7 @@ export class UiNotificationsManager {
         noIncrement: true,
         // * open our own story that was reacted to, as the mobile clients do
         onclick: () => {
-          if(isDifferentAccount) {
-            const url = createAppURLForAccount(accountNumber, {
-              p: '' + selfPeerId,
-              story: '1',
-              story_id: '' + storyId
-            });
-            window.open(url, '_blank');
-          } else {
-            appImManager.openStoriesForPeer(selfPeerId, storyId);
-          }
+          this.openForAccount(accountNumber, () => hotReloadGuard.appImManager.openStoriesForPeer(selfPeerId, storyId));
         }
       },
       account,
@@ -657,6 +639,25 @@ export class UiNotificationsManager {
         story_id: '' + storyId,
         peerId: '' + selfPeerId
       }
+    });
+  }
+
+  /**
+   * What a click on a notification opens. One of another account than the tab shows - decided at the
+   * click, the tab may have switched since the notification was built - brings the tab over to that
+   * account first, as Desktop does; a call goes on through the switch.
+   */
+  private openForAccount(accountNumber: ActiveAccountNumber, open: () => void) {
+    // * what was clicked is shown: the sign-in of an account added over the app gives way to it
+    hotReloadGuard.closeAddAccount?.();
+    // * a switch under way would close what opened now: the click waits its turn behind it
+    if(accountNumber === getCurrentAccount() && !getAccountSwitchingTo()) {
+      open();
+      return;
+    }
+
+    hotReloadGuard.switchAccount(accountNumber).then(() => {
+      getCurrentAccount() === accountNumber && open();
     });
   }
 
@@ -737,7 +738,7 @@ export class UiNotificationsManager {
     });
   }
 
-  private async getReactionEmoticon(managers: ProxiedManagers, reaction: Reaction) {
+  private async getReactionEmoticon(managers: AppManagers, reaction: Reaction) {
     if(reaction?._ === 'reactionEmoji') {
       return reaction.emoticon;
     }
@@ -832,9 +833,7 @@ export class UiNotificationsManager {
 
     this.stopped = false;
 
-    const totalAccounts = await AccountController.getTotalAccounts();
-    for(let i = 1; i <= totalAccounts; i++) {
-      const accountNumber = i as ActiveAccountNumber;
+    for(const accountNumber of await AccountController.getAccountNumbers()) {
       this.constructAndStartNotificationManagerFor(accountNumber);
     }
 
@@ -1115,6 +1114,13 @@ export class UiNotificationsManager {
     webPushApiManager.hidePushNotifications();
   };
 
+  // * this tab shows another account now: what was waiting for it has been seen, as on a return to the tab
+  public onAccountSwitch(accountNumber: ActiveAccountNumber) {
+    if(!this.stopped) {
+      this.clear(accountNumber);
+    }
+  }
+
   private stop() {
     if(this.stopped) {
       return;
@@ -1132,5 +1138,9 @@ export class UiNotificationsManager {
   }
 }
 
+// made once: a hot update keeps it and moves it onto the edited class (see @helpers/hotRegistry)
 const uiNotificationsManager = new UiNotificationsManager();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.uiNotificationsManager = uiNotificationsManager);
 export default uiNotificationsManager;
+
+if(import.meta.hot) import.meta.hot.accept();

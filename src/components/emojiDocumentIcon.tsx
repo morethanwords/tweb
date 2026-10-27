@@ -3,7 +3,7 @@ import noop from '@helpers/noop';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {useIsCleaned} from '@hooks/useIsCleaned';
 import {Document, DocumentAttribute} from '@layer';
-import type {AppManagers} from '@lib/managers';
+import type {ReadingManagers} from '@lib/managers';
 import LottiePlayer from '@lib/lottie/lottiePlayer';
 import {createEffect, createResource, createSignal, untrack} from 'solid-js';
 
@@ -68,7 +68,7 @@ function useStickerRenderer(options: {
 }
 
 export default function EmojiDocumentIcon(props: {
-  managers: AppManagers;
+  managers: ReadingManagers;
   docId: DocId;
   color: string;
   size: number;

@@ -22,13 +22,19 @@
       width: min-content;
     }
 
+    // footer buttons (the `footer` option) stand as far from the popup's edges as in any other popup:
+    // the container's padding is the row of text buttons' and the copy's, not theirs
+    &-footer {
+      margin: 0 -.5rem -.75rem;
+    }
+
     &-title {
       font-size: 1.25rem;
       font-weight: var(--font-weight-bold);
       // margin-bottom: .125rem;
 
       &:not(:first-child) {
-        padding-left: 1rem;
+        padding-inline-start: 1rem;
       }
     }
 

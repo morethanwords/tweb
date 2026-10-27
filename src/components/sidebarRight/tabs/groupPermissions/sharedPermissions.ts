@@ -81,6 +81,8 @@ export class ChatPermissions extends CheckboxFields<PermissionsCheckboxFieldsFie
       {flags: ['invite_users'], text: 'UserRestrictionsInviteUsers', exceptionText: 'UserRestrictionsNoInviteUsers'},
       {flags: ['pin_messages'], text: 'UserRestrictionsPinMessages', exceptionText: 'UserRestrictionsNoPinMessages'},
       isForum && {flags: ['manage_topics'], text: 'CreateTopicsPermission', exceptionText: 'UserRestrictionsNoChangeInfo'},
+      // * whether members may set their own tags (desktop puts it right before the group's info)
+      {flags: ['edit_rank'], text: options.forChat ? 'UserRestrictionsEditRank' : 'UserRestrictionsEditRankSingle', exceptionText: 'UserRestrictionsNoEditRank'},
       {flags: ['change_info'], text: 'UserRestrictionsChangeInfo', exceptionText: 'UserRestrictionsNoChangeInfo'}
     ];
     v = v.filter(Boolean);
@@ -245,6 +247,8 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
       !isBroadcast && {flags: ['pin_messages'], text: 'EditAdminPinMessages'},
       isForum && {flags: ['manage_topics'], text: 'ManageTopicsPermission'},
       {flags: ['manage_call'], text: isBroadcast ? 'StartVoipChatPermission' : 'Channel.EditAdmin.ManageCalls'},
+      // * others' tags; a basic group's admin is not given it by default, as its legacy rights lack it (desktop)
+      !isBroadcast && {flags: ['manage_ranks'], text: 'EditAdminManageRanks', checked: rights || chat._ !== 'chat' ? undefined : false},
       isBroadcast && {flags: ['invite_users'], text: 'Channel.EditAdmin.PermissionInviteSubscribers'},
       isBroadcast && {flags: ['manage_direct_messages'], text: 'Channel.EditAdmin.ManageDirectMessages'},
       !isBroadcast && {flags: ['anonymous'], text: 'EditAdminSendAnonymously', checked: rights ? undefined : false},

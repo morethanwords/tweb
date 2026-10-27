@@ -9,11 +9,13 @@ export type RichMessageAttachMenuAction =
   | 'giftPremium'
   | 'poll'
   | 'standaloneChecklist'
+  | 'article'
   | 'attachBot';
 
 const RICH_MESSAGE_ATTACH_MENU_ACTIONS = new Set<RichMessageAttachMenuAction>([
   'visualMedia',
   'audio',
+  'document',
   'location',
   'groupCollage',
   'groupSlideshow'

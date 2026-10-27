@@ -64,6 +64,24 @@ describe('Row.Icon', () => {
     expect(container.firstElementChild.classList.contains('tgico')).toBe(true);
     expect(container.firstElementChild.textContent).toBe(getIconContent('data'));
   });
+
+  test('without a background it is a plain icon, not a white glyph meant for a tile', () => {
+    const mount = document.createElement('div');
+    document.body.append(mount);
+
+    dispose = render(() => (
+      <Row>
+        <Row.Icon icon="link" noBackground />
+        <Row.Title>Link</Row.Title>
+      </Row>
+    ), mount);
+
+    const container = mount.querySelector('.row-icon');
+
+    expect(container.classList.contains('row-icon-colored')).toBe(false);
+    expect(container.getAttribute('style') ?? '').not.toContain('background');
+    expect(container.firstElementChild.textContent).toBe(getIconContent('link'));
+  });
 });
 
 describe('Row.RadioField', () => {

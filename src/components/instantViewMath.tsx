@@ -111,13 +111,15 @@ function typesetWithinFrameAllowance(typeset: () => number, immediate?: boolean)
 // Render LaTeX `source` into `element` as MathML. Shows the raw source until Temml loads and its
 // turn comes, and as a fallback if the library fails to load, the source doesn't parse (matches
 // WebA's behaviour) or the formula is over budget. `immediate` is for the composer: see
-// `typesetWithinFrameAllowance`.
+// `typesetWithinFrameAllowance`. `onReplaced` runs right after the source gives way to the formula
+// (or to the fallback), in the same task: before anything observing the DOM hears of it.
 export function renderLatexInto(
   element: HTMLElement,
   source: string,
   isBlock: boolean,
   middleware?: Middleware,
-  immediate?: boolean
+  immediate?: boolean,
+  onReplaced?: () => void
 ) {
   element.textContent = source;
   return loadTemml().then((temml) => typesetWithinFrameAllowance(() => {
@@ -135,10 +137,13 @@ export function renderLatexInto(
     } catch{
       element.textContent = source;
       return 0;
+    } finally {
+      onReplaced?.();
     }
   }, immediate), () => {
     if(middleware && !middleware()) return;
     element.textContent = source;
+    onReplaced?.();
   });
 }
 
@@ -255,11 +260,16 @@ export function Latex(props: {
   onCleanup(() => {
     generation.destroy();
   });
+  // the source rides along in the composer's own attributes, so a copied formula pastes back as
+  // a formula rather than as the rendered MathML
   return (
     <span
       ref={ref!}
       class={classNames(styles.Latex, props.isBlock && styles.LatexBlock)}
       data-source-revision={renderedSourceRevision()}
+      data-block-math={props.isBlock ? '' : undefined}
+      data-inline-math={props.isBlock ? undefined : ''}
+      data-source={props.source}
     />
   );
 }
@@ -300,6 +310,9 @@ export function hydrateInlineMath(
       const span = document.createElement('span');
       span.className = styles.LatexInline;
       const source = decodeInlineMath(m[1]);
+      // the composer's markup for an inline formula: see `Latex`
+      span.dataset.inlineMath = '';
+      span.dataset.source = source;
       if(typeset) work.push(renderLatexInto(span, source, false, middleware));
       else span.textContent = source;
       pieces.append(span);

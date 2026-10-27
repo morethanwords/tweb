@@ -8,7 +8,8 @@ import {GroupCall, GroupCallParticipant, InputGroupCall} from '@layer';
 import {logger} from '@lib/logger';
 import {NULL_PEER_ID} from '@appManagers/constants';
 import rootScope from '@lib/rootScope';
-import CallInstanceBase, {TryAddTrackOptions} from '@lib/calls/callInstanceBase';
+import CallInstanceBase, {DEFAULT_OUTPUT_AUDIO_STATE, OutputAudioState, TryAddTrackOptions} from '@lib/calls/callInstanceBase';
+import SpeakingDetector from '@lib/calls/helpers/speakingDetector';
 import GroupCallConnectionInstance from '@lib/calls/groupCallConnectionInstance';
 import GROUP_CALL_STATE from '@lib/calls/groupCallState';
 import getScreenConstraints from '@lib/calls/helpers/getScreenConstraints';
@@ -23,16 +24,17 @@ import StreamManager, {waitForMediaTrackReplacements} from '@lib/calls/streamMan
 import {Ssrc} from '@lib/calls/types';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {AppManagers} from '@lib/managers';
-import {generateSelfVideo, makeSsrcFromParticipant, makeSsrcsFromParticipant} from '@lib/calls/groupCallsController';
+import {generateSelfVideo, makeSsrcsFromParticipant} from '@lib/calls/groupCallsController';
 import type {EncryptWorkerHost} from '@lib/calls/e2e/encryptWorkerHost';
 import type {CallStatusSnapshot} from '@lib/calls/e2e/encryptWorkerProtocol';
 import {
   conferenceUserIdToPeerId,
   findChainOnlyMembers
 } from '@lib/calls/e2e/conferenceMembership';
-import {GROUP_CALL_PARTICIPANTS_LOAD_LIMIT} from '@lib/calls/constants';
+import {GROUP_CALL_PARTICIPANTS_LOAD_LIMIT, UNMUTE_INTENT_TTL_MS} from '@lib/calls/constants';
 import {fromTelegramSource, normalizeSsrc} from '@lib/calls/utils';
 import createSerializedQueue from '@helpers/createSerializedQueue';
+import tsNow from '@helpers/tsNow';
 import notifyAllowedToSpeak from '@components/groupCall/allowedToSpeakCue';
 
 // Screen capture is requested without tab / system audio. There is no in-app
@@ -66,16 +68,16 @@ const UNPRODUCTIVE_SYNC_RECOVERIES_BEFORE_REJOIN = 3;
 // resolution. Bounds a genuinely foreign identity to a handful of targeted
 // lookups over the call's lifetime while covering any realistic chain lag.
 const MAX_E2E_MEMBERSHIP_RESOLUTION_RETRIES = 3;
-// How long a server-accepted unmute stays armed waiting for a self row that
-// confirms it. A stale muted row can land mid-RPC and win the post-RPC check;
-// without the armed intent the server would keep listing us as unmuted while
-// capture stays disabled — peers see a speaker and hear silence. Short-lived
-// so a much later unmuted row cannot surprise-open the microphone.
-const UNMUTE_INTENT_TTL_MS = 15000;
+// A server-accepted unmute stays armed for UNMUTE_INTENT_TTL_MS waiting for a
+// self row that confirms it. A stale muted row can land mid-RPC and win the
+// post-RPC check; without the armed intent the server would keep listing us as
+// unmuted while capture stays disabled — peers see a speaker and hear silence.
 // Consecutive GROUPCALL_INVALID answers before we stop pretending to be in the
 // call. The chain poll runs every 1.5s, so this is a few seconds of the server
 // telling us this call is not ours.
 const CALL_INVALID_ANSWERS_BEFORE_LEAVING = 8;
+// how often the e2e chain is polled for blocks we were not pushed
+const E2E_CHAIN_POLL_INTERVAL_MS = 1500;
 // Verification broadcasts are small and ordered. Keep a pulled message at the
 // head of the host-side queue until it is accepted, but bound the delay so a
 // permanent RPC error cannot wedge later rounds forever.
@@ -87,6 +89,11 @@ const MEDIA_TEARDOWN_RETRY_BASE_MS = 250;
 // relay-controlled sequence of far-future push batches without sacrificing the
 // low indexes needed to restore continuity.
 const MAX_E2E_PENDING_CHAIN_BLOCKS = 256;
+// GroupCallParticipant.volume: 1..20000, 10000 = 100%; absent = 100%.
+const PARTICIPANT_VOLUME_DEFAULT = 10000;
+// A synchronization source that has not delivered a packet for this long has
+// stopped sending (muted, left): its last level must not keep it "speaking".
+const SPEAKING_SOURCE_MAX_AGE_MS = 1000;
 
 // Every SSRC a participant can actually send on, not just the primary.
 //
@@ -190,13 +197,16 @@ export default class GroupCallInstance extends CallInstanceBase<{
   membersWithAccess: (change: {current: PeerId[], previous: PeerId[]}) => void,
   // A joined conference can lose active-participant authority or its key can
   // fall out of the accepted membership chain. The controller owns the rejoin.
-  conferenceRecoveryRequired: (reason: string) => void
+  conferenceRecoveryRequired: (reason: string) => void,
+  // The server removed our current source (a `left` self row): rejoin, as
+  // tdesktop applySelfUpdate does. The controller owns the rejoin.
+  rejoinRequired: (reason: string) => void,
+  // A participant started or stopped actually speaking (audio level, not the
+  // mute flag). `peerId` is the participant row's peer, ours included.
+  speaking: (change: {peerId: PeerId, speaking: boolean}) => void
 }> {
-  public id: GroupCallId;
+  private _id: GroupCallId;
   public chatId: ChatId;
-  public handleUpdateGroupCallParticipants: boolean;
-  public updatingSdp: boolean;
-  public isSpeakingMap: Map<any, any>;
   public connections: {[k in GroupCallConnectionType]?: GroupCallConnectionInstance};
   public groupCall: GroupCall;
   public participant: GroupCallParticipant;
@@ -244,6 +254,8 @@ export default class GroupCallInstance extends CallInstanceBase<{
   private pinnedSources: Array<GroupCallOutputSource>;
   private participantsSsrcs: Map<PeerId, Ssrc[]>;
   private hadAutoPinnedSources: Set<GroupCallOutputSource>;
+  /** The cameras and screencasts each participant's last roster row carried — what `syncParticipantPins` unpins when they stop. */
+  private participantVideoSources: Map<PeerId, GroupCallOutputSource[]>;
   private dispatchPinnedThrottled: () => void;
   private startVideoSharingPromise: Promise<void>;
   private startScreenSharingPromise: Promise<void>;
@@ -269,19 +281,40 @@ export default class GroupCallInstance extends CallInstanceBase<{
   private fatalHangUpStarted = false;
   private lifecycleGeneration = 0;
   private observedInputAudioTracks = new WeakSet<MediaStreamTrack>();
-
-  private managers: AppManagers;
+  // How each remote participant is heard here (their row's per-viewer volume
+  // and muted_by_you), applied to their audio elements.
+  private participantAudioStates = new Map<PeerId, OutputAudioState>();
+  // Remote participants whose row says they are muted: they send no audio, so
+  // their receivers are not polled for levels.
+  private mutedRemotePeers = new Set<PeerId>();
+  // Audio sources this instance joined with before a transport rejoin. A late
+  // self row carrying one of them is about our previous connection, not about
+  // another device taking our place (tdesktop GroupCall::_mySsrcs).
+  private previousOwnAudioSources = new Set<number>();
+  private speakingDetector: SpeakingDetector<PeerId>;
+  private speakingWatchers = 0;
+  // What the detector read last, for the waves behind the speakers' avatars.
+  private audioLevels = new Map<PeerId, number>();
+  // A transport rejoin of the main connection is in flight
+  // (groupCallsController.rejoinGroupCall). The presentation is joined onto
+  // our participant, so — like tdesktop checkNextJoinAction — it is rebuilt
+  // only after the main join, never concurrently with it.
+  private mainRejoining = false;
+  private mainJoinGeneration = 0;
 
   constructor(options: {
     id: GroupCallInstance['id'],
     chatId: GroupCallInstance['chatId'],
-    isSpeakingMap?: GroupCallInstance['isSpeakingMap'],
     connections?: GroupCallInstance['connections'],
-    managers: AppManagers
+    managers: AppManagers,
+    accountNumber?: GroupCallInstance['accountNumber'],
+    myId?: PeerId
   }) {
     super();
 
     safeAssign(this, options);
+    this.bindAccount();
+    this.heldCall.setId(this.id);
 
     if(!this.log) {
       this.log = logger('GROUP-CALL');
@@ -291,13 +324,20 @@ export default class GroupCallInstance extends CallInstanceBase<{
       this.connections = {};
     }
 
-    if(!this.isSpeakingMap) {
-      this.isSpeakingMap = new Map();
-    }
+    this.speakingDetector = new SpeakingDetector({
+      sample: () => {
+        this.audioLevels = new Map(this.sampleSpeakingLevels());
+        return this.audioLevels;
+      },
+      onChange: (peerId, speaking) => {
+        this.dispatchEvent('speaking', {peerId, speaking});
+      }
+    });
 
     this.pinnedSources = [];
     this.participantsSsrcs = new Map();
     this.hadAutoPinnedSources = new Set();
+    this.participantVideoSources = new Map();
     this.dispatchPinnedThrottled = throttle(() => {
       this.dispatchEvent('pinned', this.pinnedSource);
     }, 0, false);
@@ -309,10 +349,23 @@ export default class GroupCallInstance extends CallInstanceBase<{
     });
   }
 
+  // * a conference joined by a link or an invitation learns its id from the join
+  public get id() {
+    return this._id;
+  }
+
+  public set id(id: GroupCallId) {
+    this._id = id;
+    this.heldCall?.setId(id);
+  }
+
   public cleanup(): void {
     ++this.lifecycleGeneration;
     ++this.videoSharingGeneration;
     ++this.screenSharingGeneration;
+    this.speakingDetector.stop();
+    this.participantAudioStates.clear();
+    this.mutedRemotePeers.clear();
     this.stopE2eChainPolling();
     // This one lives on the GLOBAL rootScope, so `super.cleanup()` — which only
     // clears this instance's own emitter — never touched it. Every conference in
@@ -641,6 +694,8 @@ export default class GroupCallInstance extends CallInstanceBase<{
   // never dispatched as `group_call_participant`, `source: 0` so no SSRC map
   // ever sees them.
   private membersWithAccess: Map<PeerId, GroupCallParticipant> = new Map();
+  // when our stand-in row (getParticipantRow) took its place in the list
+  private selfStandInDate: number;
   // user_id → when we first saw it missing, for the grace window.
   private staleSince: Map<string, number> = new Map();
   private pruningConferenceMembers = false;
@@ -684,7 +739,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
     tick();
     // Steady-state interval: 1500ms is a balance between latency for emoji
     // verification (commit/reveal needs both peers' broadcasts) and load.
-    this.e2eChainPollInterval = setInterval(tick, 1500);
+    this.e2eChainPollInterval = setInterval(tick, E2E_CHAIN_POLL_INTERVAL_MS);
 
     // Backstop SFU participant poll. The blockchain-change trigger (in the
     // worker `status` handler) covers the common join/leave case; this catches
@@ -988,6 +1043,42 @@ export default class GroupCallInstance extends CallInstanceBase<{
       }
     } finally {
       this.pruningConferenceMembers = false;
+    }
+  }
+
+  /**
+   * The creator removing someone from the conference (tdesktop kickParticipantSure). The block drops
+   * them from the e2e state and hands a fresh key to everyone else, so nothing said after it is
+   * readable to them, and `kick` keeps the invite link from letting them back in.
+   */
+  public async kickConferenceParticipant(peerId: PeerId, retried?: boolean): Promise<void> {
+    const input = this.toInputGroupCall();
+    if(!input || !this.e2e || !peerId.isUser() || peerId === this.selfPeerId) {
+      throw new Error('not a conference participant');
+    }
+
+    const removal = await this.e2e.buildRemoveParticipantsBlock({userIds: [BigInt(peerId.toUserId())]});
+    if(!removal) {
+      throw new Error('the participant is not on the conference chain');
+    }
+
+    try {
+      await this.managers.appCallsManager.deleteConferenceCallParticipants({
+        call: input,
+        ids: removal.removedUserIds.map(String),
+        block: removal.block,
+        kick: true
+      });
+    } catch(err) {
+      // The chain moved between building the block and sending it — someone joined, or the stale
+      // member pruning wrote first. Once the next poll has brought that block in, ours builds on it.
+      const type = (err as ApiError)?.type as string | undefined;
+      if(retried || (type !== 'CONF_WRITE_CHAIN_INVALID' && type !== 'BLOCK_INVALID')) {
+        throw err;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, E2E_CHAIN_POLL_INTERVAL_MS));
+      return this.kickConferenceParticipant(peerId, true);
     }
   }
 
@@ -2041,7 +2132,157 @@ export default class GroupCallInstance extends CallInstanceBase<{
   public set joined(joined: boolean) {
     if(this._joined === joined) return;
     this._joined = joined;
+    this.updateSpeakingDetector();
     this.dispatchEvent('state', this.state);
+  }
+
+  /**
+   * Levels are sampled only while something shows them (the call panel's
+   * participant list): a call in the background does no per-tick work.
+   * Returns the release callback.
+   */
+  public watchSpeaking(): () => void {
+    ++this.speakingWatchers;
+    this.updateSpeakingDetector();
+
+    let released = false;
+    return () => {
+      if(released) return;
+      released = true;
+      --this.speakingWatchers;
+      this.updateSpeakingDetector();
+    };
+  }
+
+  private updateSpeakingDetector() {
+    if(this.speakingWatchers > 0 && this.joined && !this.isClosing) {
+      this.speakingDetector.start();
+    } else if(this.speakingDetector.isRunning) {
+      this.speakingDetector.stop();
+      this.audioLevels.clear();
+    }
+  }
+
+  /** `peerId`'s audio level (linear 0..1) at the last reading, while speaking is watched. */
+  public getAudioLevel(peerId: PeerId) {
+    return this.audioLevels.get(peerId);
+  }
+
+  public get isConference(): boolean {
+    return !!this.e2e || this.selfUserId !== undefined;
+  }
+
+  /** Whether `peerId` (a participant row's peer, ours included) is speaking. */
+  public isSpeaking(peerId: PeerId): boolean {
+    return this.speakingDetector.isSpeaking(peerId);
+  }
+
+  public get selfPeerId(): PeerId {
+    return this.participant ? getPeerId(this.participant.peer) : this.myId;
+  }
+
+  /**
+   * Current audio level per participant: ours from the microphone analyser,
+   * everyone else's from the RTP audio-level header extension the SFU
+   * forwards (RTCRtpReceiver.getSynchronizationSources — no decoding, no Web
+   * Audio). Only unmuted participants' receivers are read.
+   */
+  private sampleSpeakingLevels(): Array<[PeerId, number]> {
+    const main = this.connections.main;
+    const description = main?.description;
+    if(!description || this.isClosing || (typeof document !== 'undefined' && document.hidden)) {
+      return [];
+    }
+
+    const levels = new Map<PeerId, number>();
+    if(!this.isMuted) {
+      const level = main.streamManager?.getInputAudioLevel?.();
+      if(level !== undefined) {
+        levels.set(this.selfPeerId, level);
+      }
+    }
+
+    const now = performance.timeOrigin + performance.now();
+    for(const entry of description.entries ?? []) {
+      if(entry.type !== 'audio' ||
+        entry.direction !== 'recvonly' ||
+        entry.peerId === undefined ||
+        this.mutedRemotePeers.has(entry.peerId)) {
+        continue;
+      }
+
+      const receiver = entry.transceiver?.receiver;
+      if(typeof receiver?.getSynchronizationSources !== 'function') {
+        continue;
+      }
+
+      let level = 0;
+      for(const source of receiver.getSynchronizationSources()) {
+        if(now - source.timestamp > SPEAKING_SOURCE_MAX_AGE_MS) continue;
+        // Absent when the audio-level header extension was not negotiated.
+        if(typeof source.audioLevel === 'number' && source.audioLevel > level) {
+          level = source.audioLevel;
+        }
+      }
+
+      if(level > (levels.get(entry.peerId) ?? 0)) {
+        levels.set(entry.peerId, level);
+      }
+    }
+
+    return [...levels];
+  }
+
+  protected getOutputAudioState(source: string): OutputAudioState {
+    const entry = this.connections.main?.description?.getEntryBySource(+source);
+    return (entry && this.participantAudioStates.get(entry.peerId)) || DEFAULT_OUTPUT_AUDIO_STATE;
+  }
+
+  /**
+   * Remember how a remote participant is to be heard and apply it to every
+   * audio element of theirs. Telegram's volume goes up to 200%; an element
+   * cannot amplify, so anything above 100% plays at 100% (Web Audio gain would
+   * take remote WebRTC audio out of the element path Chromium's echo canceller
+   * uses as its reference).
+   */
+  private updateParticipantPlayback(peerId: PeerId, participant: GroupCallParticipant) {
+    if(participant.pFlags.left) {
+      this.participantAudioStates.delete(peerId);
+      this.mutedRemotePeers.delete(peerId);
+      this.speakingDetector.reset(peerId);
+      return;
+    }
+
+    if(participant.pFlags.muted) {
+      if(!this.mutedRemotePeers.has(peerId)) {
+        this.mutedRemotePeers.add(peerId);
+        this.speakingDetector.reset(peerId);
+      }
+    } else {
+      this.mutedRemotePeers.delete(peerId);
+    }
+
+    // A `min` row arrives here already merged with what we knew: the manager
+    // (saveApiParticipant → keepPersonalFieldsFromCachedParticipant) keeps our
+    // muted_by_you and own volume, and takes the row's volume only when an
+    // admin set it (volume_by_admin) — which must apply.
+    const volume = (participant.volume ?? PARTICIPANT_VOLUME_DEFAULT) / PARTICIPANT_VOLUME_DEFAULT;
+    const state: OutputAudioState = {volume, muted: !!participant.pFlags.muted_by_you};
+    const previous = this.participantAudioStates.get(peerId) ?? DEFAULT_OUTPUT_AUDIO_STATE;
+    if(previous.volume === state.volume && previous.muted === state.muted) {
+      return;
+    }
+
+    if(state.volume === DEFAULT_OUTPUT_AUDIO_STATE.volume && !state.muted) {
+      this.participantAudioStates.delete(peerId);
+    } else {
+      this.participantAudioStates.set(peerId, state);
+    }
+
+    const entries = this.connections.main?.description?.getEntriesByPeerId(peerId);
+    if(entries) {
+      this.refreshOutputAudioState([...entries].filter((entry) => entry.type === 'audio').map((entry) => entry.source));
+    }
   }
 
   /**
@@ -2080,18 +2321,25 @@ export default class GroupCallInstance extends CallInstanceBase<{
   public pinSource(source: GroupCallOutputSource) {
     indexOfAndSplice(this.pinnedSources, source);
     this.pinnedSources.push(source);
-    this.dispatchPinnedThrottled();
+    this.onPinnedChange();
   }
 
   public unpinSource(source: GroupCallOutputSource) {
     this.hadAutoPinnedSources.delete(source);
     indexOfAndSplice(this.pinnedSources, source);
-    this.dispatchPinnedThrottled();
+    this.onPinnedChange();
   }
 
   public unpinAll() {
     this.pinnedSources.length = 0;
+    this.onPinnedChange();
+  }
+
+  private onPinnedChange() {
     this.dispatchPinnedThrottled();
+    // The pinned tile goes full quality and the rest become thumbnails — tell
+    // the SFU now rather than at the next periodic constraints resend.
+    this.connections.main?.scheduleRemoteVideoConstraintsUpdate?.();
   }
 
   public async getParticipantByPeerId(peerId: PeerId) {
@@ -2102,6 +2350,38 @@ export default class GroupCallInstance extends CallInstanceBase<{
     // Real SFU rows win: once a chain-only member finally shows up on the
     // roster, their live state takes over the row in place.
     return (await this.participants).get(peerId) ?? this.membersWithAccess.get(peerId);
+  }
+
+  /**
+   * What a row of the list shows for `peerId`. We are on the list from the start, the way tdesktop
+   * puts us there itself on joining (applyMeInCallLocally): a conference takes our own row only from
+   * a roster that already carries this connection's source, a poll (~5 s) after the join. Until then
+   * the row is a stand-in — never saved nor dispatched, so the self-source check in
+   * onParticipantUpdate never sees it.
+   */
+  public async getParticipantRow(peerId: PeerId): Promise<GroupCallParticipant | undefined> {
+    const participant = await this.getParticipantByPeerId(peerId);
+    if(participant || this.participant || peerId !== this.selfPeerId) {
+      return participant;
+    }
+
+    return {
+      _: 'groupCallParticipant',
+      peer: {_: 'peerUser', user_id: peerId.toUserId()},
+      pFlags: {self: true, can_self_unmute: true, ...(this.isMicrophoneMuted && {muted: true as const})},
+      source: 0,
+      // where it sorts stays put
+      date: this.selfStandInDate ??= tsNow(true)
+    };
+  }
+
+  /**
+   * Whether our microphone is closed, as the panel shows it. Once the server lists us that is
+   * `isMuted`; before, capture is all there is to go by — a call taken over from a private one with
+   * the microphone open sends from the start, and must not read as muted meanwhile.
+   */
+  public get isMicrophoneMuted(): boolean {
+    return this.participant ? this.isMuted : !this.isCaptureLive();
   }
 
   public toggleMuted() {
@@ -2196,22 +2476,66 @@ export default class GroupCallInstance extends CallInstanceBase<{
     return super.getElement(endpoint);
   }
 
-  public getVideoElementFromParticipantByType(participant: GroupCallParticipant, type: 'video' | 'presentation') {
-    let source: GroupCallOutputSource;
+  /** What a participant's camera or screencast is pinned, and its element looked up, by. */
+  public getParticipantVideoSource(participant: GroupCallParticipant, type: 'video' | 'presentation'): GroupCallOutputSource {
     if(participant.pFlags.self) {
       const connectionType: GroupCallConnectionType = type === 'video' ? 'main' : 'presentation';
-      source = connectionType;
-    } else {
-      const codec = participant[type];
-      source = codec.source_groups[0].sources[0];
+      return connectionType;
     }
 
+    return participant[type]?.source_groups?.[0]?.sources?.[0];
+  }
+
+  /**
+   * Keeps the pins in step with what a roster row says the participant sends.
+   *
+   * A fresh screencast is pinned once, and a camera or screencast the row no
+   * longer carries is unpinned. Pins used to follow the media bookkeeping in
+   * `onParticipantUpdate` instead, which a conference never prunes (it keeps
+   * every SSRC it has mapped — see `mergeE2eParticipantSsrcs`): a stopped
+   * screencast stayed pinned there, and the panel kept a black stage for a tile
+   * that no longer existed.
+   */
+  public syncParticipantPins(participant: GroupCallParticipant) {
+    const peerId = getPeerId(participant.peer);
+    const types = ['video', 'presentation'] as const;
+    const sources = participant.pFlags.left ? [] : types
+    .filter((type) => participant[type])
+    .map((type) => this.getParticipantVideoSource(participant, type))
+    .filter((source) => source !== undefined);
+
+    this.participantVideoSources.get(peerId)?.forEach((source) => {
+      if(!sources.includes(source)) {
+        // A roster row can be stale, and a fresher one bring someone's screencast back: it stays
+        // one we have pinned once, or that row would pin it again over the user's unpin. A new
+        // screencast of theirs comes with a new source; ours is always 'presentation', and pins
+        // again. Leaving forgets what they send then.
+        const wasAutoPinned = this.hadAutoPinnedSources.has(source);
+        this.unpinSource(source);
+        if(wasAutoPinned && !participant.pFlags.left && !participant.pFlags.self) {
+          this.hadAutoPinnedSources.add(source);
+        }
+      }
+    });
+
+    if(sources.length) this.participantVideoSources.set(peerId, sources);
+    else this.participantVideoSources.delete(peerId);
+
+    const presentationSource = participant.presentation && !participant.pFlags.left ?
+      this.getParticipantVideoSource(participant, 'presentation') :
+      undefined;
+    if(presentationSource !== undefined && !this.hadAutoPinnedSources.has(presentationSource)) {
+      this.hadAutoPinnedSources.add(presentationSource);
+      this.pinSource(presentationSource);
+    }
+  }
+
+  public getVideoElementFromParticipantByType(participant: GroupCallParticipant, type: 'video' | 'presentation') {
+    const source = this.getParticipantVideoSource(participant, type);
     const element = this.getElement(source) as HTMLVideoElement;
     if(!element) return;
 
-    const clone = element.cloneNode() as typeof element;
-    clone.srcObject = element.srcObject;
-    return {video: clone, source};
+    return {video: this.cloneVideoElement('' + source, element), source};
   }
 
   public createConnectionInstance(options: {
@@ -2226,9 +2550,62 @@ export default class GroupCallInstance extends CallInstanceBase<{
       ...options
     });
     if(options.type === 'main') {
-      this.observeInputAudioTrack(options.streamManager.inputStream.getAudioTracks()[0]);
+      const {inputStream} = options.streamManager;
+      this.observeInputAudioTrack(inputStream.getAudioTracks()[0]);
+      // Joined with the camera on (createMainStreamManager): it never went through
+      // addInputVideoStream, so our own tile had no element to show.
+      const videoTrack = inputStream.getVideoTracks()[0];
+      if(videoTrack && !this.getElement('main')) {
+        this.saveInputVideoStream(inputStream, 'main');
+      }
     }
     return connection;
+  }
+
+  /**
+   * Transport rejoin of the main connection (groupCallsController
+   * rejoinGroupCall): forget what was bound to the old connection's
+   * description, so the replacement rebuilds it from the roster, and remember
+   * our current source as a previous one. Returns the connection being
+   * replaced. The caller closes it only after the replacement is
+   * `connections.main` — a closed main connection reads as CLOSED and would
+   * tear the whole instance down.
+   */
+  public prepareMainConnectionRejoin(): GroupCallConnectionInstance | undefined {
+    const previous = this.connections.main;
+    const source = previous?.sources.audio?.source;
+    if(source !== undefined) {
+      this.previousOwnAudioSources.add(source);
+    }
+
+    // The old connection's receivers die with it; the replacement's tracks get
+    // fresh elements, and a participant who left meanwhile leaves none behind.
+    this.releaseRemovedEntries(previous?.description?.entries ?? [], true);
+    this.participantsSsrcs.clear();
+    this.remoteNegotiationPending = false;
+    return previous;
+  }
+
+  /**
+   * Remote entries that are gone — rejected in the latest answer (their
+   * participant left or stopped that stream) or, with `replaced`, belonging
+   * to a connection a rejoin replaces: free the audio and video elements they
+   * played through. A replaced connection's video tiles stay registered, so
+   * the rejoined stream reaches the ones still on screen.
+   */
+  public releaseRemovedEntries(entries: Iterable<ConferenceEntry>, replaced = false) {
+    for(const entry of entries) {
+      const track = entry.transceiver?.receiver?.track;
+      if(entry.source === undefined || !track || this.isOwnSendEntry(entry)) {
+        continue;
+      }
+
+      if(entry.type === 'audio') {
+        this.releaseOutputAudio(entry.source, track);
+      } else if(entry.type === 'video') {
+        this.releaseOutputVideo(entry.source, track, replaced);
+      }
+    }
   }
 
   public changeRaiseHand(raise: boolean) {
@@ -2314,6 +2691,36 @@ export default class GroupCallInstance extends CallInstanceBase<{
     if(leaveServer) await this.leavePresentationConnection(connectionInstance);
   }
 
+  /**
+   * The main connection is being rejoined. Presentation self-recovery pauses
+   * until finishMainRejoin: a presentation joined meanwhile could land on the
+   * participant the main join is about to replace and be wiped with it.
+   */
+  public beginMainRejoin() {
+    this.mainRejoining = true;
+    ++this.mainJoinGeneration;
+  }
+
+  /**
+   * After a successful main rejoin, wait out any presentation recovery that
+   * started before it (it may have joined the old participant) and rebuild
+   * the presentation once more on top of the new join.
+   */
+  public async finishMainRejoin(rejoined: boolean): Promise<void> {
+    this.mainRejoining = false;
+    if(!rejoined) return;
+
+    const running = this.presentationRecoveryPromise;
+    if(running) {
+      await running.catch((): undefined => undefined);
+    }
+
+    const presentation = this.connections.presentation;
+    if(presentation && !this.isClosing) {
+      await this.recoverPresentationConnection(presentation);
+    }
+  }
+
   private bindPresentationRuntimeRecovery(connectionInstance: GroupCallConnectionInstance): void {
     const recover = (label: string, err?: unknown) => {
       if(this.connections.presentation !== connectionInstance || this.isClosing) return;
@@ -2348,11 +2755,17 @@ export default class GroupCallInstance extends CallInstanceBase<{
     if(this.connections.presentation !== expectedConnection || this.isClosing) {
       return Promise.resolve();
     }
+    // finishMainRejoin rebuilds it once the main join is back.
+    if(this.mainRejoining) {
+      this.log.warn('screen sharing recovery deferred until the main connection rejoins');
+      return Promise.resolve();
+    }
     if(this.presentationRecoveryPromise) return this.presentationRecoveryPromise;
 
     const generation = this.screenSharingGeneration;
+    const mainJoinGeneration = this.mainJoinGeneration;
     const recovery = this.enqueuePresentationTransition(() => {
-      return this.recoverPresentationConnectionInternal(expectedConnection, generation);
+      return this.recoverPresentationConnectionInternal(expectedConnection, generation, mainJoinGeneration);
     });
     const trackedRecovery = recovery.finally(() => {
       if(this.presentationRecoveryPromise === trackedRecovery) {
@@ -2365,11 +2778,13 @@ export default class GroupCallInstance extends CallInstanceBase<{
 
   private async recoverPresentationConnectionInternal(
     expectedConnection: GroupCallConnectionInstance,
-    generation: number
+    generation: number,
+    mainJoinGeneration: number
   ): Promise<void> {
     if(generation !== this.screenSharingGeneration ||
        this.connections.presentation !== expectedConnection ||
-       this.isClosing) {
+       this.isClosing ||
+       this.mainRejoining) {
       return;
     }
     await this.drainPendingPresentationLeaves();
@@ -2407,6 +2822,19 @@ export default class GroupCallInstance extends CallInstanceBase<{
       this.bindPresentationRuntimeRecovery(replacement);
       this.dispatchEvent('state', this.state);
     } catch(err) {
+      // A main rejoin started meanwhile and is what broke this join (or will
+      // wipe it). Keep the capture and the presentation slot; the rebuild
+      // after the main join (finishMainRejoin) takes it from here instead of
+      // ending screen sharing over a blip the call survives.
+      if(replacement &&
+         this.connections.presentation === replacement &&
+         !this.isClosing &&
+         (this.mainRejoining || mainJoinGeneration !== this.mainJoinGeneration)) {
+        this.log.warn('screen sharing recovery interrupted by a main rejoin', err);
+        replacement.closeConnection();
+        return;
+      }
+
       let cleanupError: unknown;
       if(!replacement) streamManager.stop();
       if(replacement) {
@@ -2886,7 +3314,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
           return;
         }
         if(participant) {
-          rootScope.dispatchEvent('group_call_participant', {groupCallId: this.id, participant});
+          rootScope.dispatchEventOfAccount(this.accountNumber, 'group_call_participant', {groupCallId: this.id, participant});
         }
       }).catch((err) => {
         this.log.warn('output track participant hydration failed', err);
@@ -3017,7 +3445,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
     const isSending = (direction: RTCRtpTransceiverDirection) => direction === 'sendonly' || direction === 'sendrecv';
     return isSending(entry.direction) ||
       isSending(entry.originalDirection) ||
-      (!!rootScope.myId && entry.peerId === rootScope.myId);
+      (!!this.myId && entry.peerId === this.myId);
   }
 
   public onParticipantUpdate(participant: GroupCallParticipant) {
@@ -3028,28 +3456,40 @@ export default class GroupCallInstance extends CallInstanceBase<{
     const hasLeft = !!participant.pFlags.left;
     const oldSsrcs = this.participantsSsrcs.get(peerId) || [];
 
-    if(participant.presentation && !hasLeft) {
-      const {source} = makeSsrcFromParticipant(participant, 'video', participant.presentation.source_groups, participant.presentation.endpoint);
-      if(!this.hadAutoPinnedSources.has(source)) {
-        this.hadAutoPinnedSources.add(source);
-        this.pinSource(participant.pFlags.self ? 'presentation' : source);
-      }
-    }
+    this.syncParticipantPins(participant);
 
     if(participant.pFlags.self) {
+      // A row about a connection other than the one we send on now says
+      // nothing about it: after a transport rejoin the server still has rows
+      // in flight for the previous connection (its source, possibly `left`),
+      // and `left` only means "you were removed" for the current source
+      // (tdesktop applySelfUpdate).
+      const ownSource = connectionInstance.sources.audio?.source;
+      if(participant.source !== ownSource &&
+        (this.previousOwnAudioSources.has(participant.source) || hasLeft)) {
+        this.log('ignoring a self row of another connection', participant.source, hasLeft);
+        return;
+      }
+
       ++this.selfParticipantRevision;
       this.participant = participant;
 
       if(hasLeft) {
-        // The server removed us — an admin kicked us, or our slot was taken
-        // over. This row used to be ignored, so the call only ended once ICE
-        // timed out 15-30 s later, and an unmuted microphone kept feeding our
-        // SFU slot meanwhile while the popup still showed "unmuted". tdesktop
-        // applySelfUpdate rejoins when the row carries our ssrc and hangs up
-        // otherwise; a rejoin is a separate feature, so fail closed either
-        // way: cut capture synchronously, then leave. A row that arrives while
-        // our own leave is already tearing the connection down changes nothing.
+        // The server removed our current source — the SFU dropped us, or an
+        // admin removed us. tdesktop applySelfUpdate rejoins ("I was removed
+        // from the call, rejoin"); the controller's rejoin replaces the
+        // connection, so the old slot stops getting our microphone, and gives
+        // up (leaving the call) if the server refuses us again. Without a
+        // controller to rejoin through, fail closed: cut capture synchronously,
+        // then leave. A row that arrives while our own leave is already tearing
+        // the connection down changes nothing.
         if(this.isClosing) return;
+        if(this.listeners.rejoinRequired?.size) {
+          this.log.warn('removed from the call — requesting a rejoin');
+          this.dispatchEvent('rejoinRequired', 'self-left');
+          return;
+        }
+
         this.setMuted(true);
         this.dispatchEvent('state', this.state);
         this.hangUpAfterFatalFailure();
@@ -3070,7 +3510,10 @@ export default class GroupCallInstance extends CallInstanceBase<{
         }
       }
 
-      if(connectionInstance.sources.audio.source !== participant.source) {
+      // A different source we never used: we joined from another device.
+      // (While a rejoin has not produced its new source yet there is nothing to
+      // compare against.)
+      if(ownSource !== undefined && ownSource !== participant.source) {
         this.hangUpAfterFatalFailure();
       }
 
@@ -3134,6 +3577,8 @@ export default class GroupCallInstance extends CallInstanceBase<{
 
       return;
     }
+
+    this.updateParticipantPlayback(peerId, participant);
 
     let ssrcs = hasLeft ? [] : makeSsrcsFromParticipant(participant);
 

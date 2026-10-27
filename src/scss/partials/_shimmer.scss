@@ -1,23 +1,25 @@
 @use "../shared" as *;
 
+// * sweeps along the line, from the inline start
 @keyframes wave {
   0% {
-    transform: translateX(-100%);
+    transform: translateX(calc(-100% * var(--reflect)));
   }
 
   50% {
-    transform: translateX(100%);
+    transform: translateX(calc(100% * var(--reflect)));
   }
 
   100% {
-    transform: translateX(100%);
+    transform: translateX(calc(100% * var(--reflect)));
   }
 }
 
 .shimmer {
   --opacity: .2;
 
-  @include animation-level(0) {
+  // the wave is decoration, it runs with full animations only
+  @include animation-level-below(2) {
     &:before {
       content: unset;
     }

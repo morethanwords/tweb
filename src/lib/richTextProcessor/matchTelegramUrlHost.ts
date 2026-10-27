@@ -20,7 +20,10 @@ export function matchUrlHost(url: URL, hosts: string[]) {
   }
 
   const hostname = url.hostname.toLowerCase();
-  const host = hosts.find((host) => hostname === host || hostname.endsWith('.' + host));
+  // the host itself before a parent listed ahead of it: with `telegram.org` and
+  // `translations.telegram.org` both in, the latter is that host, not a subdomain of the former
+  const host = hosts.find((host) => hostname === host) ??
+    hosts.find((host) => hostname.endsWith('.' + host));
   if(!host) {
     return;
   }

@@ -21,7 +21,7 @@
   color: var(--secondary-text-color);
 
   &Last {
-    text-align: right;
+    text-align: end;
   }
 }
 
@@ -65,13 +65,14 @@
   width: var(--size);
   height: var(--size);
   top: 50%;
-  left: calc((100% - var(--size)) * var(--normalized) + var(--size) / 2);
+  // * from the inline start, as the native range under it runs in RTL
+  inset-inline-start: calc((100% - var(--size)) * var(--normalized) + var(--size) / 2);
 
   border-radius: 50%;
-  transform: translate(-50%, -50%) scale(var(--scale, 1));
+  transform: translate(calc(-50% * var(--reflect)), -50%) scale(var(--scale, 1));
   background-color: var(--primary-color);
 
-  @include animation-level-global(2) {
+  @include animation-level-global(1) {
     transition:
       width 0.1s,
       height 0.1s,
@@ -100,7 +101,7 @@
   border-radius: 2px;
 
   width: var(--w);
-  left: 0;
+  inset-inline-start: 0;
 
   background-color: var(--primary-color);
 }

@@ -12,6 +12,7 @@ import I18n from '@lib/langPack';
 import Modes from '@config/modes';
 import {batch, createEffect, createSignal, on, onCleanup, onMount, Show} from 'solid-js';
 import {modifyMutable, produce} from 'solid-js/store';
+import onRangeInlineArrowKey from '@helpers/dom/onRangeInlineArrowKey';
 
 
 const DEGREE_DIST_PX = 42;
@@ -298,6 +299,7 @@ export default function RotationWheel() {
           aria-label={I18n.format('MediaEditor.FineRotation', true)}
           aria-valuetext={`${value()}°`}
           onInput={(event) => setFineRotation(event.currentTarget.valueAsNumber)}
+          onKeyDown={onRangeInlineArrowKey}
         />
       </Show>
       <ArrowUp />

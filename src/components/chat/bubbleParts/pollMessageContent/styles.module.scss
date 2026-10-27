@@ -35,7 +35,8 @@
   align-items: center;
 
   --vertical-padding: 0.75rem;
-  padding: var(--vertical-padding) 0.75rem var(--vertical-padding) 0.625rem;
+  padding-block: var(--vertical-padding);
+  padding-inline: 0.625rem 0.75rem;
 
   min-width: 260px;
 
@@ -264,7 +265,7 @@
     &Fill {
       position: absolute;
       top: 0;
-      left: 0;
+      inset-inline-start: 0;
       height: 100%;
       --zero-offset: 5px;
       width: calc(var(--zero-offset) + var(--progress, 0) * (100% - var(--zero-offset)));
@@ -302,8 +303,8 @@
   font-size: 0.75rem;
   position: absolute;
   top: 50%;
-  right: 0;
-  transform: translate(0.5rem, -50%);
+  inset-inline-end: 0;
+  transform: translate(calc(0.5rem * var(--reflect)), -50%);
   white-space: nowrap;
   font-weight: var(--font-weight-bold);
   user-select: none;
@@ -314,8 +315,8 @@
   &#{&} {
     position: absolute;
     bottom: 0;
-    left: 0;
-    transform: translate(-1.875rem, 18px);
+    inset-inline-start: 0;
+    transform: translate(calc(-1.875rem * var(--reflect)), 18px);
 
     --checkbox-size: 0.875rem;
     --checkbox-scale: 1.25;
@@ -332,8 +333,8 @@
   &Dot {
     position: absolute;
     bottom: 0;
-    left: 0;
-    transform: translate(-41px, 15px);
+    inset-inline-start: 0;
+    transform: translate(calc(-41px * var(--reflect)), 15px);
 
     width: 0.5rem;
     height: 0.5rem;
@@ -392,7 +393,8 @@
 .header {
   display: flex;
   gap: 1rem;
-  padding: 0.25rem 0.625rem 0.25rem 0.5rem;
+  padding-block: 0.25rem;
+  padding-inline: 0.5rem 0.625rem;
   align-items: center;
 
   &TitleContainer {
@@ -479,7 +481,7 @@
   }
 
   &Placeholder {
-    left: 0;
+    inset-inline-start: 0;
     top: 0;
 
     color: inherit;
@@ -561,8 +563,9 @@
 .pathDot {
   position: absolute;
   bottom: 0;
-  left: 0;
-  transform: translate(-33px, 9px);
+  inset-inline-start: 0;
+  // * the path is drawn down and to the right, from the check to the bar: mirrored with the row
+  transform: translate(calc(-33px * var(--reflect)), 9px) scaleX(var(--reflect));
 }
 
 .timer {

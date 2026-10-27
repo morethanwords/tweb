@@ -2,6 +2,7 @@ import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import cardFormattingPatterns from '@helpers/cards/cardFormattingPatterns';
 import {detectUnifiedCardBrand} from '@helpers/cards/cardBrands';
 import formatInputValueByPattern from '@helpers/cards/formatInputValueByPattern';
+import getSmartGlocalTokenizeUrl from '@helpers/cards/getSmartGlocalTokenizeUrl';
 import {validateAnyIncomplete, validateCardExpiry, validateCardNumber} from '@helpers/cards/validateCard';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
@@ -17,7 +18,9 @@ import {PasswordInputHelpers} from '@components/passwordInputField';
 import Section from '@components/section';
 import TelegramWebView from '@components/telegramWebView';
 import {formatPhoneNumber} from '@helpers/formatPhoneNumber';
+import makeError from '@helpers/makeError';
 import PaymentSaveInformationRow from '@components/popups/paymentSaveInformationRow';
+import {toast, toastNew} from '@components/toast';
 
 export type PaymentCardDetails = {
   cardNumber: string;
@@ -139,6 +142,15 @@ export class InputFieldCorrected extends InputField {
   }
 }
 
+/**
+ * A card number, an expiry date, a code: their characters keep left-to-right order in any language
+ * (the groups of a card number would swap places in a right-to-left line), while the field keeps
+ * its direction and starts on the side its label does — see `.popup-payment-ltr-input`.
+ */
+export function keepInputLeftToRight(inputField: InputField) {
+  inputField.input.classList.add('popup-payment-ltr-input');
+}
+
 export function handleInputFieldsOnChange(inputFields: (CountryInputField | InputField | InputFieldCorrected)[], _onChange: (valid: boolean) => void) {
   const onChange = () => {
     const valid = inputFields.every((inputField) => {
@@ -190,6 +202,7 @@ export function createCountryZipFields(country?: boolean, zip?: boolean) {
         return cardFormattingPatterns.postalCodeFromCountry(iso2 && iso2.toUpperCase());
       }
     });
+    if(zip) keepInputLeftToRight(postcodeInputField);
   }
 
   return {countryInputField, postcodeInputField};
@@ -368,6 +381,8 @@ export default function showPaymentCardPopup(options: {
 
     const passwordHelpers = new PasswordInputHelpers(cvcInputField.container, cvcInputField.input as HTMLInputElement);
 
+    [cardInputField, expireInputField, cvcInputField].forEach(keepInputLeftToRight);
+
     const switchFocusOrder: (InputFieldCorrected | InputField)[] = [
       cardInputField,
       expireInputField,
@@ -467,30 +482,68 @@ export default function showPaymentCardPopup(options: {
         save: savePaymentInformation
       };
 
+      // The provider's answer, or nothing when it could not be reached: the popup stays open either way.
+      const tokenize = async(url: string, init: RequestInit): Promise<any> => {
+        try {
+          const response = await fetch(url, init);
+          return await response.json();
+        } catch(err) {
+          toastNew({langPackKey: 'PaymentConnectionFailed'});
+          throw err;
+        }
+      };
+
       const nativeProvider: PaymentsNativeProvider = paymentForm.native_provider as any;
       let out: PaymentsCredentialsToken;
       if(nativeProvider === 'stripe') {
-        const url = new URL('https://api.stripe.com/v1/tokens');
-        url.search = new URLSearchParams({
-          'card[number]': data.cardNumber,
-          'card[exp_month]': data.expiryMonth,
-          'card[exp_year]': data.expiryYear,
-          'card[cvc]': data.cvc,
-          'card[address_zip]': data.zip,
-          'card[address_country]': data.country,
-          'card[name]': data.cardholderName
-        }).toString();
+        // The card goes in the body: a query string is what servers and proxies on the way log.
+        // A field the provider did not ask for is left out rather than sent as 'undefined'.
+        const body = new URLSearchParams();
+        for(const [key, value] of [
+          ['number', data.cardNumber],
+          ['exp_month', data.expiryMonth],
+          ['exp_year', data.expiryYear],
+          ['cvc', data.cvc],
+          ['address_zip', data.zip],
+          // Stripe takes the country's code, the field shows its name
+          ['address_country', countryInputField?.getSelected().country?.iso2 || data.country],
+          ['name', data.cardholderName]
+        ] as const) {
+          if(value) body.append(`card[${key}]`, value);
+        }
 
-        const response = await fetch(url.toString(), {
+        const json: Partial<{
+          id: string,
+          error: {type: string, code?: string, message?: string}
+        }> = await tokenize('https://api.stripe.com/v1/tokens', {
           method: 'POST',
           credentials: 'same-origin',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
             'Authorization': `Bearer ${nativeParams.publishable_key}`
-          }
+          },
+          body
         });
 
-        out = await response.json();
+        if(!json.id) {
+          // a card Stripe refused points at its field; the reason is Stripe's own words, meant for the payer
+          const {type, code, message} = json.error || {} as typeof json.error;
+          const field = ({
+            invalid_number: cardInputField,
+            incorrect_number: cardInputField,
+            invalid_expiry_month: expireInputField,
+            invalid_expiry_year: expireInputField,
+            expired_card: expireInputField,
+            invalid_cvc: cvcInputField,
+            incorrect_cvc: cvcInputField
+          } as {[code: string]: InputFieldCorrected})[code];
+          field?.setError(field === cardInputField ? 'PaymentCard.Error.Invalid' : undefined);
+          if(type === 'card_error' && message) toast(message);
+          else toastNew({langPackKey: 'Error.AnError'});
+          throw makeError(undefined, `stripe: ${code || type}`);
+        }
+
+        out = {type: 'card', id: json.id};
       } else if(nativeProvider === 'smartglocal') {
         const params = {
           card: {
@@ -501,28 +554,7 @@ export default function showPaymentCardPopup(options: {
           }
         };
 
-        let url = /* DEBUG_PAYMENT_SMART_GLOCAL */false ?
-          'https://tgb-playground.smart-glocal.com/cds/v1/tokenize/card' :
-          'https://tgb.smart-glocal.com/cds/v1/tokenize/card';
-
-        const nativeTokenizeUrl = nativeParams.tokenize_url;
-        if(typeof(nativeTokenizeUrl) === 'string' &&
-            nativeTokenizeUrl.startsWith('https://') &&
-            nativeTokenizeUrl.endsWith('.smart-glocal.com/cds/v1/tokenize/card')) {
-          url = nativeTokenizeUrl;
-        }
-
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'X-PUBLIC-TOKEN': nativeParams.public_token
-          },
-          body: JSON.stringify(params)
-        });
-
-        const json: { // smartglocal
+        const json: Partial<{
           data: {
             info: {
               card_network: string,
@@ -532,9 +564,23 @@ export default function showPaymentCardPopup(options: {
             token: string
           },
           status: 'ok'
-        } = await response.json();
+        }> = await tokenize(getSmartGlocalTokenizeUrl(nativeParams.tokenize_url, paymentForm.invoice.pFlags.test), {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-PUBLIC-TOKEN': nativeParams.public_token
+          },
+          body: JSON.stringify(params)
+        });
 
-        out = {type: 'card', token: json.data.token}
+        const token = json.status === 'ok' && json.data?.token;
+        if(!token) {
+          toastNew({langPackKey: 'Error.AnError'});
+          throw makeError(undefined, 'smartglocal: no token');
+        }
+
+        out = {type: 'card', token};
       }
 
       options.onFinish?.({token: out, card: data});

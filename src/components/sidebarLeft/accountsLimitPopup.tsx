@@ -1,7 +1,7 @@
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
-import showPremiumPopup from '@components/popups/premium';
 import AccountsLimitPopupContent from '@components/sidebarLeft/accountsLimitPopupContent';
 import {createSignal} from 'solid-js';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export default function showAccountsLimitPopup() {
   const [show, setShow] = createSignal(true);
@@ -16,7 +16,7 @@ export default function showAccountsLimitPopup() {
           onCancel: () => setShow(false),
           onSubmit: () => {
             setShow(false);
-            showPremiumPopup({feature: 'double_limits'});
+            hotReloadGuard.showPremiumPopup({feature: 'double_limits'});
           }
         })}
       </PopupElement.Body>

@@ -37,6 +37,8 @@ type InputFieldMessageProps = {
   btnProps?: Parameters<typeof Button>[0],
   stars?: Accessor<number>,
   ai?: AiEditorContext,
+  /** The popup sends on the send shortcut (`confirmShortcutIsSendShortcut`), so it breaks no line here. */
+  sendOnShortcut?: boolean,
 };
 
 const InputFieldMessage = (props: InputFieldMessageProps) => {
@@ -65,7 +67,7 @@ const InputFieldMessage = (props: InputFieldMessageProps) => {
       >
         <Show
           when={props.stars?.() ?? 0}
-          fallback={<IconTsx icon="logo" class={_additionalClass + '-icon'} />}
+          fallback={<IconTsx icon="logo" class={_additionalClass + '-icon icon-mirror'} />}
         >
           <span class={_additionalClass + '-inner'}>
             <IconTsx icon="star" class={_additionalClass + '-inner-star'} />
@@ -144,7 +146,7 @@ const InputFieldMessage = (props: InputFieldMessageProps) => {
   inputField.label?.classList.add(additionalClass + '-limit');
 
   // A caption or a forward comment travels as text plus entities.
-  const editor = attachPlainMessageEditor(inputField.input);
+  const editor = attachPlainMessageEditor(inputField.input, {leaveSendShortcut: props.sendOnShortcut});
 
   if(props.listenerSetter) {
     if(props.onScroll) {
@@ -172,7 +174,8 @@ const InputFieldMessage = (props: InputFieldMessageProps) => {
     customParentElement: getOverlayRoot,
     onEmoticonsDropdown: (dropdown) => {
       emoticonsDropdown = dropdown;
-      emoticonsDropdown.getElement().style.transformOrigin = '0 100%';
+      // * the bottom corner on the emoji button's side
+      emoticonsDropdown.getElement().style.transformOrigin = 'var(--transform-origin-inline-start) 100%';
     },
     getOpenPosition: () => {
       if(!container()) return {top: 0, left: 0, width: 0, height: 0, bottom: 0, right: 0};
@@ -214,7 +217,6 @@ const InputFieldMessage = (props: InputFieldMessageProps) => {
             canSend={false}
             inputField={inputField}
             onApply={(text) => inputField.setValueSilently(text)}
-            shouldShowFromHeight={100}
           />
         </SolidJSHotReloadGuardProvider>
       )}

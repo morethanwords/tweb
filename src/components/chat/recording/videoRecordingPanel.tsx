@@ -28,13 +28,16 @@ export default function VideoRecordingPanel(props: {
   // gets the real DOM nodes (calling the component returns the HMR wrapper, not
   // the <div>). rootRef = the stage element to mount; ref = the preview <video>.
   rootRef: (stage: HTMLDivElement) => void,
-  ref: (video: HTMLVideoElement) => void
+  ref: (video: HTMLVideoElement) => void,
+  // * recorded as a reply to a story: the stage stands over the stories viewer
+  overStories?: boolean
 }): JSX.Element {
   return (
     <div
       ref={props.rootRef}
       class={classNames(
         'video-recording-stage',
+        props.overStories && 'video-recording-stage--over-stories',
         props.mode() === 'recording' && 'video-recording-stage--recording',
         props.mode() === 'paused' && 'video-recording-stage--paused',
         props.playing() && 'video-recording-stage--playing'
@@ -79,7 +82,7 @@ export interface VideoRecordingPanelHandle {
 
 // Imperative handle for the (non-Solid) ChatRecording controller. Owns its own
 // reactive root; destroy() disposes it.
-export function createVideoRecordingPanel(): VideoRecordingPanelHandle {
+export function createVideoRecordingPanel(overStories?: boolean): VideoRecordingPanelHandle {
   return createRoot((dispose) => {
     const [mode, setModeSignal] = createSignal<VideoRecordingMode | undefined>(undefined);
     const [playing, setPlayingSignal] = createSignal(false);
@@ -99,7 +102,8 @@ export function createVideoRecordingPanel(): VideoRecordingPanelHandle {
       playing,
       progress,
       rootRef: (stage) => element = stage,
-      ref: (video) => previewVideo = video
+      ref: (video) => previewVideo = video,
+      overStories
     });
 
     const setMode = (m: VideoRecordingMode) => {

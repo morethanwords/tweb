@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{A as e}from"./solid-Beq2bZCx.js";import{t}from"./requestRAF-Cqm_gOYv.js";function n(){let n=new Map,r=new Map,i=new ResizeObserver(e=>{for(let i of e)r.has(i.target)||t(()=>{let e=r.get(i.target);r.delete(i.target),e?.()}),r.set(i.target,()=>{let e=n.get(i.target),t=i.borderBoxSize[0];e&&t&&e({entry:i,size:{width:t.inlineSize,height:t.blockSize}})})});return e(()=>{i.disconnect(),n.clear(),r.clear()}),(t,r)=>{n.set(t,r),i.observe(t),e(()=>{n.delete(t),i.unobserve(t)})}}export{n as t};
+//# sourceMappingURL=useResizeObserver-zEyFQRLI.js.map

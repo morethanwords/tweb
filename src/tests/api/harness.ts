@@ -8,6 +8,8 @@ export type AccountSeed = {
   dcId: number;
   authKeys: Partial<Record<TrueDcSeed, {key: string; salt: string; fingerprint?: string}>>;
   timeOffset?: number;
+  /** the account lives on the test DCs (1), or the production ones (0) - the keys mean nothing to the others */
+  isTest?: boolean | 0 | 1;
 };
 
 export type CreateTestClientOpts = {

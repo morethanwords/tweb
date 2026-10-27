@@ -4,6 +4,7 @@ import {applyColorOnContext} from '@lib/lottie/lottiePlayer';
 import rootScope from '@lib/rootScope';
 import getStickerThumbKey from '@lib/storages/utils/thumbs/getStickerThumbKey';
 import customProperties from '@helpers/dom/customProperties';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const savingLottiePreview: {[docId: DocId]: {width: number, height: number}} = {};
 
@@ -31,6 +32,7 @@ const createCanvas = () => {
 };
 
 export async function saveLottiePreview(doc: MyDocument, canvas: HTMLCanvasElement | ImageBitmap, toneIndex: number | string) {
+  const managers = bindManagersToSession(rootScope.managers);
   const key = getStickerThumbKey(doc.id, toneIndex);
   const {width, height} = canvas;
   if(isSavingLottiePreview(doc, toneIndex, width, height)) {
@@ -42,7 +44,7 @@ export async function saveLottiePreview(doc: MyDocument, canvas: HTMLCanvasEleme
     height
   };
 
-  const thumb = await rootScope.managers.thumbsStorage.getStickerCachedThumb(doc.id, toneIndex);
+  const thumb = await managers.thumbsStorage.getStickerCachedThumb(doc.id, toneIndex);
   if(savingLottiePreview[key] !== saving) {
     return;
   }
@@ -80,7 +82,7 @@ export async function saveLottiePreview(doc: MyDocument, canvas: HTMLCanvasEleme
     return;
   }
 
-  rootScope.managers.thumbsStorage.saveStickerPreview(doc.id, blob, width, height, toneIndex);
+  managers.thumbsStorage.saveStickerPreview(doc.id, blob, width, height, toneIndex);
 }
 
 export async function saveLottiePreviewFromPlayer(doc: MyDocument, player: LottiePlayer, toneIndex: number | string) {

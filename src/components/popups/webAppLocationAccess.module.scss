@@ -32,7 +32,7 @@
 
 .locationIcon {
   position: absolute;
-  right: -0.25rem;
+  inset-inline-end: -0.25rem;
   bottom: -0.25rem;
   background: var(--primary-color);
   color: var(--white);

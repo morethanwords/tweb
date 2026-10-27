@@ -9,9 +9,9 @@ import bytesToHex from '@helpers/bytes/bytesToHex';
 import EventListenerBase from '@helpers/eventListenerBase';
 import noop from '@helpers/noop';
 import tsNow from '@helpers/tsNow';
-import {PhoneCall, PhoneCallProtocol} from '@layer';
+import {InputPhoneCall, PhoneCall, PhoneCallProtocol} from '@layer';
 import {CallId} from '@appManagers/appCallsManager';
-import {AppManagers} from '@lib/managers';
+import {TabManagers} from '@lib/managers';
 import {logger} from '@lib/logger';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {NULL_PEER_ID} from '@appManagers/constants';
@@ -28,6 +28,27 @@ import callTransitionCoordinator from '@lib/calls/callTransitionCoordinator';
 import {groupCallToInput} from '@lib/calls/helpers/groupCallUpdates';
 import {CALL_PROTOCOL_LIBRARY_VERSIONS} from '@lib/calls/p2P/getCallProtocol';
 import {CALL_REQUEST_TIMEOUT, CALL_WAITING_RING_VOLUME} from '@lib/calls/constants';
+import {preloadNoiseSuppression} from '@lib/calls/noiseSuppression/noiseSuppression';
+import {CallAccount, captureCallAccount, getCallAccountOf, holdEndedCall} from '@lib/calls/callAccount';
+import type {ActiveAccountNumber} from '@lib/accounts/types';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+
+/**
+ * How long a call that closed here waits for the server's own phoneCallDiscarded — the one that may
+ * ask for a rating. Hanging up ourselves closes the call before phone.discardCall answers.
+ */
+const ENDED_CALL_DISCARD_WAIT = 60e3;
+
+/** iOS gives the call screen half a second to go before it asks (`CallController.presentCallRating`). */
+const CALL_RATING_DELAY = 500;
+
+type EndedCall = {
+  instance: CallInstance,
+  inputPhoneCall: InputPhoneCall,
+  timeout: number,
+  // * its account's word on it reaches the tab whichever account the tab shows meanwhile
+  release: () => void
+};
 
 export class CallsController extends EventListenerBase<{
   instance: (details: {hasCurrent: boolean, instance: CallInstance}) => void,
@@ -39,7 +60,7 @@ export class CallsController extends EventListenerBase<{
   }) => void,
 }> {
   private log: ReturnType<typeof logger>;
-  private managers: AppManagers;
+  private managers: TabManagers;
   private audioAsset: ReturnType<typeof getCallAudioAsset>;
   // Call waiting rings through its own player: the shared one may be busy with
   // the current call's outgoing / connect tone, and stopping that tone with the
@@ -50,8 +71,14 @@ export class CallsController extends EventListenerBase<{
   private sortedInstances: Array<CallInstance>;
   private tempId: number;
   private migratingCalls = new WeakSet<CallInstance>();
+  // Calls that connected and closed here, until the server's phoneCallDiscarded for them comes:
+  // a call we hang up ourselves leaves `instances` the moment it closes, and the discarded update
+  // that carries `need_rating` only arrives with the answer to phone.discardCall.
+  private endedCalls = new Map<CallId, EndedCall>();
+  // A call is offered for rating once, whatever repeats the flag.
+  private ratingRequested = new WeakSet<CallInstance>();
 
-  public construct(managers: AppManagers) {
+  public construct(managers: TabManagers) {
     this.managers = managers;
     this.log = logger('CC');
 
@@ -105,6 +132,7 @@ export class CallsController extends EventListenerBase<{
   }
 
   private async handleCallUpdate(call: PhoneCall): Promise<void> {
+    const managers = bindManagersToSession(this.managers);
     const instance = this.instances.get(call.id);
 
     if(instance?.isClosing && call._ !== 'phoneCallDiscarded') {
@@ -122,6 +150,9 @@ export class CallsController extends EventListenerBase<{
     // ignored, never a reason to hang up.
     switch(call._) {
       case 'phoneCallDiscarded': {
+        // Read before setPhoneCall: the discarded call carries no access hash, and a rating has to
+        // name the call it rates.
+        const inputPhoneCall = instance?.getInputPhoneCall();
         if(instance) {
           instance.setPhoneCall(call);
           // Server-initiated migration to a conference call: the 1-on-1
@@ -144,6 +175,11 @@ export class CallsController extends EventListenerBase<{
             break;
           }
           await instance.hangUp(call.reason, true);
+        }
+
+        const ended = this.takeEndedCall(call.id);
+        if(call.pFlags?.need_rating) {
+          this.requestCallRating(call, instance || ended?.instance, inputPhoneCall || ended?.inputPhoneCall);
         }
 
         break;
@@ -187,7 +223,7 @@ export class CallsController extends EventListenerBase<{
           // end it with the same reason instead of ringing for a call that
           // cannot connect.
           this.log.warn('caller speaks no protocol version this client does', call.id);
-          void this.managers.appCallsManager.discardCall(
+          void managers.appCallsManager.discardCall(
             call.id,
             0,
             {_: 'phoneCallDiscardReasonDisconnect'},
@@ -214,7 +250,7 @@ export class CallsController extends EventListenerBase<{
 
         // tdesktop sends this before ringing (calls_call.cpp startIncoming): it
         // is what turns the caller's "waiting" into "ringing".
-        void this.managers.appCallsManager.receivedCall(call.id).catch((err) => {
+        void incoming.managers.appCallsManager.receivedCall(call.id).catch((err) => {
           this.log.error('phone.receivedCall failed', err);
         });
         break;
@@ -267,7 +303,7 @@ export class CallsController extends EventListenerBase<{
 
         let key: Uint8Array, key_fingerprint: string;
         try {
-          ({key, key_fingerprint} = await this.managers.appCallsManager.computeKey(g_a, dh.b, dh.p));
+          ({key, key_fingerprint} = await instance.managers.appCallsManager.computeKey(g_a, dh.b, dh.p));
         } catch(err) {
           this.log.error('computeKey failed (invalid DH public value)', err, {g_a_length: g_a?.length});
           await instance.hangUp('phoneCallDiscardReasonDisconnect');
@@ -376,7 +412,7 @@ export class CallsController extends EventListenerBase<{
       const reason = state === CALL_STATE.PENDING || state === CALL_STATE.REQUESTING ?
         'phoneCallDiscardReasonMissed' :
         'phoneCallDiscardReasonHangup';
-      void this.managers.appCallsManager.discardCall(
+      void instance.managers.appCallsManager.discardCall(
         instance.id,
         instance.duration,
         {_: reason},
@@ -403,9 +439,11 @@ export class CallsController extends EventListenerBase<{
     return this.sortedInstances?.[0];
   }
 
-  public getCallByUserId(userId: UserId) {
+  // * `accountNumber`: the call has to be that account's too - another account's call with the same user is
+  // * another call
+  public getCallByUserId(userId: UserId, accountNumber?: ActiveAccountNumber) {
     for(const [callId, instance] of this.instances) {
-      if(instance.interlocutorUserId === userId) {
+      if(instance.interlocutorUserId === userId && (accountNumber === undefined || instance.accountNumber === accountNumber)) {
         return instance;
       }
     }
@@ -414,11 +452,15 @@ export class CallsController extends EventListenerBase<{
   private createCallInstance(options: {
     isOutgoing: boolean,
     interlocutorUserId: UserId,
-    protocol?: PhoneCallProtocol
+    protocol?: PhoneCallProtocol,
+    account?: CallAccount
   }) {
+    // Ringing or dialing: the microphone is not far off.
+    preloadNoiseSuppression();
+    const {account = captureCallAccount(this.managers), ...rest} = options;
     const call = new CallInstance({
-      managers: this.managers,
-      ...options
+      ...account,
+      ...rest
     });
 
     call.addEventListener('state', (state) => {
@@ -426,6 +468,7 @@ export class CallsController extends EventListenerBase<{
       if(state === CALL_STATE.CLOSED) {
         this.instances.delete(call.id);
         indexOfAndSplice(this.sortedInstances, call);
+        this.rememberEndedCall(call);
       } else {
         insertInDescendSortedArray(this.sortedInstances, call, 'sortIndex');
       }
@@ -506,17 +549,85 @@ export class CallsController extends EventListenerBase<{
     return call;
   }
 
-  public async startCallInternal(userId: UserId, isVideo: boolean) {
+  private rememberEndedCall(instance: CallInstance) {
+    if(
+      instance.connectedAt === undefined ||
+      this.migratingCalls.has(instance) ||
+      this.ratingRequested.has(instance) ||
+      this.endedCalls.has(instance.id)
+    ) {
+      return;
+    }
+
+    const inputPhoneCall = instance.getInputPhoneCall();
+    if(!inputPhoneCall) {
+      return;
+    }
+
+    const callId = instance.id;
+    const timeout = window.setTimeout(() => {
+      this.takeEndedCall(callId, instance);
+    }, ENDED_CALL_DISCARD_WAIT);
+    const release = holdEndedCall(instance.accountNumber, callId);
+    this.endedCalls.set(callId, {instance, inputPhoneCall, timeout, release});
+  }
+
+  private takeEndedCall(callId: CallId, instance?: CallInstance) {
+    const ended = this.endedCalls.get(callId);
+    if(ended && (!instance || ended.instance === instance)) {
+      clearTimeout(ended.timeout);
+      ended.release();
+      this.endedCalls.delete(callId);
+      return ended;
+    }
+  }
+
+  /**
+   * The server marks some ended calls `need_rating`. As on iOS (`PresentationCall`: the prompt
+   * needs `callWasActive`), only a call that actually connected is offered, and only once; a
+   * handoff to a conference is no end of a call to rate.
+   */
+  private requestCallRating(
+    call: PhoneCall.phoneCallDiscarded,
+    instance: CallInstance | undefined,
+    inputPhoneCall: InputPhoneCall | undefined
+  ) {
+    if(
+      !instance ||
+      !inputPhoneCall ||
+      instance.connectedAt === undefined ||
+      this.migratingCalls.has(instance) ||
+      this.ratingRequested.has(instance)
+    ) {
+      return;
+    }
+
+    this.ratingRequested.add(instance);
+    const isVideo = !!call.pFlags?.video;
+    window.setTimeout(() => {
+      import('@components/popups/rateCall').then(({default: showRateCallPopup}) => {
+        showRateCallPopup({call: inputPhoneCall, isVideo, managers: instance.managers});
+      }).catch((err) => {
+        this.log.error('call rating popup failed', err);
+      });
+    }, CALL_RATING_DELAY);
+  }
+
+  // * `account`: the one the call is placed from - the caller's when it asked, whichever the tab shows by
+  // * the time the call is up or answered
+  public async startCallInternal(userId: UserId, isVideo: boolean, account = captureCallAccount(this.managers)) {
     this.log('p2pStartCallInternal', userId, isVideo);
 
-    const fullInfo = await this.managers.appProfileManager.getProfile(userId);
+    const {managers} = account;
+    const fullInfo = await managers.appProfileManager.getProfile(userId);
     if(!fullInfo) return;
 
     const {video_calls_available} = fullInfo.pFlags;
 
     const call = this.createCallInstance({
       isOutgoing: true,
-      interlocutorUserId: userId
+      interlocutorUserId: userId,
+      account
     });
 
     call.overrideConnectionState(CALL_STATE.REQUESTING);
@@ -534,12 +645,12 @@ export class CallsController extends EventListenerBase<{
     });
 
     try {
-      const dh = await this.managers.appCallsManager.generateDh();
+      const dh = await managers.appCallsManager.generateDh();
       if(call.isClosing) return;
 
       call.dh = dh;
 
-      const phoneCall = await this.managers.appCallsManager.requestCall(
+      const phoneCall = await managers.appCallsManager.requestCall(
         userId,
         call.protocol,
         call.dh.g_a_hash,
@@ -550,7 +661,7 @@ export class CallsController extends EventListenerBase<{
           // requestCall was accepted after a local close won the race. The
           // manager has already saved the exact echoed id/access_hash, so
           // discard it before the global transition may release.
-          await this.managers.appCallsManager.discardCall(
+          await managers.appCallsManager.discardCall(
             phoneCall.id,
             0,
             {_: 'phoneCallDiscardReasonHangup'},
@@ -602,7 +713,7 @@ export class CallsController extends EventListenerBase<{
     let completed = false;
     try {
       await instance.hangUp(undefined, true);
-      const resolved = await this.managers.appGroupCallsManager.resolveConferenceCall({
+      const resolved = await instance.managers.appGroupCallsManager.resolveConferenceCall({
         _: 'inputGroupCallSlug',
         slug
       });
@@ -613,10 +724,12 @@ export class CallsController extends EventListenerBase<{
       await groupCallsController.joinConference({
         input: {_: 'inputGroupCallSlug', slug},
         expectedCanonicalInput: groupCallToInput(resolved),
-        selfUserId: BigInt(rootScope.myId),
+        selfUserId: BigInt(instance.myId),
         chatId: NULL_PEER_ID,
         muted: wasMuted,
-        joinVideo: wasVideo
+        joinVideo: wasVideo,
+        // * the conference goes on on the account of the call it replaces
+        account: getCallAccountOf(instance)
       });
       completed = true;
     } catch(err) {
@@ -631,6 +744,9 @@ export class CallsController extends EventListenerBase<{
   }
 }
 
+// made once: a hot update keeps it and moves it onto the edited class (see @helpers/hotRegistry)
 const callsController = new CallsController();
 DEBUG && (MOUNT_CLASS_TO.callsController = callsController);
 export default callsController;
+
+if(import.meta.hot) import.meta.hot.accept();

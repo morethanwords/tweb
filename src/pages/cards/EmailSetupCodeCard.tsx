@@ -41,6 +41,7 @@ export default function EmailSetupCodeCard(props: {spec: Spec}) {
     <AuthCard inputWrapper={false}>
       <EnterCodeStep
         variant="card"
+        managers={managers}
         purpose={{_: 'emailVerifyPurposeLoginSetup', phone_number, phone_code_hash}}
         sentCode={sentCode}
         onExpired={backToEmail}

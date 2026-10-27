@@ -3,7 +3,8 @@ import Modes from '@config/modes';
 import type {ChatRights} from '@appManagers/appChatsManager';
 import type {Dialog} from '@appManagers/appMessagesManager';
 import type {AppPeersManager, IsPeerType} from '@appManagers/appPeersManager';
-import appDialogsManager, {AppDialogsManager, DialogElement, DialogElementSize as DialogElementSize} from '@lib/appDialogsManager';
+import {AppDialogsManager} from '@lib/appDialogsManager';
+import {DialogElement, DialogElementSize as DialogElementSize} from '@components/dialogElement';
 import rootScope from '@lib/rootScope';
 import Scrollable from '@components/scrollable';
 import {FocusDirection} from '@helpers/fastSmoothScroll';
@@ -17,7 +18,7 @@ import windowSize from '@helpers/windowSize';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import filterUnique from '@helpers/array/filterUnique';
 import safeAssign from '@helpers/object/safeAssign';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import filterAsync from '@helpers/array/filterAsync';
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
 import getChatMembersString from '@components/wrappers/getChatMembersString';
@@ -41,12 +42,13 @@ import {hideToast, toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import SelectorSearch from '@components/selectorSearch';
-import showPremiumPopup from '@components/popups/premium';
 import formatNumber from '@helpers/number/formatNumber';
 import namedPromises from '@helpers/namedPromises';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {FOLDER_ID_ALL, REAL_FOLDERS} from '@lib/appManagers/constants';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 /** A row whose trailing checkbox is painted over it — the lane it takes is reserved in `_selector.scss`. */
 const ROW_WITH_CHECKBOX_CLASS = 'selector-row-with-checkbox';
@@ -58,11 +60,15 @@ export type FilterPeerTypeByFunc = (peer: ReturnType<AppPeersManager['getPeer']>
 
 export default class AppSelectPeers {
   public container = document.createElement('div');
-  public list = appDialogsManager.createChatList(/* {
+  public list = hotReloadGuard.appDialogsManager.createChatList(/* {
     handheldsSize: 66,
     avatarSize: 48
   } */);
   protected oldList: HTMLElement;
+  // * the rows of a list live as long as it is on screen: one that a new search replaces stays
+  // * there until the results are in, and rows torn down before that lose their layout in view
+  private listMiddlewareHelper: MiddlewareHelper;
+  private oldListMiddlewareHelper: MiddlewareHelper;
   public scrollable: Scrollable/*  | ScrollableContextValue */;
   public selectorSearch: SelectorSearch;
   public inputSearch: InputSearch;
@@ -120,12 +126,14 @@ export default class AppSelectPeers {
   private sectionNameLangPackKey: SectionOptions['name'];
   private sectionCaption: SectionOptions['caption'];
 
+  /** `middleware` is the row's: what the subtitle wraps lives as long as the row does */
   private getSubtitleForElement: (
-    peerId: PeerId
+    peerId: PeerId,
+    middleware: Middleware
   ) => HTMLElement | DocumentFragment | undefined | Promise<HTMLElement | DocumentFragment | undefined>;
   private processElementAfter: (peerId: PeerId, dialogElement: DialogElement) => void | Promise<void>;
 
-  private managers: AppManagers;
+  private managers: ReadingManagers;
 
   private middleware: Middleware;
   public middlewareHelper: MiddlewareHelper;
@@ -231,6 +239,7 @@ export default class AppSelectPeers {
 
     this.middlewareHelper = options.middleware.create();
     this.middlewareHelperLoader = this.middlewareHelper.get().create();
+    this.listMiddlewareHelper = this.middlewareHelper.get().create();
     if(!this.noPlaceholder) this.dialogsPlaceholder = new DialogsPlaceholder(options.placeholderSizes || {
       avatarSize: 42,
       avatarMarginRight: 18,
@@ -253,6 +262,7 @@ export default class AppSelectPeers {
 
     const f = (this.renderResultsFunc || this.renderResults).bind(this);
     this.renderResultsFunc = async(peerIds, append?: boolean) => {
+      const managers = bindManagersToSession(this.managers);
       const middleware = this.middlewareHelperLoader.get();
       if(this.needSwitchList) {
         this.needSwitchList = false;
@@ -280,11 +290,11 @@ export default class AppSelectPeers {
         peerIds = await filterAsync(peerIds, async(peerId) => {
           if(peerId.isPeerId()) {
             if(isFunction) {
-              const peer = await this.managers.appPeersManager.getPeer(peerId);
+              const peer = await managers.appPeersManager.getPeer(peerId);
               return (this.filterPeerTypeBy as FilterPeerTypeByFunc)(peer);
             } else {
               for(const method of this.filterPeerTypeBy as IsPeerType[]) {
-                if(await this.managers.appPeersManager[method](peerId)) {
+                if(await managers.appPeersManager[method](peerId)) {
                   return true;
                 }
               }
@@ -310,9 +320,8 @@ export default class AppSelectPeers {
       // The search promise's then() handles the in-flight case. This branch
       // covers callers that invoke renderResultsFunc directly (e.g. realtime
       // chat_participant updates) outside of any pending search.
-      if(this.oldList && !this.promise) {
-        this.oldList.replaceWith(this.list);
-        this.oldList = undefined;
+      if(!this.promise) {
+        this.mountList();
       }
 
       if(!this.promise) {
@@ -324,9 +333,9 @@ export default class AppSelectPeers {
           const userId = peerId.toUserId();
 
           const {requirement, starsAmount, canManageDirectMessages} = await namedPromises({
-            requirement: this.managers.appUsersManager.getRequirementToContact(userId),
-            starsAmount: this.managers.appPeersManager.getStarsAmount(peerId),
-            canManageDirectMessages: peerId.isAnyChat() && this.managers.appChatsManager.canManageDirectMessages(peerId.toChatId())
+            requirement: managers.appUsersManager.getRequirementToContact(userId),
+            starsAmount: managers.appPeersManager.getStarsAmount(peerId),
+            canManageDirectMessages: peerId.isAnyChat() && managers.appChatsManager.canManageDirectMessages(peerId.toChatId())
           });
 
           return {peerId, userId, requirement, requiredStars: starsAmount, canManageDirectMessages};
@@ -449,7 +458,7 @@ export default class AppSelectPeers {
               title,
               anchorCallback(() => {
                 hideToast();
-                showPremiumPopup();
+                hotReloadGuard.showPremiumPopup();
               })
             ]
           });
@@ -674,11 +683,17 @@ export default class AppSelectPeers {
       ++this.tempIds[i];
     }
 
-    // Keep the currently mounted list reference until the new search resolves.
-    // ??= so that rapid re-typing doesn't overwrite the in-DOM list with a
-    // detached one from a still-pending previous search.
-    this.oldList ??= this.list;
-    this.list = appDialogsManager.createChatList();
+    // Keep the currently mounted list, rows alive, until the new search resolves.
+    // A list from a still-pending previous search was never shown and goes now,
+    // so rapid re-typing doesn't overwrite the in-DOM list with a detached one.
+    if(this.oldList) {
+      this.listMiddlewareHelper.destroy();
+    } else {
+      this.oldList = this.list;
+      this.oldListMiddlewareHelper = this.listMiddlewareHelper;
+    }
+    this.list = hotReloadGuard.appDialogsManager.createChatList();
+    this.listMiddlewareHelper = this.middlewareHelper.get().create();
 
     this.promise = undefined;
     this.query = value;
@@ -1095,10 +1110,7 @@ export default class AppSelectPeers {
 
       if(middleware()) {
         // Search is done — swap the previous list out for the freshly built one.
-        if(this.oldList) {
-          this.oldList.replaceWith(this.list);
-          this.oldList = undefined;
-        }
+        this.mountList();
 
         const loadedWhatValues = Object.values(this.loadedWhat);
         const loadedAll = loadedWhatValues.every((v) => v);
@@ -1118,6 +1130,25 @@ export default class AppSelectPeers {
     });
 
     return promise;
+  }
+
+  /**
+   * What the rows put in `list` live by - the list itself, which a new search keeps on screen until
+   * its results take its place. The loader's middleware only says whether a search is still current
+   */
+  public getRowsMiddleware() {
+    return this.listMiddlewareHelper.get();
+  }
+
+  private mountList() {
+    if(!this.oldList) {
+      return;
+    }
+
+    this.oldList.replaceWith(this.list);
+    this.oldList = undefined;
+    this.oldListMiddlewareHelper.destroy();
+    this.oldListMiddlewareHelper = undefined;
   }
 
   private getMoreSomething(peerType: SelectSearchPeerType) {
@@ -1153,24 +1184,30 @@ export default class AppSelectPeers {
     // Concurrent participant updates must keep their insertion order, not their load order.
     const position = document.createComment('');
     list[append === false ? 'prepend' : 'append'](position);
+    // * the rows live with their list, and a batch the search has moved on from goes before it is shown
+    const rowsMiddleware = this.getRowsMiddleware();
+    const cancelled = new Promise<void>((resolve) => middleware.onClean(resolve));
+    const dialogElements: DialogElement[] = [];
+    let mounted = false;
     const checkboxes: {key: PeerId, input: HTMLInputElement}[] = [];
     const promises = peerIds.map(async(key) => {
       const additionalParams = this.additionalDialogParams?.(key);
       const dialogLoadPromises = additionalParams?.loadPromises || [];
-      const dialogElement = appDialogsManager.addDialogNew({
+      const dialogElement = hotReloadGuard.appDialogsManager.addDialogNew({
         peerId: this.getPeerIdFromKey?.(key) ?? key,
         rippleEnabled: this.rippleEnabled,
         avatarSize: this.avatarSize,
         meAsSaved: this.meAsSaved,
         append,
         wrapOptions: {
-          middleware
+          middleware: rowsMiddleware
         },
         withStories: this.withStories,
         ...additionalParams,
         container,
         loadPromises: dialogLoadPromises
       });
+      dialogElements.push(dialogElement);
       const rowMiddleware = dialogElement.middlewareHelper.get();
 
       if(this.getPeerIdFromKey) {
@@ -1203,7 +1240,7 @@ export default class AppSelectPeers {
       const prepare = async() => {
         let subtitleEl: HTMLElement | DocumentFragment;
         if(this.getSubtitleForElement) {
-          subtitleEl = await this.getSubtitleForElement(key);
+          subtitleEl = await this.getSubtitleForElement(key, rowMiddleware);
         }
 
         if(!middleware() || !rowMiddleware()) {
@@ -1227,7 +1264,8 @@ export default class AppSelectPeers {
 
       return Promise.race([
         Promise.all([...dialogLoadPromises, prepare()]),
-        new Promise<void>((resolve) => rowMiddleware.onClean(resolve))
+        new Promise<void>((resolve) => rowMiddleware.onClean(resolve)),
+        cancelled
       ]);
     });
 
@@ -1242,20 +1280,25 @@ export default class AppSelectPeers {
       }
 
       position.replaceWith(...container.children);
+      mounted = true;
     } finally {
       position.remove();
       this.pendingLists.delete(container);
+      if(!mounted) {
+        dialogElements.forEach((dialogElement) => dialogElement.destroy());
+      }
     }
   }
 
   public async wrapSubtitle(peerId: PeerId) {
+    const managers = bindManagersToSession(this.managers);
     let subtitleEl: HTMLElement;
     if(peerId.isAnyChat()) {
       subtitleEl = await getChatMembersString(peerId.toChatId());
     } else if(peerId === rootScope.myId) {
       subtitleEl = i18n(this.selfPresence);
     } else {
-      subtitleEl = getUserStatusString(await this.managers.appUsersManager.getUser(peerId.toUserId()));
+      subtitleEl = getUserStatusString(await managers.appUsersManager.getUser(peerId.toUserId()));
     }
 
     return subtitleEl;

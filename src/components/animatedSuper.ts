@@ -4,6 +4,9 @@ export interface AnimatedSuperOptions {
   duration?: number;
 }
 
+/** what a row is known by - a number, or the very character it shows (`AnimatedCounter.setText`) */
+export type AnimatedSuperIndex = number | string;
+
 export class AnimatedSuper {
   static BASE_CLASS = 'animated-super';
   static DEFAULT_DURATION = 200;
@@ -18,7 +21,7 @@ export class AnimatedSuper {
     this.container.className = AnimatedSuper.BASE_CLASS;
   }
 
-  public getRow(index: number, animateFirst = false) {
+  public getRow(index: AnimatedSuperIndex, animateFirst = false) {
     if(this.rows[index]) return this.rows[index].element;
     const row = document.createElement('div');
     const isFirst = !Object.keys(this.rows).length && !animateFirst;
@@ -28,50 +31,70 @@ export class AnimatedSuper {
     return row;
   }
 
-  public clearRow(index: number) {
+  /** Shows the row of `index` at once, with no transition, and drops every other */
+  public setRow(index: AnimatedSuperIndex) {
+    if(this.clearTimeout) clearTimeout(this.clearTimeout);
+    this.destroy();
+    const row = this.getRow(index);
+    delete this.rows[index].new;
+    return row;
+  }
+
+  public clearRow(index: AnimatedSuperIndex) {
     if(!this.rows[index]) return;
     this.rows[index].element.remove();
     this.rows[index].middleware.destroy();
     delete this.rows[index];
   }
 
-  public clearRows(currentIndex?: number) {
+  public clearRows(currentIndex?: AnimatedSuperIndex) {
     if(this.clearTimeout) clearTimeout(this.clearTimeout);
     this.clearTimeout = window.setTimeout(() => {
       for(const i in this.rows) {
-        if(+i === currentIndex) continue;
-        this.clearRow(+i);
+        if(i === '' + currentIndex) continue;
+        this.clearRow(i);
       }
     }, this.duration);
   }
 
-  public setNewRow(index: number, reflow = false) {
+  public setNewRow(index: AnimatedSuperIndex) {
     const row = this.rows[index];
     if(row.new) {
-      if(reflow) {
-        row.element.classList.remove('hide');
-        void row.element.offsetLeft; // reflow
-      } else {
-        row.element.classList.remove('is-hiding', 'hide');
-      }
-
+      row.element.classList.remove('is-hiding', 'hide');
       delete row.new;
     }
 
     this.clearRows(index);
   }
 
-  public animate(index: number, previousIndex: number, fromTop = index > previousIndex, ignorePrevious = false) {
+  public animate(index: AnimatedSuperIndex, previousIndex: AnimatedSuperIndex, fromTop = +index > +previousIndex, ignorePrevious = false) {
     if(index === previousIndex) { // * handle if set index 0 and previousIndex 0
       return this.setNewRow(index);
     }
 
-    const row = this.rows[index];
-    const previousRow = this.rows[previousIndex];
-    if(!previousRow && !ignorePrevious) {
+    if(!this.rows[previousIndex] && !ignorePrevious) {
       return this.setNewRow(index);
     }
 
+    if(this.prepare(index, previousIndex, fromTop)) {
+      void this.rows[index].element.offsetLeft; // reflow
+    }
+
+    this.flip(index, previousIndex);
+  }
+
+  /**
+   * Readies the change from `previousIndex` to `index` that `flip` makes: each row on its side,
+   * the coming one in place but still hidden. Returns whether that one is new - and so has to be
+   * styled where it comes from before the flip, which `animate` reflows for, and which a caller
+   * readying many changes at once can wait a frame for
+   */
+  public prepare(index: AnimatedSuperIndex, previousIndex: AnimatedSuperIndex, fromTop: boolean) {
+    // * the rows a flip leaves behind must not be cleared while this one waits for its own
+    if(this.clearTimeout) clearTimeout(this.clearTimeout);
+
+    const row = this.rows[index];
+    const previousRow = this.rows[previousIndex];
     const sides = ['from-top', 'from-bottom'];
     if(!fromTop) sides.reverse();
 
@@ -82,19 +105,25 @@ export class AnimatedSuper {
       previousRow.element.classList.remove(sides[0]);
     }
 
-    if(row.new) {
-      this.setNewRow(index, true);
+    if(!row.new) {
+      return false;
     }
 
-    row.element.classList.toggle('is-hiding', false);
-    previousRow && previousRow.element.classList.toggle('is-hiding', true);
+    row.element.classList.remove('hide');
+    return true;
+  }
 
+  public flip(index: AnimatedSuperIndex, previousIndex: AnimatedSuperIndex) {
+    const row = this.rows[index];
+    delete row.new;
+    row.element.classList.remove('is-hiding');
+    this.rows[previousIndex]?.element.classList.add('is-hiding');
     this.clearRows(index);
   }
 
   public destroy() {
     for(const i in this.rows) {
-      this.clearRow(+i);
+      this.clearRow(i);
     }
   }
 }

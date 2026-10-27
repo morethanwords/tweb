@@ -5,17 +5,18 @@ import I18n from '@lib/langPack';
 import replaceContent from '@helpers/dom/replaceContent';
 import StackedAvatars from '@components/stackedAvatars';
 import formatNumber from '@helpers/number/formatNumber';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import type LazyLoadQueue from '@components/lazyLoadQueue';
 import {MiddlewareHelper} from '@helpers/middleware';
 import {_tgico} from '@helpers/tgico';
 import Icon from '@components/icon';
 import ensureButtonSemantics from '@helpers/dom/ensureButtonSemantics';
+import {hotListen} from '@helpers/hotModule';
 
 const TAG_NAME = 'replies-element';
 
-rootScope.addEventListener('replies_updated', (message) => {
+hotListen(import.meta.hot, rootScope, 'replies_updated', (message) => {
   (Array.from(document.querySelectorAll(TAG_NAME + `[data-post-key="${message.peerId}_${message.mid}"]`)) as RepliesElement[]).forEach((element) => {
     element.message = message;
     element.render();
@@ -23,13 +24,18 @@ rootScope.addEventListener('replies_updated', (message) => {
 });
 
 export default class RepliesElement extends HTMLElement {
+  public static create() {
+    // the registered class: after a hot update this module's class is a copy, which the element registry does not know
+    return new (customElements.get(TAG_NAME) as typeof RepliesElement)();
+  }
+
   public message: Message.message;
   public type: 'footer' | 'beside';
   public loadPromises: Promise<any>[];
   public lazyLoadQueue: LazyLoadQueue;
   public stackedAvatars: StackedAvatars;
   public text: I18n.IntlElement;
-  public managers: AppManagers;
+  public managers: ReadingManagers;
   public middlewareHelper: MiddlewareHelper;
 
   private updated = false;
@@ -155,3 +161,6 @@ export default class RepliesElement extends HTMLElement {
 if(!customElements.get(TAG_NAME)) {
   customElements.define(TAG_NAME, RepliesElement);
 }
+
+// a method edited here takes effect on the replies buttons on screen, without a reload (see @helpers/hotRegistry)
+if(import.meta.hot) import.meta.hot.accept();

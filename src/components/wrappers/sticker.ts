@@ -8,6 +8,7 @@ import computeLockColor from '@helpers/computeLockColor';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import createVideo from '@helpers/dom/createVideo';
+import isDocumentRTL from '@helpers/dom/isDocumentRTL';
 import renderImageFromUrl, {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
 import getImageFromStrippedThumb from '@helpers/getImageFromStrippedThumb';
 import getPreviewURLFromThumb from '@helpers/getPreviewURLFromThumb';
@@ -19,7 +20,7 @@ import {isSavingLottiePreview, saveLottiePreview, saveLottiePreviewFromPlayer} f
 import sequentialDom from '@helpers/sequentialDom';
 import {DocumentAttribute, PhotoSize, VideoSize} from '@layer';
 import appDownloadManager from '@lib/appDownloadManager';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
 import getStickerEffectThumb from '@appManagers/utils/stickers/getStickerEffectThumb';
 import lottieLoader from '@lib/lottie/lottieLoader';
@@ -82,7 +83,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
   needUpscale?: boolean,
   skipRatio?: number,
   static?: boolean,
-  managers?: AppManagers,
+  managers?: ReadingManagers,
   fullThumb?: PhotoSize | Extract<VideoSize, VideoSize.videoSize>,
   isOut?: boolean,
   noPremium?: boolean,
@@ -189,8 +190,10 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
   const isAnimated = !asStatic && (stickerType === StickerType.Lottie || stickerType === StickerType.WebM);
 
   const effectThumb = getStickerEffectThumb(doc);
-  if(isOut !== undefined && effectThumb && !isOut) {
-    div.forEach((div) => div.classList.add('reflect-x'));
+  if(isOut !== undefined && effectThumb) {
+    // * turned toward the middle of the chat from whichever side the message is on (CSS, so a
+    // * language switched on the fly turns it too)
+    div.forEach((div) => div.classList.add(isOut ? 'reflect-x-at-end' : 'reflect-x-at-start'));
   }
 
   const willHaveLock = effectThumb && withLock;
@@ -766,7 +769,7 @@ export async function fireStickerEffect({e, container, doc, managers, middleware
   e: MouseEvent,
   container: HTMLElement,
   doc: MyDocument,
-  managers: AppManagers,
+  managers: ReadingManagers,
   middleware: Middleware,
   isOut: boolean,
   width: number,
@@ -790,10 +793,12 @@ export async function fireStickerEffect({e, container, doc, managers, middleware
   container.dataset.playing = '1';
 
   await loadPromise;
+  // * the effect flies from the message's side of the chat toward the middle; RTL swaps the sides
+  const isOnRight = !!isOut !== isDocumentRTL();
   const {animationDiv, stickerPromise} = wrapStickerAnimation({
     doc,
     middleware,
-    side: isOut ? 'right' : 'left',
+    side: isOnRight ? 'right' : 'left',
     size: width * STICKER_EFFECT_MULTIPLIER,
     target: container,
     play: true,
@@ -803,7 +808,7 @@ export async function fireStickerEffect({e, container, doc, managers, middleware
     scrollable
   });
 
-  if(isOut !== undefined && !isOut/*  && !relativeEffect */) {
+  if(isOut !== undefined && !isOnRight/*  && !relativeEffect */) {
     animationDiv.classList.add('reflect-x');
   }
 

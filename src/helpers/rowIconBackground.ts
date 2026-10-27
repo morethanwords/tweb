@@ -66,6 +66,7 @@ export const ROW_ICON_COLOR_BY_NAME: Partial<Record<Icon, RowIconColorName>> = {
   link_filled: 'orange',
   linux_filled: 'orange',
   lock_filled: 'red',
+  lockoff: 'green',
   location: 'red',
   location_filled: 'green',
   message_filled: 'green',

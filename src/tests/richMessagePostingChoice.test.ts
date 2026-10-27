@@ -19,19 +19,18 @@ function makeDependencies(confirm = vi.fn().mockResolvedValue(undefined)) {
   return {
     confirm: confirm as unknown as typeof confirmationPopup,
     showError: vi.fn(),
-    showPremium: vi.fn(),
-    showUnavailable: vi.fn()
+    showPremium: vi.fn()
   };
 }
 
 describe('rich message posting choice', () => {
-  test('builds the Premium confirmation with a close button and exactly two actions', async() => {
+  test('builds the Premium confirmation with a close button and two footer actions, Premium first', async() => {
     const dependencies = makeDependencies();
     const choice = await getRichMessagePostingChoice(makeManagers({
       allowed: false,
       available: true,
       mode: 'premium'
-    }), true, dependencies);
+    }), dependencies);
 
     expect(choice).toBe('plain');
     expect(dependencies.confirm).toHaveBeenCalledOnce();
@@ -40,17 +39,23 @@ describe('rich message posting choice', () => {
       titleLangKey: 'RichMessage.PremiumRequired.Title',
       descriptionLangKey: 'RichMessage.PremiumRequired.Text',
       closable: true,
-      button: {langKey: 'RichMessage.SendWithoutFormatting'},
-      cancelButton: {langKey: 'RichMessage.SubscribeToPremium'}
+      footer: true,
+      button: {langKey: 'RichMessage.RemoveFormatting', isSecondary: true},
+      buttons: [
+        {langKey: 'RichMessage.SubscribeToPremium', isCancel: true},
+        {langKey: 'RichMessage.RemoveFormatting', isSecondary: true}
+      ]
     });
+    expect(options.buttons[1]).toBe(options.button);
 
-    options.cancelButton.callback(new MouseEvent('click'));
+    options.buttons[0].callback(new MouseEvent('click'));
     expect(dependencies.showPremium).toHaveBeenCalledOnce();
     expect(lang['RichMessage.PremiumRequired.Title']).toBe('Remove Formatting?');
     expect(lang['RichMessage.PremiumRequired.Text']).toBe(
       'This message uses rich formatting, which requires Telegram Premium.'
     );
     expect(lang['RichMessage.SubscribeToPremium']).toBe('Subscribe to Premium');
+    expect(lang['RichMessage.RemoveFormatting']).toBe('Remove Formatting');
   });
 
   test('keeps the rich message when posting is allowed', async() => {
@@ -59,23 +64,10 @@ describe('rich message posting choice', () => {
       allowed: true,
       available: true,
       mode: 'enabled'
-    }), true, dependencies);
+    }), dependencies);
 
     expect(choice).toBe('rich');
     expect(dependencies.confirm).not.toHaveBeenCalled();
-  });
-
-  test('opens Premium directly when embedded media prevents a plain fallback', async() => {
-    const dependencies = makeDependencies();
-    const choice = await getRichMessagePostingChoice(makeManagers({
-      allowed: false,
-      available: true,
-      mode: 'premium'
-    }), false, dependencies);
-
-    expect(choice).toBe('cancel');
-    expect(dependencies.confirm).not.toHaveBeenCalled();
-    expect(dependencies.showPremium).toHaveBeenCalledOnce();
   });
 
   test('returns cancel when the confirmation is closed', async() => {
@@ -84,24 +76,26 @@ describe('rich message posting choice', () => {
       allowed: false,
       available: true,
       mode: 'premium'
-    }), true, dependencies);
+    }), dependencies);
 
     expect(choice).toBe('cancel');
   });
 
-  test('uses the existing unavailable flow for a disabled rollout', async() => {
+  test('offers removing the formatting in a footer when the rollout is disabled', async() => {
     const dependencies = makeDependencies();
     const choice = await getRichMessagePostingChoice(makeManagers({
       allowed: false,
       available: false,
       mode: 'disabled'
-    }), true, dependencies);
+    }), dependencies);
 
     expect(choice).toBe('plain');
     expect(dependencies.confirm).toHaveBeenCalledWith({
       titleLangKey: 'RichMessage.Unavailable.Title',
       descriptionLangKey: 'RichMessage.Unavailable.Text',
-      button: {langKey: 'RichMessage.SendWithoutFormatting'}
+      footer: true,
+      button: {langKey: 'RichMessage.RemoveFormatting'},
+      cancelButton: {langKey: 'Cancel', isSecondary: true}
     });
   });
 });

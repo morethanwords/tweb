@@ -175,3 +175,11 @@ export default class PasscodeLockScreenController extends StaticUtilityClass {
 }
 
 MOUNT_CLASS_TO['PasscodeLockScreenControler'] = PasscodeLockScreenController;
+
+apiManagerProxy.onToggleLock = (isLocked) => {
+  if(isLocked) {
+    PasscodeLockScreenController.lock();
+  } else {
+    PasscodeLockScreenController.unlock();
+  }
+};

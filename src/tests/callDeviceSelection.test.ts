@@ -25,7 +25,7 @@ vi.mock('@lib/calls/callsController', () => ({
 }));
 vi.mock('@lib/calls/groupCallsController', () => ({default: {groupCall: undefined}}));
 
-import {changeCallDevice} from '@lib/calls/applyDeviceToActiveCall';
+import {changeCallDevice, recaptureCallMicrophone} from '@lib/calls/applyDeviceToActiveCall';
 import deferred from './helpers/deferred';
 
 
@@ -82,5 +82,56 @@ describe('transactional call device persistence', () => {
 
     await expect(changeCallDevice('camera', 'missing-camera')).resolves.toBe(true);
     expect(mocks.appSettings.callDevices.cameraId).toBe('');
+  });
+});
+
+describe('capturing the call microphone again', () => {
+  it('swaps the microphone of the call that sends the track, and only that', async() => {
+    const track = {} as MediaStreamTrack;
+    mocks.appSettings.callDevices.microphoneId = 'mic';
+    mocks.call = {getInputAudioTrack: () => ({}) as MediaStreamTrack, setInputAudioDeviceId: vi.fn().mockResolvedValue(true)};
+    expect(await recaptureCallMicrophone(track)).toBe(false);
+    expect(mocks.call.setInputAudioDeviceId).not.toHaveBeenCalled();
+
+    mocks.call.getInputAudioTrack = () => track;
+    expect(await recaptureCallMicrophone(track)).toBe(true);
+    expect(mocks.call.setInputAudioDeviceId).toHaveBeenCalledWith('mic');
+    expect(mocks.appSettings.callDevices.microphoneId).toBe('mic');
+
+    mocks.call = undefined;
+    expect(await recaptureCallMicrophone(track)).toBe(false);
+  });
+
+  it('leaves a microphone change under way alone', async() => {
+    const track = {} as MediaStreamTrack;
+    const picked = deferred<boolean>();
+    mocks.call = {getInputAudioTrack: () => track, setInputAudioDeviceId: vi.fn().mockReturnValue(picked.promise)};
+
+    // The user's pick is still being captured: the old track is still the one sent.
+    const change = changeCallDevice('microphone', 'mic-new');
+    expect(await recaptureCallMicrophone(track)).toBe(false);
+    expect(mocks.call.setInputAudioDeviceId).toHaveBeenCalledTimes(1);
+
+    picked.resolve(true);
+    await expect(change).resolves.toBe(true);
+    expect(mocks.appSettings.callDevices.microphoneId).toBe('mic-new');
+  });
+
+  it('reports a recapture a newer change superseded', async() => {
+    const track = {} as MediaStreamTrack;
+    const recaptured = deferred<boolean>();
+    const picked = deferred<boolean>();
+    mocks.call = {
+      getInputAudioTrack: () => track,
+      setInputAudioDeviceId: vi.fn().mockReturnValueOnce(recaptured.promise).mockReturnValueOnce(picked.promise)
+    };
+
+    const recapture = recaptureCallMicrophone(track);
+    const change = changeCallDevice('microphone', 'mic-new');
+    recaptured.resolve(true);
+    picked.resolve(true);
+    // So the caller tries again while the old track is still the one sent.
+    await expect(recapture).resolves.toBe(false);
+    await expect(change).resolves.toBe(true);
   });
 });

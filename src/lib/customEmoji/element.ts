@@ -6,6 +6,8 @@ import {createCustomFiller} from '@lib/richTextProcessor/wrapRichText';
 import LottiePlayer from '@lib/lottie/lottiePlayer';
 import {CustomEmojiRendererElement, SyncedPlayer} from '@lib/customEmoji/renderer';
 
+const TAG_NAME = 'custom-emoji-element';
+
 export type CustomEmojiElements = Set<CustomEmojiElement>;
 
 export default class CustomEmojiElement extends HTMLElement {
@@ -38,7 +40,8 @@ export default class CustomEmojiElement extends HTMLElement {
   }
 
   public static create(docId?: DocId) {
-    const element = new CustomEmojiElement();
+    // the registered class: after a hot update this module's class is a copy, which the element registry does not know
+    const element = new (customElements.get(TAG_NAME) as typeof CustomEmojiElement)();
     if(docId) element.docId = docId;
     return element;
   }
@@ -99,10 +102,8 @@ export default class CustomEmojiElement extends HTMLElement {
 
     if(this.renderer) {
       const elements = this.renderer.customEmojis.get(this.docId);
-      if(elements?.delete(this) && !elements.size) {
-        this.renderer.customEmojis.delete(this.docId);
-        this.renderer.textColored.delete(elements);
-        this.renderer.playersSynced.delete(elements);
+      if(elements?.delete(this)) {
+        this.renderer.onElementCleared(this.docId, elements);
       }
 
       if(replaceChildren) {
@@ -185,4 +186,9 @@ export default class CustomEmojiElement extends HTMLElement {
   }
 }
 
-customElements.define('custom-emoji-element', CustomEmojiElement);
+if(!customElements.get(TAG_NAME)) {
+  customElements.define(TAG_NAME, CustomEmojiElement);
+}
+
+// a method edited here takes effect on the emoji on screen, without a reload (see @helpers/hotRegistry)
+if(import.meta.hot) import.meta.hot.accept();

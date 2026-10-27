@@ -68,6 +68,8 @@ export class AppUsersManager extends AppManager {
   private updatedContactsList: boolean;
 
   private getTopPeersPromises: {[type in TopPeerType]?: Promise<MyTopPeer[]>};
+  // * until when the server asked to wait, per list: nothing is asked again before that
+  private topPeersFloods: {[type in TopPeerType]?: number};
 
   private defaultEmojiStatuses: MaybePromise<AccountEmojiStatuses>;
   private recentEmojiStatuses: MaybePromise<AccountEmojiStatuses>;
@@ -256,6 +258,7 @@ export class AppUsersManager extends AppManager {
     }
 
     this.getTopPeersPromises = {};
+    this.topPeersFloods = {};
     this.contactsIndex = this.createSearchIndex();
     this.contactsFillPromise = undefined;
     this.contactsList = new Set();
@@ -522,12 +525,15 @@ export class AppUsersManager extends AppManager {
       id: this.appPeersManager.getInputPeerById(peerId),
       my_stories_from: blockMyStoriesFrom === undefined ? undefined : true
     }).then(() => {
+      // * the update says both lists a peer is on: the stories' one leaves the other as the profile knew it
+      const storiesList = blockMyStoriesFrom !== undefined;
+      const known = storiesList && peerId.isUser() && this.appProfileManager.getCachedFullUser(peerId.toUserId())?.pFlags;
       this.apiUpdatesManager.processLocalUpdate({
         _: 'updatePeerBlocked',
         peer_id: this.appPeersManager.getOutputPeer(peerId),
         pFlags: {
-          blocked: block || undefined,
-          blocked_my_stories_from: blockMyStoriesFrom || undefined
+          blocked: (storiesList ? known?.blocked : block) || undefined,
+          blocked_my_stories_from: (storiesList ? block : blockMyStoriesFrom) || undefined
         }
       });
 
@@ -1095,13 +1101,32 @@ export class AppUsersManager extends AppManager {
     });
   }
 
+  /**
+   * A list asked for once per day: a menu, a story or a search that wants it does not cost a request.
+   * Told to wait, it asks nothing until the wait is over and serves the list it had meanwhile, or none;
+   * every caller asking again on its own only made the wait longer. Not even a short wait is waited out:
+   * the list is a nicety for every caller (menus, sharing, the contacts sort, inline bots), and none of
+   * them may hang on it
+   */
   public getTopPeers(type: TopPeerType) {
     if(this.getTopPeersPromises[type]) return this.getTopPeersPromises[type];
 
     return this.getTopPeersPromises[type] = this.appStateManager.getState().then((state) => {
       const cached = state.topPeersCache[type];
-      if(cached && (cached.cachedTime + 86400e3) > Date.now() && cached.peers) { // * fix deleted peer
-        return cached.peers.filter((topPeer) => this.appPeersManager.getPeer(topPeer.id));
+      const getCachedPeers = () => cached.peers.filter((topPeer) => this.appPeersManager.getPeer(topPeer.id)); // * fix deleted peer
+      if(cached?.peers && (cached.cachedTime + 86400e3) > Date.now()) {
+        return getCachedPeers();
+      }
+
+      // * the list from before, or none, while a fresh one cannot be had: not kept as the answer, asked
+      // * again later
+      const getStalePeers = (): MyTopPeer[] => {
+        delete this.getTopPeersPromises[type];
+        return cached?.peers ? getCachedPeers() : [];
+      };
+
+      if(this.topPeersFloods[type] > Date.now()) {
+        return getStalePeers();
       }
 
       return this.apiManager.invokeApi('contacts.getTopPeers', {
@@ -1109,7 +1134,7 @@ export class AppUsersManager extends AppManager {
         offset: 0,
         limit: 30,
         hash: '0'
-      }).then((result) => {
+      }, {floodMaxTimeout: 0}).then((result) => {
         let topPeers: MyTopPeer[] = [];
         if(result._ === 'contacts.topPeers') {
           // console.log(result);
@@ -1132,6 +1157,13 @@ export class AppUsersManager extends AppManager {
         this.appStateManager.pushToState('topPeersCache', state.topPeersCache);
 
         return topPeers;
+      }, (error: ApiError) => {
+        const wait = error?.code === 420 && error.type?.match(/^FLOOD_WAIT_(\d+)$/);
+        if(wait) {
+          this.topPeersFloods[type] = Date.now() + +wait[1] * 1000;
+        }
+
+        return getStalePeers();
       });
     }).catch((err) => {
       // * don't keep a failure for the whole session, the next caller asks again
@@ -1295,7 +1327,9 @@ export class AppUsersManager extends AppManager {
   }
 
   public updateMyOnlineStatus(offline: boolean) {
-    this.setUserStatus(this.getSelf().id, offline);
+    // * an account a tab has just switched to may not have loaded itself yet
+    const self = this.getSelf();
+    self && this.setUserStatus(self.id, offline);
     return this.apiManager.invokeApiSingle('account.updateStatus', {offline});
   }
 

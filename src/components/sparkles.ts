@@ -1,5 +1,6 @@
 import {createEffect, on} from 'solid-js';
 import {template} from 'solid-js/web';
+import createAppWindowIntersectionObserver from '@helpers/dom/createAppWindowIntersectionObserver';
 
 export interface Sparkle {
   x: number;
@@ -75,8 +76,33 @@ function renderSparkle(
 export type SparklesProps = Parameters<typeof renderSparkle>[1] &
   ({mode: 'button', sparkles?: Sparkle[], duration?: number} | {mode: 'progress', count: number});
 
-export function Sparkles(props: SparklesProps): HTMLDivElement {
-  const container = document.createElement('div');
+// * Sparkles out of sight are taken away: a running animation is restyled in every frame the page makes,
+// * whether the compositor runs it or not - the 90 of the paid reactions in a channel cost 2.5 ms of
+// * every frame of a scroll, and of whatever else animated there
+const TAG_NAME = 'sparkles-container';
+const observer = createAppWindowIntersectionObserver((entries) => {
+  for(const entry of entries) {
+    entry.target.classList.toggle('is-paused', !entry.isIntersecting);
+  }
+});
+
+class SparklesContainerElement extends HTMLElement {
+  public connectedCallback() {
+    observer.observe(this);
+  }
+
+  public disconnectedCallback() {
+    observer.unobserve(this);
+  }
+}
+
+if(!customElements.get(TAG_NAME)) {
+  customElements.define(TAG_NAME, SparklesContainerElement);
+}
+
+export function Sparkles(props: SparklesProps): HTMLElement {
+  // the registered class: after a hot update this module's class is a copy, which the element registry does not know
+  const container = new (customElements.get(TAG_NAME) as typeof SparklesContainerElement)();
   container.classList.add('sparkles-container');
 
   const sparkleOptions: Parameters<typeof renderSparkle>[1] = {

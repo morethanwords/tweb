@@ -3,7 +3,6 @@ import {formatFullSentTime} from '@helpers/date';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {MyBoost, PremiumMyBoosts} from '@layer';
-import appImManager from '@lib/appImManager';
 import {i18n} from '@lib/langPack';
 import AppSelectPeers from '@components/appSelectPeers';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
@@ -23,6 +22,8 @@ import {wrapLeftDuration} from '@components/wrappers/wrapDuration';
 import {IconTsx} from '@components/iconTsx';
 import rootScope from '@lib/rootScope';
 import {createListTransition} from '@vendor/createListTransition';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const className = 'popup-boost';
 
@@ -31,6 +32,7 @@ export default async function showReassignBoostPopup(
   myBoosts: PremiumMyBoosts,
   appConfig: MTAppConfig
 ) {
+  const managers = bindManagersToSession(rootScope.managers);
   const middlewareHelper = getMiddleware();
   const middleware = middlewareHelper.get();
   const descriptionPeerTitle = await wrapPeerTitle({peerId});
@@ -87,7 +89,8 @@ export default async function showReassignBoostPopup(
           return (
             <div
               class={`${className}-avatars-avatar-container`}
-              style={`--offset: ${diff() * -offset}px`}
+              // * the pile grows toward the row's start, away from the arrow: rightward in RTL
+              style={`--offset: calc(${diff() * -offset}px * var(--reflect))`}
             >
               {element}
               <IconTsx icon="boostcircle_filled" class={classNames(`${className}-avatars-avatar-icon`, !diff() && 'is-visible')} />
@@ -99,7 +102,7 @@ export default async function showReassignBoostPopup(
       const transitionList = createListTransition(resolveElements(() => realList).toArray, {
         exitMethod: 'keep-index',
         onChange: ({added, removed, finishRemoved}) => {
-          const options: KeyframeAnimationOptions = {duration: liteMode.isAvailable('animations') ? 200 : 0/* , fill: 'forwards' */, easing: 'ease-in-out'};
+          const options: KeyframeAnimationOptions = {duration: liteMode.isAvailable('motion') ? 200 : 0/* , fill: 'forwards' */, easing: 'ease-in-out'};
           const keyframes: Keyframe[] = [{transform: 'translateX(var(--offset)) scale(0)'}, {transform: 'translateX(var(--offset)) scale(1)'}];
           queueMicrotask(() => {
             for(const element of added) {
@@ -121,7 +124,8 @@ export default async function showReassignBoostPopup(
       return (
         <div
           class={classNames(`${className}-avatars`, peerIds().length && 'has-left')}
-          style={`transform: translateX(${Math.max(0, peerIds().length - 1) * (offset / 2)}px)`}
+          // * recentres the row as the pile grows toward its start
+          style={`transform: translateX(calc(${Math.max(0, peerIds().length - 1) * (offset / 2)}px * var(--reflect)))`}
         >
           <div class={`${className}-avatars-left`}>
             {transitionList}
@@ -212,7 +216,7 @@ export default async function showReassignBoostPopup(
             anchorCallback(() => {
               hideToast();
               hideWithCallback(() => {
-                appImManager.initGifting();
+                hotReloadGuard.appImManager.initGifting();
               });
             })
           ]
@@ -257,6 +261,7 @@ export default async function showReassignBoostPopup(
 
     return (
       <PopupElement
+        managers={managers}
         class={className}
         closable
         show={show()}
@@ -277,7 +282,7 @@ export default async function showReassignBoostPopup(
                 [
                   anchorCallback(() => {
                     hideWithCallback(() => {
-                      appImManager.initGifting();
+                      hotReloadGuard.appImManager.initGifting();
                     });
                   })
                 ]

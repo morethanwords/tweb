@@ -4,6 +4,7 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import rootScope from '@lib/rootScope';
 import wrapEmojiPattern from '@components/wrappers/emojiPattern';
 import wrapSticker from '@components/wrappers/sticker';
+import isDocumentRTL from '@helpers/dom/isDocumentRTL';
 
 // * Background-emoji pattern geometry, ported 1:1 from tdesktop's FillBackgroundEmoji
 // * (Telegram/SourceFiles/history/view/history_view_reply.cpp:267 — the non-quote variant,
@@ -33,6 +34,10 @@ export const PEER_COLOR_PATTERN_EMOJI_SIZE = 24; // source raster >= the largest
 export const PEER_COLOR_PATTERN_POSITIONS: [x: number, y: number, size: number, alpha: number][] =
   TDESKTOP_PATTERN.map(([xFromRight, y, sizeIndex, alpha]): [number, number, number, number] =>
     [PEER_COLOR_PATTERN_CANVAS_WIDTH - xFromRight, y, TDESKTOP_PATTERN_SIZES[sizeIndex], alpha]);
+// * In RTL the box is pinned to the left edge (the line's end), so the emoji gather in its left corner:
+// * the same places mirrored, the emoji themselves drawn as they are
+const PEER_COLOR_PATTERN_POSITIONS_RTL = PEER_COLOR_PATTERN_POSITIONS.map(([x, y, size, alpha]): [number, number, number, number] =>
+  [PEER_COLOR_PATTERN_CANVAS_WIDTH - x - size, y, size, alpha]);
 
 // * The pattern is drawn once per emoji as a mask and painted in CSS (`.quote-like-pattern`) with the
 // * box's own colour. So, like every other client, it takes the colour of whatever it sits in —
@@ -54,24 +59,25 @@ export default function wrapPeerColorPattern(options: WrapPeerColorPatternOption
   const color = (peer as User.user)?.color as PeerColor.peerColor | PeerColor.peerColorCollectible;
   const docId = color?.background_emoji_id;
   if(docId) {
-    const appendPattern = (mask: string) => {
+    const appendPattern = (mask: string, maskRTL?: string) => {
       const div = document.createElement('div');
       div.classList.add('quote-like-pattern');
       div.style.width = `${PEER_COLOR_PATTERN_CANVAS_WIDTH}px`;
       div.style.height = `${PEER_COLOR_PATTERN_CANVAS_HEIGHT}px`;
       div.style.setProperty('--pattern-mask', `url(${mask})`);
+      if(maskRTL) div.style.setProperty('--pattern-mask-rtl', `url(${maskRTL})`);
       container.prepend(div);
     };
 
-    const key = `${docId}-${window.devicePixelRatio}`;
-    const mask = masks.get(key);
-    if(mask) {
-      appendPattern(mask);
-    } else {
-      wrapEmojiPattern({
+    // * the mirrored mask only once the layout is RTL; a box drawn before a switch keeps the other
+    const getMask = (rtl: boolean) => {
+      const key = `${docId}-${window.devicePixelRatio}${rtl ? '-rtl' : ''}`;
+      const mask = masks.get(key);
+      if(mask) return mask;
+      return wrapEmojiPattern({
         docId,
         middleware,
-        positions: PEER_COLOR_PATTERN_POSITIONS,
+        positions: rtl ? PEER_COLOR_PATTERN_POSITIONS_RTL : PEER_COLOR_PATTERN_POSITIONS,
         canvasWidth: PEER_COLOR_PATTERN_CANVAS_WIDTH,
         canvasHeight: PEER_COLOR_PATTERN_CANVAS_HEIGHT,
         emojiSize: PEER_COLOR_PATTERN_EMOJI_SIZE
@@ -79,10 +85,18 @@ export default function wrapPeerColorPattern(options: WrapPeerColorPatternOption
         if(!canvas) return;
         const mask = canvas.toDataURL();
         masks.set(key, mask);
-        if(middleware && !middleware()) return;
-        appendPattern(mask);
+        return mask;
       });
-    }
+    };
+
+    const onMasks = ([mask, maskRTL]: (string | false | void)[]) => {
+      if(!mask || (middleware && !middleware())) return;
+      appendPattern(mask, maskRTL || undefined);
+    };
+
+    const pending = [getMask(false), isDocumentRTL() && getMask(true)];
+    if(pending.some((mask) => mask instanceof Promise)) Promise.all(pending).then(onMasks);
+    else onMasks(pending as string[]);
   }
 
   if(options.withCollectible && color?._ === 'peerColorCollectible') {

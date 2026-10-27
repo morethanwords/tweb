@@ -35,7 +35,7 @@ pnpm lint           # oxlint on the whole repo (config: .oxlintrc.json)
 pnpm lint:fix       # Same, with auto-fix
 ```
 
-Debug query params: `?test=1` (test DCs), `?debug=1` (verbose logging), `?noSharedWorker=1` (disable shared worker), `?pfs=1` (Perfect Forward Secrecy — temporary auth keys, `src/lib/mtproto/tempAuthKeys.ts`; off by default), `?a11y=1` (the keyboard and screen-reader layer — see "Accessibility"; off by default).
+Debug query params: `?test=1` (test DCs), `?debug=1` (verbose logging), `?noSharedWorker=1` (disable shared worker), `?noPfs=1` (turns off Perfect Forward Secrecy — temporary auth keys, `src/lib/mtproto/tempAuthKeys.ts`; on by default), `?a11y=1` (the keyboard and screen-reader layer — see "Accessibility"; off by default), `?rtl=1` (lays the app out right to left in whatever language is loaded — see "Right-to-left"), `?memoryWatch=1` (keeps a memory history of the tab — see "Memory").
 
 ### Preview
 
@@ -44,6 +44,29 @@ plain `vite`) — it mints a fresh per-preview auth + picks a free port. Flags a
 details: see the script header. `.claude/launch.json` wires it into Claude
 Code's preview pane; other agents run the script directly and open the printed
 URL with their own browser tooling.
+
+**One preview per checkout, shared through leases.** An agent runs
+`bash scripts/start-preview.sh --detach` (outside Claude Code's Bash sandbox —
+inside it the script refuses, since no other process or port is visible there).
+When a preview of the same checkout — so of the same branch — already runs in
+the same mode, it hands back that preview's URL instead of starting a second
+one; either way it returns once the preview answers. Use the URL it prints, even
+if it is not the port you asked for. The caller holds a lease on what it got —
+inside Claude Code the session does; an agent whose shell lives for one command
+sets `TWEB_PREVIEW_HOLDER=<its name>` — and `--stop` (on `--port`, or on
+everything you hold) drops yours and stops the server only when nobody else
+holds it; `--list` shows what runs and for whom.
+**Never stop a preview any other way** — not by pid, port, `pkill vite` or a tmux
+session: another session may be using it. A separate preview (another account,
+a clean origin) takes its own `--id`.
+
+**Name it by the task.** Pass `--label '<a word or two>'` saying what the
+checkout works on — not the branch name, in the language you talk to the user
+in. Several previews run at once, and the label is how the user tells them
+apart: the tab title starts with it, and a badge in the preview's bottom-left
+corner lists every running preview by label, as does `/_previews` on any of
+them. The label belongs to the checkout (`tmp/preview-label`) and outlives a
+restart; pass it again to rename.
 
 ### Popup sandbox
 
@@ -56,7 +79,9 @@ Every popup, opened by click with mock data and **no Telegram traffic**. Two way
 - `showPopupSandbox()` from the console of a running app, signed in or not. The
   panel opens over the app and closing it (×) puts the real managers back. The
   fixture peers/messages are merged into the mirrors key by key rather than
-  replacing them, so a live session's own cache survives.
+  replacing them, so a live session's own cache survives. While it is open, an
+  edit a story module takes reloads the page (`?popups=1` reloads for every
+  edit); the app's own edits stay hot.
 
 Signed in, the panel offers a second data source — **My data** — which builds the
 stories out of the session's own dialogs, messages and gifts instead of the
@@ -84,6 +109,8 @@ Either way every `rootScope.managers` call is answered from
 - The panel's theme select switches between `system` and every shipped theme
   (`day` / `night` / `light` / `tinted`) and survives a reload — the mock
   managers discard settings writes, so it is kept in `localStorage` instead.
+  The direction select beside it (`ltr` / `rtl`) is kept the same way and lays
+  every story out right to left; `?rtl=1` in the URL does the same.
 - Going through 200+ stories takes more than one sitting, so each row has a
   checkbox for "I have looked at this one" and the list can be sliced by it —
   **All / Unchecked / Checked**, counted within whatever the search box is
@@ -94,13 +121,34 @@ Either way every `rootScope.managers` call is answered from
   `calls` and `unhandled` follow the active data source.
   `pnpm test:popups` runs the `e2e/popupSandbox*.spec.ts` suites in headless
   Chromium (~50 s): `popupSandbox.spec.ts` opens every story and fails on one
-  that throws or never becomes visible; the others drive the composer's popups.
+  that throws, never becomes visible or never leaves — twice, with full and
+  with reduced animations; the others drive the composer's popups.
   `pnpm test:popups:full` adds Firefox and WebKit (~3 min).
 - `src/tests/popupSandboxCoverage.test.ts` fails when a module under
   `components/popups/` can open a popup and no story imports it, so a new popup
   cannot land without one. It also fails when a story builds its popup out of a
   fixture without being marked `fixtureOnly` — that mark is what keeps live mode
   from quietly showing made-up data.
+
+### Memory
+
+What a tab costs, and where it went. Chrome charges a tab for every SharedWorker
+it hosts (MTProto, the crypto and lottie pools) and for memory no JS heap shows,
+so `performance.memory` alone says little.
+
+- `await memoryReport()` in the console: this thread's structures plus a round
+  trip to every worker of the tab, and the records those workers set.
+- `?memoryWatch=1` (off otherwise — a developer's own tab, never every user's):
+  a sample every 15 minutes into localStorage, with what the tab was doing
+  (`ctx.*`) and the records kept beside them, for as long as the URL carries the
+  flag (a reload and a restored tab keep it). `memoryWatch()` in the console
+  does the same until `memoryWatchStop()`. Read it with `memoryWatchSummary()`,
+  `downloadMemoryWatch()`, or inside `downloadLogs()` in line with the logs.
+- A worker remembers the moment a holder of its sets a record, with what it held
+  then (`createPeakRecorder` in `@lib/debug/memoryStats`; the lottie heap uses it).
+- From outside the page, `MemoryProbe` (`e2e/memory.helpers.ts`) reads what the
+  page cannot: every isolate's heap, the renderer by allocator (a memory-infra
+  dump) and the DOM's counters. `test:memory:app` is built on it.
 
 ## Directory Structure
 
@@ -283,6 +331,107 @@ rootScope.managers.appChatsManager.getChat(chatId);
 
 IMPORTANT: `rootScope.managers.*` are asynchronous proxies to a shared worker. Every manager method returns a `Promise`, even if the manager's own methods seem synchronous.
 
+### Managers belong to an account session
+
+The tab switches between signed-in accounts in place (`@lib/accounts/switchAccount`), so the account a
+flow started on may not be the one shown when its `await` returns.
+
+- `rootScope.managers` (`TabManagers`) follow whichever account the tab shows, read at call time. Only
+  what lives as long as the tab keeps them (the sidebars, the chat list, `appImManager`).
+- Anything else holds managers bound to an account session (`AppManagers`):
+  `bindManagersToSession(rootScope.managers)`. They reach the account they were taken in, and once the
+  tab has switched away they send nothing and drop what comes back — an action the switch interrupted
+  is not carried on. Tabs, popups and the media viewer get them from their base classes; a chat and a
+  call have their own, tied to their account for good.
+- A function that waits reads its managers once, before the first await, bound, and uses that after.
+  `tweb/managers-before-await` (`scripts/oxlint/twebPlugin.mjs`) reports a read after an await or in a
+  callback that runs later, and managers kept unbound; `TabManagers` is not assignable to `AppManagers`,
+  so handing them to what keeps them asks for the binding (what only reads takes `ReadingManagers`).
+- A save on a screen's way out that reads before it writes binds to the account for good
+  (`bindManagersToAccount(managers, getCurrentAccount())`): the switch waits for closing screens a while only.
+- A tab, a popup, the media editor or a picker asked for by a session that is over or on its way out is
+  not opened (`isSessionLeaving`); hand the opener's managers on so the check knows whose it is.
+
+### The app's top level: `hotReloadGuard`
+
+**Strict rule — code below the app's top level never imports it.** The top level is the singletons
+(`appImManager`, `appDialogsManager`, `appSidebarLeft`/`Right`, `internalLinkProcessor`), the tab registry
+(`solidJsTabs/tabs`) and the popups and viewers they open (`showPremiumPopup`, `showStarsPopup`, `showForwardPopup`,
+the stories viewer, `AppMediaViewer`, …). A component, popup, wrapper or tab reads them at call time from the
+registry instead — never while modules are still being evaluated:
+
+```typescript
+// ❌ wrong — the whole app becomes part of this module's import graph
+import appImManager from '@lib/appImManager';
+import {AppSettingsTab} from '@components/solidJsTabs/tabs';
+
+// ✅ right
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+hotReloadGuard.appImManager.setInnerPeer({peerId});
+slider.createTab(hotReloadGuard.tabs.AppSettingsTab).open();
+// in a Solid component, from the context:
+const {appImManager} = useHotReloadGuard();
+```
+
+An import from the top level puts the whole app into the importer's graph: every test of it reruns on any edit
+(`vitest --changed`), and a hot update through it re-runs the importer with fresh copies of the singletons — a
+second `appImManager` while the log says "hmr update" and the page looks fine. The singletons register themselves
+where they are made; everything else is registered by `@lib/solidjs/hotReloadGuardValue`, which only the app's root
+imports. A new entry: its type in `hotReloadGuard.ts`, its value in `hotReloadGuardValue.ts`. A test that mocks a
+top-level module hands the mock over with `registerHotReloadGuard({...})`. A value or helper that low-level code
+needs from a top-level module (a constant, a pure function, a small component) moves out into a module of its own
+(`@lib/appColumns`, `@components/dialogElement`, `@components/stars/starsAmount`).
+
+`src/tests/importGraphBudget.test.ts` is the ratchet: it fails when the largest import cycle, the modules whose edit
+reloads the page, or the hot updates that make a second instance of a singleton grow past
+`scripts/import-graph.budget.json`. `node scripts/import-graph.mjs` (`hmr`, `why <file>`, `hazards`, `funnels`,
+`tests`, `cycle` — see its header) shows what an edit reloads and why, and which import closed a cycle; lower the
+budget with `check --update` when the numbers shrink.
+
+**A module's top-level state survives a hot update by itself, in dev.** Vite re-stamps every importer of an edited
+module, so a boundary that runs again runs the modules under it again too. The dev server rewrites every app module
+it serves (`scripts/hot-reload-plugin.mjs` → `scripts/hot-module-transform.mjs`, kept by `@helpers/hotRegistry`) so
+that the next evaluation keeps what the previous one made — nothing in the sources asks for it, and the build is
+untouched:
+
+- a top-level `const` whose value is state — anything but literal data, functions, another name for something, data
+  the module changes, or what `defineSolidElement` makes (it takes the update itself) — a top-level `let` a function
+  uses, and a static field made with a call are made once per page.
+  An edit of the code that makes one, or of a function, table or class's static method it is made from (in any
+  module), reloads the page;
+- every top-level class: the first evaluation's class stays the one the instances and `instanceof` hold, and each
+  later evaluation copies its methods onto it. What a live instance cannot take reloads: a constructor or field
+  initializer, a method the constructor calls, a method it holds as a value (`this.x.bind(this)`, a listener), a custom
+  element's lifecycle callback, a function or another class's static method its construction calls, or a factory whose
+  product a method stores on it — the markup of JSX among them, which Solid hoists out of the code;
+  and private members (`#x`), which another evaluation's methods cannot read — a class with them reloads whenever its
+  module runs again;
+- a TypeScript namespace that holds state (`I18n`) cannot be kept without its code: its module reloads when it runs
+  again;
+- a module that accepts its own updates (`import.meta.hot.accept()`, or solid-refresh's for components): an export its
+  importers hold — a function, a table, a re-export — that changed reloads.
+
+A closure made before the update — a listener added inside a method, a callback handed to another module — keeps the
+code it captured until a reload (but for a dynamic `import()`, which always loads the latest version), and what a method that already ran built (DOM, an instance's state) stays as built —
+construction included past the constructor's own code and the methods it calls directly: what those call in turn
+runs at other times too (`ChatBubbles.constructBubbles` reaches `renderMessage`), and an edit of it applies from its
+next call. A module an edit leaves with no importer is dropped, and its `hotEffect`s are undone.
+`e2e/popupSandboxHotRerun.spec.ts` (in `test:popups`) and `test:hot:app` run every module the sandbox, or a signed-in
+boot, loads once more with the same code, as a hot update does, and fail on a reload none of these rules asks for.
+
+What a module *does* at its top level runs again with it, and is left to the module: a listener goes through
+`hotListen(import.meta.hot, rootScope, 'event', onEvent)`, any other setup with a cleanup (an interval, a window
+listener with options, a root with effects) through `hotEffect(import.meta.hot, () => cleanup)` (`@helpers/hotModule`),
+so the new one replaces the old. A top-level statement that acts on kept state (`promise.resolve()`,
+`Tab.prototype.init = ...`, `if(...) set.add(...)`, `Object.assign(state, ...)`) is kept with it, and so is a table it reads: it runs once per
+page, and an edit, an addition or a removal of one reloads. A custom element: `define` behind `if(!customElements.get(TAG))`, instances built by
+`new (customElements.get(TAG) as typeof X)()` (a `static create()`), since a re-run module's class is unregistered.
+
+A reload the page asks for goes through the dev server, so the log says "page reload <file> (<reason>)" —
+`import.meta.hot.invalidate()` does not reload, it re-runs the importers. A module a worker imports never mentions
+`import.meta.hot` (it would pull Vite's client into the worker), and `@helpers/hotRegistry`, which every module
+imports, neither does nor imports anything, nor needs timers: an AudioWorklet, which has none, runs it too.
+
 ### Media devices (camera / microphone)
 
 **Strict rule — never call `navigator.mediaDevices.getUserMedia` directly when you need a camera or microphone. Use `getStream` from `@lib/calls/helpers/getStream`.** It is the single chokepoint for every `getUserMedia` in the app (calls, voice notes, round-video notes), so two things happen for free:
@@ -331,6 +480,55 @@ consciously:
 `messageEntityHighlight` entities to point at a piece of rendered text. Use
 `highlightText()` from `@helpers/dom/textHighlight`** (options and modes are
 documented in the file; styles in `scss/partials/_textHighlight.scss`).
+
+### Animation levels
+
+Interface animations have three levels (`liteMode.getAnimationLevel()`): **0**
+off, **1** reduced, **2** full. Reduced is "Interface Animations" on with
+"Motion Effects" off in Power Saving, or the OS reduce-motion preference under
+`?a11y=1` (`liteMode.isMotionHeldBySystem()`; level 0 stays the switch that
+turns everything off). It follows the platforms' Reduce Motion: control feedback
+(colour, toggle knob, checkbox tick, the press highlight — a ripple that does not
+spread, only fades), fades and spinners stay, and so does something growing or
+shrinking where it stands (a block entering or leaving the flow, a section
+expanding, a field following its content) — a fade at a size that changes at
+once opens a hole before it or leaves one after. Slides and zooms become
+crossfades; what travels (a position, a reorder, a flight to a new place),
+scrolling and the window's own layout (columns, sidebars) change at once, and
+changing digits are replaced in place rather than rolled; decorative effects
+(shake, shimmer, pops, hover zooms, looping waves) go. One shift is kept on
+purpose: the bubbles stepping aside for the selection checkboxes — short, the
+user's own doing, and worse as a jump.
+
+- **JS:** `isAvailable('animations')` is level 1 and up, `isAvailable('motion')`
+  level 2. Gate movement on `motion`, growth on `animations`. Code that waits
+  for a `transitionend` or `animationend` must be gated on the same level as the
+  CSS that fires it — an event that never comes leaves things stuck at level 1.
+- **SCSS:** the body carries `animation-level-0`, or every level up to the
+  current one, so `@include animation-level(1)` is reduced and full, `(2)` full
+  only, `(0)` off only, `animation-level-below(2)` off and reduced,
+  `animation-level-only(1)` reduced alone. A fade or a size goes under `(1)`,
+  movement under `(2)`. A transition list that does both is written once, with
+  `animation-level-transition(...)`, which hands reduced the part that does not
+  move (fades, colours, sizes and margins; transforms, positions, padding and
+  font size move); an icon swapped in a button uses `animation-level-icon-in` /
+  `-out`. The mixin does not touch the states: where a hidden state is an offset
+  or a scale, neutralise it below level 2 (`transform: none`), or hiding makes it
+  jump before it fades — but only where something else (`visibility`,
+  `pointer-events`, `display`) keeps the hidden element from being clicked; one
+  that `scale(0)` alone hides is better gone at once. In a `.module.scss` use
+  the `-global` mixins (`$global: true` for the transition one): a plain
+  `animation-level(...)` gets its body class hashed and never matches.
+- **Durations:** a fade has no distance for the eye to follow, so at level 1 it
+  is short — 150–200 ms, going quicker than coming. The shared timings
+  (`--transition-standard-*`, `--ripple-duration`) shorten themselves there
+  (`base.scss`), for the growth they time as well; a fade that stands for a
+  movement keeps to that range rather than inheriting the movement's length
+  (an ambient fade of its own, a background settling, may take longer).
+- **Shared pieces already follow the levels:** `TransitionSlider` (every type
+  crossfades at level 1), `fastSmoothScroll`, `smoothScrollBehavior()`,
+  `AnimationList` (keyframes without what moves, by `reducedKeyframes`),
+  `HeightTransition`, `crossfadeContent`, the popup and menu CSS.
 
 ### Settings tabs are indexed for search
 
@@ -389,6 +587,38 @@ import {Message, Chat, User, InputPeer} from '@layer';
   constants, search the codebase for an existing implementation and reuse or
   extend it. Every final review must explicitly check the completed change for
   duplicated code and remove any duplication found.
+- **A fix is as small and as local as what it is for.** A one-off need — one
+  item, one case, one rename — never goes into a mechanism shared by everything
+  (a loop over every item, a global stylesheet, a shared helper): there it is
+  paid on every pass and drags guards in after it. If it fits nowhere else, say
+  where it belongs (the server, a config) and ask.
+- **Every final review also checks the change's performance** — above all
+  animations and anything that touches style or layout:
+  - A forced synchronous layout — reading `offsetWidth`, `clientWidth`,
+    `getBoundingClientRect()` or `getComputedStyle()` after a DOM write, or
+    `void el.offsetLeft` to restart a transition — is fine for a one-off heavy
+    animation: a popup opening, a page switching, once per user action. It is
+    not on a hot path — a chat-list row, an incoming update, the unread counter —
+    nor in an animation that stands in many places and fires often: there every
+    read goes before any write (`sequentialDom.measure` → `mutate`), and what
+    has to be styled before its transition waits a frame instead of reflowing.
+    Read only inside `measure(cb)` and write only inside `mutate(cb)`; their
+    promise says no more than "done" — code after `await measure()` is not
+    held to the read phase, and one more `await` puts it after the writes.
+  - Animate `transform` and `opacity`. A layout property (`width`, `height`,
+    `max-width`, `top`…) relays out on every frame — keep it to the one element
+    that needs it.
+  - What every row of a list wears is paid per row: mount the animation's DOM
+    only while it moves, and skip what is out of sight, in a hidden tab, or
+    with animations off (`liteMode`).
+  - Measure rather than guess: CDP `Performance.getMetrics` (`LayoutCount`,
+    `RecalcStyleCount` and their durations) around the change, with and without
+    it, and with many items changing at once. A cost that matters gets a
+    regression check (e.g. `e2e/dialogUnreadCounter.spec.ts` counts the
+    layouts read while the counts of many rows change).
+- **Every final review also checks the change in RTL** — mirrored, next to
+  LTR, as "Right-to-left (RTL)" below describes. A screen that only works
+  left to right is not finished.
 - **After every context compaction, reread this entire `AGENTS.md` before
   continuing work.** A compacted context or summary does not replace the
   canonical instructions in this file.
@@ -400,9 +630,46 @@ import {Message, Chat, User, InputPeer} from '@layer';
   final review (task wrap-up, or a review is asked for) run a suite only if it
   can observe what changed: `test:popups` / `test:a11y` /
   `test:focus` cover the popup sandbox and the sign-in screens, their `:app`
-  variants the signed-in client, `test:editor:e2e` the composer. A change none
+  variants the signed-in client, `test:editor:e2e` the composer, `test:peek:app`
+  the hold-to-peek on photos (`components/mediaPeek`), `test:viewer:app` the
+  media viewer's paging (`components/mediaViewer`), `test:send:app` a message
+  flying out of the composer (`components/chat/sendFlights`), `test:calls` the calls'
+  noise suppressor (`lib/calls/noiseSuppression`), `test:memory:app` what a long
+  session leaves in memory (caches, players, registries, the workers), `test:hot:app` (with `test:popups`, and
+  `test:calls`, whose worklet runs the registry) the dev server's hot updates (`scripts/hot-*.mjs`,
+  `@helpers/hotRegistry`, `@helpers/hotModule`). A change none
   of them exercises (chat-only styling, a manager fix) skips them. Report what
   ran, and what was skipped and why.
+- **Heavy runs wait their turn on a shared machine.** Every Playwright run and a
+  full `vitest run` take their workers from one budget for the whole machine —
+  75% of the CPUs, shared by every checkout and worktree
+  (`scripts/test-queue.sh`) — so suites from parallel sessions run one after
+  another instead of starving each other into timeouts. A run may print
+  `[test-queue] … waits for its turn` and sit there: start suites in the
+  background, never kill a waiting run to retry it, and see who is ahead with
+  `bash scripts/test-queue.sh`. A Playwright run narrowed to some files or
+  tests gets at most 4 workers unless `--workers` says otherwise, so a few of
+  them share the machine; vitest on a few files does not queue at all.
+  The full run of a release build (`node build.js`) goes ahead of every
+  waiting run, though never ahead of a running one
+  (`TWEB_TEST_QUEUE_PRIORITY=1` — that build's alone, never set it for a
+  suite of your own). `TWEB_TEST_QUEUE=0` runs without the queue; CI never
+  queues.
+- **A code review goes to Codex first.** Asked to review a change, an agent
+  other than Codex does not review its own work: it hands the change, and what
+  it is for, to Codex (GPT) with `scripts/codex-review.sh`, then checks each
+  finding against the code before fixing or reporting it — the `codex-review`
+  skill (`.claude/skills/codex-review/SKILL.md`) has the steps. Only when Codex
+  is unavailable (the script exits 3: not installed, signed out, every model
+  refused) does the agent review the change itself, and its report says so.
+- **"Финализируй" (`/finalize`) means review, fix and commit.** It is the
+  explicit request to commit that the rule under "What NOT to Do" waits for,
+  and it covers only the change at hand: review it as above, fix what the review
+  confirms, run the tests the final review calls for, and commit it as one
+  commit of only that change — never pushed. A fix the code and the rules
+  already settle is made without asking; a question only the user can answer
+  holds the commit until they have answered and said to commit. The steps are in
+  `.claude/skills/finalize/SKILL.md`.
 
 ## Accessibility (a11y) is part of every UI feature
 
@@ -471,6 +738,92 @@ unit test of the layer imports `@/tests/helpers/a11yLayer`.
   custom interactions when available, and explicitly record untested cases.
   Passing Axe or source review alone does not establish full accessibility.
 
+## Right-to-left (RTL) is part of every UI feature
+
+Arabic, Persian, Hebrew and the other right-to-left languages lay the whole
+client out mirrored. **Every new or changed interface must work right to left**:
+design it, build it and check it that way before calling it done — the same as
+accessibility, never a follow-up. What mirrors and what does not follows the
+common bidirectional guidelines (Material Design's Bidirectionality, Apple's
+Right to left, the W3C's internationalization notes) — never another Telegram
+client, whose RTL support is incomplete.
+
+- **How the direction is set.** `I18n.applyDirection()` (`@lib/langPack`) puts
+  `dir`, `lang` and `.is-rtl` on `<html>` on every language apply, by the
+  server's word on the language (`langPackLanguage.rtl`, kept with the pack as
+  `rtl`), or by its code (`isRTLLangCode`) for a pack without it. A switch in Settings → Language flips the
+  running app without a reload, so nothing may decide the direction once, at
+  load or at construction: read `I18n.isRTL()` (a signal; `I18n.getIsRTL()`
+  outside a reactive scope) when laying out. `?rtl=1` forces RTL in any
+  language, `I18n.forceRTL(true | false | undefined)` flips it live from the
+  console, and the popup sandbox has a direction switch next to its theme.
+- **CSS is logical, not physical.** `margin-inline-*`, `padding-inline-*`,
+  `inset-inline-*`, `border-inline-*`, `text-align: start | end`, logical corner
+  radii (`border-start-start-radius` …). Physical `left` / `right` only for a
+  coordinate that is physical: a position JS measured, `left: 50%` centring,
+  full width. Movement along the line multiplies by `var(--reflect)` (`1` / `-1`):
+  `translateX(calc(100% * var(--reflect)))`, gradient angles
+  `calc(90deg * var(--reflect))`, a shimmer or loading sweep running from the
+  inline start; origins use `--transform-origin-inline-start` / `-end`. Where nothing logical exists (`background-position`, `clip-path`,
+  shadows), override under `.is-rtl &`. Never set a logical property and its
+  physical twin for the same side in one block: production's lightningcss
+  emits the lowered logical rule after the block with a higher specificity, and
+  the physical one silently loses in the build only (logical radii become
+  `:lang()` rules — one reason `<html lang>` must be right).
+- **Icons.** Glyphs that point along the line (arrows, back, send, reply,
+  forward, undo, list bullets) are listed in `src/iconsReverse.ts`; `Icon()` and
+  `<IconTsx>` give them `.icon-mirror`, which the stylesheet flips in RTL (with
+  `scale`, so it composes with a `transform` animation). A new directional icon
+  goes into that list; a glyph that points along the line in one place only (the
+  logo as a send plane) takes the class `icon-mirror` there — never a hand-made
+  `scaleX(-1)`.
+- **JS geometry and input.** `getBoundingClientRect()`, `clientX`, `offsetLeft`
+  and `style.left` are physical: mirror whatever is measured from "the start" of
+  a row, and prefer writing logical styles (`style.insetInlineStart`) or a CSS
+  variable the stylesheet applies logically. `scrollLeft` is `0` at the start
+  and negative toward the end in RTL. In a horizontal widget ArrowRight means
+  "previous" and ArrowLeft "next" (`getInlineArrowKeys()`); horizontal swipes
+  and drags (swipe-to-reply, swipe-back, tab swipes) flip their sign
+  (`handleTabSwipe` already does).
+- **Sequences page in reading order.** The media viewer, stories, the profile
+  photo carousel, slideshows and any other gallery or carousel put the next item
+  at the inline end — on the left in RTL: its arrow, the side a click goes on by,
+  ArrowLeft, a swipe to the right and the slide all point that way, and a
+  progress that counts steps (the stories strip) fills from the right. One
+  inside content of its own direction (a page's or a rich message's slideshow)
+  pages that way. Outgoing messages sit on the left.
+- **Text.** Content whose direction is unknown — names, messages, captions —
+  gets `dir="auto"` (`setDirection()` / `setInnerHTML()`); strings that are
+  always left to right — phone numbers, codes, card numbers, URLs, standalone
+  @usernames, signed amounts, code — get `dir="ltr"`; parts joined into one line
+  are isolated (`unicode-bidi: isolate`) so one RTL part does not reorder its
+  neighbours. A string an RTL pack lacks falls back to English, which `I18n`
+  puts in a left-to-right isolate inside its element (`untranslatedKeys`), the
+  spaces that join it to its neighbours left outside. The composer lays a draft
+  out in the direction it is sent in (`editorDocumentRtl`, the first block with
+  text), not the interface's.
+- **What is not mirrored.** Media playback — seek and progress bars, voice
+  waveforms, video timelines, play / rewind / forward — runs left to right: it
+  follows the tape, not the reading direction. Put the attribute `dir="ltr"` on
+  the control (icons inside a `[dir="ltr"]` island are not mirrored) and keep its
+  geometry physical. Media content, stickers, illustrations, avatars, QR codes,
+  maps, charts and graphs, clocks and anything that turns clockwise, check marks
+  and digits stay as they are. Value sliders (volume, sizes, colours) do mirror;
+  a native `<input type="range">` takes its arrow keys through
+  `onRangeInlineArrowKey` (WebKit steps a right-to-left range by the keys'
+  sides, not by its direction).
+- **Verify it.** Look at the change in the preview with `?rtl=1` (or flip
+  `I18n.forceRTL()` and back) side by side with LTR: layout, open/close and
+  slide animations, menus and tooltips opening toward the right side, scrolling
+  strips, keyboard and swipe directions. For an RTL language's own text, switch
+  the language to Arabic or Persian in Settings — on the preview's built bundle
+  (`?static=1`): the dev server lays the local English strings over the
+  server's pack. The direction switch
+  itself is covered by `src/tests/langDirection.test.ts`, and
+  `e2e/popupSandboxRtl.spec.ts` (part of `test:popups`) opens every popup story
+  in both directions and fails on a box that does not stand mirrored, and checks
+  that a value slider runs from the right.
+
 ## What NOT to Do
 
 (Style rules are in "Code Style"; the import-alias, `invokeApi`-from-UI, and
@@ -502,11 +855,20 @@ Browser suites (Playwright):
 ```bash
 pnpm test:popups   # every sandbox story opens and becomes visible, composer popups (~50 s)
 pnpm test:popups:full  # the same in Firefox and WebKit too (~3 min)
+pnpm test:editor:e2e  # the composer in its fixture page: cursor, clipboard, uploads, rich blocks (~40 s)
+pnpm test:editor:e2e:full  # the same in Firefox and WebKit too (~4 min)
 pnpm test:a11y     # Axe matrix, keyboard interop, contrast, media editor, stories (~2 min)
 pnpm test:a11y:full  # the same, with the story sweep in all four themes (~4 min; always on CI)
 pnpm test:focus    # keyboard focus is VISIBLE — sandbox stories + the sign-in screens (~50 s)
 pnpm test:focus:app  # the same, for the signed-in client (needs PLAYWRIGHT_BASE_URL)
 pnpm test:a11y:app   # Axe past the login screen (needs PLAYWRIGHT_BASE_URL)
+pnpm test:idle:app   # the profile sidebar goes idle once open (needs PLAYWRIGHT_BASE_URL)
+pnpm test:peek:app   # holding a photo peeks at it: chat, rich message, shared media (needs PLAYWRIGHT_BASE_URL)
+pnpm test:viewer:app # the media viewer: its place and header, a step pressed mid-step, paging right to left, a dead picture URL, a video's stand-in (needs PLAYWRIGHT_BASE_URL)
+pnpm test:send:app   # a sent message flies out of the composer and lands on its bubble, on the very pixels it is drawn on, moved by the compositor (nothing of it restyled while it flies) while the list makes room smoothly; its custom emoji fly with it, drawn where they stand; a sticker or a GIF from the panel and the big emoji fly themselves, held still on the frame they were chosen at; nothing flies at the reduced level (sends to Saved Messages and deletes; needs PLAYWRIGHT_BASE_URL)
+pnpm test:calls      # the calls' noise suppressor: RNNoise in its AudioWorklet, in Chromium (~30 s)
+pnpm test:memory:app # a session played several times: no isolate's heap, DOM or renderer allocator keeps growing, idle lottie heaps go back (needs PLAYWRIGHT_BASE_URL of a --static preview; ~7 min)
+pnpm test:hot:app    # every module a signed-in boot loads, run again as a hot update does: no false reload (needs PLAYWRIGHT_BASE_URL)
 ```
 
 `test:a11y` runs against a plain unauthenticated server, so everything past the
@@ -523,11 +885,32 @@ tune the split, and `--project=chromium` drops the other engines (~70 s).
 `test:popups` works the same way: parallel, the story sweep split into parts
 (`POPUPS_WORKERS` / `POPUP_STORY_PARTS`), Chromium unless `POPUPS_ALL_ENGINES=1`
 (`test:popups:full`, implied on CI). So does `test:focus`, on the popup suite's
-server and port (`playwright.focus.config.ts`, so the two run one after the
-other): a part per worker but one, which the sign-in sweep takes
-(`FOCUS_WORKERS` / `FOCUS_STORY_PARTS`, `FOCUS_STORIES=a,b` picks stories).
+kind of server (`playwright.focus.config.ts`): a part per worker but one, which
+the sign-in sweep takes (`FOCUS_WORKERS` / `FOCUS_STORY_PARTS`,
+`FOCUS_STORIES=a,b` picks stories).
+`test:editor:e2e` too: parallel (`EDITOR_E2E_WORKERS`), Chromium unless
+`EDITOR_E2E_ALL_ENGINES=1` (`test:editor:e2e:full`, implied on CI); and since its
+every test opens the fixture by navigating, a Chromium worker keeps one page and
+navigates it again for each test (`samePage` in `e2e/workerContext.ts`) — a new
+document in a warm renderer, three times faster to open than a new page.
 Playwright suites run on `vite.e2e.config.ts` — the dev server without hot
 reload, so an edit made while a suite runs no longer reloads the page under it.
+Each suite's server listens on a port of its checkout's own (`e2e/ports.ts`), so
+the suites of different checkouts and worktrees run side by side.
+The sandbox suites (`test:popups`, `test:focus`, `test:a11y`) get the app as a
+bundle instead (`vite.popups-e2e.config.ts`: Vite's Full Bundle Mode, built
+once as the server starts, ~25 s). Each of their tests opens the sandbox anew,
+and served module by module that is ~1800 requests a page — ~25 s each with a
+full run's pages at once, against ~7 s bundled. A bundle has no module URLs, so
+a test that reaches into the app — a store, `rootScope`, a popup to open, a
+harness of `e2e/fixtures` — calls `window.e2eImport('/src/…')` in the page,
+never `import('/src/…')`; it gives the app's own instance on either kind of
+server. Write the path whole, as a string in the spec: the bundle can import
+only the modules some spec under `e2e/` names that way (`vite.e2e.config.ts`
+reads them out), and asked for another, `e2eImport` says so.
+`TWEB_E2E_BUNDLED=0` serves the modules as they are (no build, the quicker for
+one spec); `popupSandboxHotRerun.spec.ts`, which runs every module again by its
+URL, always has a server of that kind beside the bundle.
 
 `test:focus` answers a question the others cannot: not whether a control has a
 name and a role, but whether a person pressing Tab can *see* where they are. It
@@ -542,9 +925,9 @@ rather than trusting the heuristic. The signed-in half needs
 an authorized preview:
 
 ```bash
-bash scripts/start-preview.sh --port 9105
-PLAYWRIGHT_BASE_URL=http://localhost:9105 pnpm test:focus:app
-PLAYWRIGHT_BASE_URL=http://localhost:9105 pnpm test:a11y:app
+bash scripts/start-preview.sh --detach    # prints the URL, say http://localhost:9001
+PLAYWRIGHT_BASE_URL=http://localhost:9001 pnpm test:focus:app
+PLAYWRIGHT_BASE_URL=http://localhost:9001 pnpm test:a11y:app
 ```
 
 ## Agents & shared tooling
@@ -565,7 +948,7 @@ integration only points at them:
 - **Tool-name mapping** — skill/command texts may name Claude Code tools.
   Substitute your agent's equivalent: "Agent tool" / "subagent" / `Explore`
   → spawn a sub-task or do the search inline; browser-pane `preview_start`
-  → run `bash scripts/start-preview.sh` and open the printed URL;
+  → run `bash scripts/start-preview.sh --detach` and open the printed URL;
   `AskUserQuestion` → ask in chat.
 - `.claude/launch.json` (preview servers) and `.claude/settings.local.json`
   (permissions) are Claude-Code-specific; the Codex counterpart is

@@ -14,6 +14,7 @@ import Button from '@components/buttonTsx';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import findAndSplice from '@helpers/array/findAndSplice';
 import {useAppConfig} from '@stores/appState';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 type AppPasskeysTabClass = typeof AppPasskeysTab;
 
@@ -35,6 +36,7 @@ const PasskeyItem = (passkey: Passkey) => {
           icon: 'delete',
           text: 'Delete',
           onClick: async() => {
+            const managers = bindManagersToSession(rootScope.managers);
             await confirmationPopup({
               titleLangKey: 'Passkey.Deletion.Title',
               descriptionLangKey: 'Passkey.Deletion.Text',
@@ -45,7 +47,7 @@ const PasskeyItem = (passkey: Passkey) => {
             });
 
             setDisabled(true);
-            rootScope.managers.appAccountManager.deletePasskey(passkey.id).finally(() => {
+            managers.appAccountManager.deletePasskey(passkey.id).finally(() => {
               tab.payload.setPasskeys((passkeys) => {
                 const arr = [...passkeys];
                 findAndSplice(arr, (item) => item.id === passkey.id);

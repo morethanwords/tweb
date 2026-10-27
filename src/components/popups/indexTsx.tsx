@@ -1,16 +1,21 @@
-import {createContext, useContext, createSignal, onCleanup, JSX, Show, createRoot, Accessor, createEffect, createRenderEffect, untrack, on, Ref, Setter, onMount} from 'solid-js';
+import {createContext, useContext, createSignal, createMemo, onCleanup, JSX, Show, createRoot, Accessor, createEffect, createRenderEffect, untrack, on, Ref, Setter, onMount} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import {Portal} from 'solid-js/web';
 import classNames from '@helpers/string/classNames';
+import deferredPromise from '@helpers/cancellablePromise';
 import {IconTsx} from '@components/iconTsx';
 import I18n, {FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
 import {AppManagers} from '@lib/managers';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import {getManagersSession, isSessionLeaving} from '@lib/accounts/getCurrentAccount';
 import overlayCounter from '@helpers/overlayCounter';
 import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import {addFullScreenListener, getFullScreenElement} from '@helpers/dom/fullScreen';
+import ListenerSetter from '@helpers/listenerSetter';
+import {hotEffect} from '@helpers/hotModule';
 import {bindActiveWindowListener, getOverlayRoot} from '@helpers/appWindow';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import tooltipController from '@helpers/tooltipController';
@@ -20,12 +25,14 @@ import {doubleRaf} from '@helpers/schedulers';
 import Scrollable, {ScrollableContextValue} from '@components/scrollable2';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {simulateClickEvent} from '@helpers/dom/clickEvent';
-import isSendShortcutPressed from '@helpers/dom/isSendShortcutPressed';
+import isSendShortcutPressed, {isSendShortcutLeft} from '@helpers/dom/isSendShortcutPressed';
 import noop from '@helpers/noop';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import Modes from '@config/modes';
 import createFocusTrap, {FocusTrap} from '@helpers/dom/focusTrap';
 import isKeyboardControl from '@helpers/dom/isKeyboardControl';
+import isTargetAnInput from '@helpers/dom/isTargetAnInput';
+import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import updateScrollRegionFocusable from '@helpers/dom/scrollRegion';
 
 export type PopupButton = {
@@ -51,6 +58,11 @@ export type PopupOptions = Partial<{
   confirmShortcutIsSendShortcut: boolean,
   withoutOverlay: boolean,
   btnConfirmOnEnter?: Accessor<HTMLElement>,
+  /**
+   * Where the focus goes on open instead of the first control (the close button). A text field
+   * takes the caret at its end, after whatever is already in it.
+   */
+  initialFocus?: Accessor<HTMLElement | undefined>,
   old: boolean
 }>;
 
@@ -67,7 +79,8 @@ export type PopupContextValue = {
    * Note: Will trigger isConfirmationNeededOnClose if was set
    */
   hide: () => void,
-  destroy: () => void,
+  /** Closes it outright; settles once its content is disposed */
+  destroy: () => Promise<void>,
   destroyed: boolean,
   managers: AppManagers,
   middlewareHelper: MiddlewareHelper,
@@ -96,6 +109,7 @@ export type PopupContextValue = {
   /** `.popup-container` — what an imperative helper wants to render into or measure. */
   container: HTMLElement | undefined,
   kind: symbol | undefined,
+  keepOnAccountSwitch: boolean,
   old?: boolean
 };
 
@@ -110,15 +124,19 @@ const PopupControllerContext = createContext<PopupControllerContextValue>();
 export const usePopupController = () => useContext(PopupControllerContext);
 
 const DEFAULT_APPEND_TO = document.body;
-// A fullscreen element always wins; otherwise each popup uses the realm it captured at creation
-// (see the Portal mount below). Only the fullscreen state is reactive here.
+// A fullscreen element wins, unless it is the popup's own part; otherwise each popup uses the realm
+// it captured at creation (see the Portal mount below). Only the fullscreen state is reactive here.
 const [fullScreenElement, setFullScreenElement] = createSignal<HTMLElement>(null);
 
 const onFullScreenChange = () => {
   setFullScreenElement((getFullScreenElement() as HTMLElement) || null);
 };
 
-addFullScreenListener(DEFAULT_APPEND_TO, onFullScreenChange);
+hotEffect(import.meta.hot, () => {
+  const listenerSetter = new ListenerSetter();
+  addFullScreenListener(DEFAULT_APPEND_TO, onFullScreenChange, listenerSetter);
+  return () => listenerSetter.removeAll();
+});
 
 export const useSnitchedPopupContext = () => {
   let context: PopupContextValue;
@@ -142,7 +160,9 @@ const PopupElement = (props: {
   children: JSX.Element,
   show?: boolean,
   kind?: symbol,
-  animationGroup?: AnimationItemGroup // the popup's OWN content group - excluded from the on-show pause sweep
+  animationGroup?: AnimationItemGroup, // the popup's OWN content group - excluded from the on-show pause sweep
+  /** It belongs to something that outlives the account the tab shows - a call - and stays when it switches. */
+  keepOnAccountSwitch?: boolean
 } & PopupOptions) => {
   const [shown, setShown] = createSignal(false);
   const [store, setStore] = createStore<PopupContextValue['store']>({});
@@ -154,7 +174,10 @@ const PopupElement = (props: {
   const [hasFlowButtons, setHasFlowButtons] = createSignal(false);
   const controllerContext = useContext(PopupControllerContext);
 
-  const managers = props.managers || PopupElement.MANAGERS;
+  // * a popup is a screen of the account it opens on, unless it is given managers of its own (a call's)
+  const managers = bindManagersToSession(props.managers || PopupElement.MANAGERS);
+  // * and one asked for by an account session that is over, or on its way out, is not shown over the next
+  const session = getManagersSession(managers);
   // Capture the active overlay root once. A popup opened while the client is popped out must stay in
   // the Document PiP window for its whole life; reading the live root in the Portal mount would yank
   // it to the tab the instant the app moves back.
@@ -168,6 +191,8 @@ const PopupElement = (props: {
 
   let focusTrap: FocusTrap;
   let previouslyFocusedEl: HTMLElement;
+  // * whether showing took the overlay and paused what is under it, for going to give them back
+  let overlaid = false;
 
   const register = (kind: PopupKind, element: JSX.Element) => {
     setStore(kind, element);
@@ -183,6 +208,10 @@ const PopupElement = (props: {
 
   const show = () => {
     if(shown() || destroyed()) return;
+    if(!props.keepOnAccountSwitch && isSessionLeaving(session)) {
+      destroy();
+      return;
+    }
 
     const realmDocument = capturedRoot.ownerDocument || document;
     previouslyFocusedEl = realmDocument.activeElement as HTMLElement;
@@ -201,7 +230,7 @@ const PopupElement = (props: {
             return false;
           }
         }
-        return destroy();
+        destroy();
       }
     };
     setNavigationItem(navItem);
@@ -211,11 +240,14 @@ const PopupElement = (props: {
     else if(!withoutOverlay) previouslyFocusedEl?.blur?.();
 
     if(!withoutOverlay) {
+      overlaid = true;
       overlayCounter.isOverlayActive = true;
       // except the popup's own content: with the offscreen worker frame cache its
       // stickers can load and start playing BEFORE this sweep runs - pausing them
-      // here would freeze them forever (nothing re-plays until popup close)
-      animationIntersector.checkAnimations2(true, props.animationGroup);
+      // here would freeze them forever (nothing re-plays until popup close). Its own
+      // group, and whatever stands in it: a screen hosted in a popup (a profile) has
+      // its media in the general group, an avatar video among them
+      animationIntersector.checkAnimations2(true, props.animationGroup, popupElement());
     }
 
     // Add keyboard event listener
@@ -236,13 +268,16 @@ const PopupElement = (props: {
             container,
             () => PopupElement.POPUPS[PopupElement.POPUPS.length - 1] === value
           );
-          focusTrap.activate(previouslyFocusedEl);
+          const initialFocus = props.initialFocus?.();
+          focusTrap.activate(previouslyFocusedEl, initialFocus);
+          if(initialFocus && isTargetAnInput(initialFocus)) placeCaretAtEnd(initialFocus);
         }
       }
 
       const handleKeydown = (e: KeyboardEvent) => {
         const btnConfirm = value.btnConfirmOnEnter;
-        if(e.defaultPrevented || e.isComposing || e.repeat || !btnConfirm ||
+        // closed already: its listener goes with its fade
+        if(destroyed() || (e.defaultPrevented && !isSendShortcutLeft(e)) || e.isComposing || e.repeat || !btnConfirm ||
            (btnConfirm as HTMLButtonElement).disabled ||
            PopupElement.POPUPS[PopupElement.POPUPS.length - 1] !== value) {
           return;
@@ -279,8 +314,10 @@ const PopupElement = (props: {
     appNavigationController.backByItem(navItem);
   };
 
+  // * settles once the content is disposed, with what its cleanups did (an account switch waits for it)
+  const disposed = deferredPromise<void>();
   const destroy = () => {
-    if(destroyed()) return;
+    if(destroyed()) return disposed;
 
     focusTrap?.deactivate();
     props.onClose?.()
@@ -295,7 +332,8 @@ const PopupElement = (props: {
       controllerContext.dispose(); // * call it here for the content
       tooltipController.closeAll();
 
-      if(!withoutOverlay) {
+      // * a popup let go before it showed took no overlay and paused nothing
+      if(overlaid) {
         overlayCounter.isOverlayActive = false;
       }
 
@@ -311,17 +349,28 @@ const PopupElement = (props: {
 
       lateMiddlewareHelper.destroy();
 
-      if(!withoutOverlay) {
+      if(overlaid) {
         animationIntersector.checkAnimations2(false);
       }
 
       props.onCloseAfterTimeout?.();
+      disposed.resolve();
     }, 250);
+
+    return disposed;
   };
 
   const [destroyed, setDestroyed] = createSignal(false);
   const [hiding, setHiding] = createSignal(false);
   const [popupElement, setPopupElement] = createSignal<HTMLElement>();
+  // Whatever goes full screen takes the popups along, so they stay over it — unless it is a part of
+  // this very popup (the video chat's panel): moving the popup into its own child cannot be done,
+  // and the Portal tearing it down to try took the panel out of full screen. A memo, so that the
+  // Portal moves only when the place changes: rebuilt in place, it did the same.
+  const portalMount = createMemo(() => {
+    const element = fullScreenElement();
+    return element && !popupElement()?.contains(element) ? element : capturedRoot;
+  });
   const [containerElement, setContainerElement] = createSignal<HTMLElement>();
   const [btnConfirmOnEnter, setBtnConfirmOnEnter] = createSignal<HTMLElement>();
 
@@ -364,6 +413,7 @@ const PopupElement = (props: {
     get element() { return popupElement(); },
     get container() { return containerElement(); },
     kind: props.kind,
+    keepOnAccountSwitch: !!props.keepOnAccountSwitch,
     old: props.old
   };
 
@@ -374,17 +424,21 @@ const PopupElement = (props: {
   });
 
   if(props.show !== undefined) {
+    // * what is done once the frames are through is what the prop says then: a show taken back
+    // * before it came lets the popup go as one that never showed, rather than showing it anyway
+    let asked = false;
     createEffect(on(() => props.show, (_show) => {
-      let callback: () => void;
       if(_show) {
-        callback = show;
-      } else if(shown()) {
-        callback = hide;
+        asked = true;
+      } else if(!asked) {
+        return;
       }
 
-      if(callback) {
-        doubleRaf().then(callback);
-      }
+      doubleRaf().then(() => {
+        if(props.show) show();
+        else if(shown()) hide();
+        else destroy();
+      });
     }));
   } else {
     // Same doubleRaf as the reactive branch above: the open transition only runs if the browser
@@ -413,7 +467,7 @@ const PopupElement = (props: {
 
   return (
     <PopupContext.Provider value={value}>
-      <Portal mount={fullScreenElement() || capturedRoot}>
+      <Portal mount={portalMount()}>
         <div
           ref={setPopupElement}
           class={classNames(
@@ -470,9 +524,11 @@ const PopupElement = (props: {
   );
 };
 
-// Static properties
-PopupElement.POPUPS = [] as PopupContextValue[];
-PopupElement.MANAGERS = undefined as any;
+// Static properties — the open popups and the managers carried over from the previous evaluation on a hot update
+const previousPopupElement: {POPUPS: PopupContextValue[], MANAGERS: any} = import.meta.hot?.data?.PopupElement;
+PopupElement.POPUPS = previousPopupElement?.POPUPS ?? [] as PopupContextValue[];
+PopupElement.MANAGERS = previousPopupElement?.MANAGERS as any;
+if(import.meta.hot?.data) import.meta.hot.data.PopupElement = PopupElement;
 
 PopupElement.Header = (props: {
   class?: string,
@@ -820,6 +876,20 @@ PopupElement.Buttons = (props: {
     </div>
   ));
 };
+
+/**
+ * Whether a modal popup is open over `element`: the top one has an overlay and
+ * does not hold it. The composer can still get the focus under one — given back
+ * after the key that sent the message — and the keys meant for the popup must
+ * not act on it. A popup on its way out, whose fade outlasts it, holds nothing.
+ */
+export function isUnderModalPopup(element: Element) {
+  let top: PopupContextValue;
+  for(let index = PopupElement.POPUPS.length - 1; index >= 0 && !top; --index) {
+    if(!PopupElement.POPUPS[index].destroyed) top = PopupElement.POPUPS[index];
+  }
+  return !!top && !top.withoutOverlay && !top.element?.contains(element);
+}
 
 PopupElement.getPopups = (popupKind: symbol) => {
   return PopupElement.POPUPS.filter((element) => {

@@ -89,7 +89,7 @@ $btn-menu-z-index: 4;
     }
   }
 
-  body.animation-level-0 & {
+  @include animation-level-below(2) {
 		transition: none !important;
   }
 
@@ -137,6 +137,11 @@ $btn-menu-z-index: 4;
     opacity: 0;
     transform: var(--transform-extra) scale(.8);
     transition: opacity var(--btn-menu-transition), transform var(--btn-menu-transition), visibility var(--btn-menu-transition);
+
+    // reduced: a menu fades where it opens, in and out
+    @include animation-level-below(2) {
+      transform: var(--transform-extra);
+    }
 
     body.animation-level-0 & {
       transition: none;
@@ -251,7 +256,7 @@ $btn-menu-z-index: 4;
   &.bottom-center {
     --transform-origin-x: center;
     --transform-origin-y: top;
-    --transform-extra: translateX(calc(-50% + var(--parent-half-width)));
+    --transform-extra: translateX(calc((-50% + var(--parent-half-width)) * var(--reflect)));
     inset-block: 100% auto;
     inset-inline: 0 auto;
   }
@@ -321,13 +326,13 @@ $btn-menu-z-index: 4;
       }
     }
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: transform .1s var(--transition-standard-easing);
     }
 
     &.submenu-trigger {
       cursor: default !important;
-      padding-right: 6px;
+      padding-inline-end: 6px;
     }
 
     &.is-static {
@@ -338,6 +343,12 @@ $btn-menu-z-index: 4;
 
     &:not(.submenu-trigger):not(.btn-menu-search):active {
       transform: scale(.96);
+    }
+
+    &.is-disabled {
+      cursor: default !important;
+      pointer-events: none !important;
+      opacity: var(--disabled-opacity);
     }
 
     &.is-loading {
@@ -459,17 +470,6 @@ $btn-menu-z-index: 4;
       }
     }
 
-    &-badge {
-      text-transform: uppercase;
-      border-radius: 4px;
-      background-color: var(--primary-color);
-      color: #fff;
-      padding: .125rem .3125rem;
-      flex: 0 0 auto;
-      // margin-inline-end: .125rem;
-      transform: scale(.75);
-    }
-
     &-subtitle {
       font-size: .875rem;
       color: var(--secondary-text-color);
@@ -540,9 +540,10 @@ $btn-menu-z-index: 4;
         flex: 1 1 auto;
       }
 
-      .tgico {
+      // the arrow only: a label's text may hold icons of its own (a premium star)
+      &-arrow {
         font-size: 20px;
-        transform: rotate(-90deg);
+        transform: rotate(calc(-90deg * var(--reflect)));
         color: var(--secondary-color);
       }
     }
@@ -699,9 +700,7 @@ $btn-menu-z-index: 4;
       transform: scale(.8);
       transform-origin: bottom left;
 
-      @include animation-level(2) {
-        transition: opacity var(--transition-standard-in), transform var(--transition-standard-in);
-      }
+      @include animation-level-transition(opacity var(--transition-standard-in), transform var(--transition-standard-in));
 
       &.is-visible {
         opacity: 1;
@@ -811,7 +810,6 @@ $btn-menu-z-index: 4;
     }
 
     &-description {
-      --link-color: var(--primary-color);
       position: relative;
       font-size: 12px;
       color: var(--secondary-text-color);
@@ -837,7 +835,7 @@ $btn-menu-z-index: 4;
         --offset: calc(var(--height) / 2);
         width: var(--size);
         height: calc(var(--size) / 2);
-        right: var(--offset);
+        inset-inline-end: var(--offset);
         // left: var(--offset);
         bottom: calc(var(--size) / -2);
         border-top: 0;
@@ -1031,7 +1029,7 @@ $btn-menu-z-index: 4;
     opacity: 0;
     pointer-events: none;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: opacity var(--transition-standard-in);
     }
   }
@@ -1061,6 +1059,15 @@ $btn-menu-z-index: 4;
     transform-origin: 0 0;
     transform: scale(0.5);
     opacity: 0;
+
+    // reduced: it fades where it stands
+    @include animation-level-below(2) {
+      transform: none;
+    }
+  }
+
+  @include animation-level(0) {
+    transition: none;
   }
 }
 
@@ -1109,8 +1116,7 @@ $btn-menu-z-index: 4;
   > svg,
   use {
     height: calc(100% - 20px);
-    inset-inline-end: 15px;
-    left: auto;
+    inset-inline: auto 15px;
   }
 
   &:disabled {
@@ -1177,9 +1183,7 @@ $btn-menu-z-index: 4;
     line-height: 1;
     font-weight: var(--font-weight-bold);
 
-    @include animation-level(2) {
-      transition: width 0.2s, background-color .2s, color .2s;
-    }
+    @include animation-level-transition(width 0.2s, background-color .2s, color .2s);
 
     &.active {
       background-color: var(--light-primary-color) !important;
@@ -1215,7 +1219,8 @@ $btn-menu-z-index: 4;
   cursor: pointer !important;
   pointer-events: all !important;
 
-  &:not(.btn-primary):not(.btn-corner).menu-open {
+  // * a tile takes its colours from the row it stands in, the open state's too
+  &:not(.btn-primary):not(.btn-corner, .btn-tile).menu-open {
     background-color: var(--light-secondary-text-color);
 
     &.primary {
@@ -1233,6 +1238,34 @@ $btn-menu-z-index: 4;
 
   @include respond-to(handhelds) {
     --size: 46px;
+  }
+}
+
+// * `Button.Tile`: an icon over a short label, one of a row of equal buttons (a profile's header, a
+// * gift's), 58px high as iOS has them; the row gives the colours
+.btn-tile {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: $btn-tile-height;
+  padding: 0 .25rem;
+  border-radius: $border-radius-medium;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .125rem;
+  overflow: hidden;
+  font-size: var(--font-size-12);
+  line-height: var(--line-height-12);
+
+  .button-icon {
+    font-size: 1.5rem;
+  }
+
+  &-text {
+    max-width: 100%;
+    @include text-overflow();
   }
 }
 
@@ -1274,7 +1307,8 @@ $btn-menu-z-index: 4;
   font-size: 1.5rem;
   position: relative;
   border-radius: 50%;
-  backdrop-filter: var(--blur-off, blur(25px));
+  // No backdrop blur: over a playing video it is re-rendered every frame, and the call panels
+  // stuttered with it.
   // These are native <button>s, so the UA stylesheet paints a 2px outset
   // ButtonBorder around every circle unless it is cleared here.
   border: none;
@@ -1285,19 +1319,6 @@ $btn-menu-z-index: 4;
     align-items: center;
     cursor: pointer;
     width: var(--call-button-size);
-
-    &.disabled {
-      pointer-events: none;
-
-      .call-button { // ! fix backdrop-filter transition
-        pointer-events: none;
-
-        &,
-        &-text {
-          opacity: .8;
-        }
-      }
-    }
   }
 
   &-text {
@@ -1305,16 +1326,15 @@ $btn-menu-z-index: 4;
     font-size: .875rem;
     margin-top: .25rem;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: opacity var(--transition-standard-in);
     }
   }
 
-  @include animation-level(2) {
+  @include animation-level(1) {
     transition: background-color var(--transition-standard-in), opacity var(--transition-standard-in);
   }
 
-  & + &,
   &-container + &-container {
     margin-inline-start: var(--call-button-margin);
   }

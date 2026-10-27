@@ -1,0 +1,20 @@
+// * the window's height but 1rem at either edge: its tabs scroll inside it, so the popup holds no
+// * more, and the overlay keeps no more room around it than that, or the two scroll it
+.popup {
+  --popup-width: 25rem !important;
+  --popup-height: calc(var(--vh) * 100 - 2rem) !important;
+  --popup-max-height: var(--popup-height) !important;
+
+  &:global(.popup) {
+    padding-block: 1rem;
+  }
+
+  :global(.popup-header) {
+    display: none;
+  }
+}
+
+.slider,
+.slider > :global(.sidebar-slider) {
+  height: 100%;
+}

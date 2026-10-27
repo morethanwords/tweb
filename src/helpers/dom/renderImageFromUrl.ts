@@ -61,7 +61,8 @@ export default function renderImageFromUrl(
     callback?.();
   };
 
-  loader.decoding = 'async';
+  // * unless the image asks to be painted in the frame it goes in (`sync`)
+  if(loader.decoding === 'auto') loader.decoding = 'async';
   loader.src = url;
   return loader.decode().then(onLoad, onError);
 }

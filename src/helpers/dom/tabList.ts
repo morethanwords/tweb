@@ -1,4 +1,6 @@
 import Modes from '@config/modes';
+import getInlineArrowKeys from '@helpers/dom/getInlineArrowKeys';
+import {isElementRTL} from '@helpers/dom/isDocumentRTL';
 
 function getTabs(menu: HTMLElement) {
   return Array.from(menu.querySelectorAll<HTMLElement>('[role="tab"]'))
@@ -17,9 +19,9 @@ export function handleTabKeyDown(event: KeyboardEvent) {
   if(index === -1) return;
 
   const vertical = menu.getAttribute('aria-orientation') === 'vertical';
-  const rtl = menu.ownerDocument.defaultView.getComputedStyle(menu).direction === 'rtl';
-  const previous = vertical ? 'ArrowUp' : rtl ? 'ArrowRight' : 'ArrowLeft';
-  const next = vertical ? 'ArrowDown' : rtl ? 'ArrowLeft' : 'ArrowRight';
+  const inlineKeys = getInlineArrowKeys(isElementRTL(menu));
+  const previous = vertical ? 'ArrowUp' : inlineKeys.previous;
+  const next = vertical ? 'ArrowDown' : inlineKeys.next;
   let nextIndex: number;
   switch(event.key) {
     case 'Home': nextIndex = 0; break;

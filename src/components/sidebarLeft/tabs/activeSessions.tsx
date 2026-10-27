@@ -4,12 +4,9 @@ import InputField from '@components/inputField';
 import PeerTitle from '@components/peerTitle';
 import Section from '@components/section';
 import InlineSelect from '@components/sidebarLeft/tabs/passcodeLock/inlineSelect';
+import {joinSessionParts} from '@components/sidebarLeft/tabs/joinSessionParts';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
-import {
-  AppConnectedBotSessionTab,
-  AppSessionTab,
-  type AppActiveSessionsTab
-} from '@components/solidJsTabs/tabs';
+import {type AppActiveSessionsTab} from '@components/solidJsTabs/tabs';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import {formatDateAccordingToTodayNew} from '@helpers/date';
 import {DurationType} from '@helpers/formatDuration';
@@ -18,6 +15,7 @@ import getAuthorizationErrorLangKey from '@helpers/getAuthorizationErrorLangKey'
 import getSessionPlatformIcon from '@helpers/sessionPlatformIcon';
 import {Authorization, ConnectedBot} from '@layer';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const TERMINATE_CONNECTED_BOT_KEY = 'ChatAutomation.TerminateConnectedBot';
 /** tdesktop's `kMaxDeviceModelLength`. */
@@ -248,7 +246,7 @@ const ActiveSessions: Component = () => {
   };
 
   const openSession = (authorization: Authorization.authorization) => {
-    tab.slider.createTab(AppSessionTab).open({
+    tab.slider.createTab(hotReloadGuard.tabs.AppSessionTab).open({
       authorization,
       onTerminate: authorization.pFlags.current ? undefined : () => terminateSession(authorization),
       onSettingsChanged: (updated) => setAuthorizations((list) => {
@@ -313,10 +311,10 @@ const ActiveSessions: Component = () => {
           {[authorization().app_name, authorization().app_version].filter(Boolean).join(' ')}
         </Row.Title>
         <Row.Midtitle>
-          {[authorization().device_model, authorization().system_version || authorization().platform].filter(Boolean).join(', ')}
+          {joinSessionParts([authorization().device_model, authorization().system_version || authorization().platform], ', ')}
         </Row.Midtitle>
         <Row.Subtitle>
-          {[authorization().ip, authorization().country].filter(Boolean).join(' - ')}
+          {joinSessionParts([{ltr: authorization().ip}, authorization().country], ' - ')}
         </Row.Subtitle>
       </Row>
     );
@@ -329,7 +327,7 @@ const ActiveSessions: Component = () => {
     return (
       <Row
         class="session-row"
-        clickable={() => tab.slider.createTab(AppConnectedBotSessionTab).open({connectedBot: bot()})}
+        clickable={() => tab.slider.createTab(hotReloadGuard.tabs.AppConnectedBotSessionTab).open({connectedBot: bot()})}
         role="button"
         tabIndex={0}
         contextMenu={terminateMenu(() => {
@@ -343,7 +341,7 @@ const ActiveSessions: Component = () => {
           <PeerTitleTsx peerId={peerId()} />
         </Row.Title>
         <Row.Midtitle>
-          {[bot().device, bot().location].filter(Boolean).join(', ')}
+          {joinSessionParts([bot().device, bot().location], ', ')}
         </Row.Midtitle>
         <Row.Subtitle>{i18n('ChatAutomation.Session')}</Row.Subtitle>
       </Row>

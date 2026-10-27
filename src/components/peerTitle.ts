@@ -10,8 +10,13 @@ import getPeerTitle from '@components/wrappers/getPeerTitle';
 import generateTitleIcons from '@components/generateTitleIcons';
 import {wrapTopicIcon} from '@components/wrappers/messageActionTextNewUnsafe';
 import lottieLoader from '@lib/lottie/lottieLoader';
-import type {AsAllChatsType} from '@lib/appDialogsManager';
+import type {AsAllChatsType} from '@components/dialogElement';
 import IS_EMOJI_SUPPORTED from '@environment/emojiSupport';
+import buildURLHash from '@helpers/buildURLHash';
+import Modes from '@config/modes';
+import {hotListen} from '@helpers/hotModule';
+import type {ActiveAccountNumber} from '@lib/accounts/types';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export type PeerTitleOptions = {
   peerId?: PeerId,
@@ -28,12 +33,19 @@ export type PeerTitleOptions = {
   meAsNotes?: boolean,
   iconsColor?: string,
   asAllChats?: AsAllChatsType,
-  wrapOptions?: WrapSomethingOptions
+  wrapOptions?: WrapSomethingOptions,
+  /**
+   * A name that opens its peer on click (a sender's in a message): an `<a href="#<peerId>">`, as a
+   * mention of the peer in a message is — the route opens the peer. Read once, by the constructor.
+   */
+  link?: boolean,
+  /** The account the peer is of, when the tab may show another one meanwhile (a call's). */
+  accountNumber?: ActiveAccountNumber
 };
 
 const weakMap: WeakMap<HTMLElement, PeerTitle> = new WeakMap();
 
-rootScope.addEventListener('peer_title_edit', ({peerId, threadId}) => {
+hotListen(import.meta.hot, rootScope, 'peer_title_edit', ({peerId, threadId}) => {
   let query = `.peer-title[data-peer-id="${peerId}"]`;
   if(threadId) {
     query += `[data-thread-id="${threadId}"]`;
@@ -46,7 +58,7 @@ rootScope.addEventListener('peer_title_edit', ({peerId, threadId}) => {
   });
 });
 
-rootScope.addEventListener('botforum_pending_topic_created', ({peerId, tempId, newId}) => {
+hotListen(import.meta.hot, rootScope, 'botforum_pending_topic_created', ({peerId, tempId, newId}) => {
   if(!newId) return;
 
   const query = `.peer-title[data-peer-id="${peerId}"][data-thread-id="${tempId}"]`;
@@ -62,17 +74,31 @@ rootScope.addEventListener('botforum_pending_topic_created', ({peerId, tempId, n
 export default class PeerTitle {
   public element: HTMLElement;
   public options: PeerTitleOptions;
+  /** the first render, started by the constructor */
+  public ready: Promise<void>;
   private hasInner: boolean;
 
   constructor(options?: PeerTitleOptions) {
-    this.element = document.createElement('span');
+    this.element = document.createElement(options?.link ? 'a' : 'span');
     this.element.classList.add('peer-title');
     setDirection(this.element);
+    if(options?.link) {
+      // * a stop of its own only for the keyboard layer, and not dragged off as a link: a name
+      if(!Modes.a11y) this.element.tabIndex = -1;
+      this.element.draggable = false;
+      // * whoever shows the name opens the peer (onBubblesClick — on mousedown on a touch device, so
+      // * the click comes after): only a Ctrl or Cmd click follows the href, into a new tab
+      this.element.addEventListener('click', (e) => {
+        if(!e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+        }
+      });
+    }
 
     this.options = {};
 
     if(options) {
-      this.update(options);
+      this.ready = this.update(options);
     }
 
     weakMap.set(this.element, this);
@@ -103,6 +129,7 @@ export default class PeerTitle {
   }
 
   public async update(options?: PeerTitleOptions) {
+    const managers = bindManagersToSession(rootScope.managers);
     this.setOptions(options);
 
     let fromName = this.options.fromName;
@@ -116,6 +143,14 @@ export default class PeerTitle {
     }
 
     this.options.peerId ??= NULL_PEER_ID;
+    if(this.element.tagName === 'A') {
+      const peerId = this.options.peerId;
+      if(peerId === NULL_PEER_ID || peerId === HIDDEN_PEER_ID) {
+        this.element.removeAttribute('href');
+      } else {
+        (this.element as HTMLAnchorElement).href = buildURLHash('' + peerId);
+      }
+    }
 
     let hasInner: boolean;
     let {peerId, threadId} = this.options;
@@ -151,10 +186,10 @@ export default class PeerTitle {
     } else {
       if(threadId) {
         const [topic, isForum, isBotforum, isMonoforum] = await Promise.all([
-          rootScope.managers.dialogsStorage.getForumTopic(peerId, threadId),
-          rootScope.managers.appPeersManager.isForum(peerId),
-          rootScope.managers.appPeersManager.isBotforum(peerId),
-          rootScope.managers.appPeersManager.isMonoforum(peerId)
+          managers.dialogsStorage.getForumTopic(peerId, threadId),
+          managers.appPeersManager.isForum(peerId),
+          managers.appPeersManager.isBotforum(peerId),
+          managers.appPeersManager.isMonoforum(peerId)
         ]);
 
         // * fix monoforum
@@ -162,7 +197,7 @@ export default class PeerTitle {
           peerId = threadId;
           threadId = undefined;
         } else if(!topic && (isForum || isBotforum)) {
-          rootScope.managers.dialogsStorage.getForumTopicById(peerId, threadId).then((forumTopic) => {
+          managers.dialogsStorage.getForumTopicById(peerId, threadId).then((forumTopic) => {
             if(!forumTopic && this.options.threadId === threadId) {
               this.options.threadId = undefined;
               this.update({threadId: undefined});
@@ -184,7 +219,7 @@ export default class PeerTitle {
       }
 
       const getTopicIconPromise = threadId && this.options.withIcons ?
-        rootScope.managers.dialogsStorage.getForumTopic(peerId, threadId).then((topic) => wrapTopicIcon({...(this.options.wrapOptions ?? {}), topic})) :
+        managers.dialogsStorage.getForumTopic(peerId, threadId).then((topic) => wrapTopicIcon({...(this.options.wrapOptions ?? {}), topic})) :
         undefined;
 
       const [title, icons, topicIcon] = await Promise.all([
@@ -242,3 +277,6 @@ export function changeTitleEmojiColor(element: HTMLElement, color: string) {
     }
   })
 }
+
+// a method edited here takes effect on the titles on screen, without a reload (see @helpers/hotRegistry)
+if(import.meta.hot) import.meta.hot.accept();

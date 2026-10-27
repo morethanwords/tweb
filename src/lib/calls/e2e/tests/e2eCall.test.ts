@@ -180,6 +180,38 @@ describe('E2eCall — two-party flow', () => {
     await expect(aliceCall.decrypt(aliceId, 0, packet)).rejects.toThrow(/SELF_PACKET/);
   });
 
+  // The epoch's header key is cached on the epoch, so zeroing groupSharedKey
+  // no longer spoils frames already past the key derivation — destroy() has
+  // to drop the cache, and the frames in flight have to fail on their own.
+  it('destroy() lets go of cached header keys and fails frames already in flight', async() => {
+    const alice = PrivateKey.fromSeed(new Uint8Array(32).fill(51));
+    const bob = PrivateKey.fromSeed(new Uint8Array(32).fill(52));
+    const aliceId = BigInt(510);
+    const bobId = BigInt(520);
+    const zero = await E2eCall.createZeroBlock(alice, {
+      participants: [participantFor(aliceId, alice)],
+      externalPermissions: PERM_ADD_USERS | PERM_REMOVE_USERS
+    });
+    const selfAdd = await E2eCall.createSelfAddBlock(bob, zero, participantFor(bobId, bob));
+    const aliceCall = await E2eCall.create(aliceId, alice, selfAdd);
+    const bobCall = await E2eCall.create(bobId, bob, selfAdd);
+
+    const first = await aliceCall.encrypt(0, new Uint8Array([1]), 0);
+    await bobCall.decrypt(aliceId, 0, first);
+    const epoch: ActiveEpoch = (bobCall as any).epochs[0];
+    expect(epoch.headerKey).toBeDefined();
+
+    const second = await aliceCall.encrypt(0, new Uint8Array([2]), 0);
+    const inFlight = bobCall.decrypt(aliceId, 0, second);
+    const sending = bobCall.encrypt(0, new Uint8Array([3]), 0);
+    bobCall.destroy();
+    expect(epoch.headerKey).toBeUndefined();
+    expect(epoch.groupSharedKey.every((b) => b === 0)).toBe(true);
+
+    await expect(inFlight).rejects.toThrow(/CALL_FAILED/);
+    await expect(sending).rejects.toThrow(/CALL_FAILED/);
+  });
+
   it('re-anchors on an accepted self-add without replacing the private key or packet sequence', async() => {
     const alice = PrivateKey.fromSeed(new Uint8Array(32).fill(21));
     const bob = PrivateKey.fromSeed(new Uint8Array(32).fill(22));

@@ -2,14 +2,14 @@ import createVideo from '@helpers/dom/createVideo';
 import renderImageFromUrl from '@helpers/dom/renderImageFromUrl';
 import {Document, DocumentAttribute, StickerSet} from '@layer';
 import appDownloadManager from '@lib/appDownloadManager';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import rootScope from '@lib/rootScope';
 import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import wrapSticker from '@components/wrappers/sticker';
 import {Middleware} from '@helpers/middleware';
-import {EMOJI_TEXT_COLOR} from '@components/emoticonsDropdown';
+import {EMOJI_TEXT_COLOR} from '@components/emoticonsDropdown/constants';
 import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 import {createObjectURL, revokeObjectURL} from '@helpers/objectUrl';
 import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';
@@ -22,7 +22,7 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
   autoplay: boolean,
   width: number,
   height: number,
-  managers?: AppManagers
+  managers?: ReadingManagers
   middleware: Middleware,
   textColor?: WrapSomethingOptions['textColor']
 }) {

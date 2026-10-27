@@ -1,8 +1,7 @@
 import {toastNew} from '@components/toast';
 import {AuthSentCode} from '@layer';
-import type rootScope from '@lib/rootScope';
 
-import type {CardSpec} from '@/pages/authFlow';
+import type {AuthFlowContextValue, CardSpec} from '@/pages/authFlow';
 import {SentCode, sentCodeToCardSpec, withPhoneNumber} from '@/pages/sentCode';
 
 /**
@@ -17,7 +16,7 @@ import {SentCode, sentCodeToCardSpec, withPhoneNumber} from '@/pages/sentCode';
  * the rest on the floor, which stranded the card it was on.
  */
 export type LoginContinuation = {
-  managers: typeof rootScope.managers,
+  managers: AuthFlowContextValue['managers'],
   navigate: (spec: CardSpec) => void,
   toIm: () => void | Promise<void>,
   phone_number: string,

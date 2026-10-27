@@ -1,4 +1,5 @@
 import ButtonIcon from '@components/buttonIcon';
+import toggleDisability from '@helpers/dom/toggleDisability';
 import {bindActiveWindowListener, getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import {replaceButtonIcon} from '@components/button';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
@@ -10,6 +11,7 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import isSelectionEmpty from '@helpers/dom/isSelectionEmpty';
 import {getFormattedDateEntityByElement, MarkdownType} from '@helpers/dom/getRichElementValue';
 import getVisibleRect from '@helpers/dom/getVisibleRect';
+import getRangeContentRect from '@helpers/dom/getRangeContentRect';
 import clamp from '@helpers/number/clamp';
 import getMarkupInSelection from '@helpers/dom/getMarkupInSelection';
 import {applyMarkdown} from '@helpers/dom/markdown';
@@ -28,6 +30,7 @@ import createAiEditorIcon from '@components/chat/createAiEditorIcon';
 import tooltipController from '@helpers/tooltipController';
 import captureInputContent from '@components/chat/inputEditor/captureInputContent';
 import {FOCUS_TRAP_ATTACHED_ATTRIBUTE} from '@helpers/dom/focusTrap';
+import getInputFormattingTypes from '@helpers/dom/getInputFormattingTypes';
 
 export type MarkupTooltipTypes = Extract<
   MarkdownType,
@@ -47,6 +50,7 @@ export default class MarkupTooltip {
   private scrollContainer: HTMLDivElement;
   private buttons: {[type in MarkupTooltipTypes]: HTMLElement} = {} as any;
   private buttonIcons: Partial<{[type in MarkupTooltipTypes]: {inactive: Icon, active: Icon}}> = {};
+  private quoteIcon: Icon = 'quote';
   private dateLinkDelimiter: HTMLElement;
   private extendedDelimiter: HTMLElement;
   private aiButton: HTMLElement;
@@ -111,7 +115,7 @@ export default class MarkupTooltip {
       'italic',
       'underline',
       'strikethrough',
-      ['quote', 'blockquote'],
+      'quote',
       ['date', 'calendar'],
       'link',
       'monospace',
@@ -390,10 +394,14 @@ export default class MarkupTooltip {
 
   public setActiveMarkupButton() {
     const activeButtons = this.getActiveMarkupButton();
+    const editor = this.input && getChatInputEditor(this.input);
 
     for(const i in this.buttons) {
       const type = i as MarkupTooltipTypes;
       const button = this.buttons[type];
+      // what the selection's blocks cannot carry — marks in a code block, a
+      // quote in a table cell — stays visible but dimmed
+      toggleDisability(button, !!editor && !editor.canApplyMarkup(type));
       const isActive = activeButtons.includes(button);
       const wasActive = button.classList.contains('active');
       button.classList.toggle('active', isActive);
@@ -403,6 +411,16 @@ export default class MarkupTooltip {
       if(icons && wasActive !== isActive) {
         replaceButtonIcon(button, isActive ? icons.active : icons.inactive);
       }
+    }
+
+    // a collapsed field quotes as a message does; the expanded one, a pullquote and a quote with an
+    // author quote as a block
+    const quoteIcon: Icon = editor && (editor.isExpanded() || editor.isRichQuoteSelected()) ?
+      'blockquote' :
+      'quote';
+    if(quoteIcon !== this.quoteIcon) {
+      this.quoteIcon = quoteIcon;
+      replaceButtonIcon(this.buttons.quote, quoteIcon);
     }
   }
 
@@ -420,7 +438,7 @@ export default class MarkupTooltip {
     if(!rowsWrapper) return;
 
     const bodyRect = getOverlayRoot().getBoundingClientRect();
-    const selectionRect = range.getBoundingClientRect();
+    const selectionRect = getRangeContentRect(range);
     const inputRect = rowsWrapper.getBoundingClientRect();
     const sizesRect = this.scrollContainer.getBoundingClientRect();
 
@@ -489,16 +507,13 @@ export default class MarkupTooltip {
 
     this.setActiveMarkupButton();
 
-    const canFormat = this.input.getAttribute('can-format');
-    const allowedTypes = canFormat !== null ?
-      new Set(canFormat.split(',').filter(Boolean) as MarkupTooltipTypes[]) :
-      null;
+    const formatting = getInputFormattingTypes(this.input);
     const hiddenTypes = new Set<MarkupTooltipTypes>();
     const editor = getChatInputEditor(this.input);
     (Object.keys(this.buttons) as MarkupTooltipTypes[]).forEach((type) => {
       // What the mounted schema cannot apply must not be offered: a plain field
       // carries no highlight or script marks.
-      const hidden = !!allowedTypes && !allowedTypes.has(type) || !editor?.supportsMarkup(type);
+      const hidden = formatting !== 'all' && !formatting.has(type) || !editor?.supportsMarkup(type);
       this.buttons[type].classList.toggle('hide', hidden);
       if(hidden) hiddenTypes.add(type);
     });
@@ -612,8 +627,8 @@ export default class MarkupTooltip {
 
   public canFormatInput(input: Element) {
     if(!input) return false;
-    const canFormat = input.getAttribute('can-format');
-    return canFormat !== null ? !!canFormat.trim() : input.classList.contains('input-message-input');
+    const formatting = getInputFormattingTypes(input);
+    return formatting === 'all' || !!formatting.size;
   }
 
   private handleSelectionChange = (event?: Event) => {

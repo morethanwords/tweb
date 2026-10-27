@@ -1,12 +1,11 @@
 import {Accessor, createComputed, createEffect, createMemo, createRenderEffect, createSignal, on, onCleanup, onMount, Show} from 'solid-js';
 import {Portal} from 'solid-js/web';
 import {User} from '@layer';
-import appDialogsManager from '@lib/appDialogsManager';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import rootScope from '@lib/rootScope';
 import {AppManagers} from '@lib/managers';
 import sortContacts, {ContactsSortMode} from '@appManagers/utils/users/sortContacts';
-import VerticalVirtualList, {createItemsLayout, VerticalVirtualListItemProps, VIRTUAL_LIST_ITEM_CLASS_NAME} from '@components/verticalVirtualList';
+import VerticalVirtualList, {createItemsLayout, findItemAtOffset, VerticalVirtualListItemProps, VIRTUAL_LIST_ITEM_CLASS_NAME} from '@components/verticalVirtualList';
 import SectionIndex, {SectionIndexLetter} from '@components/sectionIndex';
 import {SectionName} from '@components/section';
 import type ContactsSelection from '@components/contactsSelection';
@@ -23,6 +22,7 @@ import createListenerSetter from '@helpers/solid/createListenerSetter';
 import useElementSize from '@hooks/useElementSize';
 import {usePeers} from '@stores/peers';
 import styles from '@components/sidebarLeft/contactsList.module.scss';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 /** An `abitbigger` chat row, which is what a contact is shown as */
 const ROW_HEIGHT = 56;
@@ -150,7 +150,7 @@ export default function ContactsList(props: {
     if(
       (!made.length && !removed.length) ||
       scrollable.scrollTop !== scrollTop ||
-      !liteMode.isAvailable('animations')
+      !liteMode.isAvailable('motion')
     ) {
       removed.forEach(({remove}) => remove());
       return;
@@ -244,15 +244,8 @@ export default function ContactsList(props: {
 
     const itemsLayout = layout();
     const top = scrollTop(), bottom = top + viewportHeight();
-    // the first item that reaches into the screen
-    let low = 0, high = items.length;
-    while(low < high) {
-      const middle = (low + high) >> 1;
-      if(itemsLayout.top(middle + 1) <= top) low = middle + 1;
-      else high = middle;
-    }
-
-    for(let idx = low; idx < items.length && itemsLayout.top(idx) < bottom; ++idx) {
+    // from the first item that reaches into the screen
+    for(let idx = findItemAtOffset(itemsLayout, items.length, top); idx < items.length && itemsLayout.top(idx) < bottom; ++idx) {
       if(!isSection(items[idx])) {
         visible.add(sectionByIdx[idx]);
       }
@@ -337,7 +330,7 @@ export default function ContactsList(props: {
   };
 
   const ContactRow = (rowProps: {peerId: PeerId, top: number}) => {
-    const dialogElement = appDialogsManager.addDialogNew({
+    const dialogElement = hotReloadGuard.appDialogsManager.addDialogNew({
       peerId: rowProps.peerId,
       container: false,
       avatarSize: 'abitbigger',

@@ -111,5 +111,6 @@ export const LOCAL_ENTITIES = new Set<MessageEntity['_']>([
   'messageEntityCaret',
   'messageEntityHighlight',
   'messageEntityBotCommand',
-  'messageEntityTimestamp'
+  'messageEntityTimestamp',
+  'messageEntityIcon'
 ]);

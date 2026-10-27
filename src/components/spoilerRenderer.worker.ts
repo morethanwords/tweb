@@ -411,7 +411,9 @@ const handleMessage = (state: PortState, message: SpoilerRendererInMessage) => {
       target.rects = message.rects;
       target.backgroundColor = message.backgroundColor;
       target.particleColor = message.particleColor;
-      target.needsRedraw = true;
+      // * drawn in this task: a resized canvas is blank, and shown so it blinked - the update comes on
+      // * every frame the message resizes (a details opening), the spoilers follow it with no gap
+      drawOverlayTarget(textSims.get(target.dpr), target);
       ensureLoop();
       break;
     }

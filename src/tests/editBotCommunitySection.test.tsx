@@ -61,6 +61,16 @@ vi.mock('@stores/peers', async() => {
 
 import EditBotCommunitySection
 from '@components/communities/editBotCommunitySection';
+import * as mocked1 from '@components/solidJsTabs/tabs';
+import * as mocked2 from '@lib/appDialogsManager';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+
+// the code under test reads the top level from the registry, not from the modules mocked above
+registerHotReloadGuard({
+  appDialogsManager: (mocked2 as any).default,
+  tabs: {...mocked1} as any
+});
+
 
 describe('EditBotCommunitySection', () => {
   let container: HTMLDivElement;

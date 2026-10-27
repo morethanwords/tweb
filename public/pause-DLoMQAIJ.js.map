@@ -1,0 +1,1 @@
+{"version":3,"file":"pause-DLoMQAIJ.js","names":["pause","resolve","ms"],"sources":["../src/helpers/schedulers/pause.ts"],"sourcesContent":["export default function pause(ms: number) {\n  return new Promise<void>((resolve) => {\n    setTimeout(resolve, ms);\n  });\n}\n"],"mappings":";AAAA,SAAwBA,EAAM,EAAY,CACxC,OAAO,IAAI,QAAe,GAAY,CACpC,WAAWC,EAASC,CAAE,CACxB,CAAC,CACH"}

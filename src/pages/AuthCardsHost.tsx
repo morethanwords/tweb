@@ -8,12 +8,9 @@ import {doubleRaf} from '@helpers/schedulers';
 import pause from '@helpers/schedulers/pause';
 import classNames from '@helpers/string/classNames';
 import themeController from '@helpers/themeController';
-import {changeAccount} from '@lib/accounts/changeAccount';
-import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
-import {getValidatedAccount} from '@lib/accounts/getValidatedAccount';
+import liteMode from '@helpers/liteMode';
+import Modes from '@config/modes';
 import I18n from '@lib/langPack';
-import rootScope from '@lib/rootScope';
-import sessionStorage from '@lib/sessionStorage';
 
 import {Transition} from '@vendor/solid-transition-group';
 
@@ -25,7 +22,7 @@ import {
   navigateAuth
 } from '@/pages/authFlow';
 import styles from '@/pages/authFlow.module.scss';
-import {bootstrapIm} from '@/pages/bootstrapIm';
+import type {AuthFlowHost, AuthFlowOptions} from '@/pages/mountAuthFlow';
 import Button from '@components/buttonTsx';
 
 if(import.meta.hot) import.meta.hot.accept();
@@ -54,55 +51,71 @@ const SignImportCard = lazy(() => import('@/pages/cards/SignImportCard'));
  * and the current card.
  *
  * Responsibilities lifted from the legacy `src/index.ts` bootstrap:
- * - host enter animation when re-mounting after an account switch
+ * - host enter animation when opened from the app of another account
  * - scrollable opacity fade-in once fonts are ready
  * - top/bottom flex spacers around the cards
+ *
+ * What the back button and a sign-in lead to is the mounter's (`AuthFlowOptions`).
  *
  * Cards mount/unmount on every navigation — `<Transition mode="outin">` waits
  * for the leaving card's exit animation before the new card enters. There's
  * no keep-alive: every card runs `onMount` / `onCleanup` on each visit.
  */
-export default function AuthCardsHost(): JSX.Element {
-  const showBackButton = getCurrentAccount() !== 1;
-
+export default function AuthCardsHost(props: AuthFlowOptions & {ref: (host: AuthFlowHost) => void}): JSX.Element {
   let hostEl!: HTMLElement;
   let scrollableEl!: HTMLDivElement;
+  // * back or signed in: whichever came first is where the host goes
+  let leaving = false;
 
   /* ---------- context ---------- */
 
   const ctx: AuthFlowContextValue = {
-    managers: rootScope.managers,
+    accountNumber: props.accountNumber,
+    managers: props.managers,
     current: currentCard,
     navigate: navigateAuth,
     back,
-    toIm
+    toIm,
+    openAccount: props.openAccount,
+    isLeaving: () => leaving
   };
+
+  const host: AuthFlowHost = {leave, back};
+  props.ref(host);
 
   /* ---------- back button (returns to previous account) ---------- */
 
   async function back(): Promise<void> {
-    await sessionStorage.set({should_animate_main: 1});
-    const prevAccount = getValidatedAccount(await sessionStorage.get('previous_account'));
-    await sessionStorage.delete('previous_account');
-
-    if(hostEl) {
-      hostEl.classList.add(styles.hostExit);
-      await doubleRaf();
-      hostEl.classList.add(styles.hostExiting);
-      await pause(200);
-    }
-
-    changeAccount(prevAccount);
+    if(!props.back || leaving) return;
+    leaving = true;
+    hostEl.classList.add(styles.leaving);
+    await props.back(host);
   }
 
   /* ---------- transition into the IM page ---------- */
 
   async function toIm(): Promise<void> {
-    // `#page-chats` hides the cards the instant it shows, but the fixed corner
-    // buttons (z-index: 100) sit above it — fade them out now so they don't
-    // linger until the host is disposed ~1s later.
+    if(leaving) return;
+    leaving = true;
+    // Nothing goes back from here. And `#page-chats` hides the cards the
+    // instant it shows, but the fixed corner buttons (z-index: 100) sit above
+    // it — fade them out now so they don't linger until the host is disposed
+    // ~1s later.
     hostEl.classList.add(styles.leaving);
-    await bootstrapIm();
+    await props.toIm(host);
+  }
+
+  // * reduced animations fade it where it stands, and none leave it at once. The screens are done from its
+  // * first moment, whoever asked it - an answer still on its way is no failure of theirs, a photo picked
+  // * opens no editor
+  async function leave(): Promise<void> {
+    leaving = true;
+    hostEl.classList.add(styles.leaving);
+    if(!liteMode.isAvailable('animations')) return;
+    hostEl.classList.add(styles.hostExit);
+    await doubleRaf();
+    hostEl.classList.add(styles.hostExiting);
+    await pause(200);
   }
 
   /* ---------- theme toggle (mirrors sidebarLeft "Dark mode" menu item) ---------- */
@@ -122,9 +135,8 @@ export default function AuthCardsHost(): JSX.Element {
   async function runEnterSequence() {
     const fontsPromise = loadFonts();
 
-    const shouldAnimate = await sessionStorage.get('should_animate_auth');
+    const shouldAnimate = props.animateEnter && liteMode.isAvailable('animations');
     if(shouldAnimate) {
-      await sessionStorage.delete('should_animate_auth');
       hostEl.classList.add(styles.hostEnter);
     }
 
@@ -150,14 +162,26 @@ export default function AuthCardsHost(): JSX.Element {
     }
 
     runEnterSequence();
+
+    // * opened over the app, from its menu: the focus comes into the screens (a card that asks for
+    // * its field takes it from here), and Tab walks on from their top
+    if(props.overApp && Modes.a11y && !hostEl.contains(document.activeElement)) {
+      hostEl.focus({preventScroll: true});
+    }
   });
 
   /* ---------- render ---------- */
 
   return (
     <AuthFlowContext.Provider value={ctx}>
-      <main ref={hostEl} style={{opacity: 0}} class={classNames('whole', styles.host)} id="auth-pages">
-        {showBackButton && (
+      <main
+        ref={hostEl}
+        style={{opacity: 0}}
+        class={classNames('whole', styles.host, props.overApp && styles.overApp)}
+        id="auth-pages"
+        tabIndex={props.overApp && Modes.a11y ? -1 : undefined}
+      >
+        {props.back && (
           <Button.Icon icon="back" class={styles.closeButton} onClick={back} aria-label={I18n.format('StarsRating.Back', true)} />
         )}
         <Button.Icon icon="darkmode_filled" class={styles.themeButton} onClick={toggleTheme} aria-label={I18n.format('DarkMode', true)} />

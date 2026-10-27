@@ -12,6 +12,11 @@ export const MIN_SPEED = 0.8;
 
 type Radius = number[];
 
+// how far a blob's point goes towards its next place per frame at rest, scaled by MIN/MAX_SPEED
+export function getBlobSpeed() {
+  return 0.017 + 0.003 * Math.random();
+}
+
 export default class LineBlobDrawable {
   public maxRadius: number;
   public minRadius: number;
@@ -44,7 +49,7 @@ export default class LineBlobDrawable {
 
     const radDif = maxRadius - minRadius;
     radius[i] = minRadius + Math.random() * radDif;
-    speed[i] = 0.017 + 0.003 * Math.random();
+    speed[i] = getBlobSpeed();
   }
 
   private generateNextBlob() {

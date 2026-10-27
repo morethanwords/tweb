@@ -1,4 +1,5 @@
 import type {MyDialogFilter} from '@lib/storages/filters';
+import makeDialogFilter from '@/tests/helpers/dialogFilter';
 
 const mocks = vi.hoisted(() => {
   type Listener = (payload: any) => unknown;
@@ -41,22 +42,6 @@ const mocks = vi.hoisted(() => {
 
 vi.mock('@lib/rootScope', () => ({default: mocks.rootScope}));
 
-function makeFilter(id: number, localId: number): MyDialogFilter {
-  return {
-    _: 'dialogFilter',
-    pFlags: {},
-    id,
-    title: {_: 'textWithEntities', text: `Folder ${id}`, entities: []},
-    pinned_peers: [],
-    include_peers: [],
-    exclude_peers: [],
-    pinnedPeerIds: [],
-    includePeerIds: [],
-    excludePeerIds: [],
-    localId
-  } as MyDialogFilter;
-}
-
 describe('folders store recovery', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -66,9 +51,9 @@ describe('folders store recovery', () => {
   });
 
   it('restores filters after state clear without reloading the tab', async() => {
-    const allChats = makeFilter(0, 0);
-    const firstFolder = makeFilter(2, 2);
-    const secondFolder = makeFilter(3, 3);
+    const allChats = makeDialogFilter(0, 0);
+    const firstFolder = makeDialogFilter(2, 2);
+    const secondFolder = makeDialogFilter(3, 3);
 
     for(const filter of [allChats, firstFolder, secondFolder]) {
       mocks.filters.set(filter.id, filter);
@@ -97,5 +82,28 @@ describe('folders store recovery', () => {
     expect(store.folderItems.map(({id}) => id)).toEqual([0, 2, 3]);
     expect(mocks.listeners.get('filter_new')).toHaveLength(1);
     expect(mocks.listeners.get('filter_delete')).toHaveLength(1);
+  });
+
+  it('lets go of the previous account\'s folders at once on a switch, a hydration on its way included', async() => {
+    const allChats = makeDialogFilter(0, 0);
+    const folder = makeDialogFilter(2, 2);
+    for(const filter of [allChats, folder]) {
+      mocks.filters.set(filter.id, filter);
+    }
+
+    const useFolders = (await import('@stores/folders')).default;
+    const store = useFolders();
+    store.setOnClick(() => vi.fn());
+    await store.hydrateFilters([allChats, folder]);
+    store.setSelectedFolderId(2);
+
+    // * the previous account's folders were still being read when the switch came
+    const late = store.hydrateFilters([allChats, folder]);
+    store.resetForAccountSwitch();
+    expect(store.folderItems).toHaveLength(0);
+    expect(store.selectedFolderId()).toBe(0);
+
+    await late;
+    expect(store.folderItems, 'the previous account\'s folders came back').toHaveLength(0);
   });
 });

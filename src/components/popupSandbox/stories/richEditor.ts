@@ -50,6 +50,28 @@ defineStories('Rich editor', [
     }
   },
   {
+    id: 'richEditor/removeFormatting',
+    title: 'Remove formatting (no Premium)',
+    open: async() => {
+      const [{default: confirmationPopup}, {createRichMessagePremiumConfirmation}] = await Promise.all([
+        import('@components/confirmationPopup'),
+        import('@components/chat/inputEditor/richMessagePostingChoice')
+      ]);
+      void confirmationPopup(createRichMessagePremiumConfirmation(noop)).catch(noop);
+    }
+  },
+  {
+    id: 'richEditor/richTextUnavailable',
+    title: 'Rich text is unavailable',
+    open: async() => {
+      const [{default: confirmationPopup}, {createRichMessageUnavailableConfirmation}] = await Promise.all([
+        import('@components/confirmationPopup'),
+        import('@components/chat/inputEditor/richMessagePostingChoice')
+      ]);
+      void confirmationPopup(createRichMessageUnavailableConfirmation()).catch(noop);
+    }
+  },
+  {
     id: 'richEditor/location',
     title: 'Insert a map',
     open: async() => {
@@ -73,3 +95,7 @@ defineStories('Rich editor', [
     }
   }
 ]);
+
+// The sandbox reloads on an edit anyway (watchForEdits). Accepting here keeps an edit of a popup this story imports
+// from climbing through the story to the app's root once the sandbox has been opened on the dev server.
+if(import.meta.hot) import.meta.hot.accept();

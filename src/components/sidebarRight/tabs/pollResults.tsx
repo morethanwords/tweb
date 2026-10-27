@@ -1,7 +1,5 @@
 import {render} from 'solid-js/web';
 import {SliderSuperTab} from '@components/slider';
-import appSidebarRight from '..';
-import appDialogsManager from '@lib/appDialogsManager';
 import {i18n} from '@lib/langPack';
 import setInnerHTML from '@helpers/dom/setInnerHTML';
 import Section from '@components/section';
@@ -13,6 +11,7 @@ import {Show, untrack} from 'solid-js';
 import {createLoadableList, MoreButton} from '@components/sidebarRight/tabs/statistics';
 import {formatFullSentTimeRaw} from '@helpers/date';
 import {getRoundedPercentsFromResults} from '@components/chat/bubbleParts/pollMessageContent/roundPercents';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 
 export default class AppPollResultsTab extends SliderSuperTab {
@@ -47,19 +46,21 @@ export default class AppPollResultsTab extends SliderSuperTab {
       const answerTitle = document.createElement('div');
       const answerText = wrapTextWithEntities(answer.text);
       const answerTextWrapped = wrapRichText(answerText.text, {entities: answerText.entities, middleware: this.middlewareHelper.get()});
-      setInnerHTML(answerTitle, answerTextWrapped);
-      answerTitle.append(' — ', Math.round(percents[idx]) + '%');
+      // * the answer keeps its own direction apart from the share: it would carry it to its side otherwise
+      const answerTextElement = document.createElement('span');
+      setInnerHTML(answerTextElement, answerTextWrapped);
+      answerTitle.append(answerTextElement, ' — ', Math.round(percents[idx]) + '%');
 
       const answerPercents = i18n('Chat.Poll.MembersVoted', [result.voters]);
 
       // Humans
-      const list = appDialogsManager.createChatList();
+      const list = hotReloadGuard.appDialogsManager.createChatList();
       list.classList.add('poll-results-voters');
 
-      appDialogsManager.setListClickListener({
+      hotReloadGuard.appDialogsManager.setListClickListener({
         list,
         onFound: () => {
-          appSidebarRight.onCloseBtnClick();
+          hotReloadGuard.appSidebarRight.onCloseBtnClick();
         },
         openInner: true
       });
@@ -78,7 +79,7 @@ export default class AppPollResultsTab extends SliderSuperTab {
         );
 
         const elements = votesList.votes.map((vote) => {
-          const {dom} = appDialogsManager.addDialogNew({
+          const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
             peerId: getPeerId(vote.peer),
             container: false,
             rippleEnabled: false,
@@ -150,7 +151,7 @@ export default class AppPollResultsTab extends SliderSuperTab {
       </>
     ), div);
 
-    appSidebarRight.toggleSidebar(true);
+    hotReloadGuard.appSidebarRight.toggleSidebar(true);
   }
 
   onCloseAfterTimeout() {

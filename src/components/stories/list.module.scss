@@ -51,7 +51,7 @@
       text-align: center;
       opacity: calc(1 - (var(--progress) * 1.25));
 
-      @include animation-level-global(2) {
+      @include animation-level-global(1) {
         transition: opacity var(--transition-standard-in);
       }
 
@@ -97,7 +97,7 @@
 
         &-stories-svg,
         &-stories-simple {
-          @include animation-level-global(2) {
+          @include animation-level-global(1) {
             transition: opacity var(--transition-standard-in);
           }
         }
@@ -158,12 +158,12 @@
     opacity: 0;
     visibility: hidden;
 
-    @include animation-level-global(2) {
+    @include animation-level-global(1) {
       transition-delay: 0s, .15s;
     }
   }
 
-  @include animation-level-global(2) {
+  @include animation-level-global(1) {
     transition: opacity .15s ease, visibility 0s;
   }
 }

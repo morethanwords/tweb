@@ -23,12 +23,13 @@ import rootScope from '@lib/rootScope';
 import showGiftLinkPopup from '@components/popups/giftLink';
 import {toastNew} from '@components/toast';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
-import appImManager from '@lib/appImManager';
 import {createPaymentPopup} from '@components/popups/payment';
 import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
 import showBoostPopup from '@components/popups/boost';
 import Tabs from '@components/tabs';
 import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const getColorByMonths = (months: number) => {
   return months === 12 ? 'red' : (months === 3 ? 'green' : 'blue');
@@ -253,7 +254,7 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
             const slug = boost.used_gift_slug;
             const peerId = boost.user_id?.toPeerId(false);
             if(peerId && !boost.pFlags.gift && !boost.pFlags.unclaimed && !boost.pFlags.giveaway) {
-              appImManager.setInnerPeer({peerId: boost.user_id.toPeerId(false)});
+              hotReloadGuard.appImManager.setInnerPeer({peerId: boost.user_id.toPeerId(false)});
             } else if(peerId && peerId !== rootScope.myId) {
               showGiftLinkPopup(
                 slug,
@@ -393,10 +394,11 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
   };
 
   public async init(peerId: PeerId) {
+    const managers = bindManagersToSession(this.managers);
     this.container.classList.add('boosts-container');
 
     this.peerId = peerId;
-    this.isBroadcast = await this.managers.appPeersManager.isBroadcast(peerId);
+    this.isBroadcast = await managers.appPeersManager.isBroadcast(peerId);
     this.targets = new Map();
 
     this.setTitle('Boosts');
@@ -436,11 +438,11 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
     });
 
     const [boostsStatus, appConfig, _, __, canCreateGiveaway] = await Promise.all([
-      this.managers.appBoostsManager.getBoostsStatus(peerId),
-      this.managers.apiManager.getAppConfig(),
+      managers.appBoostsManager.getBoostsStatus(peerId),
+      managers.apiManager.getAppConfig(),
       boostsList().loadMore(),
       giftsBoostsList().loadMore(),
-      this.managers.appChatsManager.hasRights(peerId.toChatId(), 'create_giveaway')
+      managers.appChatsManager.hasRights(peerId.toChatId(), 'create_giveaway')
     ]);
 
     this.canCreateGiveaway = canCreateGiveaway;

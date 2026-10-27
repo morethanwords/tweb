@@ -1,8 +1,10 @@
 /*
  * Crypto primitives for the TdE2E port.
- *  - Web Crypto (`crypto.subtle`) for SHA-256, HMAC-SHA256/512 and random.
- *  - aes-js for raw AES-CBC (Web Crypto's AES-CBC forces PKCS7 padding,
- *    which doesn't match TdE2E's manually-padded scheme).
+ *  - Web Crypto (`crypto.subtle`) for SHA-256, HMAC-SHA256/512, random, and
+ *    raw AES-CBC on all but small inputs (see "AES-256-CBC" below for how its
+ *    PKCS#7 padding is kept out of TdE2E's own, manually padded scheme).
+ *  - aes-js for raw AES-CBC on small inputs, where a Web Crypto round trip
+ *    costs more than the cipher itself.
  *  - libsodium-wrappers for Ed25519 sign/verify and X25519 ECDH (Web Crypto
  *    support is uneven across browsers as of 2026).
  *
@@ -37,41 +39,106 @@ export async function sha256(data: Uint8Array): Promise<Uint8Array> {
 
 // ===== HMAC =====
 
-async function hmacImport(key: Uint8Array, hash: 'SHA-256' | 'SHA-512'): Promise<CryptoKey> {
+// Import a raw HMAC key. A caller that MACs many messages under one key
+// imports it once and signs with `hmacSign`: every Web Crypto call is a round
+// trip to another thread, and the per-frame path cannot afford spare ones.
+export function importHmacKey(key: Uint8Array, hash: 'SHA-256' | 'SHA-512'): Promise<CryptoKey> {
   return subtle.importKey('raw', key as BufferSource, {name: 'HMAC', hash}, false, ['sign']);
 }
 
-export async function hmacSha256(key: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
-  const k = await hmacImport(key, 'SHA-256');
-  const mac = await subtle.sign('HMAC', k, data as BufferSource);
-  return new Uint8Array(mac);
+export async function hmacSign(key: CryptoKey, data: Uint8Array): Promise<Uint8Array> {
+  return new Uint8Array(await subtle.sign('HMAC', key, data as BufferSource));
 }
 
 export async function hmacSha512(key: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
-  const k = await hmacImport(key, 'SHA-512');
-  const mac = await subtle.sign('HMAC', k, data as BufferSource);
-  return new Uint8Array(mac);
+  return hmacSign(await importHmacKey(key, 'SHA-512'), data);
 }
 
-// ===== AES-CBC (raw, no padding) =====
+// ===== AES-256-CBC (raw, no padding) =====
 //
-// Input must already be 16-byte aligned; output has the same length.
-// Implemented via aes-js because Web Crypto's AES-CBC always uses PKCS7.
+// TdE2E pads its plaintexts itself (a random prefix whose first byte is its
+// length, see messageEncryption.ts; headers are a fixed 32 bytes), so every
+// input is 16-byte aligned and the cipher must add nothing: output length ==
+// input length, exactly like tdlib's AesCbcState.
+//
+// Web Crypto's AES-CBC always applies PKCS#7. For an aligned input that is one
+// extra block of sixteen 0x10 bytes at the END, and CBC chains forwards, so the
+// first n bytes of its output are the raw CBC ciphertext and the extra block
+// is dropped. Decryption runs the other way round: append the one block that
+// decrypts to valid padding, and Web Crypto strips exactly that block and
+// returns the n raw bytes. That block exists for ANY ciphertext, so decryption
+// never fails on content (no padding oracle) — authenticity stays the MAC's
+// job, as it was with aes-js.
+//
+// Below AES_CBC_SUBTLE_MIN_BYTES the cipher stays on aes-js: a Web Crypto call
+// is a round trip to another thread, which for a 32-byte header or an Opus
+// frame costs more than the cipher (measured in a worker: ~40-130 us per call
+// in Firefox and Safari against ~10-30 us of aes-js; a wash in Chrome). Above
+// it the pure-JS cipher is what stalled the shared media worker — 3 ms
+// (Chrome) to 9-11 ms (Safari, Firefox) for a 60 KB keyframe, during which no
+// other stream of the call moved. The longest synchronous run left is the
+// ~30-65 us of a block just under the threshold.
+export const AES_CBC_SUBTLE_MIN_BYTES = 512;
 
-export function aesCbcEncrypt(key: Uint8Array, iv: Uint8Array, data: Uint8Array): Uint8Array {
+// What PKCS#7 appends to an aligned input: a whole block of 0x10.
+const PKCS7_FULL_BLOCK = new Uint8Array(16).fill(16);
+
+function assertBlockAligned(data: Uint8Array, what: 'plaintext' | 'ciphertext'): void {
   if(data.length % 16 !== 0) {
-    throw new Error(`AES-CBC plaintext length not 16-aligned: ${data.length}`);
+    throw new Error(`AES-CBC ${what} length not 16-aligned: ${data.length}`);
   }
-  const cipher = new aesjs.ModeOfOperation.cbc(key, iv);
-  return cipher.encrypt(data);
 }
 
-export function aesCbcDecrypt(key: Uint8Array, iv: Uint8Array, data: Uint8Array): Uint8Array {
-  if(data.length % 16 !== 0) {
-    throw new Error(`AES-CBC ciphertext length not 16-aligned: ${data.length}`);
-  }
-  const cipher = new aesjs.ModeOfOperation.cbc(key, iv);
-  return cipher.decrypt(data);
+// Not cached: every AES key on the media path comes from one frame's msg_id
+// and is never used again.
+function importAesCbcKey(key: Uint8Array): Promise<CryptoKey> {
+  return subtle.importKey('raw', key as BufferSource, {name: 'AES-CBC'}, false, ['encrypt', 'decrypt']);
+}
+
+function aesCbcEncryptJs(key: Uint8Array, iv: Uint8Array, data: Uint8Array): Uint8Array {
+  assertBlockAligned(data, 'plaintext');
+  return new aesjs.ModeOfOperation.cbc(key, iv).encrypt(data);
+}
+
+function aesCbcDecryptJs(key: Uint8Array, iv: Uint8Array, data: Uint8Array): Uint8Array {
+  assertBlockAligned(data, 'ciphertext');
+  return new aesjs.ModeOfOperation.cbc(key, iv).decrypt(data);
+}
+
+export async function aesCbcEncryptSubtle(key: Uint8Array, iv: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
+  assertBlockAligned(data, 'plaintext');
+  if(!data.length) return new Uint8Array(0);
+  const cryptoKey = await importAesCbcKey(key);
+  const padded = await subtle.encrypt({name: 'AES-CBC', iv: iv as BufferSource}, cryptoKey, data as BufferSource);
+  return new Uint8Array(padded, 0, data.length);
+}
+
+export async function aesCbcDecryptSubtle(key: Uint8Array, iv: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
+  assertBlockAligned(data, 'ciphertext');
+  if(!data.length) return new Uint8Array(0);
+  const cryptoKey = await importAesCbcKey(key);
+  // CBC turns a block X into D(X) ^ (the ciphertext block before it), so the
+  // block that comes out as sixteen 0x10 bytes after the last block C is
+  // E(0x10.. ^ C) — the first block of a CBC encryption of 0x10.. under IV C.
+  const lastBlock = data.subarray(data.length - 16);
+  const padBlock = await subtle.encrypt({name: 'AES-CBC', iv: lastBlock as BufferSource}, cryptoKey, PKCS7_FULL_BLOCK);
+  const input = new Uint8Array(data.length + 16);
+  input.set(data);
+  input.set(new Uint8Array(padBlock, 0, 16), data.length);
+  return new Uint8Array(await subtle.decrypt({name: 'AES-CBC', iv: iv as BufferSource}, cryptoKey, input));
+}
+
+// Input must be 16-byte aligned; output has the same length.
+export async function aesCbcEncrypt(key: Uint8Array, iv: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
+  return data.length < AES_CBC_SUBTLE_MIN_BYTES ?
+    aesCbcEncryptJs(key, iv, data) :
+    aesCbcEncryptSubtle(key, iv, data);
+}
+
+export async function aesCbcDecrypt(key: Uint8Array, iv: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
+  return data.length < AES_CBC_SUBTLE_MIN_BYTES ?
+    aesCbcDecryptJs(key, iv, data) :
+    aesCbcDecryptSubtle(key, iv, data);
 }
 
 // ===== Constant-time byte comparison =====

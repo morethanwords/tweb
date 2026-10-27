@@ -16,6 +16,7 @@ import Section from '@components/section';
 import {StarGiftPriceInputField} from '@components/stargifts/stargiftPriceInputField';
 import bigInt from 'big-integer';
 import rootScope from '@lib/rootScope';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export default async function showSellStarGiftPopup(options: {
   gift: MyStarGift,
@@ -23,7 +24,7 @@ export default async function showSellStarGiftPopup(options: {
   onFinish?: (result: 'list' | 'unlist' | 'cancel') => void
 }) {
   const {gift, allowUnlist} = options;
-  const managers = rootScope.managers;
+  const managers = bindManagersToSession(rootScope.managers);
 
   const [appConfig, floorPrice] = await Promise.all([
     managers.apiManager.getAppConfig(),
@@ -129,6 +130,7 @@ export default async function showSellStarGiftPopup(options: {
 
     return (
       <PopupElement
+        managers={managers}
         class={styles.popup}
         closable
         show={show()}

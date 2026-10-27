@@ -3,6 +3,7 @@ import {NumberPair} from '@components/mediaEditor/types';
 import {snapToViewport} from '@components/mediaEditor/utils';
 import {getOverlayRoot} from '@helpers/appWindow';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import {getManagersSession, isSessionLeaving} from '@lib/accounts/getCurrentAccount';
 
 
 type SpawnImageCanvasArgs = {
@@ -22,12 +23,24 @@ type OpenMediaEditorFromMediaArgs = Omit<MediaEditorProps, 'onCanvasReady' | 'on
 type OpenMediaEditorFromMediaNoAnimationArgs = Omit<MediaEditorProps, 'onCanvasReady' | 'onImageRendered'> & Omit<SpawnImageCanvasArgs, 'rect'>;
 type OpenMediaEditorFromMediaRawArgs = Omit<MediaEditorProps, 'onCanvasReady' | 'onImageRendered'>;
 
+// * asked for by an account session that is over, or on its way out: it would open over the next account
+function isAskedTooLate(props: Pick<MediaEditorProps, 'managers' | 'onClose'>) {
+  if(!isSessionLeaving(getManagersSession(props.managers))) {
+    return false;
+  }
+
+  console.debug('[media editor] not opened: its account session is over');
+  props.onClose(false);
+  return true;
+}
+
 export function openMediaEditorFromMedia({
   source,
   rect,
   animatedCanvasSize: size,
   ...rest
 }: OpenMediaEditorFromMediaArgs) {
+  if(isAskedTooLate(rest)) return;
   const spawnedAnimatedImage = spawnAnimatedImage({
     animatedCanvasSize: size,
     rect,
@@ -36,6 +49,11 @@ export function openMediaEditorFromMedia({
 
   openMediaEditor({
     ...rest,
+    onClose: (hasGif) => {
+      // * closed before its picture rendered (Escape, an account switch): the picture it flew in on goes too
+      spawnedAnimatedImage.imageCanvas.remove();
+      rest.onClose(hasGif);
+    },
     onCanvasReady: async(canvas) => {
       const canvasBcr = canvas.getBoundingClientRect();
 
@@ -52,10 +70,16 @@ export function openMediaEditorFromMediaNoAnimation({
   animatedCanvasSize: size,
   ...rest
 }: OpenMediaEditorFromMediaNoAnimationArgs) {
+  if(isAskedTooLate(rest)) return;
   let spawnedImageCanvas: SpanImageCanvasResult;
 
   openMediaEditor({
     ...rest,
+    onClose: (hasGif) => {
+      // * closed before its picture rendered: the picture it faded in on goes too
+      spawnedImageCanvas?.imageCanvas.remove();
+      rest.onClose(hasGif);
+    },
     onCanvasReady: async(canvas) => {
       const canvasBcr = canvas.getBoundingClientRect();
 
@@ -76,6 +100,7 @@ export function openMediaEditorFromMediaNoAnimation({
 }
 
 export function openMediaEditorFromMediaRaw(args: OpenMediaEditorFromMediaRawArgs) {
+  if(isAskedTooLate(args)) return;
   openMediaEditor({
     ...args,
     onCanvasReady: async() => {},

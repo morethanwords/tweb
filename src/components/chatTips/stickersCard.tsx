@@ -10,12 +10,12 @@ import {useAppSettings} from '@stores/appSettings';
 import {StateSettings} from '@config/state';
 
 import showStickersPopup from '@components/popups/stickers';
-import {AppStickersTab} from '@components/solidJsTabs/tabs';
 import {StickerTsx} from '@components/wrappers/sticker';
 
 import TipCard, {openSettingsTab, TipCardButton, useTipReady} from '@components/chatTips/tipCard';
 import styles from '@components/chatTips/chatTips.module.scss';
 import A11yButton from '@components/a11yButton';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 /** macOS shows three featured packs side by side in the content slot. */
 const SETS_LIMIT = 3;
@@ -60,7 +60,7 @@ export default function StickersTipCard() {
       buttons={buttons()}
       contentTitle={i18n('Stickers.Trending')}
       description={i18n('ChatTips.Stickers.Description', [
-        anchorCallback(() => openSettingsTab(appSidebarLeft, AppStickersTab))
+        anchorCallback(() => openSettingsTab(appSidebarLeft, hotReloadGuard.tabs.AppStickersTab))
       ])}
     >
       <div class={styles.stickerSets}>

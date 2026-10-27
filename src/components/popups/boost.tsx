@@ -6,7 +6,6 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import ListenerSetter from '@helpers/listenerSetter';
 import formatDuration from '@helpers/formatDuration';
 import {PremiumBoostsStatus} from '@layer';
-import appImManager from '@lib/appImManager';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {i18n} from '@lib/langPack';
 import apiManagerProxy from '@lib/apiManagerProxy';
@@ -16,17 +15,25 @@ import confirmationPopup from '@components/confirmationPopup';
 import LimitLine from '@components/limit';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
-import showPremiumPopup from '@components/popups/premium';
 import showReassignBoostPopup from '@components/popups/reassignBoost';
 import {toastNew} from '@components/toast';
 import type {BoostReason} from '@components/openBoosts';
 import {createEffect, createSignal, For, JSX, onCleanup} from 'solid-js';
 import {getMiddleware} from '@helpers/middleware';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import type {AppManagers, TabManagers} from '@lib/managers';
+import {getManagersSession, isSessionLeaving} from '@lib/accounts/getCurrentAccount';
 
 const className = 'popup-boost';
 
-export default async function showBoostPopup(peerId: PeerId, reason?: BoostReason) {
-  const managers = rootScope.managers;
+export default async function showBoostPopup(peerId: PeerId, {reason, managers: openerManagers, onClose}: {
+  reason?: BoostReason,
+  managers?: AppManagers | TabManagers,
+  // * once it has closed, or when it does not open after all
+  onClose?: () => void
+} = {}) {
+  const managers = bindManagersToSession(openerManagers || rootScope.managers);
   const middlewareHelper = getMiddleware();
 
   const [boostsStatus, myBoosts, appConfig, isPremiumPurchaseBlocked, isBroadcast] = await Promise.all([
@@ -37,9 +44,17 @@ export default async function showBoostPopup(peerId: PeerId, reason?: BoostReaso
     managers.appPeersManager.isBroadcast(peerId)
   ]);
 
+  // * asked for on an account the tab has left meanwhile: nothing opens on the one it shows now
+  if(isSessionLeaving(getManagersSession(managers))) {
+    middlewareHelper.destroy();
+    onClose?.();
+    return;
+  }
+
   if(!boostsStatus) {
     toastNew({langPackKey: 'CantBoostChat'});
     middlewareHelper.destroy();
+    onClose?.();
     return;
   }
 
@@ -166,7 +181,7 @@ export default async function showBoostPopup(peerId: PeerId, reason?: BoostReaso
           langKey: 'Yes'
         }
       }).then(() => {
-        showPremiumPopup();
+        hotReloadGuard.showPremiumPopup();
       });
     };
 
@@ -192,7 +207,7 @@ export default async function showBoostPopup(peerId: PeerId, reason?: BoostReaso
           });
 
           hideWithCallback(() => {
-            appImManager.initGifting();
+            hotReloadGuard.appImManager.initGifting();
           });
           return;
         } else if(!availableBoost) {
@@ -259,7 +274,7 @@ export default async function showBoostPopup(peerId: PeerId, reason?: BoostReaso
     const listenerSetter = new ListenerSetter();
     attachClickEvent(entity.element, () => {
       hideWithCallback(() => {
-        appImManager.setInnerPeer({peerId});
+        hotReloadGuard.appImManager.setInnerPeer({peerId});
       });
     }, {listenerSetter});
 
@@ -271,11 +286,15 @@ export default async function showBoostPopup(peerId: PeerId, reason?: BoostReaso
 
     return (
       <PopupElement
+        managers={managers}
         class={'popup-peer ' + className}
         closable
         old
         show={show()}
-        onCloseAfterTimeout={() => deferredCloseCallbacks.splice(0).forEach((callback) => callback())}
+        onCloseAfterTimeout={() => {
+          deferredCloseCallbacks.splice(0).forEach((callback) => callback());
+          onClose?.();
+        }}
       >
         {limitLine.container}
         <MediaHeader.Title class={`${className}-title`} size={20}>{title()}</MediaHeader.Title>

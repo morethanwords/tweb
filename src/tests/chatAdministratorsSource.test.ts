@@ -39,6 +39,14 @@ vi.mock('@helpers/dom/createParticipantContextMenu', () => ({
 
 import createChatAdministratorsSource
 from '@components/sidebarRight/tabs/chatAdministratorsSource';
+import * as mocked1 from '@components/solidJsTabs/tabs';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+
+// the code under test reads the top level from the registry, not from the modules mocked above
+registerHotReloadGuard({
+  tabs: {...mocked1} as any
+});
+
 
 const chatId = 10 as ChatId;
 const participantId = (20 as UserId).toPeerId(false);

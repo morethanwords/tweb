@@ -50,7 +50,7 @@ describe('getMessageForReplyContent', () => {
       })
     );
 
-    expect(result.text).toBe('Title\nBody');
+    expect(result.text).toBe('Title\u00A0 Body');
   });
 
   it('treats the rich document as canonical even if a stale legacy summary is present', () => {
@@ -91,7 +91,7 @@ describe('getMessageForReplyContent', () => {
       ])
     }));
 
-    expect(result.text).toBe('Draft title\nDraft body');
+    expect(result.text).toBe('Draft title\u00A0 Draft body');
   });
 });
 
@@ -131,17 +131,12 @@ describe('getMessagePreviewIcon', () => {
     expect(getMessagePreviewIcon(call)).toBe('phone');
   });
 
-  it.each([
-    [{_: 'pageBlockMath', source: 'x^2'} as PageBlock, MESSAGE_PREVIEW_ICON_FALLBACKS.richMath],
-    [{
-      _: 'pageBlockTable',
-      pFlags: {},
-      title: {_: 'textEmpty'},
-      rows: []
-    } as PageBlock, MESSAGE_PREVIEW_ICON_FALLBACKS.richTable],
-    [{_: 'pageBlockAudio', audio_id: 1, caption: {_: 'pageCaption', text: {_: 'textEmpty'}, credit: {_: 'textEmpty'}}} as PageBlock, 'music_filled']
-  ])('classifies structured rich blocks', (block, expected) => {
-    expect(getMessagePreviewIcon(message({rich_message: richMessage([block])}))).toBe(expected);
+  it('gives a rich message no leading icon, its preview has them inside the text', () => {
+    expect(getMessagePreviewIcon(message({rich_message: richMessage([
+      {_: 'pageBlockMath', source: 'x^2'},
+      {_: 'pageBlockTable', pFlags: {}, title: {_: 'textEmpty'}, rows: []},
+      {_: 'pageBlockBlockquote', pFlags: {}, text: text('quote'), caption: {_: 'textEmpty'}}
+    ])}))).toBeUndefined();
   });
 
   it('does not duplicate type icons for media that already uses a thumbnail or its own service icon', () => {

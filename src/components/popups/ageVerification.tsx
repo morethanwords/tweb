@@ -1,17 +1,19 @@
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import deferredPromise from '@helpers/cancellablePromise';
-import appImManager from '@lib/appImManager';
 import {i18n, LangPackKey} from '@lib/langPack';
 import useContentSettings from '@stores/contentSettings';
 import Button from '@components/buttonTsx';
 import styles from '@components/popups/ageVerification.module.scss';
 import rootScope from '@lib/rootScope';
 import {createSignal} from 'solid-js';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export async function showAgeVerificationPopup(options: {
   onVerify: (verified: boolean) => void,
   onClose?: () => void
 }) {
+  const managers = bindManagersToSession(rootScope.managers);
   const appConfig = await rootScope.managers.apiManager.getAppConfig();
   const [show, setShow] = createSignal(true);
   // the web app takes over from here — closing for it must not answer "not verified"
@@ -27,7 +29,7 @@ export async function showAgeVerificationPopup(options: {
     );
     switchedToWebApp = true;
     setShow(false);
-    appImManager.openWebApp({
+    hotReloadGuard.appImManager.openWebApp({
       botId: bot.id,
       main: true,
       noConfirmation: true,
@@ -40,6 +42,7 @@ export async function showAgeVerificationPopup(options: {
 
   createPopup(() => (
     <PopupElement
+      managers={managers}
       class={styles.popup}
       closable
       show={show()}

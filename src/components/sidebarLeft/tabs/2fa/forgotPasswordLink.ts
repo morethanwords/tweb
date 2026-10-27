@@ -5,7 +5,6 @@ import tsNow from '@helpers/tsNow';
 import {toastNew} from '@components/toast';
 import formatDuration from '@helpers/formatDuration';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
-import {AppSettingsTab} from '@components/solidJsTabs';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import {AppManagers} from '@lib/managers';
 import safeAssign from '@helpers/object/safeAssign';
@@ -13,7 +12,8 @@ import noop from '@helpers/noop';
 import ctx from '@environment/ctx';
 import SliderSuperTab from '@components/sliderTab';
 import {wrapEmailPattern} from '@components/emailVerification';
-import {AppPrivacyAndSecurityTab, AppTwoStepVerificationEmailConfirmationTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export class ForgotPasswordLink {
   private state: AccountPassword;
@@ -58,11 +58,12 @@ export class ForgotPasswordLink {
   }
 
   private handleReset = () => {
+    const managers = bindManagersToSession(this.managers);
     const canReset = this.state.pending_reset_date && this.state.pending_reset_date < tsNow(true)
 
     if(this.state.pFlags.has_recovery && !this.forEmail && !canReset) {
-      this.managers.passwordManager.requestRecovery().then((res) => {
-        this.tab.slider.createTab(AppTwoStepVerificationEmailConfirmationTab).open({
+      managers.passwordManager.requestRecovery().then((res) => {
+        this.tab.slider.createTab(hotReloadGuard.tabs.AppTwoStepVerificationEmailConfirmationTab).open({
           email: wrapEmailPattern(res.email_pattern),
           length: 6,
           state: this.state,
@@ -87,7 +88,7 @@ export class ForgotPasswordLink {
         if(this.pending) return;
         this.pending = true;
 
-        this.managers.passwordManager.resetPassword()
+        managers.passwordManager.resetPassword()
         .then((result) => {
           switch(result._) {
             case 'account.resetPasswordFailedWait':
@@ -100,12 +101,12 @@ export class ForgotPasswordLink {
               this.state.pending_reset_date = result.until_date;
               this.update();
               if(this.forEmail) {
-                this.tab.slider.sliceTabsUntilTab(AppPrivacyAndSecurityTab, this.tab);
+                this.tab.slider.sliceTabsUntilTab(hotReloadGuard.tabs.AppPrivacyAndSecurityTab, this.tab);
               }
               break;
             case 'account.resetPasswordOk':
               toastNew({langPackKey: 'ResetPassword.Success'});
-              this.tab.slider.sliceTabsUntilTab(AppSettingsTab, this.tab);
+              this.tab.slider.sliceTabsUntilTab(hotReloadGuard.tabs.AppSettingsTab, this.tab);
               this.tab.close();
               break;
           }

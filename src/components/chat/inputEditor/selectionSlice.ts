@@ -1,10 +1,72 @@
 import type {JSONContent} from '@tiptap/core';
-import {Fragment, Slice, type Node as ProseMirrorNode, type Schema} from '@tiptap/pm/model';
-import type {Selection} from '@tiptap/pm/state';
+import {Fragment, Slice, type Node as ProseMirrorNode, type ResolvedPos, type Schema} from '@tiptap/pm/model';
+import {SelectionRange, TextSelection, type Selection} from '@tiptap/pm/state';
 import {tiptapToRichMessage} from '@components/chat/inputEditor/richMessage';
 import {effectiveOrderedListItemValue} from '@components/chat/inputEditor/orderedList';
 
-export function withCopiedOrderedListStarts(slice: Slice, selection: Selection) {
+// the media and the map: their text is a caption, what they show is in their attributes
+function isMediaTextblock(node: ProseMirrorNode) {
+  return node.type.name === 'richMedia' || node.type.name === 'richMap';
+}
+
+// what a copy takes whole or not at all: an atom (a formula, a divider), a table — opened, it would
+// paste as loose cells — the media and the map, which would paste as their caption alone
+function isWholeBlock(node: ProseMirrorNode) {
+  return node.isLeaf || !!node.type.spec.isolating || isMediaTextblock(node);
+}
+
+/**
+ * Where a copy ends whose selection ends at `$position` (`forward`: starts): at a line's start, out
+ * of the blocks the selection only entered there — that line, its item, its list or quote — to the
+ * end of the line before (the start of the one after), or to right after (before) a block taken
+ * whole. Not where what is left of the block it leaves cannot stand alone: a table's title without
+ * the table, an item's nested list without its line. Anywhere else in a line, where it is; nothing
+ * before it (after it), or no such way: undefined.
+ */
+function copyEdge($position: ResolvedPos, forward: boolean) {
+  let $pos = $position;
+  if(forward ? $pos.nodeAfter : $pos.nodeBefore) return $pos;
+  // an empty line's start is its end: a selection begun or ended in one holds it, an item's checkbox
+  // with it; the start of a media's caption: the photo, the map before it is in the selection
+  if(!$pos.parent.content.size || (!forward && isWholeBlock($pos.parent))) return;
+  for(;;) {
+    const node = forward ? $pos.nodeAfter : $pos.nodeBefore;
+    const {parent, parentOffset} = $pos;
+    if(!node) {
+      if(!$pos.depth) return;
+      $pos = $pos.doc.resolve(forward ? $pos.after() : $pos.before());
+    } else if(!parent.type.contentMatch.matchFragment(
+      forward ? parent.content.cut(parentOffset) : parent.content.cut(0, parentOffset)
+    )?.validEnd) {
+      return;
+    } else if(isWholeBlock(node)) {
+      return $pos;
+    } else {
+      $pos = $pos.doc.resolve($pos.pos + (forward ? 1 : -1));
+      if($pos.parent.inlineContent) return $pos;
+    }
+  }
+}
+
+/**
+ * What a copy of the selection takes. A selection that ends where a line begins in a block it did
+ * not begin in — a list's item, a quote, a table — takes nothing of that line: pasted, the block
+ * would come along empty, a bullet with nothing next to it. It ends at the end of the line before;
+ * one that begins where such a line ends starts at the next line (`copyEdge`). A plain line's break
+ * is copied as selected. Undefined: as selected — a selection in one line, of nothing but line
+ * breaks, or not of text.
+ */
+export function copiedRange(selection: Selection) {
+  if(!(selection instanceof TextSelection) || selection.$from.sameParent(selection.$to)) return;
+  // deeper than a child of the block both are in: in a block the other edge is not in
+  const shared = selection.$from.sharedDepth(selection.to);
+  const $from = (selection.$from.depth > shared + 1 && copyEdge(selection.$from, true)) || selection.$from;
+  const $to = (selection.$to.depth > shared + 1 && copyEdge(selection.$to, false)) || selection.$to;
+  if($from.pos >= $to.pos || ($from.pos === selection.from && $to.pos === selection.to)) return;
+  return new SelectionRange($from, $to);
+}
+
+export function withCopiedOrderedListStarts(slice: Slice, selection: Selection | SelectionRange) {
   const adjust = (node: ProseMirrorNode, depth: number): ProseMirrorNode => {
     if(depth > slice.openStart || depth > selection.$from.depth) return node;
     const source = selection.$from.node(depth);
@@ -31,7 +93,7 @@ function selectedNodeContent(node: ProseMirrorNode, openStart: number, openEnd: 
   if(!openStart && !openEnd) return [node.toJSON()];
   const json = node.toJSON() as JSONContent;
   if(node.isTextblock) {
-    if(node.type.name === 'richMedia' || node.type.name === 'richMap') {
+    if(isMediaTextblock(node)) {
       if(openStart) return [{type: 'paragraph', content: json.content}];
     }
     return [json];

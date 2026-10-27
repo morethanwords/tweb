@@ -9,8 +9,8 @@ import noop from '@helpers/noop';
 import {IconTsx} from '@components/iconTsx';
 import {hideToast, toastNew} from '@components/toast';
 import anchorCallback from '@helpers/dom/anchorCallback';
-import showPremiumPopup from '@components/popups/premium';
 import A11yButton from '@components/a11yButton';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 
 /**
@@ -195,7 +195,7 @@ export default function createAudioTranscription(options: {
         langPackKey: 'AudioAndVideoTranscription.PremiumAlert',
         langPackArguments: [anchorCallback(() => {
           hideToast();
-          showPremiumPopup({feature: 'voice_to_text'});
+          hotReloadGuard.showPremiumPopup({feature: 'voice_to_text'});
         })]
       });
       return;

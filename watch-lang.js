@@ -1,131 +1,136 @@
 const fs = require('fs');
 const path = require('path');
-const {spawn, execSync} = require('child_process');
+const crypto = require('crypto');
+const {execSync} = require('child_process');
 
-const LANG_FILE_PATH = path.join(__dirname, 'src', 'lang.ts');
-const LANG_SIGN_FILE_PATH = path.join(__dirname, 'src', 'langSign.ts');
-const EDIT_FILE_PATH = path.join(__dirname, 'src', 'langPackLocalVersion.ts');
+const SRC_DIR = path.join(__dirname, 'src');
+const LANG_FILE_NAMES = ['lang.ts', 'langSign.ts'];
+const LANG_FILES = LANG_FILE_NAMES.map((name) => path.join(SRC_DIR, name));
+const EDIT_FILE_PATH = path.join(SRC_DIR, 'langPackLocalVersion.ts');
 const npmCmd = /^win/.test(process.platform) ? 'npm.cmd' : 'npm';
 
-// Function to read current version from App.ts
-const getCurrentVersion = () => {
+// The version tells a client that its cached language pack is older than the local strings, so it
+// goes up only when lang.ts or langSign.ts really changed. Next to it the file keeps a hash of the
+// two: a dev server that starts with the same strings leaves the file alone, since rewriting it
+// reloads every page served from this checkout - previews, a test suite's server - for nothing.
+const HASH_PREFIX = '// lang.ts + langSign.ts: ';
+
+const readVersionFile = () => {
   try {
-    const appContent = fs.readFileSync(EDIT_FILE_PATH, 'utf8');
-    const match = appContent.match(/const langPackLocalVersion = (\d+);/);
-    return match ? parseInt(match[1]) : 0;
+    const content = fs.readFileSync(EDIT_FILE_PATH, 'utf8');
+    const version = content.match(/const langPackLocalVersion = (\d+);/);
+    const hashLine = content.split('\n').find((line) => line.startsWith(HASH_PREFIX));
+    return {version: version ? +version[1] : 0, hash: hashLine?.slice(HASH_PREFIX.length)};
   } catch(error) {
-    console.error('❌ Error reading App.ts:', error.message);
-    return 0;
+    return {version: 0};
   }
 };
 
-// Function to update version in App.ts
-const updateVersion = (newVersion) => {
+const getStringsHash = () => {
+  const hash = crypto.createHash('sha1');
+  for(const filePath of LANG_FILES) {
+    hash.update(fs.readFileSync(filePath));
+    hash.update('\0');
+  }
+
+  return hash.digest('hex');
+};
+
+// the strings format-lang last failed on: skipped while they stay, tried again once other strings are
+// seen - even if the edit later goes back to them - or in a new process
+let failedHash;
+
+// Regenerates langPack.strings and bumps the version when the strings differ from the last bump.
+// The version is written only after format-lang succeeds. Returns true when it bumped, false when
+// the strings had not changed, and nothing when it failed.
+const updateVersionIfChanged = () => {
+  let hash;
   try {
-    let appContent = fs.readFileSync(EDIT_FILE_PATH, 'utf8');
-    appContent = `const langPackLocalVersion = ${newVersion};export default langPackLocalVersion;
-`;
-    fs.writeFileSync(EDIT_FILE_PATH, appContent, 'utf8');
-    console.log(`✅ Version updated to ${newVersion}`);
+    hash = getStringsHash();
+    if(hash !== failedHash) {
+      failedHash = undefined;
+    }
+
+    const {version, hash: lastHash} = readVersionFile();
+    if(hash === lastHash) {
+      return false;
+    }
+
+    if(hash === failedHash) {
+      return;
+    }
 
     execSync(`${npmCmd} run format-lang`);
+    // written whole, then renamed into place: the dev server reloads on this file and must never read
+    // it half-written
+    const tmpPath = EDIT_FILE_PATH + '.tmp';
+    fs.writeFileSync(tmpPath, `const langPackLocalVersion = ${version + 1};export default langPackLocalVersion;
+${HASH_PREFIX}${hash}
+`, 'utf8');
+    fs.renameSync(tmpPath, EDIT_FILE_PATH);
+    console.log(`✅ Version updated to ${version + 1}`);
+    return true;
   } catch(error) {
-    console.error('❌ Error updating App.ts:', error.message);
+    failedHash = hash;
+    console.error('❌ Error updating the language pack version:', error.message);
   }
 };
 
-// Function to get file hash
-const getFileHash = (filePath) => {
-  try {
-    const stats = fs.statSync(filePath);
-    return `${stats.mtime.getTime()}_${stats.size}`;
-  } catch(error) {
-    return null;
-  }
-};
-
-// Function to handle file change
-const handleFileChange = (filePath, fileName, lastHash, currentVersion, isUpdating) => {
-  if(isUpdating.value) return; // Prevent multiple updates
-
-  const currentHash = getFileHash(filePath);
-
-  if(currentHash && currentHash !== lastHash.value) {
-    console.log(`📝 Changes detected in ${fileName}`);
-    isUpdating.value = true;
-    currentVersion.value++;
-    updateVersion(currentVersion.value);
-    lastHash.value = currentHash;
-
-    // Reset updating flag after a delay to prevent immediate re-triggering
-    setTimeout(() => {
-      isUpdating.value = false;
-    }, 200);
-  }
-};
-
-// Function to check if files exist
-const checkFilesExist = (files) => {
-  for(const {path, name} of files) {
-    if(!fs.existsSync(path)) {
-      console.error(`❌ File ${path} not found!`);
+const checkFilesExist = () => {
+  for(const filePath of LANG_FILES) {
+    if(!fs.existsSync(filePath)) {
+      console.error(`❌ File ${filePath} not found!`);
       return false;
     }
   }
+
   return true;
 };
 
+const startCheck = () => {
+  if(updateVersionIfChanged() === false) {
+    console.log(`📊 Current version: ${readVersionFile().version}, the strings have not changed`);
+  }
+};
+
+// Vite evaluates vite.config.ts again, in the same process, on every dev-server restart. Each start
+// checks the strings again; the watcher is made once per process, or every restart would stack
+// another one.
+const WATCHING_KEY = Symbol.for('tweb.watchLangFile');
+
 // Main watching function using fs.watch
 const watchLangFile = () => {
-  const files = [
-    {path: LANG_FILE_PATH, name: 'lang.ts'},
-    {path: LANG_SIGN_FILE_PATH, name: 'langSign.ts'}
-  ];
-
-  console.log('🔍 Watching for changes in lang files...');
-  console.log(`📁 Files: ${files.map(f => f.path).join(', ')}`);
-
-  const lastHashes = files.map(f => ({value: getFileHash(f.path)}));
-  const currentVersion = {value: getCurrentVersion()};
-  const isUpdating = {value: false};
-
-  updateVersion(++currentVersion.value);
-
-  console.log(`📊 Current version: ${currentVersion.value}`);
-
-  // Check if files exist
-  if(
-    !checkFilesExist(files.concat([{path: EDIT_FILE_PATH, name: '.env.local'}]))
-  ) {
-    console.error('❌ Files not found!');
+  if(!checkFilesExist()) {
     return;
   }
 
-  // Create watchers for each file
-  const watchers = files.map((file, index) => {
-    return fs.watch(file.path, (eventType, filename) => {
-      if(eventType === 'change') {
-        // Small delay to complete file writing
-        setTimeout(() => {
-          handleFileChange(file.path, file.name, lastHashes[index], currentVersion, isUpdating);
-        }, 100);
-      }
-    });
-  });
+  startCheck();
+  if(globalThis[WATCHING_KEY]) {
+    return;
+  }
 
-  // Error handling
-  watchers.forEach((watcher, index) => {
-    watcher.on('error', (error) => {
-      console.error(`❌ File watching error (${files[index].name}):`, error.message);
-    });
+  console.log('🔍 Watching for changes in lang files...');
+  console.log(`📁 Files: ${LANG_FILES.join(', ')}`);
+
+  // The folder rather than the files: an editor that saves by renaming a new file over the old one
+  // would leave a watcher on the file looking at a file that is gone. A small delay lets the write
+  // complete; extra events are cheap, the hash tells a real change.
+  const watcher = fs.watch(SRC_DIR, (eventType, filename) => {
+    if(!filename || LANG_FILE_NAMES.includes(filename)) {
+      setTimeout(updateVersionIfChanged, 100);
+    }
+  });
+  watcher.on('error', (error) => {
+    console.error('❌ File watching error:', error.message);
   });
 
   console.log('✅ Watching started. Press Ctrl+C to stop.');
+  globalThis[WATCHING_KEY] = true;
 
   // Process termination handling
   const cleanup = () => {
     console.log('\n🛑 Stopping watch...');
-    watchers.forEach(watcher => watcher.close());
+    watcher.close();
     process.exit(0);
   };
 
@@ -135,33 +140,15 @@ const watchLangFile = () => {
 
 // Alternative function with interval (for cases when fs.watch doesn't work)
 const watchLangFileWithInterval = () => {
-  const files = [
-    {path: LANG_FILE_PATH, name: 'lang.ts'},
-    {path: LANG_SIGN_FILE_PATH, name: 'langSign.ts'}
-  ];
-
-  console.log('🔍 Watching for changes in lang files (interval mode)...');
-  console.log(`📁 Files: ${files.map(f => f.path).join(', ')}`);
-
-  const lastHashes = files.map(f => ({value: getFileHash(f.path)}));
-  const currentVersion = {value: getCurrentVersion()};
-
-  console.log(`📊 Current version: ${currentVersion.value}`);
-
-  // Check if files exist
-  if(
-    !checkFilesExist(files.concat([{path: EDIT_FILE_PATH, name: '.env.local'}]))
-  ) {
+  if(!checkFilesExist()) {
     return;
   }
 
-  const isUpdating = {value: false};
+  startCheck();
+  console.log('🔍 Watching for changes in lang files (interval mode)...');
+  console.log(`📁 Files: ${LANG_FILES.join(', ')}`);
 
-  const interval = setInterval(() => {
-    files.forEach((file, index) => {
-      handleFileChange(file.path, file.name, lastHashes[index], currentVersion, isUpdating);
-    });
-  }, 1000);
+  const interval = setInterval(updateVersionIfChanged, 1000);
 
   console.log('✅ Watching started. Press Ctrl+C to stop.');
 
@@ -190,6 +177,5 @@ if(require.main === module) {
 module.exports = {
   watchLangFile,
   watchLangFileWithInterval,
-  getCurrentVersion,
-  updateVersion
+  updateVersionIfChanged
 };

@@ -2,7 +2,7 @@
  * Copyright (C) 2019-2021 Artem Kolnogorov and unknown creator of the script taken from http://useless.altervista.org/gradient.html
  */
 
-import {animateSingle} from '@helpers/animation';
+import {animateSingle, cancelAnimationByKey} from '@helpers/animation';
 import {hexToRgb} from '@helpers/color';
 import {easeOutQuadApply} from '@helpers/easing/easeOutQuad';
 
@@ -450,6 +450,9 @@ export default class ChatBackgroundGradientRenderer {
   public cleanup() {
     // this.scrollAnimate(false);
     // this.animate(false);
+    // * a move whose progress stopped short of the end (its owner gone) would draw nothing in every
+    // * frame for good
+    cancelAnimationByKey(this);
   }
 
   public static createCanvas(colors?: string) {

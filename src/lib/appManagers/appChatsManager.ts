@@ -10,7 +10,7 @@ import isObject from '@helpers/object/isObject';
 import safeReplaceObject from '@helpers/object/safeReplaceObject';
 import {ChannelAdminLogEvent, ChannelParticipant, ChannelsCreateChannel, ChannelsGetAdminLog, ChannelsGetAdminedPublicChannels, ChannelsSendAsPeers, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatInvite, ChatParticipant, ChatPhoto, ChatReactions, EmojiStatus, InputChannel, InputChatPhoto, InputFile, InputPeer, InputUser, MessagesChats, MessagesChatInviteJoinResult, MessagesSponsoredMessages, MissingInvitee, Peer, SponsoredMessage, SponsoredPeer, StickerSet, Update, Updates} from '@layer';
 import {AppManager} from '@appManagers/manager';
-import hasRights from '@appManagers/utils/chats/hasRights';
+import hasRights, {isSendRight} from '@appManagers/utils/chats/hasRights';
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
 import {AppStoragesManager} from '@appManagers/appStoragesManager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
@@ -389,7 +389,40 @@ export class AppChatsManager extends AppManager {
    * @returns
    */
   public hasRights(id: ChatId, action: ChatRights, rights?: ChatAdminRights | ChatBannedRights, isThread?: boolean) {
-    return hasRights(this.getChat(id), action, rights, isThread);
+    // * what the member sends is let past the group's own restrictions once their boosts are enough, wherever it
+    // * is asked (tdesktop's unrestrictedByBoosts in amRestricted)
+    const defaultBansLifted = rights === undefined && isSendRight(action) && this.isRestrictionLiftedByBoosts(id, action);
+    return hasRights(this.getChat(id), action, rights, isThread, defaultBansLifted);
+  }
+
+  /**
+   * Whether boosts can let the member past the group's own restriction of `action` (no `action`: slow mode's
+   * wait), as iOS and Android have it: a supergroup that asks for boosts to lift them — not a broadcast group,
+   * where only admins write — and never past a ban of the member's own. Read from the full chat already fetched
+   */
+  public canBoostsLiftRestriction(id: ChatId, action?: ChatRights) {
+    const chat = this.getChat(id) as Chat.channel;
+    if(
+      chat?._ !== 'channel' ||
+      !chat.pFlags.megagroup ||
+      chat.pFlags.gigagroup ||
+      (action && chat.banned_rights?.pFlags[action as keyof ChatBannedRights['pFlags']])
+    ) {
+      return false;
+    }
+
+    const channelFull = this.appProfileManager.getCachedFullChat(id) as ChatFull.channelFull;
+    return !!channelFull?.boosts_unrestrict;
+  }
+
+  // * a member who has given the group as many boosts as it asks for is let past what boosts can lift
+  public isRestrictionLiftedByBoosts(id: ChatId, action?: ChatRights) {
+    if(!this.canBoostsLiftRestriction(id, action)) {
+      return false;
+    }
+
+    const channelFull = this.appProfileManager.getCachedFullChat(id) as ChatFull.channelFull;
+    return (channelFull.boosts_applied || 0) >= channelFull.boosts_unrestrict;
   }
 
   public editChatDefaultBannedRights(id: ChatId, banned_rights: ChatBannedRights) {
@@ -845,7 +878,8 @@ export class AppChatsManager extends AppManager {
     const peerId = getParticipantPeerId(participant);
     const userId = peerId.toUserId();
     const makingAdmin = Object.keys(rights.pFlags).length > 0;
-    const canStickToLegacy = !rank && (!makingAdmin || deepEqual(rights, CHAT_LEGACY_ADMIN_RIGHTS));
+    // * a tag no longer needs a supergroup: a basic group keeps it apart from the rights (as desktop does)
+    const canStickToLegacy = !makingAdmin || deepEqual(rights, CHAT_LEGACY_ADMIN_RIGHTS);
 
     if(!wasChannel && canStickToLegacy) {
       const editChatAdmin = () => this.apiManager.invokeApi('messages.editChatAdmin', {
@@ -876,6 +910,11 @@ export class AppChatsManager extends AppManager {
         is_admin: makingAdmin,
         version: 0
       });
+
+      const prevRank = typeof(participant) === 'object' ? (participant as ChatParticipant.chatParticipant).rank : undefined;
+      if(makingAdmin && rank !== (prevRank || '')) {
+        await this.editParticipantRank(id, peerId, rank);
+      }
 
       return id;
     }
@@ -918,6 +957,21 @@ export class AppChatsManager extends AppManager {
 
     this.onChatUpdatedForce(id, updates);
     return returnParticipant ? update.new_participant : id;
+  }
+
+  /**
+   * Sets a member tag, or removes it with an empty string. Not optimistic: the caches change once the server accepts
+   */
+  public async editParticipantRank(id: ChatId, peerId: PeerId, rank: string) {
+    const updates = await this.apiManager.invokeApi('messages.editChatParticipantRank', {
+      peer: this.appPeersManager.getInputPeerById(id.toPeerId(true)),
+      participant: this.appPeersManager.getInputPeerById(peerId),
+      rank
+    });
+
+    this.apiUpdatesManager.processUpdateMessage(updates);
+    // * the answer for a supergroup may carry no update of the tag
+    this.appProfileManager.applyParticipantRank(id, peerId.toUserId(), rank);
   }
 
   public editPhoto(id: ChatId, upload?: InputFile | ChatPhotoUpload) {
@@ -1028,6 +1082,8 @@ export class AppChatsManager extends AppManager {
         banned_rights: bannedRights,
         kicked_by: this.appUsersManager.getSelf().id,
         peer: this.appPeersManager.getOutputPeer(peerId),
+        // * a restriction leaves the member's tag where it was
+        rank: isObject(participant) ? (participant as ChannelParticipant.channelParticipant).rank : undefined,
         pFlags: bannedRights.pFlags.view_messages ? {left: true} : {}
       } : undefined
     });

@@ -294,6 +294,13 @@ export default class DotRendererCore {
       return this.initPromise;
     }
 
+    // No WebGL 2 at all (a GPU on the blocklist, WebGL turned off): there are no particles to
+    // simulate, and nothing to wait for. A spoiler keeps covering its media with the blurred
+    // thumbnail under an empty dots canvas, and still reveals, just without particles.
+    if(!this.context) {
+      return this.initPromise = false;
+    }
+
     const result = callbackify(this.compileShaders(), (shaders) => {
       this._init(...shaders);
       return true;

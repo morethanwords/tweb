@@ -1,0 +1,8 @@
+# Python 3.12: pesq ships no wheel for newer interpreters (it then needs a C compiler and Python headers).
+librosa==1.0.0
+numpy==2.5.3
+onnxruntime==1.31.0
+pesq==0.0.4
+pystoi==0.4.1
+scipy==1.18.1
+soundfile==0.14.0

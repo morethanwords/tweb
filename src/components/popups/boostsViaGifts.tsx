@@ -15,7 +15,6 @@ import Button from '@components/button';
 import PeerTitle from '@components/peerTitle';
 import {InputInvoice, InputStorePaymentPurpose, PremiumGiftCodeOption, PrepaidGiveaway, StarsGiveawayOption, StarsGiveawayWinnersOption} from '@layer';
 import cancelEvent from '@helpers/dom/cancelEvent';
-import showPremiumPopup from '@components/popups/premium';
 import PremiumOptionsForm from '@components/premium/premiumOptionsForm';
 import showPickUserPopup from '@components/popups/pickUser';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
@@ -35,7 +34,7 @@ import {CPrepaidGiveaway} from '@components/sidebarRight/tabs/boosts';
 import classNames from '@helpers/string/classNames';
 import RowTsx from '@components/rowTsx';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
-import {StarsStackedStars} from '@components/popups/stars';
+import {StarsStackedStars} from '@components/stars/starsAmount';
 import numberThousandSplitter, {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
 import flatten from '@helpers/array/flatten';
@@ -75,12 +74,15 @@ import {getMiddleware} from '@helpers/middleware';
 import rootScope from '@lib/rootScope';
 import ListenerSetter from '@helpers/listenerSetter';
 import MediaHeader from '@components/mediaHeader';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export default async function showBoostsViaGiftsPopup(
   peerId: PeerId,
   prepaidGiveaway?: PrepaidGiveaway,
   onCreated?: () => void
 ) {
+  const managers = bindManagersToSession(rootScope.managers);
   const middlewareHelper = getMiddleware();
   const middleware = middlewareHelper.get();
   const listenerSetter = new ListenerSetter();
@@ -285,7 +287,7 @@ export default async function showBoostsViaGiftsPopup(
     }
 
     const premiumPromoAnchor = anchorCallback(() => {
-      showPremiumPopup();
+      hotReloadGuard.showPremiumPopup();
     });
 
     let lastOptionIndex: number;
@@ -666,25 +668,27 @@ export default async function showBoostsViaGiftsPopup(
     };
 
     const createSpecificStoreInput = async(): Promise<InputStorePaymentPurpose> => {
+      const managers = bindManagersToSession(rootScope.managers);
       const {amount, currency} = option();
-      const users = await Promise.all(specificPeerIds().map((peerId) => rootScope.managers.appUsersManager.getUserInput(peerId.toUserId())));
+      const users = await Promise.all(specificPeerIds().map((peerId) => managers.appUsersManager.getUserInput(peerId.toUserId())));
       return {
         _: 'inputStorePaymentPremiumGiftCode',
         amount,
         currency,
-        boost_peer: await rootScope.managers.appPeersManager.getInputPeerById(peerId),
+        boost_peer: await managers.appPeersManager.getInputPeerById(peerId),
         users
       };
     };
 
     const continueWithPrepaid = async(purpose: InputStorePaymentPurpose) => {
+      const managers = bindManagersToSession(rootScope.managers);
       await confirmationPopup({
         titleLangKey: 'BoostingStartGiveawayConfirmTitle',
         descriptionLangKey: 'BoostingStartGiveawayConfirmText',
         button: {langKey: 'Start'}
       });
 
-      return rootScope.managers.appPaymentsManager.launchPrepaidGiveaway(
+      return managers.appPaymentsManager.launchPrepaidGiveaway(
         peerId,
         prepaidGiveaway.id,
         purpose
@@ -773,7 +777,7 @@ export default async function showBoostsViaGiftsPopup(
     });
 
     return (
-      <PopupElement class="popup-boosts" closable show={show()}>
+      <PopupElement managers={managers} class="popup-boosts" closable show={show()}>
         <Content />
       </PopupElement>
     );

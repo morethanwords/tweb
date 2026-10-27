@@ -17,7 +17,7 @@ import assumeType from '@helpers/assumeType';
 import clamp from '@helpers/number/clamp';
 import pause from '@helpers/schedulers/pause';
 import {ActiveAccountNumber} from '@lib/accounts/types';
-import {getCurrentAccountFromURL} from '@lib/accounts/getCurrentAccountFromURL';
+import getClientAccount from '@lib/serviceWorker/clientAccounts';
 
 const ctx = self as any as ServiceWorkerGlobalScope;
 
@@ -798,7 +798,8 @@ class RtmpStream {
 }
 
 async function getRtmpFetchResponse(event: FetchEvent, params: string, search: string): Promise<Response> {
-  const call = JSON.parse(decodeURIComponent(params));
+  // * the account the stream is watched on comes with it: the tab may show another one by now
+  const {accountNumber: streamAccountNumber, ...call} = JSON.parse(decodeURIComponent(params));
   let pending = pendingStreams.get(call.id);
 
   const isHls = search?.startsWith('hls=');
@@ -808,8 +809,7 @@ async function getRtmpFetchResponse(event: FetchEvent, params: string, search: s
   //   pending = undefined;
   // }
 
-  const client = await ctx.clients.get(event.clientId);
-  const accountNumber = getCurrentAccountFromURL(client.url);
+  const accountNumber: ActiveAccountNumber = streamAccountNumber ?? await getClientAccount(await ctx.clients.get(event.clientId));
 
   if(!pending) {
     log('creating rtmp stream', call.id);

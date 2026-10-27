@@ -11,6 +11,16 @@ import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import {IS_SAFARI} from '@environment/userAgent';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {ChatAutoDownloadSettings} from '@hooks/useAutoDownloadSettings';
+import {hotEffect, hotListen} from '@helpers/hotModule';
+import liteMode from '@helpers/liteMode';
+import noop from '@helpers/noop';
+import {Middleware} from '@helpers/middleware';
+import appDownloadManager from '@lib/appDownloadManager';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import {IS_H265_SUPPORTED} from '@environment/videoSupport';
+import {i18n} from '@lib/langPack';
+import styles from '@components/stories/preview.module.scss';
+import {getStoryVideoDocuments, isStoryHighQuality} from '@components/stories/quality';
 
 let processing = false;
 const pollStories = () => {
@@ -39,7 +49,84 @@ const pollStories = () => {
 
 const wrappedStories: Map<PeerId, Map<number, {mounted: number}>> = new Map();
 (window as any).wrappedStories = wrappedStories;
-setInterval(pollStories, 300e3);
+hotEffect(import.meta.hot, () => {
+  const interval = setInterval(pollStories, 300e3);
+  return () => clearInterval(interval);
+});
+// * the beginnings of videos fetched ahead, by stream URL: the service worker keeps the chunks
+const prefetchedStreams: Set<string> = new Set();
+
+// * the stories shown were the previous account's - their unmounts still hold the counters, and the
+// * service worker keeps another account's chunks apart
+hotListen(import.meta.hot, rootScope, 'account_switched', () => {
+  wrappedStories.clear();
+  prefetchedStreams.clear();
+});
+
+// * the viewer puts a story's media in place of the one on screen as soon as it is ready, and a
+// * picture that only has its source by then (a cached one goes in without loading) or that is
+// * decoded off the frame paints nothing for a frame or more: the story flashed black in between
+const readyToPaint = (element: Element) => {
+  if(!(element instanceof HTMLImageElement)) return;
+  element.decoding = 'sync';
+  return element.decode().catch(noop);
+};
+
+const getViewerPhotoSize = (photo: Photo.photo | Document.document) => choosePhotoSize(photo, Infinity, Infinity);
+
+// * what the viewer will show of a story, fetched before it is opened: a photo whole, a video's first
+// * chunk in each file its element tries (in the quality it plays in, and without HEVC the original
+// * first, then the alternative), which the service worker keeps with the file's last one, where an mp4
+// * usually has its index. Only the first: a request further on has it read the next 20 MB ahead. A
+// * video with no streaming would have to be downloaded whole, too much ahead of time
+const preloadStoryMedia = async(peerId: PeerId, storyItem: StoryItem) => {
+  const media = unwrap((storyItem as StoryItem.storyItem).media);
+  if(media?._ === 'messageMediaPhoto') {
+    const photo = media.photo as Photo.photo;
+    if(photo?._ === 'photo') {
+      await appDownloadManager.downloadMediaURL({media: photo, thumb: getViewerPhotoSize(photo)});
+    }
+
+    return;
+  }
+
+  if(media?._ !== 'messageMediaDocument') {
+    return;
+  }
+
+  const {doc, altDoc} = getStoryVideoDocuments(media, isStoryHighQuality(peerId, storyItem as StoryItem.storyItem));
+  if(!doc?.supportsStreaming) {
+    return;
+  }
+
+  for(const _doc of altDoc && !IS_H265_SUPPORTED ? [doc, altDoc] : [doc]) {
+    const url = apiManagerProxy.getCacheContext(_doc).url;
+    if(!url || prefetchedStreams.has(url)) {
+      continue;
+    }
+
+    prefetchedStreams.add(url);
+    try {
+      // * the service worker keeps the chunk as it answers: what is in it is not needed here
+      const response = await fetch(url, {headers: {Range: 'bytes=0-'}});
+      response.body?.cancel().catch(noop);
+      if(!response.ok) prefetchedStreams.delete(url);
+    } catch{
+      prefetchedStreams.delete(url);
+    }
+  }
+};
+
+// * the stories coming next, fetched one after another behind the one being watched
+export const preloadStoriesMedia = async(stories: {peerId: PeerId, storyItem: StoryItem}[], middleware: Middleware) => {
+  for(const {peerId, storyItem} of stories) {
+    if(!middleware()) {
+      return;
+    }
+
+    await preloadStoryMedia(peerId, storyItem).catch(noop);
+  }
+};
 
 type CommonProperties = {
   peerId: PeerId,
@@ -63,10 +150,12 @@ export const wrapStoryMedia = (props: {
   childrenClassName?: string,
   noPlayButton?: boolean,
   onlyPreview?: boolean,
-  useBlur?: boolean | number
+  useBlur?: boolean | number,
+  // * the original video rather than the lower quality beside it (isStoryHighQuality)
+  highQuality?: boolean
 } & CommonProperties) => {
   const [thumb, setThumb] = createSignal<HTMLImageElement | HTMLCanvasElement>();
-  const [media, setMedia] = createSignal<HTMLImageElement | HTMLVideoElement>();
+  const [media, setMedia] = createSignal<HTMLImageElement | HTMLVideoElement | HTMLDivElement>();
   const [ready, setReady] = createSignal(false);
 
   let map = wrappedStories.get(props.peerId);
@@ -114,10 +203,10 @@ export const wrapStoryMedia = (props: {
           useRenderCache: false
         }),
         ...(props.forViewer && {
-          size: choosePhotoSize(photo, Infinity, Infinity),
-          // noBlur: true,
-          noFadeIn: true
-          // noThumb: true
+          size: getViewerPhotoSize(photo),
+          // * goes in decoded, to fade in over its thumb or take the place of the story before: a picture
+          // * shown once before went in with only its source and could still be empty when that was gone
+          useRenderCache: false
         }),
         withoutPreloader: !props.withPreloader
       });
@@ -125,8 +214,17 @@ export const wrapStoryMedia = (props: {
       result.then(async(result) => {
         if(!middleware()) return;
         if(props.childrenClassName) setChildrenClassName(result, props.childrenClassName);
+        // * painted in the frame it goes in: decoded off the frame, it stayed unpainted while it faded
+        // * in over its thumb and showed up whole once the fade was over
+        if(props.forViewer && result.images.full instanceof HTMLImageElement) {
+          result.images.full.decoding = 'sync';
+        }
         await result.loadPromises.thumb;
         if(!middleware()) return;
+        if(props.forViewer) {
+          await readyToPaint(result.images.thumb || result.images.full);
+          if(!middleware()) return;
+        }
         setThumb(result.images.thumb);
         setReady(true);
         await result.loadPromises.full;
@@ -138,8 +236,7 @@ export const wrapStoryMedia = (props: {
     },
 
     video: (messageMedia: MessageMedia.messageMediaDocument) => {
-      const document = messageMedia.document as Document.document;
-      const altDocument = messageMedia.alt_documents?.[0] as Document.document; // Supposedly there is only one alt document for stories
+      const {doc: document, altDoc: altDocument} = getStoryVideoDocuments(messageMedia, props.highQuality ?? true);
       const result = wrapVideo({
         ...props,
         container: div,
@@ -170,12 +267,22 @@ export const wrapStoryMedia = (props: {
         }
         if(result?.thumb) await result.thumb.loadPromises.thumb;
         if(!middleware()) return;
-        if(result?.thumb) setThumb(result.thumb.images.full as any || result.thumb.images.thumb);
+        const thumb = result?.thumb && (result.thumb.images.full || result.thumb.images.thumb);
+        if(props.forViewer) {
+          await readyToPaint(thumb);
+          if(!middleware()) return;
+        }
+        if(thumb) setThumb(thumb as HTMLImageElement | HTMLCanvasElement);
         setReady(true);
         const video = result?.video;
         if(video && props.forViewer) {
           video.loop = false;
           video.muted = true;
+
+          // * goes in over its thumb once it has a frame: fades in, as a photo does
+          if(thumb && !video.parentElement && liteMode.isAvailable('animations')) {
+            video.classList.add('fade-in');
+          }
 
           if(IS_SAFARI) { // * force Safari to load the video
             video.load();
@@ -188,10 +295,29 @@ export const wrapStoryMedia = (props: {
       });
 
       return result;
+    },
+
+    // * media of a kind this client cannot show (a newer layer's): a note in its place, as iOS and
+    // * Android have it — in the viewer, a tile has no room for one — and the story goes on by its
+    // * timer, as a photo does. Ready once whoever wrapped it has started listening, as a photo is;
+    // * only the viewer takes the note for its media, a tile's owner reads a photo's thumb off that
+    unsupported: () => {
+      const placeholder = document.createElement('div');
+      placeholder.classList.add(styles.Unsupported);
+      if(props.forViewer) {
+        placeholder.append(i18n('Story.Unsupported'));
+      }
+
+      div.append(placeholder);
+      queueMicrotask(() => {
+        if(!middleware()) return;
+        setReady(true);
+        if(props.forViewer) setMedia(placeholder);
+      });
     }
   };
 
-  let mediaResult: ReturnType<typeof wrapPhoto | typeof wrapVideo>;
+  let mediaResult: ReturnType<typeof wrapPhoto | typeof wrapVideo>, unsupported = false;
   switch(messageMedia._) {
     case 'messageMediaPhoto': {
       mediaResult = wrappers.photo(messageMedia);
@@ -207,9 +333,16 @@ export const wrapStoryMedia = (props: {
 
       break;
     }
+
+    default: {
+      // * the note stands in its place: the viewer has no reply to offer for it either
+      unsupported = true;
+      wrappers.unsupported();
+      break;
+    }
   }
 
-  return {container, div, media, mediaResult, thumb, ready};
+  return {container, div, media, mediaResult, thumb, ready, unsupported};
 };
 
 export const StoryPreview = (props: {

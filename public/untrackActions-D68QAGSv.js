@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{t as e}from"./icon-Dbpch75_.js";import{F as t}from"./solid-Beq2bZCx.js";import{t as n}from"./classNames-HGN7N_ne.js";var r={Container:`_Container_kt8mg_1`,Icon:`_Icon_kt8mg_25`};function i(t,i){let a=document.createElement(`div`);return a.className=n(r.Container,i),a.appendChild(e(t,r.Icon)),a}function a(e){for(let n in e){let r=e[n];e[n]=(...e)=>t(()=>r(...e))}return e}export{i as n,r,a as t};
+//# sourceMappingURL=untrackActions-D68QAGSv.js.map

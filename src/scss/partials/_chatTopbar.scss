@@ -68,10 +68,8 @@ body.is-pinned-audio-shown, body.is-calling.forwards {
   padding-inline: .25rem !important;
   box-shadow: var(--topbar-box-shadow);
 
-  @include animation-level(2) {
-    &.sidebar-header {
-      transition: transform var(--transition-standard-in), margin-bottom 0s 0s, background-color var(--transition-standard-in);
-    }
+  &.sidebar-header {
+    @include animation-level-transition(transform var(--transition-standard-in), margin-bottom 0s 0s, background-color var(--transition-standard-in));
   }
 
 	@include respond-to(not-handhelds) {

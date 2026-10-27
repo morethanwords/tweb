@@ -257,3 +257,23 @@ describe('Stars ledger reads on a session that has not been sent its own user ye
     expect(() => h.appPeersManager.getInputPeerById(BUYER)).toThrow();
   });
 });
+
+describe('Stars balance', () => {
+  // the balance is cached as the request's promise: a failed one was kept, and every purchase after
+  // it failed the same way until a reload
+  it.each([
+    ['getStarsStatus' as const],
+    ['getStarsStatusTon' as const]
+  ])('%s asks again after a request that failed', async(method) => {
+    const h = coldSessionHarness();
+    const fail = Promise.reject({type: 'FLOOD_WAIT_5'});
+    fail.catch(() => {});
+    h.invokeApiSingleProcess.mockReturnValueOnce(fail);
+
+    await expect(h.manager[method]()).rejects.toEqual({type: 'FLOOD_WAIT_5'});
+    expect(await h.manager[method]()).toBe(h.status);
+    // ...and keeps what it got
+    expect(await h.manager[method]()).toBe(h.status);
+    expect(h.invokeApiSingleProcess).toHaveBeenCalledTimes(2);
+  });
+});

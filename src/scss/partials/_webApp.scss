@@ -4,7 +4,7 @@
 .web-app {
   &-header,
   &-body {
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: background-color var(--transition-standard-in);
     }
   }
@@ -12,7 +12,7 @@
   &-fullscreen-buttons {
     position: absolute;
     top: 0.5rem;
-    right: 0.5rem;
+    inset-inline-end: 0.5rem;
     z-index: 999;
     flex-direction: row;
     gap: .5rem;
@@ -96,7 +96,7 @@
 
     color: var(--secondary-text-color);
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: opacity var(--transition-standard-in);
     }
 

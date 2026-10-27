@@ -94,8 +94,6 @@ export default class SelectorSearch {
   }
 
   private setupHeightAnimation() {
-    if(!liteMode.isAvailable('animations')) return;
-
     let prevHeight = 0;
     let isAnimating = false;
     const el = this.selectedContainer;
@@ -104,12 +102,8 @@ export default class SelectorSearch {
 
       el.style.height = '';
       const targetHeight = el.clientHeight;
-      if(!prevHeight || targetHeight === prevHeight) {
-        prevHeight = targetHeight;
-        return;
-      }
-
-      if(!targetHeight) {
+      // * asked each time, as animations can be turned off while the selector is open
+      if(!prevHeight || targetHeight === prevHeight || !targetHeight || !liteMode.isAvailable('animations')) {
         prevHeight = targetHeight;
         return;
       }
@@ -121,18 +115,21 @@ export default class SelectorSearch {
       prevHeight = targetHeight;
     });
 
-    el.addEventListener('transitionend', (e) => {
+    // * cancelled too, when the level drops mid-way and the transition goes with it
+    const onTransitionEnd = (e: TransitionEvent) => {
       if(e.target === el && e.propertyName === 'height') {
         isAnimating = false;
         el.style.height = '';
       }
-    });
+    };
+    el.addEventListener('transitionend', onTransitionEnd);
+    el.addEventListener('transitioncancel', onTransitionEnd);
 
     this.middlewareHelper.get().onDestroy(unobserve);
   }
 
   private captureChildRects(exclude?: HTMLElement) {
-    if(!liteMode.isAvailable('animations')) return;
+    if(!liteMode.isAvailable('motion')) return;
     this.capturedRects = new Map();
     for(const el of this.flipElements) {
       if(el !== exclude) {
@@ -260,7 +257,7 @@ export default class SelectorSearch {
       return;
     }
 
-    const animate = liteMode.isAvailable('animations');
+    const animate = liteMode.isAvailable('motion');
     const wasLast = div.classList.contains('is-last');
 
     if(animate) {

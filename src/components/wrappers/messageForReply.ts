@@ -2,17 +2,16 @@ import partition from '@helpers/array/partition';
 import assumeType from '@helpers/assumeType';
 import {formatDate} from '@helpers/date';
 import htmlToDocumentFragment from '@helpers/dom/htmlToDocumentFragment';
-import {getRestrictionReason} from '@helpers/restrictions';
 import limitSymbols from '@helpers/string/limitSymbols';
 import {Message, MessageMedia, Document, Photo} from '@layer';
 import getAudioAttribute from '@appManagers/utils/docs/getAudioAttribute';
 import {MyDocument} from '@appManagers/appDocsManager';
 import {MyDraftMessage} from '@appManagers/appDraftsManager';
 import {MyMessage} from '@appManagers/appMessagesManager';
-import isMessageRestricted from '@appManagers/utils/messages/isMessageRestricted';
+import isMessageRestricted, {getMessageRestrictionReason} from '@appManagers/utils/messages/isMessageRestricted';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import I18n, {LangPackKey, i18n, UNSUPPORTED_LANG_PACK_KEY, FormatterArguments} from '@lib/langPack';
-import {SERVICE_PEER_ID, VERIFICATION_CODES_BOT_ID} from '@appManagers/constants';
+import getLoginCodeEntity from '@appManagers/utils/messages/getLoginCodeEntity';
 import parseEntities from '@lib/richTextProcessor/parseEntities';
 import sortEntities from '@lib/richTextProcessor/sortEntities';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
@@ -28,6 +27,7 @@ import {wrapMessageGiveawayResults} from '@components/wrappers/messageActionText
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import getMessagePreviewIcon from '@components/wrappers/messagePreviewIcon';
 import getMessageForReplyContent from '@components/wrappers/messageForReplyContent';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export type WrapMessageForReplyOptions = Modify<WrapMessageActionTextOptions, {
   message: MyMessage | MyDraftMessage
@@ -72,7 +72,7 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
     }
   };
 
-  const managers = options.managers || rootScope.managers;
+  const managers = options.managers || bindManagersToSession(rootScope.managers);
   const appMessagesManager = managers.appMessagesManager;
 
   const getMyId = () => options.managers ? options.managers.rootScope.getMyId() : rootScope.myId;
@@ -88,6 +88,7 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
   };
 
   let entities = content.entities;
+  let isRichPreview = content.isRichPreview;
   const applyRichMessageSummary = () => {
     const richMessage = (message as Message.message).rich_message;
     if(!richMessage) {
@@ -97,6 +98,7 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
     const summary = getMessageForReplyContent(message);
     options.text = summary.text;
     entities = summary.entities;
+    isRichPreview = summary.isRichPreview;
     return true;
   };
 
@@ -373,38 +375,29 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
   }
 
   if(isRestricted) {
-    options.text = getRestrictionReason((message as Message.message).restriction_reason).text;
+    options.text = getMessageRestrictionReason(message as Message.message).text;
     entities = [];
+    isRichPreview = false;
   }
 
   if(options.text) {
-    options.text = limitSymbols(options.text, 100);
+    // a cut here would move no entity: the rich preview cuts itself, around its entities
+    if(!isRichPreview) options.text = limitSymbols(options.text, 100);
 
     entities ??= parseEntities(options.text);
+
+    // the code stays hidden in a notification too, as in tdesktop
+    const {peerId: messagePeerId, fromId} = message as Message.message;
+    const loginCodeEntity = fromId === messagePeerId && getLoginCodeEntity(messagePeerId, options.text);
+    if(loginCodeEntity) {
+      entities = [...entities, loginCodeEntity];
+      sortEntities(entities);
+    }
 
     if(plain) {
       parts.push(wrapPlainText(options.text, entities));
     } else {
       // let entities = parseEntities(text.replace(/\n/g, ' '));
-
-      const messagePeerId = (message as Message.message).peerId;
-      const shouldHideCode = [SERVICE_PEER_ID, VERIFICATION_CODES_BOT_ID].includes(messagePeerId);
-      const codeRegex = messagePeerId === SERVICE_PEER_ID ? /[\d\-]{5,7}/ : /[\d\-]{3,8}/;
-
-      if(shouldHideCode &&
-        (message as Message.message).fromId === (message as Message.message).peerId) {
-        const match = options.text.match(codeRegex);
-        if(match) {
-          entities = entities.slice();
-          entities.push({
-            _: 'messageEntitySpoiler',
-            offset: match.index,
-            length: match[0].length
-          });
-
-          sortEntities(entities);
-        }
-      }
 
       let what: DocumentFragment | HTMLElement;
       if(options.canTranslate) {
@@ -422,7 +415,7 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
           }),
           richTextOptions: someRichTextOptions,
           middleware: options.middleware,
-          onTextWithEntities: (textWithEntities) => {
+          onTextWithEntities: isRichPreview ? undefined : (textWithEntities) => {
             return {
               ...textWithEntities,
               text: limitSymbols(textWithEntities.text, 100)

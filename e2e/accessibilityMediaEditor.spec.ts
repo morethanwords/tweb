@@ -1,25 +1,11 @@
-import {expect, Page} from '@playwright/test';
+import {expect} from '@playwright/test';
 import {test} from './workerContext';
 import {expectNoA11yViolations} from './accessibility.helpers';
-import {openStory, preparePopupSandbox} from './popupSandbox.helpers';
-
-async function openEditor(page: Page, story = 'newMedia') {
-  page.setDefaultTimeout(30_000);
-  await preparePopupSandbox(page, true, {a11y: true});
-  expect(await openStory(page, story)).toBeNull();
-  const actions = page.getByRole('button', {name: 'Media actions', exact: true});
-  await expect(actions).toBeEnabled();
-  await actions.press('Enter');
-  await page.getByRole('menuitem', {name: 'Edit', exact: true}).press('Enter');
-  const editor = page.getByRole('dialog', {name: 'Edit', exact: true});
-  await expect(editor).toBeVisible({timeout: 30_000});
-  await expect(editor).toHaveAttribute('aria-busy', 'false', {timeout: 30_000});
-  return editor;
-}
+import {openMediaEditor, preparePopupSandbox} from './popupSandbox.helpers';
 
 test('photo editing is keyboard-operable and returns to the caption without sending', async({page}, testInfo) => {
   test.setTimeout(180_000);
-  const editor = await openEditor(page);
+  const editor = await openMediaEditor(page);
   const brightness = editor.getByRole('slider', {name: 'Brightness', exact: true});
   await brightness.press('ArrowRight');
   await expect(brightness).toHaveValue('1');
@@ -73,7 +59,7 @@ test('photo editing is keyboard-operable and returns to the caption without send
 
 test('video trimming exposes values and supports keyboard changes', async({page}) => {
   test.setTimeout(180_000);
-  const editor = await openEditor(page, 'newMedia/video');
+  const editor = await openMediaEditor(page, 'newMedia/video');
   const play = editor.getByRole('button', {name: 'Play', exact: true});
   await expect(play).toBeVisible();
   const mute = editor.getByRole('button', {name: 'Mute', exact: true});

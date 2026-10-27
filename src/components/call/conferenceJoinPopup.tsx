@@ -7,6 +7,7 @@ import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import styles from '@components/call/conferenceJoinPopup.module.scss';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const MAX_NAMED_PARTICIPANTS = 3;
 
@@ -29,6 +30,7 @@ export type ConferenceJoinPopupOptions = {
  * same contract `confirmationPopup` has, so callers can keep awaiting it.
  */
 export default async function showConferenceJoinPopup(options: ConferenceJoinPopupOptions): Promise<void> {
+  const managers = bindManagersToSession(rootScope.managers);
   const {participantPeerIds} = options;
   // Being invited by yourself is not information — tdesktop drops the inviter
   // in that case too (window_session_controller.cpp:1034).
@@ -45,6 +47,7 @@ export default async function showConferenceJoinPopup(options: ConferenceJoinPop
 
     createPopup(() => (
       <PopupElement
+        managers={managers}
         class={styles.popup}
         show={show()}
         closable

@@ -10,7 +10,7 @@
   padding: 0 .5rem;
 	transition: transform .2s ease;
 
-	body.animation-level-0 & {
+	@include animation-level-below(2) {
 		transition: none;
 	}
 
@@ -32,7 +32,8 @@
 		background: rgba(0, 0, 0, .7);
     backdrop-filter: var(--menu-backdrop-filter);
     text-align: center;
-    padding: 10px 18px 12px 50px;
+    padding-block: 10px 12px;
+    padding-inline: 50px 18px;
     min-height: 48px;
     border-radius: 12px;
     line-height: var(--line-height-15);
@@ -53,7 +54,8 @@
     }
 
 		@include respond-to(handhelds) {
-			padding: 10px 18px 12px 54px;
+			padding-block: 10px 12px;
+			padding-inline: 54px 18px;
 			margin: 0 10px;
 			font-size: 14px;
 		}
@@ -71,7 +73,7 @@
 
   &-icon {
     position: absolute;
-    left: 15px;
+    inset-inline-start: 15px;
     font-size: 1.5rem;
     top: .75rem;
   }

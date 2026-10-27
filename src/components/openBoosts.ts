@@ -2,6 +2,7 @@ import type SidebarSlider from '@components/slider';
 import type {AppSidebarRight} from '@components/sidebarRight';
 import {FormatterArguments, LangPackKey} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
+import type {AppManagers, TabManagers} from '@lib/managers';
 
 /**
  * Why the user was sent to boosting — a feature is locked behind a level. Without it the
@@ -20,12 +21,16 @@ export type BoostReason = {
  * Every entry into boosting goes through here: the chat topbar's menu item, and the level
  * gates that offer boosting as the way past them.
  */
-export default async function openBoosts({peerId, slider, reason}: {
+export default async function openBoosts({peerId, slider, reason, managers = rootScope.managers, onClose}: {
   peerId: PeerId,
   slider: SidebarSlider,
-  reason?: BoostReason
+  reason?: BoostReason,
+  // * the opener's, bound to its account session: what a switch of account interrupts does not open
+  managers?: AppManagers | TabManagers,
+  // * once the popup has closed; a tab opened instead has nothing to wait for
+  onClose?: () => void
 }) {
-  if(await rootScope.managers.appProfileManager.canViewStatistics(peerId)) {
+  if(await managers.appProfileManager.canViewStatistics(peerId)) {
     const {default: AppBoostsTab} = await import('@components/sidebarRight/tabs/boosts');
     // whatever sent the user here stays reachable with the tab open, so repeated taps must
     // not stack copies of it
@@ -37,9 +42,10 @@ export default async function openBoosts({peerId, slider, reason}: {
     // the entry may sit outside the sidebar — the chat topbar's does — so it has to be
     // revealed; the left sidebar is where the user already is and has nothing to toggle
     (slider as AppSidebarRight).toggleSidebar?.(true);
+    onClose?.();
     return;
   }
 
   const {default: showBoostPopup} = await import('@components/popups/boost');
-  showBoostPopup(peerId, reason);
+  return showBoostPopup(peerId, {reason, managers, onClose});
 }

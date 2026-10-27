@@ -2,7 +2,6 @@ import type {CommunityPeer} from '@layer';
 import type {Dialog} from '@appManagers/appMessagesManager';
 import type {AppManagers} from '@lib/managers';
 import apiManagerProxy from '@lib/apiManagerProxy';
-import appImManager from '@lib/appImManager';
 import confirmationPopup from '@components/confirmationPopup';
 import {i18n} from '@lib/langPack';
 import {toast, toastNew} from '@components/toast';
@@ -13,6 +12,7 @@ import {
   getCommunityLinkedChatOpenAction
 } from '@components/forumTab/communityChatsModel';
 import joinChat from '@components/chat/joinChat';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 type CommunityLinkedChatState =
   | {
@@ -47,7 +47,7 @@ export default async function openCommunityLinkedChat(options: {
   if(action === 'open') {
     return options.openPeer ?
       options.openPeer(options.peerId) :
-      appImManager.setInnerPeer({peerId: options.peerId});
+      hotReloadGuard.appImManager.setInnerPeer({peerId: options.peerId});
   }
 
   if(action === 'hidden') {
@@ -86,7 +86,7 @@ export default async function openCommunityLinkedChat(options: {
     await joinChat({
       peerId: options.peerId,
       managers: options.managers,
-      appImManager,
+      appImManager: hotReloadGuard.appImManager,
       communityId: options.communityId
     });
   } catch(error) {

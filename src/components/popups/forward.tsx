@@ -1,15 +1,14 @@
 import type {ChatRights} from '@appManagers/appChatsManager';
 import flatten from '@helpers/array/flatten';
-import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
 import {toastNew} from '@components/toast';
 import showPickUserPopup from '@components/popups/pickUser';
 import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import {copyTextToClipboard} from '@helpers/clipboard';
-import {i18n, join} from '@lib/langPack';
+import {FormatterArguments, i18n, join, LangPackKey} from '@lib/langPack';
 import {useAppConfig, useIsFrozen} from '@stores/appState';
-import {Message, User} from '@layer';
+import {InputMedia, Message, User} from '@layer';
 import {createMemo, createRoot, Show} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import Animated from '@helpers/solid/animations';
@@ -24,6 +23,8 @@ import SendMenu from '@components/chat/sendContextMenu';
 import showScheduleSendingPopup from '@components/popups/scheduleSendingPopup';
 import {getMiddleware} from '@helpers/middleware';
 import {SEND_WHEN_ONLINE_TIMESTAMP} from '@appManagers/constants';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 async function resolveChatRightsActions(peerIdMids: {[fromPeerId: PeerId]: number[]}): Promise<ChatRights[]> {
   const messagesPromises = Object.keys(peerIdMids).map((peerId) => {
@@ -90,19 +91,42 @@ async function resolveChatRightsActions(peerIdMids: {[fromPeerId: PeerId]: numbe
   return Array.from(actions);
 }
 
+/**
+ * A story shared instead of messages: it goes after the comment, as iOS and tdesktop send it, and
+ * counts as one message.
+ */
+export type ForwardPopupStory = {
+  peerId: PeerId,
+  id: number,
+  /** what "Copy Link" copies while nobody is picked; without it there is no such button */
+  link?: string,
+  /** shows where the story went, in place of the toast */
+  onSent?: (text: HTMLElement) => void
+};
+
 export default async function showForwardPopup(
   peerIdMids?: {[fromPeerId: PeerId]: number[]},
   _onSelect?: (peerId: PeerId, threadId?: number) => Promise<void> | void,
   noTopics?: boolean,
-  onClose?: () => void
+  onClose?: () => void,
+  story?: ForwardPopupStory
 ) {
-  const chatRightsActions = peerIdMids ? await resolveChatRightsActions(peerIdMids) : [];
+  const managers = bindManagersToSession(rootScope.managers);
+  const chatRightsActions: ChatRights[] = story ? ['send_media'] : peerIdMids ? await resolveChatRightsActions(peerIdMids) : [];
   if(!chatRightsActions.length) {
     chatRightsActions.push('send_plain');
   }
 
-  let canCopyLink = false, messageCount = 0;
-  if(peerIdMids) {
+  let canCopyLink = false, messageCount = 0, storyMedia: InputMedia.inputMediaStory;
+  if(story) {
+    messageCount = 1;
+    canCopyLink = !!story.link;
+    storyMedia = {
+      _: 'inputMediaStory',
+      id: story.id,
+      peer: await managers.appPeersManager.getInputPeerById(story.peerId)
+    };
+  } else if(peerIdMids) {
     for(const fromPeerId in peerIdMids) {
       const mids = peerIdMids[fromPeerId];
       messageCount += mids.length;
@@ -111,16 +135,15 @@ export default async function showForwardPopup(
     const fromPeerIdStr = Object.keys(peerIdMids)[0];
     const fromPeerId = fromPeerIdStr.toPeerId();
     const mid = peerIdMids[fromPeerIdStr as any as number][0];
-    const firstMessage = await rootScope.managers.appMessagesManager.getMessageByPeer(fromPeerId, mid) as Message.message;
+    const firstMessage = await managers.appMessagesManager.getMessageByPeer(fromPeerId, mid) as Message.message;
     canCopyLink = !!firstMessage?.pFlags?.post;
   }
 
-  const {message_length_max: MAX_MESSAGE_LENGTH} = await rootScope.managers.apiManager.getConfig();
+  const {message_length_max: MAX_MESSAGE_LENGTH} = await managers.apiManager.getConfig();
 
   const listenerSetter = new ListenerSetter();
   const sendMenuMiddleware = getMiddleware();
   let sendMenu: SendMenu | undefined;
-  let sendMenuElement: HTMLElement | undefined;
   let silent = false;
   let scheduleDate: number | undefined;
   let scheduleRepeatPeriod: number | undefined;
@@ -166,6 +189,13 @@ export default async function showForwardPopup(
   });
 
   const handleCopyLink = async() => {
+    if(story) {
+      copyTextToClipboard(story.link);
+      toastNew({langPackKey: 'LinkCopied'});
+      handle.hide();
+      return;
+    }
+
     const fromPeerIdStr = Object.keys(peerIdMids)[0];
     const fromPeerId = fromPeerIdStr.toPeerId();
     const mid = peerIdMids[fromPeerIdStr as any as number][0];
@@ -201,23 +231,28 @@ export default async function showForwardPopup(
 
     let success: boolean;
     if(openChat) {
-      await appImManager.setInnerPeer({peerId, threadId, monoforumThreadId});
-      appImManager.chat.input.initMessagesForward(peerIdMids);
+      await hotReloadGuard.appImManager.setInnerPeer({peerId, threadId, monoforumThreadId});
+      hotReloadGuard.appImManager.chat.input.initMessagesForward(peerIdMids);
     } else {
       const result = await ChatInput.sendMessageWithForward({
         inputField,
         sendingParams: {
           peerId,
           threadId,
+          // * the direct messages thread picked: a shared story has always gone there, a forward is
+          // * left as it was
+          replyToMonoforumPeerId: storyMedia ? monoforumThreadId : undefined,
           silent: silent || undefined,
           scheduleDate: scheduleDate || undefined,
           scheduleRepeatPeriod: scheduleRepeatPeriod || undefined
         },
         forwarding: peerIdMids,
+        media: storyMedia,
         slowModeParams: {
           peerId,
-          element: btnRef,
-          managers: rootScope.managers
+          // * a story picked with one click while "Copy Link" stands in for the field: the hint goes over that
+          element: btnRef?.isConnected ? btnRef : copyLinkRef,
+          managers
         }
       });
 
@@ -242,11 +277,7 @@ export default async function showForwardPopup(
 
   const setupSendMenu = (btn: HTMLElement) => {
     if(!btn) return;
-    sendMenuElement?.remove();
-    sendMenuElement = undefined;
     sendMenuMiddleware.clean();
-
-    if(!popupContainerEl) return;
 
     sendMenu = new SendMenu({
       onSilentClick: () => {
@@ -276,10 +307,10 @@ export default async function showForwardPopup(
         if(peerIds.length !== 1) return false;
         const peerId = peerIds[0];
         if(peerId === rootScope.myId || !peerId.isUser()) return false;
-        if(!(await rootScope.managers.appUsersManager.isUserOnlineVisible(peerId.toUserId()))) {
+        if(!(await managers.appUsersManager.isUserOnlineVisible(peerId.toUserId()))) {
           return false;
         }
-        const user = await rootScope.managers.appUsersManager.getUser(peerId.toUserId()) as User.user;
+        const user = await managers.appUsersManager.getUser(peerId.toUserId()) as User.user;
         if(user?.pFlags?.bot) return false;
         return user?.status?._ !== 'userStatusOnline';
       },
@@ -289,10 +320,6 @@ export default async function showForwardPopup(
       onOpen: () => {
         const peerIds = (handle?.selector?.getSelected() ?? []).filter((k) => k.isPeerId());
         return peerIds.length > 0;
-      },
-      onRef: (element) => {
-        sendMenuElement = element;
-        popupContainerEl.appendChild(element);
       }
     });
 
@@ -315,7 +342,8 @@ export default async function showForwardPopup(
       const isSavedMessagesNoText = chosen.length === 1 &&
         chosen[0].peerId === rootScope.myId &&
         !starsState.store.messageLength;
-      const openChat = chosen.length === 1 && !finalizingThroughButton && !isSavedMessagesNoText;
+      // * a story has no composer to wait in: it goes at once, as it did from a single pick
+      const openChat = !story && chosen.length === 1 && !finalizingThroughButton && !isSavedMessagesNoText;
       for(const item of chosen) {
         const success = await processSingle(
           item,
@@ -328,10 +356,9 @@ export default async function showForwardPopup(
         }
       }
 
+      let langPackKey: LangPackKey, langPackArguments: FormatterArguments;
       if(sentToPeerIds.size === 1 && [...sentToPeerIds.values()][0] === rootScope.myId) {
-        toastNew({
-          langPackKey: messageCount > 1 ? 'FwdMessagesToSavedMessages' : 'FwdMessageToSavedMessages'
-        });
+        langPackKey = story ? 'StorySharedToSavedMessages' : messageCount > 1 ? 'FwdMessagesToSavedMessages' : 'FwdMessageToSavedMessages';
       } else if(sentToPeerIds.size) {
         const peerTitles = sentToPeerIds.size <= 3 ? await Promise.all(Array.from(sentToPeerIds).map((peerId) => {
           return wrapPeerTitle({peerId, dialog: true});
@@ -342,10 +369,14 @@ export default async function showForwardPopup(
           b.append(element);
           return b;
         });
-        toastNew({
-          langPackKey: messageCount === 1 ? 'FwdMessageTo' : 'FwdMessagesTo',
-          langPackArguments: peerTitles.length ? [join(boldPeerTitles)] : [i18n('FwdMessagesToChats', [sentToPeerIds.size])]
-        });
+        langPackKey = story ? 'StorySharedTo' : messageCount === 1 ? 'FwdMessageTo' : 'FwdMessagesTo';
+        langPackArguments = peerTitles.length ? [join(boldPeerTitles)] : [i18n('FwdMessagesToChats', [sentToPeerIds.size])];
+      }
+
+      if(langPackKey && story?.onSent) {
+        story.onSent(i18n(langPackKey, langPackArguments));
+      } else if(langPackKey) {
+        toastNew({langPackKey, langPackArguments});
       }
 
       // * deselect failed
@@ -356,10 +387,9 @@ export default async function showForwardPopup(
     };
   }
 
-  let btnRef: HTMLElement, inputField: InputFieldAnimated, popupContainerEl: HTMLElement;
+  let btnRef: HTMLElement, copyLinkRef: HTMLElement, inputField: InputFieldAnimated;
   handle = showPickUserPopup({
     peerType: ['dialogs', 'contacts'],
-    containerProps: {ref: (el) => popupContainerEl = el},
     onSelect,
     onChange: () => {
       const selected = handle.selector.getSelected() ?? [];
@@ -416,7 +446,7 @@ export default async function showForwardPopup(
                 />
               }
             >
-              <PopupElement.FooterButton callback={handleCopyLink}>
+              <PopupElement.FooterButton ref={(ref) => copyLinkRef = ref} callback={handleCopyLink}>
                 {i18n('CopyLink')}
               </PopupElement.FooterButton>
             </Show>
@@ -426,7 +456,6 @@ export default async function showForwardPopup(
     },
     onClose: () => {
       listenerSetter.removeAll();
-      sendMenuElement?.remove();
       sendMenuMiddleware.destroy();
       starsStateDispose?.();
       handle.selector && (handle.selector.onStarsAmountUpdate = undefined);

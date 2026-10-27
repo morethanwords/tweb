@@ -57,6 +57,8 @@ const PollLinkEditorPopup = (props: PollLinkEditorPopupProps) => {
                   inputField = value;
                   inputField.input.setAttribute('autocapitalize', 'off');
                   inputField.input.spellcheck = false;
+                  // * a URL reads left to right in any language
+                  inputField.input.dir = 'ltr';
                 }}
               />
             </Section>

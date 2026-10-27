@@ -31,7 +31,8 @@ export const TopbarGroupCall = (props: {
         <Button.Icon icon="videochat" class="primary disable-hover" />
         <div class={cnTopbarGroupCall('-content')}>
           <div class={classNames(cnTopbarGroupCall('-title'), 'primary', 'text-bold', 'text-overflow-no-wrap')}>
-            {props.title ? wrapEmojiText(props.title) : i18n('PeerInfo.Action.VoiceChat')}
+            {/* the call's own title reads in its own direction, lined up with the plate */}
+            {props.title ? <span dir="auto">{wrapEmojiText(props.title)}</span> : i18n('PeerInfo.Action.VoiceChat')}
           </div>
           <div class={classNames(cnTopbarGroupCall('-subtitle'), 'secondary', 'text-overflow-no-wrap')}>
             {i18n('VoiceChat.Status.Members', [props.participantsCount])}

@@ -25,8 +25,9 @@ import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {openUserPermissionsTab, type AppChatTypeTab} from '@components/solidJsTabs/tabs';
+import {type AppChatTypeTab} from '@components/solidJsTabs/tabs';
 import anchorCallback from '@helpers/dom/anchorCallback';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const ChatType: Component = () => {
   const [tab] = useSuperTab<typeof AppChatTypeTab>();
@@ -351,9 +352,11 @@ const ChatType: Component = () => {
           const anchor = anchorCallback(async() => {
             const participant = await tab.managers.appProfileManager.getParticipant(chatId, peerId);
             if(participant) {
-              openUserPermissionsTab(tab.slider, chatId, participant, true);
+              hotReloadGuard.tabs.openUserPermissionsTab(tab.slider, chatId, participant, true);
             }
           });
+          // * keeps its @ in front inside a right-to-left sentence
+          anchor.dir = 'ltr';
           anchor.append('@' + guardBotUsername);
           nodes.push(' ', i18n('GuardBotManagedBy', [anchor]));
         }

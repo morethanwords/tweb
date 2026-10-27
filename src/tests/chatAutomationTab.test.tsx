@@ -7,6 +7,18 @@ import {simulateClickEvent} from '@helpers/dom/clickEvent';
 import getTextWidth from '@helpers/canvas/getTextWidth';
 import {ConnectedBot, User} from '@layer';
 import ListenerSetter from '@helpers/listenerSetter';
+import * as mocked1 from '@components/solidJsTabs/tabs';
+import * as mocked2 from '@lib/appDialogsManager';
+import * as mocked3 from '@lib/appImManager';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+
+// the code under test reads the top level from the registry, not from the modules mocked above
+registerHotReloadGuard({
+  appDialogsManager: (mocked2 as any).default,
+  appImManager: (mocked3 as any).default,
+  tabs: {...mocked1} as any
+});
+
 
 const mocks = vi.hoisted(() => ({
   tab: undefined as any,

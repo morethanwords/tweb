@@ -1,5 +1,6 @@
 import type {MyDraftMessage} from '@appManagers/appDraftsManager';
 import type {MyMessage} from '@appManagers/appMessagesManager';
+import type {Middleware} from '@helpers/middleware';
 import Icon from '@components/icon';
 import type {
   WrapMessageForReplyOptions
@@ -28,6 +29,8 @@ export default async function renderDialogSubtitleParts(options: {
   withoutMessageIcon?: boolean,
   prependPeerId?: PeerId,
   middleware: MiddlewarePromise,
+  /** the lifetime of what the parts hold, the custom emoji of the text among them */
+  wrapMiddleware?: Middleware,
   textColor: string,
   messageRenderer?: MessageRenderer,
   peerTitleRenderer?: PeerTitleRenderer
@@ -165,7 +168,7 @@ export default async function renderDialogSubtitleParts(options: {
 
   const wrapOptions: Partial<
     WrapMessageForReplyOptions & WrapRichTextOptions
-  > = {textColor};
+  > = {textColor, middleware: options.wrapMiddleware};
   let fragment: DocumentFragment;
   let wrapResult: ReturnType<typeof wrapMessageForReply>;
   if(highlightWord && lastMessage?._ === 'message' && lastMessage.message) {

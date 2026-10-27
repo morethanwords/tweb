@@ -7,13 +7,12 @@ import {canFocus} from '@helpers/dom/canFocus';
 import replaceContent from '@helpers/dom/replaceContent';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import Section from '@components/section';
-import {AppSettingsTab} from '@components/solidJsTabs';
-import {AppTwoStepVerificationEmailTab, AppTwoStepVerificationSetTab} from '@components/solidJsTabs/tabs';
 import {toastNew} from '@components/toast';
 import {ForgotPasswordLink} from '@components/sidebarLeft/tabs/2fa/forgotPasswordLink';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type {AppTwoStepVerificationEmailConfirmationTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const TwoStepVerificationEmailConfirmation: Component = () => {
   const [tab] = useSuperTab<typeof AppTwoStepVerificationEmailConfirmationTab>();
@@ -41,10 +40,10 @@ const TwoStepVerificationEmailConfirmation: Component = () => {
   const goNext = () => {
     if(forPasswordReset) {
       toastNew({langPackKey: 'PasswordDeactivated'});
-      tab.slider.sliceTabsUntilTab(AppSettingsTab, tab);
+      tab.slider.sliceTabsUntilTab(hotReloadGuard.tabs.AppSettingsTab, tab);
       tab.close();
     } else {
-      tab.slider.createTab(AppTwoStepVerificationSetTab).open({messageFor: justSetPasssword ? 'password' : 'email'});
+      tab.slider.createTab(hotReloadGuard.tabs.AppTwoStepVerificationSetTab).open({messageFor: justSetPasssword ? 'password' : 'email'});
     }
   };
 
@@ -107,7 +106,7 @@ const TwoStepVerificationEmailConfirmation: Component = () => {
   const onChangeClick = () => {
     freeze(true);
     tab.managers.passwordManager.cancelPasswordEmail().then((value) => {
-      tab.slider.sliceTabsUntilTab(AppTwoStepVerificationEmailTab, tab);
+      tab.slider.sliceTabsUntilTab(hotReloadGuard.tabs.AppTwoStepVerificationEmailTab, tab);
       tab.close();
     }, () => {
       freeze(false);

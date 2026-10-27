@@ -1,3 +1,5 @@
+@use "../../scss/mixins" as *;
+
 .ChildBadge {
   position: absolute;
   // Over the avatar's own corner decorations (z-index 1, earlier in the row),
@@ -26,7 +28,9 @@
   pointer-events: auto;
   // Scaled away by `.dialog-avatar-corner-badge` in `_chatlist.scss` whenever
   // the row paints something else over the avatar.
-  transition: transform var(--chatlist-badge-transition-in);
+  @include animation-level-global(2) {
+    transition: transform var(--chatlist-badge-transition-in);
+  }
 
   &:focus-visible {
     outline: 2px solid var(--primary-color);

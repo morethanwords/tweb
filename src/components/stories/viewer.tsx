@@ -1,15 +1,18 @@
-import {shouldPreserveKeyboardFocus} from '@helpers/dom/isKeyboardControl';
+import {keepsKeyFromComposer, shouldPreserveKeyboardFocus} from '@helpers/dom/isKeyboardControl';
 import createFocusTrap, {FocusTrap} from '@helpers/dom/focusTrap';
 /* @refresh reload */
 
-import {animateSingle, cancelAnimationByKey} from '@helpers/animation';
+import {animateSingle} from '@helpers/animation';
 import {bindActiveWindowListener, getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import cancelEvent from '@helpers/dom/cancelEvent';
+import getInlineArrowKeys from '@helpers/dom/getInlineArrowKeys';
+import {DEFAULT_MENU_WINDOW_MARGIN} from '@helpers/positionMenu';
 import overlayCounter from '@helpers/overlayCounter';
 import throttle from '@helpers/schedulers/throttle';
+import clamp from '@helpers/number/clamp';
 import classNames from '@helpers/string/classNames';
 import windowSize from '@helpers/windowSize';
-import {Document, DocumentAttribute, GeoPoint, MediaArea, MessageMedia, Reaction, StoryItem, StoryView, User, Chat as MTChat, AvailableReaction, MessageEntity, StoriesStealthMode} from '@layer';
+import {Document, DocumentAttribute, MediaArea, MessageMedia, Reaction, StoryItem, User, Chat as MTChat, AvailableReaction, MessageEntity, StoriesStealthMode} from '@layer';
 import animationIntersector from '@components/animationIntersector';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import PeerTitle from '@components/peerTitle';
@@ -19,7 +22,7 @@ import {createSignal, createEffect, JSX, For, Accessor, onCleanup, createMemo, m
 import {unwrap} from 'solid-js/store';
 import {assign, Portal} from 'solid-js/web';
 import rootScope from '@lib/rootScope';
-import {Middleware} from '@helpers/middleware';
+import {Middleware, MiddlewareHelper, getMiddleware} from '@helpers/middleware';
 import wrapRichText, {WrapRichTextOptions} from '@lib/richTextProcessor/wrapRichText';
 import wrapMessageEntities from '@lib/richTextProcessor/wrapMessageEntities';
 import tsNow from '@helpers/tsNow';
@@ -30,19 +33,17 @@ import formatDuration, {DurationType} from '@helpers/formatDuration';
 import {easeOutCubicApply} from '@helpers/easing/easeOutCubic';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
-import {onMediaCaptionClick} from '@components/mediaViewer';
 import InputFieldAnimated from '@components/inputFieldAnimated';
 import ChatInput from '@components/chat/input';
-import appImManager from '@lib/appImManager';
 import Chat from '@components/chat/chat';
 import {ChatType} from '@components/chat/chatType';
 import middlewarePromise from '@helpers/middlewarePromise';
 import emoticonsDropdown from '@components/emoticonsDropdown';
-import showPickUserPopup from '@components/popups/pickUser';
+import showStoryViewersPopup from '@components/popups/storyViewers';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {copyTextToClipboard} from '@helpers/clipboard';
-import {toastNew} from '@components/toast';
+import {hideToast, toastNew} from '@components/toast';
 import debounce from '@helpers/schedulers/debounce';
 import appDownloadManager from '@lib/appDownloadManager';
 import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
@@ -56,16 +57,15 @@ import {SERVICE_PEER_ID} from '@appManagers/constants';
 import idleController from '@helpers/idleController';
 import OverlayClickHandler from '@helpers/overlayClickHandler';
 import getStoryPrivacyType, {StoryPrivacyType} from '@appManagers/utils/stories/privacyType';
+import {STORY_PRIVACY_ICONS} from '@components/stories/privacyIcons';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import removeStoriesFromRecent from '@components/stories/removeFromRecent';
 import StackedAvatars from '@components/stackedAvatars';
-import {processDialogElementForReaction} from '@components/popups/reactedList';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import focusInput from '@helpers/dom/focusInput';
-import {wrapStoryMedia} from '@components/stories/preview';
-import {StoriesContextPeerState, useStories, StoriesProvider} from '@components/stories/store';
+import {preloadStoriesMedia, wrapStoryMedia} from '@components/stories/preview';
+import {StoriesContextPeerState, useStories, StoriesProvider, STORY_DURATION} from '@components/stories/store';
 import createUnifiedSignal from '@helpers/solid/createUnifiedSignal';
-import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
 import liteMode from '@helpers/liteMode';
 import Icon from '@components/icon';
 import {ChatReactionsMenu} from '@components/chat/reactionsMenu';
@@ -83,11 +83,11 @@ import {resolveFirst} from '@solid-primitives/refs';
 import {IS_MOBILE} from '@environment/userAgent';
 import formatNumber from '@helpers/number/formatNumber';
 import callbackify from '@helpers/callbackify';
+import noop from '@helpers/noop';
 import {dispatchHeavyAnimationEvent} from '@hooks/useHeavyAnimationCheck';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import wrapReply from '@components/wrappers/reply';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
-import appSidebarRight from '@components/sidebarRight';
 import AppStatisticsTab from '@components/sidebarRight/tabs/statistics';
 import getStoryRepostInfo from '@appManagers/utils/stories/repostInfo';
 import anchorCallback from '@helpers/dom/anchorCallback';
@@ -95,10 +95,12 @@ import {ButtonIconTsx} from '@components/buttonIconTsx';
 import {IconTsx} from '@components/iconTsx';
 import {Transition} from 'solid-transition-group';
 import {TransitionGroup} from '@helpers/solid/transitionGroup';
-import makeGoogleMapsUrl from '@helpers/makeGoogleMapsUrl';
+import openStoriesSearch, {openStoriesSearchByHashtag} from '@components/stories/openStoriesSearch';
+import {getAccountSession} from '@lib/accounts/getCurrentAccount';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import showTooltip from '@components/tooltip';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
+import isVideoStalled from '@helpers/dom/isVideoStalled';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 import {showStoryReport} from '@components/popups/reportAd';
 import {useAppSettings} from '@stores/appSettings';
@@ -106,24 +108,44 @@ import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
 import {showStorySettingsForStory} from '@components/popups/storySettings';
 import {useAppConfig} from '@stores/appState';
 import {wrapStoriesStealthModeDuration} from '@components/wrappers/wrapDuration';
-import {handleShareStory} from './share';
+import {handleShareStory, makeStoryLink} from './share';
 import createListenerSetter from '@helpers/solid/createListenerSetter';
 import pillStyles from '@components/stories/storyPill.module.scss';
 import StoryWeatherArea, {toggleTemperatureUnit} from '@components/stories/weatherArea';
+import getMediaAreaRadius from '@components/stories/mediaAreaRadius';
 import StoryMusicPanel, {STORY_MUSIC_PANEL_CLASS} from '@components/stories/musicPanel';
 import getAudioTitles from '@appManagers/utils/docs/getAudioTitles';
 import type {MyDocument} from '@appManagers/appDocsManager';
 import A11yButton from '@components/a11yButton';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {hotListen} from '@helpers/hotModule';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import createSubmenuTrigger from '@components/createSubmenuTrigger';
+import {ButtonMenuItemOptionsVerifiable, ButtonMenuSync, setButtonMenuItemDisabled} from '@components/buttonMenu';
+import {PLAYBACK_RATES, getPlaybackRateIcon, getPlaybackRateMenuButton, setPlaybackRateMenuState} from '@components/playbackRateButton';
+import {getStoryVideoDocuments, isStoryHighQuality, showStoryQualityUpgradePopup, STORY_QUALITY_ICON} from '@components/stories/quality';
+import {createAddToAlbumSubmenuTrigger, openCreateAlbumPopup} from '@components/stories/albums';
+import {createStoriesNotifyMuteButtons} from '@components/stories/notifyMute';
+import {TranslatableMessageTsx} from '@components/translatableMessage';
+import detectLanguageForTranslation from '@helpers/detectLanguageForTranslation';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import replaceContent from '@helpers/dom/replaceContent';
+import showStickersPopup from '@components/popups/stickers';
+import {getStoryContainedPacks, storyHasContainedPacks, StoryContainedPacks, StoryContainedPacksKind, wrapStoryContainedPacks} from '@components/stories/containedPacks';
+import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
+import openBoosts from '@components/openBoosts';
+import type {StoryReplyMode} from '@appManagers/appStoriesManager';
 
-export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
 const STORY_SCALE_SMALL = 0.33;
 const STORIES_PRESERVE = 2;
 const STORIES_PRESERVE_HIDDEN = 2;
+const STORIES_PRELOAD = 3;
 const STORY_REPOST_ICON: Icon = 'storyrepost';
+const STORY_MENU_PADDING = 8;
 let CHANGELOG_PEER_ID = SERVICE_PEER_ID;
 
-rootScope.addEventListener('app_config', (appConfig) => {
+hotListen(import.meta.hot, rootScope, 'app_config', (appConfig) => {
   const userId = appConfig.stories_changelog_user_id;
   CHANGELOG_PEER_ID = userId ? userId.toPeerId(false) : SERVICE_PEER_ID;
 });
@@ -182,87 +204,82 @@ const StorySlides = (props: {
   return slides;
 };
 
+// * The bar of a story fills by itself: from where the story is to its end in the time left, a linear
+// * animation of its scale the compositor runs. Set from a frame loop as the width of a pseudo-element,
+// * it had the page restyle, lay out and paint the bar in every frame of every story played
 const StorySlide = (props: {
   slideIndex: Accessor<number>,
   state: StoriesContextPeerState,
   storyIndex: Accessor<number>,
   index: Accessor<number>
 }) => {
-  const [progress, setProgress] = createSignal(0);
   const [stories] = useStories();
+  let animation: Animation;
 
-  const calculateAndSetProgress = () => {
-    const elapsedTime = Date.now() - stories.startTime;
-    const progress = elapsedTime / stories.storyDuration;
-    setProgress(progress);
-  };
+  const fill = document.createElement('div');
+  fill.classList.add(styles.ViewerStorySlidesSlideFill);
 
-  const onTick = () => {
-    if(
-      stories.peer !== props.state ||
-      props.storyIndex() !== props.slideIndex() ||
-      stories.paused
-    ) {
-      onPause();
-      return false;
+  // * stands at `progress`, and with `left` grows from it to the end in that many ms
+  const show = (progress: number, left?: number) => {
+    animation?.cancel();
+    animation = undefined;
+    const from = `scaleX(${Math.min(1, Math.max(0, progress))})`;
+    fill.style.transform = from;
+    if(left > 0) {
+      animation = fill.animate([{transform: from}, {transform: 'scaleX(1)'}], {
+        duration: left,
+        easing: 'linear',
+        fill: 'forwards'
+      });
     }
-
-    // if(stories.paused) {
-    //   return true;
-    // }
-
-    calculateAndSetProgress();
-    return true;
   };
 
-  const onPause = () => {
-    cancelAnimationByKey(ret);
-  };
-
-  const onPlay = () => {
-    animateSingle(onTick, ret);
+  // * none for a story not started yet (no start time, or no length yet: still loading), which stands empty
+  const getProgress = () => {
+    const {startTime, storyDuration} = stories;
+    return startTime && storyDuration ? (Date.now() - startTime) / storyDuration : undefined;
   };
 
   createEffect(() => { // on peer change
     if(stories.peer !== props.state) {
-      onPause();
+      animation?.pause(); // * stands where it is, another peer's stories playing
       return;
     }
 
     createEffect(on( // on story change
       () => [props.storyIndex(), props.slideIndex()],
       ([storyIndex, slideIndex]) => {
-        const isActive = storyIndex === slideIndex;
-        if(isActive) {
-          setProgress(undefined);
-
-          createEffect(() => { // on story toggle
-            if(stories.paused || stories.buffering) {
-              onPause();
-            } else {
-              onPlay();
-            }
-          });
-        } else {
-          onPause();
-          setProgress(storyIndex > slideIndex ? 1 : undefined);
+        if(storyIndex !== slideIndex) {
+          show(storyIndex > slideIndex ? 1 : 0);
+          return;
         }
+
+        show(0);
+        createEffect(() => { // on story toggle
+          if(stories.paused || stories.buffering) {
+            // * stands where it is drawn: the clock ran on while it buffered, the story did not
+            animation?.pause();
+          } else {
+            // * a play that moves the start or learns the length starts the bar again from there
+            const progress = getProgress();
+            show(progress ?? 0, progress === undefined ? 0 : stories.storyDuration * (1 - progress));
+          }
+        });
       })
     );
   });
 
-  const ret = (
-    <div
-      class={styles.ViewerStorySlidesSlide}
-      // classList={{[styles.active]: index() > slideIndex()}}
-      style={progress() !== undefined ? {'--progress': Math.min(100, progress() * 100) + '%'} : {}}
-    />
-  );
+  onCleanup(() => animation?.cancel());
 
-  return ret;
+  return (
+    <div class={styles.ViewerStorySlidesSlide}>
+      {fill}
+    </div>
+  );
 };
 
 const DEFAULT_REACTION_EMOTICON = '❤';
+const SWIPE_UP_RISE = 20; // * how far the reply field or the footer rises after a drag up, till it opens (Android)
 const isDefaultReaction = (reaction: Reaction) => (reaction as Reaction.reactionEmoji)?.emoticon === DEFAULT_REACTION_EMOTICON;
 
 const StoryInput = (props: {
@@ -273,39 +290,36 @@ const StoryInput = (props: {
   inputEmptySignal: Signal<boolean>,
   inputMenuOpenSignal: Signal<boolean>,
   isPublic: Accessor<boolean>,
-  sendReaction: StorySendReaction,
+  likeButton: StoryLikeButton,
   shareStory: () => void,
   reaction: Accessor<JSX.Element>,
   onShareButtonClick: (e: MouseEvent, listenTo: HTMLElement) => void,
   onMessageSent: () => void,
   setInputReady: Setter<boolean>,
-  isFull: Accessor<boolean>
+  isFull: Accessor<boolean>,
+  confirmSending: () => Promise<boolean>,
+  setChatInput: (input: ChatInput) => void,
+  swipeProgress: Accessor<number>
 }) => {
   const [stories, actions] = useStories();
   const [focused, setFocused] = props.focusedSignal;
   const [inputEmpty, setInputEmpty] = props.inputEmptySignal;
   const [inputMenuOpen, setInputMenuOpen] = props.inputMenuOpenSignal;
-  const [recording, setRecording] = createSignal(false);
   const middlewareHelper = createMiddleware();
   const middleware = middlewareHelper.get();
 
-  const chat = new Chat(appImManager, rootScope.managers, false, {elements: true, sharedMedia: true});
+  // * the reply field is a chat of the account the stories are watched on, and goes with it
+  const chatManagers = bindManagersToSession(rootScope.managers);
+  const chat = new Chat(hotReloadGuard.appImManager, chatManagers, false, {elements: true, sharedMedia: true});
   chat.setType(ChatType.Stories);
   chat.isStandalone = true;
-
-  const onReactionClick = async() => {
-    const story = props.currentStory() as StoryItem.storyItem;
-    const isNewReaction = !story.sent_reaction;
-    const reaction: Reaction = !isNewReaction ? undefined : {_: 'reactionEmoji', emoticon: DEFAULT_REACTION_EMOTICON};
-    props.sendReaction({reaction, target: btnReactionEl});
-  };
 
   let btnReactionEl: HTMLButtonElement;
   const btnReaction = (
     <ButtonIconTsx
       ref={btnReactionEl}
-      onClick={onReactionClick}
-      class="btn-circle btn-reaction chat-input-secondary-button chat-secondary-button"
+      onClick={() => props.likeButton.toggle(btnReactionEl)}
+      class="btn-reaction"
       noRipple={true}
       aria-label={I18n.format('Reactions', true)}
       aria-pressed={!!(props.currentStory() as StoryItem.storyItem)?.sent_reaction}
@@ -313,10 +327,13 @@ const StoryInput = (props: {
       {props.reaction()}
     </ButtonIconTsx>
   );
+  props.likeButton.bind(btnReactionEl);
 
-  const input = chat.input = new ChatInput(chat, appImManager, rootScope.managers, 'stories-input');
+  const input = chat.input = new ChatInput(chat, hotReloadGuard.appImManager, chatManagers, 'stories-input');
   input.noRipple = true;
   input.btnReaction = btnReactionEl;
+  input.confirmSending = props.confirmSending;
+  props.setChatInput(input);
   input.excludeParts = {
     replyMarkup: true,
     scheduled: true,
@@ -368,6 +385,15 @@ const StoryInput = (props: {
     if(navigationItem) {
       appNavigationController.removeItem(navigationItem);
       navigationItem = undefined;
+    }
+
+    // * gone while focused — the member may write there no more, or the story cannot be answered: as if unfocused
+    if(untrack(focused)) {
+      getAppWindow().document.removeEventListener('click', onClick, {capture: true});
+      setFocused(false);
+      if(playAfterFocus) {
+        actions.play();
+      }
     }
   });
 
@@ -424,7 +450,7 @@ const StoryInput = (props: {
     actions.toggle(open ? false : playAfter);
     setInputMenuOpen(open);
   };
-  input.onMenuToggle/*  = input.onRecording */ = onMenuToggle;
+  input.onMenuToggle = onMenuToggle;
   input.construct();
   input.constructPeerHelpers();
   // input.setShrinking(true);
@@ -452,21 +478,18 @@ const StoryInput = (props: {
     input.setCanForwardStory(props.isPublic());
   });
 
+  // * set only while it moves: a transform left on it would hold what it positions as fixed
   createEffect(() => {
-    const [_focused, _recording, isPublic] = [focused(), recording(), props.isPublic()];
-    const isReactionButtonVisible = !_focused;
-    const isMainButtonVisible = _focused ? true : isPublic;
-    const isRecordingButtonVisible = _recording;
-    const visibleButtons = Math.min(2, [
-      isReactionButtonVisible,
-      isMainButtonVisible,
-      isRecordingButtonVisible
-    ].reduce((acc, v) => acc + +v, 0));
-    const chatInputSize = 48;
-    const chatInputBtnSendMargin = 8;
+    const progress = props.swipeProgress();
+    input.chatInput.style.transform = progress ? `translateY(${-progress * SWIPE_UP_RISE}px)` : '';
+  });
+
+  // * every button is in the field, which is as wide as the story, and focused grows past it on a wide screen
+  createEffect(() => {
+    const _focused = focused();
     const chatInputPadding = props.isFull() ? 8 : 0;
     const focusOffset = props.isFull() ? 0 : 135;
-    const width = stories.width - (chatInputSize + chatInputBtnSendMargin) * visibleButtons + (_focused ? focusOffset : 0) - chatInputPadding * 2;
+    const width = stories.width + (_focused ? focusOffset : 0) - chatInputPadding * 2;
     input.rowsWrapper.style.setProperty('width', width + 'px', 'important');
     input.chatInput.classList.toggle('is-focused', _focused);
   });
@@ -506,11 +529,12 @@ const StoryInput = (props: {
     input.onFocusChange =
       input.onFileSelection =
       input.onMenuToggle =
-      input.onRecording =
       input.onUpdateSendBtn =
       input.onMessageSent2 =
       input.forwardStoryCallback =
+      input.confirmSending =
       undefined;
+    props.setChatInput(undefined);
     middlewareHelper.destroy();
     chat.destroy();
   });
@@ -536,14 +560,12 @@ const StoryInput = (props: {
     props.onShareButtonClick(e, input.btnSendContainer);
   };
 
-  input.onRecording = (recording) => {
-    setRecording(recording);
-  };
-
   return input.chatInput;
 };
 
 const JOINER = ' • ';
+// * the marks, embeddings, overrides and isolates that change the order text is shown in
+const BIDI_CONTROLS_REG_EXP = /[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
 
 const renderStoryReaction = async(props: {
   reaction: Reaction,
@@ -628,68 +650,19 @@ const StoryMediaArea = (props: {
   const isPost = createMemo(() => props.mediaArea._ === 'mediaAreaChannelPost');
   const isLink = createMemo(() => props.mediaArea._ === 'mediaAreaUrl');
   const isWeather = createMemo(() => props.mediaArea._ === 'mediaAreaWeather');
+  const isGift = createMemo(() => props.mediaArea._ === 'mediaAreaStarGift');
+  const middleware = createMiddleware().get();
 
-  const onLocationClick = async() => {
-    const geoPoint = (props.mediaArea as MediaArea.mediaAreaGeoPoint).geo as GeoPoint.geoPoint;
-    const href = makeGoogleMapsUrl(geoPoint);
-
-    const onAnchorClick = async(e: MouseEvent) => {
-      if(ignoreClickEvent) {
-        ignoreClickEvent = false;
-        return;
-      }
-
-      hasPopup = true;
-      cancelEvent(e);
-      try {
-        await confirmationPopup({
-          descriptionLangKey: 'Popup.OpenInGoogleMaps',
-          button: {
-            langKey: 'Open'
-          }
-        });
-      } catch(err) {
-        if(wasPlaying) {
-          actions.play();
-        }
-
-        return;
-      }
-
-      ignoreClickEvent = true;
-      a.click();
-    };
-
-    let a: HTMLAnchorElement, ignoreClickEvent = false, hasPopup: boolean;
-    (
-      <a
-        ref={a}
-        href={href}
-        onClick={onAnchorClick}
-      >
-        {i18n('StoryViewLocation')}
-      </a>
-    );
-    setBlankToAnchor(a);
-    const wasPlaying = !stories.paused;
-    actions.pause();
-    const {close} = showTooltip({
-      element: div,
-      vertical: 'top',
-      textElement: a,
-      centerVertically: !!rotation,
-      onClose: () => {
-        if(hasPopup) {
-          hasPopup = false;
-          return;
-        }
-
-        if(wasPlaying) {
-          actions.play();
-        }
-      }
+  // * the place leads to the public stories posted from it, its map is there too
+  const onLocationClick = () => {
+    showNotCenteredTooltip({
+      callback: () => {
+        const area = unwrap(props.mediaArea);
+        const session = getAccountSession();
+        props.close(() => openStoriesSearch({area}, session));
+      },
+      text: i18n('StoryViewLocation')
     });
-    props.setTooltipCloseCallback(() => close);
   };
 
   const onReactionClick = () => {
@@ -711,14 +684,18 @@ const StoryMediaArea = (props: {
   };
 
   const showNotCenteredTooltip = (_props: {
-    callback: () => void,
-    text: HTMLElement
+    callback: () => void | Promise<void>,
+    text: HTMLElement,
+    subtitle?: HTMLElement
   }) => {
+    // * what the action waits for before it goes: the story stands still until then, or it could run
+    // * out and take the area, and the action with it, along to the next one
+    let acting: Promise<void>;
     const a = anchorCallback(() => {
+      acting = Promise.resolve(_props.callback()).catch(noop);
       close();
-      _props.callback();
     });
-    a.append(_props.text);
+    a.append(..._props.subtitle ? [_props.text, _props.subtitle] : [_props.text]);
     const wasPlaying = !stories.paused;
     actions.pause();
     const {close} = showTooltip({
@@ -726,8 +703,9 @@ const StoryMediaArea = (props: {
       vertical: 'top',
       textElement: a,
       centerVertically: false,
-      onClose: () => {
-        if(wasPlaying) {
+      onClose: async() => {
+        await acting;
+        if(wasPlaying && middleware()) {
           actions.play();
         }
       }
@@ -736,14 +714,40 @@ const StoryMediaArea = (props: {
   };
 
   const onPostClick = () => {
-    const openPost = () => {
+    const {channel_id, msg_id} = props.mediaArea as MediaArea.mediaAreaChannelPost;
+    const peerId = channel_id.toPeerId(true);
+    // * `lastMsgId` is the client's id of the post, not the server's: given the server's, the chat
+    // * stopped at the nearest post and said the one asked for did not exist
+    const open = (lastMsgId?: number) => {
       props.close(() => {
-        const mediaArea = props.mediaArea as MediaArea.mediaAreaChannelPost;
-        appImManager.setInnerPeer({
-          peerId: mediaArea.channel_id.toPeerId(true),
-          lastMsgId: mediaArea.msg_id
-        });
+        hotReloadGuard.appImManager.setInnerPeer({peerId, lastMsgId});
       });
+    };
+
+    // * as iOS has it: the post is looked up first. One that is gone says so over the story, and a
+    // * channel this account cannot read opens as it is, without the post
+    const openPost = async() => {
+      const managers = bindManagersToSession(rootScope.managers);
+      const chatId = peerId.toChatId();
+      const mid = await managers.appMessagesIdsManager.generateMessageId(msg_id, chatId);
+      const message = await managers.appMessagesManager.reloadMessage(peerId, mid);
+      if(!middleware()) return;
+      if(message) {
+        open(mid);
+        return;
+      }
+
+      const [chat, isInChat, username] = await Promise.all([
+        managers.appChatsManager.getChat(chatId),
+        managers.appChatsManager.isInChat(chatId),
+        managers.appPeersManager.getPeerUsername(peerId)
+      ]);
+      if(!middleware()) return;
+      if(chat && !isInChat && !username) {
+        open();
+      } else {
+        toastNew({langPackKey: 'MessageNotFound'});
+      }
     };
 
     showNotCenteredTooltip({
@@ -753,18 +757,39 @@ const StoryMediaArea = (props: {
   };
 
   const onLinkClick = () => {
+    const url = (props.mediaArea as MediaArea.mediaAreaUrl).url;
+    // * the address goes under the action, as iOS and Android have it, read left to right; a
+    // * direction override in it is left out, or it could make the address read as another
+    const urlElement = document.createElement('span');
+    urlElement.classList.add(styles.ViewerStoryMediaAreaUrl);
+    urlElement.dir = 'ltr';
+    urlElement.textContent = url.replace(BIDI_CONTROLS_REG_EXP, '');
+
     showNotCenteredTooltip({
       callback: () => {
-        const url = (props.mediaArea as MediaArea.mediaAreaUrl).url;
         if(wrapUrl(url).onclick) {
           props.close(() => {
-            appImManager.openUrl(url);
+            hotReloadGuard.appImManager.openUrl(url);
           });
         } else {
+          // * a lookalike host is asked about there, before it opens
           safeWindowOpen(url);
         }
       },
-      text: i18n('OpenUrlTitle')
+      text: i18n('OpenUrlTitle'),
+      subtitle: urlElement
+    });
+  };
+
+  const onGiftClick = () => {
+    const {slug} = props.mediaArea as MediaArea.mediaAreaStarGift;
+    showNotCenteredTooltip({
+      callback: () => {
+        props.close(() => {
+          hotReloadGuard.appImManager.openUrl(`https://t.me/nft/${slug}`);
+        });
+      },
+      text: i18n('Story.ViewGift')
     });
   };
 
@@ -820,6 +845,7 @@ const StoryMediaArea = (props: {
             class={classNames(
               styles.ViewerStoryMediaAreaReactionBubbles,
               mediaArea.pFlags.dark && styles.dark,
+              mediaArea.pFlags.flipped && styles.flipped,
               count() && styles.hasCount
             )}
           >
@@ -857,12 +883,14 @@ const StoryMediaArea = (props: {
   } else if(isLink()) {
     onTypeClick = onLinkClick;
     props.setReady(true);
+  } else if(isGift()) {
+    onTypeClick = onGiftClick;
+    props.setReady(true);
   } else if(isWeather()) {
     onTypeClick = toggleTemperatureUnit;
     setChildren(
       <StoryWeatherArea
         mediaArea={props.mediaArea as MediaArea.mediaAreaWeather}
-        width={w}
         height={h}
         storyHeight={stories.height}
       />
@@ -878,6 +906,7 @@ const StoryMediaArea = (props: {
     if(isLocation()) return 'StoryViewLocation';
     if(isPost()) return 'Story.ViewPost';
     if(isLink()) return 'OpenUrlTitle';
+    if(isGift()) return 'Story.ViewGift';
     return undefined;
   });
 
@@ -897,7 +926,7 @@ const StoryMediaArea = (props: {
         ] : []),
         isWeather() && styles.ViewerStoryMediaAreaWeather
       )}
-      style={`left: ${x}%; top: ${y}%; width: ${w}%; height: ${h}%; --rotate: ${rotation}deg`}
+      style={`left: ${x}%; top: ${y}%; width: ${w}%; height: ${h}%; --rotate: ${rotation}deg; --area-radius: ${getMediaAreaRadius(props.mediaArea.coordinates)}`}
       onClick={onClick}
       role={interactiveLabel() ? 'button' : undefined}
       tabindex={Modes.a11y && interactiveLabel() ? 0 : undefined}
@@ -918,6 +947,24 @@ type StorySendReactionAnimation = {
 };
 type StorySendReaction = (params: StorySendReactionAnimation) => void;
 
+/** who posted a group's story: the header names them, and opens them */
+type StoryAuthor = {peerId: PeerId, name: string, header: JSX.Element};
+
+/** the story's heart, wherever it stands: in the reply field or in the footer */
+type StoryLikeButton = {
+  toggle: (target: HTMLElement) => void,
+  bind: (button: HTMLElement) => void
+};
+
+/**
+ * A drag up over the active story, by how far it went, and its end. What it does is the story's to say: the
+ * reply field takes it on a user's story (iOS, Android); the list of who viewed one's own would take it too
+ */
+type StorySwipeUp = {
+  move: (offset: number) => void,
+  end: () => void
+};
+
 const Stories = (props: {
   state: StoriesContextPeerState,
   index: Accessor<number>,
@@ -927,7 +974,8 @@ const Stories = (props: {
   close: (callback?: () => void) => void,
   peers: StoriesContextPeerState[],
   isFull: Accessor<boolean>,
-  transitionSignal: Signal<boolean>
+  transitionSignal: Signal<boolean>,
+  swipeUpHandlers: Map<StoriesContextPeerState, StorySwipeUp>
 }) => {
   const avatar = AvatarNew({
     size: STORY_HEADER_AVATAR_SIZE,
@@ -992,16 +1040,9 @@ const Stories = (props: {
     handleShareStory({
       story: currentStory(),
       peerId: props.state.peerId,
-      onSend: async(toPeerId: PeerId) => {
-        showMessageSentTooltip(
-          i18n(
-            toPeerId === rootScope.myId ? 'StorySharedToSavedMessages' : 'StorySharedTo',
-            [await wrapPeerTitle({peerId: toPeerId})]
-          )
-        )
-      },
+      onSent: (text) => showMessageSentTooltip(text),
       onClose: bindOnAnyPopupClose(wasPlaying)
-    })
+    });
   };
 
   const onShareButtonClick = (e: MouseEvent, listenTo: HTMLElement) => {
@@ -1047,11 +1088,15 @@ const Stories = (props: {
   const [videoDuration, setVideoDuration] = createSignal<number>();
   const [caption, setCaption] = createSignal<JSX.Element>();
   const [repost, setRepost] = createSignal<{reply: JSX.Element, header: JSX.Element}>();
+  // * who posted a group's story, when it is someone else than the group (iOS, Android)
+  const [author, setAuthor] = createSignal<StoryAuthor>();
+  // * media this client cannot show stands as a note, and is not replied to (iOS, Android)
+  const [mediaUnsupported, setMediaUnsupported] = createSignal(false);
   const [reaction, setReaction] = createSignal<JSX.Element>();
   const [captionOpacity, setCaptionOpacity] = createSignal(0);
   const [captionActive, setCaptionActive] = createSignal(false);
   const [date, setDate] = createSignal<{timestamp: number, edited?: boolean}>();
-  const [loading, setLoading] = createSignal(false);
+  const [loading, setLoading] = createSignal(true);
   const [canShareStory, setCanShareStory] = createSignal();
   const focusedSignal = createSignal(false);
   const sendingReactionSignal = createSignal<StorySendReactionAnimation>();
@@ -1072,7 +1117,17 @@ const Stories = (props: {
   const [mediaAreas, setMediaAreas] = createSignal<JSX.Element>();
   const [stackedAvatars, setStackedAvatars] = createSignal<StackedAvatars>();
   const [tooltipCloseCallback, setTooltipCloseCallback] = createSignal<VoidFunction>();
-  const [reactionsMenu, setReactionsMenu] = createSignal<ChatReactionsMenu>();
+  // * the stories whose caption is shown translated, till "Hide Translation" (Android's storyItem.translated)
+  const [translatedStories, setTranslatedStories] = createSignal(new Set<number>(), {equals: false});
+  const isCaptionTranslated = (storyId: number) => translatedStories().has(storyId);
+  const toggleCaptionTranslation = (storyId: number, translated: boolean) => {
+    setTranslatedStories((storyIds) => {
+      if(translated) storyIds.add(storyId);
+      else storyIds.delete(storyId);
+      return storyIds;
+    });
+  };
+  const [appSettings, setAppSettings] = useAppSettings();
   const currentStory = createMemo(() => props.state.stories[props.state.index]);
   const isExpired = createMemo(() => {
     const story = currentStory();
@@ -1123,7 +1178,33 @@ const Stories = (props: {
     fireReactionAnimation(reaction);
   });
 
+  // * Stealth Mode keeps a view out of the list, and a reply or a reaction puts it back in: said once ever,
+  // * before the first of them (iOS)
+  const confirmStealthReply = async() => {
+    if(
+      !((stories.stealthMode?.active_until_date || 0) > tsNow(true)) ||
+      appSettings.seenTooltips.storyStealthReply
+    ) {
+      return true;
+    }
+
+    setAppSettings('seenTooltips', 'storyStealthReply', true);
+    try {
+      await confirmationPopup({
+        titleLangKey: 'Story.StealthModeConfirm.Title',
+        descriptionLangKey: 'Story.StealthModeConfirm.Text',
+        button: {
+          langKey: 'Proceed'
+        }
+      });
+      return true;
+    } catch{
+      return false;
+    }
+  };
+
   const sendReaction: StorySendReaction = async(params) => {
+    const managers = bindManagersToSession(rootScope.managers);
     let {reaction} = params;
     const peerId = props.state.peerId;
     const story = currentStory() as StoryItem.storyItem;
@@ -1143,6 +1224,11 @@ const Stories = (props: {
       reaction = undefined;
     }
 
+    // * only what puts a reaction on asks: taking one off shows nothing
+    if(reaction && !(await confirmStealthReply())) {
+      return;
+    }
+
     setFocused(false);
     setSendingReaction(params);
 
@@ -1150,7 +1236,7 @@ const Stories = (props: {
       setForceReaction(true);
     }
 
-    await rootScope.managers.acknowledged.appStoriesManager.sendReaction(
+    await managers.acknowledged.appStoriesManager.sendReaction(
       peerId,
       storyId,
       unwrap(reaction as Reaction)
@@ -1158,58 +1244,294 @@ const Stories = (props: {
     setSendingReaction();
   };
 
-  const createReactionsMenu = () => {
-    const [inited, setInited] = createSignal(false);
-    const middleware = createMiddleware().get();
-    const menu = new ChatReactionsMenu({
-      managers: rootScope.managers,
-      type: 'horizontal',
-      middleware,
-      onFinish: (reaction) => sendReaction({reaction, target: storyDiv}),
-      size: 36,
-      openSide: 'top',
-      getOpenPosition: () => undefined,
-      noMoreButton: true
-    });
+  // * the reply field of the story, once it is there: a reaction picked over it goes as a message
+  let storyChatInput: ChatInput;
 
-    menu.widthContainer.classList.add(styles.ViewerStoryReactions);
+  // * picked over the focused reply field, a reaction is a message that answers the story — privately, or in the
+  // * group — not a reaction on it, as iOS, Android and Desktop have it; it plays in the middle of the story
+  const sendReactionAsMessage = async(_reaction: Reaction | Promise<Reaction>) => {
+    const input = storyChatInput;
+    if(!input) {
+      return;
+    }
 
-    menu.init().finally(() => {
-      setInited(true);
-    });
+    const {managers} = input;
+    const peerId = props.state.peerId;
+    const storyId = currentStory().id;
+    const reaction = await _reaction;
+    if(!reaction || (reaction._ !== 'reactionEmoji' && reaction._ !== 'reactionCustomEmoji')) {
+      return;
+    }
 
-    let timeout: number;
-    createEffect(() => {
-      if(!inited()) {
+    let text: string, entities: MessageEntity[] = [];
+    if(reaction._ === 'reactionCustomEmoji') {
+      const doc = await managers.appEmojiManager.getCustomEmojiDocument(reaction.document_id);
+      text = doc?.stickerEmojiRaw;
+      if(!text) {
         return;
       }
 
-      const isVisible = shouldMenuBeVisible();
-      menu.widthContainer.classList.toggle('is-visible', isVisible);
+      entities = [{_: 'messageEntityCustomEmoji', offset: 0, length: text.length, document_id: reaction.document_id}];
+    } else {
+      text = reaction.emoticon;
+    }
 
-      if(!isVisible) {
-        timeout = window.setTimeout(() => {
-          setReactionsMenu();
-          menu.cleanup();
-        }, liteMode.isAvailable('animations') ? 200 : 0);
-      } else {
-        clearTimeout(timeout);
-      }
+    blurActiveElement();
+    setFocused(false);
+    if(!(await confirmStealthReply())) {
+      return;
+    }
+
+    const result = await ChatInput.sendMessageWithForward({
+      sendingParams: {...input.chat.getMessageSendingParams(), replyToStoryId: storyId},
+      text: {text, entities},
+      chatType: ChatType.Stories,
+      slowModeParams: input.getDefaultParamsForSlowModeTooltip(),
+      paidMessageInterceptor: input.paidMessageInterceptor
     });
+    if(!result || !result.messageCount) {
+      return;
+    }
 
-    setReactionsMenu(menu);
+    if(currentStory().id === storyId) {
+      fireReactionInCenter(reaction);
+    }
+
+    showMessageSentTooltip(i18n('Story.Tooltip.ReactionSent'), peerId);
   };
 
-  const shouldMenuBeVisible = () => focused() && inputEmpty() && !inputMenuOpen();
-  const haveToCreateMenu = createMemo(() => {
-    return reactionsMenu() ? true : shouldMenuBeVisible();
+  const fireReactionInCenter = (reaction: Reaction) => {
+    const size = Math.min(stories.width, stories.height) * .4;
+    const center = document.createElement('div');
+    center.classList.add(styles.ViewerStoryReactionCenter);
+    center.style.setProperty('--size', size + 'px');
+    storyDiv.append(center);
+    fireReactionAnimation(reaction, {
+      reaction,
+      target: center,
+      sizes: {
+        genericEffect: size * .375,
+        genericEffectSize: size * 1.5,
+        size,
+        effectSize: size * 2.6875
+      },
+      fireSame: true
+    });
+    setTimeout(() => center.remove(), 3000);
+  };
+
+  // * the heart, in the reply field or the footer: a tap puts ❤ on, or takes off whatever is on; a long tap — a
+  // * right click with a mouse, the context menu key — opens the whole choice over it (iOS, Android)
+  const [likePicker, setLikePicker] = createSignal<HTMLElement>();
+  const [likeButtonElement, setLikeButtonElement] = createSignal<HTMLElement>();
+  let playAfterLikePicker = false;
+  // * dismissed as a menu is: a press anywhere but on it — a tap, a click, the control under it — only
+  // * closes it (iOS), and Escape does too
+  const likePickerOverlay = new OverlayClickHandler('menu');
+  likePickerOverlay.addEventListener('toggle', (open) => !open && closeLikePicker());
+  onCleanup(() => likePickerOverlay.close());
+
+  const openLikePicker = (button: HTMLElement) => {
+    if(likePicker() || !isActive()) {
+      return;
+    }
+
+    setAppSettings('seenTooltips', 'storyReactions', true);
+    tooltipCloseCallback()?.();
+    playAfterLikePicker = !stories.paused;
+    actions.pause();
+    setLikePicker(button);
+    likePickerOverlay.open(untrack(reactionsMenu).menu.widthContainer);
+  };
+
+  // * the story goes on once the choice is gone, or once the whole choice it opened is (a question asked after
+  // * the pick covers the viewer, which holds the story till it is answered)
+  const closeLikePicker = (waitFor?: Promise<any>) => {
+    if(!likePicker()) {
+      return;
+    }
+
+    setLikePicker();
+    likePickerOverlay.close();
+    const play = playAfterLikePicker;
+    Promise.resolve(waitFor).finally(() => {
+      if(play && isActive() && stories.paused && !untrack(focused)) {
+        actions.play();
+      }
+    });
+  };
+
+  const likeButton: StoryLikeButton = {
+    toggle: (target) => {
+      // * one tapped while the choice is open only closes it, by the click outside
+      if(likePicker()) {
+        return;
+      }
+
+      const story = currentStory() as StoryItem.storyItem;
+      sendReaction({
+        reaction: story.sent_reaction ? undefined : {_: 'reactionEmoji', emoticon: DEFAULT_REACTION_EMOTICON},
+        target
+      });
+    },
+    bind: (button) => {
+      setLikeButtonElement(button);
+      onCleanup(() => {
+        if(untrack(likeButtonElement) === button) {
+          setLikeButtonElement();
+        }
+      });
+
+      attachContextMenuListener({
+        element: button,
+        callback: (e) => {
+          cancelEvent(e);
+          openLikePicker(button);
+          // * the release of the long tap that opened it is no tap, as for a context menu
+          if(e instanceof TouchEvent || (e as PointerEvent).pointerType === 'touch') {
+            button.addEventListener('touchend', cancelEvent, {once: true});
+          }
+        },
+        listenerSetter: createListenerSetter()
+      });
+    }
+  };
+
+  // * the whole choice a strip opened stands outside the story: it goes with the story it was opened over
+  let expandedMenu: ChatReactionsMenu;
+  const watchExpanded = (menu: ChatReactionsMenu, picked: Promise<Reaction>) => {
+    expandedMenu = menu;
+    picked.finally(() => {
+      if(expandedMenu === menu) expandedMenu = undefined;
+    });
+  };
+  const closeExpanded = () => {
+    expandedMenu?.closeExpanded();
+    expandedMenu = undefined;
+  };
+  onCleanup(closeExpanded);
+
+  createEffect(on([currentStory, isActive], () => {
+    closeLikePicker();
+    closeExpanded();
+  }, {defer: true}));
+
+  const onLikePicked = (reaction: Reaction | Promise<Reaction>) => {
+    const target = likePicker();
+    // * the whole choice opens over the strip, and the story waits for what is picked there
+    closeLikePicker(reaction instanceof Promise ? reaction : undefined);
+    sendReaction({reaction, target});
+  };
+
+  // * the strip of reactions: over the focused empty reply field, and over the heart a long tap opens it on
+  type StoryReactionsMenuMode = 'message' | 'like';
+  type StoryReactionsMenu = {
+    mode: StoryReactionsMenuMode,
+    menu: ChatReactionsMenu,
+    // * the menu's own, destroyed as it goes: the story's would keep every menu it had till it went
+    middlewareHelper: MiddlewareHelper,
+    timeout?: number,
+    restoreFocus?: HTMLElement
+  };
+  const [reactionsMenu, setReactionsMenu] = createSignal<StoryReactionsMenu>();
+  const reactionsMenuMode = createMemo<StoryReactionsMenuMode>(() => {
+    if(likePicker()) return 'like';
+    if(focused() && inputEmpty() && !inputMenuOpen()) return 'message';
   });
 
-  createEffect(() => {
-    if(haveToCreateMenu()) {
-      createReactionsMenu();
+  const createReactionsMenu = (mode: StoryReactionsMenuMode) => {
+    const middlewareHelper = getMiddleware();
+    const menu = new ChatReactionsMenu({
+      managers: rootScope.managers,
+      type: 'horizontal',
+      middleware: middlewareHelper.get(),
+      onFinish: (reaction) => {
+        if(reaction instanceof Promise) {
+          watchExpanded(menu, reaction);
+        }
+
+        return mode === 'like' ? onLikePicked(reaction) : sendReactionAsMessage(reaction);
+      },
+      size: 36,
+      openSide: 'top',
+      night: true,
+      description: mode === 'message' ? i18n(
+        props.state.peerId.isUser() ? 'Story.SendReactionAsMessage' : 'Story.SendReactionAsGroupMessage'
+      ) : undefined
+    });
+
+    menu.widthContainer.classList.add(styles.ViewerStoryReactions);
+    if(mode === 'like') {
+      menu.widthContainer.classList.add(styles.isLike);
     }
+
+    const item: StoryReactionsMenu = {mode, menu, middlewareHelper};
+    setReactionsMenu(item);
+    menu.init().finally(() => {
+      if(reactionsMenu() !== item || untrack(reactionsMenuMode) !== mode) {
+        return;
+      }
+
+      menu.widthContainer.classList.add('is-visible');
+      // * opened from the keyboard, the choice takes the focus once its reactions are there, and gives it
+      // * back to the heart as it goes
+      const button = likePicker();
+      if(mode !== 'like' || !Modes.a11y || !button) {
+        return;
+      }
+
+      menu.rendered.then(() => {
+        const first = menu.container.querySelector<HTMLElement>('.btn-menu-reactions-reaction');
+        // * still open, over the same heart, which still has the focus
+        if(
+          reactionsMenu() !== item ||
+          untrack(likePicker) !== button ||
+          !first ||
+          !button.contains(getAppWindow().document.activeElement)
+        ) {
+          return;
+        }
+
+        first.focus();
+        item.restoreFocus = button;
+      });
+    });
+  };
+
+  const hideReactionsMenu = (item: StoryReactionsMenu) => {
+    item.menu.widthContainer.classList.remove('is-visible');
+    if(item.restoreFocus && item.menu.widthContainer.contains(getAppWindow().document.activeElement)) {
+      item.restoreFocus.focus();
+    }
+
+    item.timeout = window.setTimeout(() => retireReactionsMenu(item), liteMode.isAvailable('animations') ? 200 : 0);
+  };
+
+  const retireReactionsMenu = (item: StoryReactionsMenu) => {
+    clearTimeout(item.timeout);
+    item.menu.cleanup();
+    item.middlewareHelper.destroy();
+    if(untrack(reactionsMenu) === item) {
+      setReactionsMenu();
+    }
+  };
+
+  onCleanup(() => {
+    const item = untrack(reactionsMenu);
+    item && retireReactionsMenu(item);
   });
+
+  createEffect(on(reactionsMenuMode, (mode) => {
+    const current = untrack(reactionsMenu);
+    if(current && current.mode === mode) {
+      clearTimeout(current.timeout);
+      current.menu.inited && current.menu.widthContainer.classList.add('is-visible');
+      return;
+    }
+
+    current && hideReactionsMenu(current);
+    mode && createReactionsMenu(mode);
+  }));
 
   const setVideoListeners = (video: HTMLVideoElement) => {
     let cleaned = false;
@@ -1222,21 +1544,20 @@ const Stories = (props: {
       video.removeEventListener('canplay', onCanPlay);
     });
 
+    // * this video's part in the viewer's buffering, taken back once it can play, goes away or stops being
+    // * the active one
+    const setVideoBuffering = (buffering: boolean) => actions.setBuffering(video, buffering);
+
     const onCanPlay = () => {
       setLoading(false);
-      if(isActive()) {
-        actions.setBuffering(false);
-      }
+      setVideoBuffering(false);
     };
 
     const onWaiting = () => {
-      const loading = video.networkState === video.NETWORK_LOADING;
-      const isntEnoughData = video.readyState < video.HAVE_FUTURE_DATA;
-
-      if(loading && isntEnoughData) {
+      if(isVideoStalled(video)) {
         setLoading(true);
         if(isActive()) {
-          actions.setBuffering(true);
+          setVideoBuffering(true);
         }
         video.addEventListener('canplay', onCanPlay, {once: true});
       }
@@ -1250,13 +1571,20 @@ const Stories = (props: {
       setCurrentTime(video, 0);
     };
 
+    // * to a point of the story: the video is as long as the story, whatever its speed
+    const seekToProgress = (progress: number) => {
+      const duration = video.duration;
+      if(progress === undefined || !Number.isFinite(duration)) {
+        return;
+      }
+
+      setCurrentTime(video, clamp(progress * duration, 0, Math.max(0, duration - 0.3)));
+    };
+
     video.addEventListener('waiting', onWaiting);
 
-    onCleanup(() => {
-      if(stories.buffering) {
-        actions.setBuffering(false);
-      }
-    });
+    onCleanup(() => setVideoBuffering(false));
+    createEffect(on(isActive, (isActive) => !isActive && setVideoBuffering(false), {defer: true}));
 
     // pause the video on viewer pause or story change
     createEffect(() => {
@@ -1298,8 +1626,41 @@ const Stories = (props: {
       }
     });
 
+    // * a video put in while its story plays - the other quality chosen - goes on from where it is
+    if(untrack(() => isActive() && stories.startTime && currentStory() === story)) {
+      seekToProgress(actions.getProgress());
+    }
+
+    // * plays at the viewer's speed, and the story lasts as long as the video does at it
+    const setPlaybackRate = (rate: number) => {
+      video.defaultPlaybackRate = video.playbackRate = rate;
+    };
+
+    setPlaybackRate(untrack(() => stories.playbackRate));
+    createEffect(on(() => stories.playbackRate, (rate) => {
+      setPlaybackRate(rate);
+      if(isActive() && currentStory() === story) {
+        actions.setStoryDuration(getVideoStoryDuration(rate));
+      }
+    }, {defer: true}));
+
+    // * held and dragged along: the video follows the point of the story the finger takes it to, a
+    // * few times a second, and lands where it is let go
+    createEffect(() => {
+      if(!stories.seeking || !isActive() || currentStory() !== story) {
+        return;
+      }
+
+      const seek = () => seekToProgress(actions.getProgress());
+      const throttledSeek = throttle(seek, 150, true);
+      createEffect(on(() => stories.elapsedTimeOnPause, throttledSeek, {defer: true}));
+      onCleanup(() => {
+        throttledSeek.clear();
+        seek();
+      });
+    });
+
     if(!untrack(noSound)) {
-      const [appSettings, setAppSettings] = useAppSettings();
       if(!cleaned && !appSettings.seenTooltips.storySound) {
         const playingMemo = createMemo((prev) => prev || (isActive() && stories.startTime));
         createEffect(() => {
@@ -1357,6 +1718,8 @@ const Stories = (props: {
       setReaction();
       setMediaAreas();
       setRepost();
+      setAuthor();
+      setMediaUnsupported(false);
       setStoryMeta(story as StoryItem.storyItemSkipped);
       rootScope.managers.appStoriesManager.getStoryById(props.state.peerId, story.id);
       props.onReady?.();
@@ -1370,6 +1733,7 @@ const Stories = (props: {
     const uReaction = createUnifiedSignal<JSX.Element>();
     const uMediaAreas = createUnifiedSignal<JSX.Element>();
     const uRepost = createUnifiedSignal<{reply: JSX.Element, header: JSX.Element}>();
+    const uAuthor = createUnifiedSignal<StoryAuthor>();
     const recentViewersMemo = isMe ? createMemo<UserId[]>((previousRecentViewers) => {
       const views = story.views;
       const recentViewers = views?.recent_viewers;
@@ -1417,37 +1781,74 @@ const Stories = (props: {
     });
 
     createEffect(async() => {
+      // * this run's: a translation shown or hidden meanwhile starts another one, which this must not undo
+      const runMiddleware = createMiddleware().get();
       let captionNode: JSX.Element;
       const {caption, entities} = story;
       if(caption?.trim()) {
         const loadPromises: Promise<any>[] = [];
-        const {message, totalEntities} = wrapMessageEntities(caption, entities?.slice());
-        const wrapped = wrapRichText(
-          message,
-          getRichTextOptions(props.state.peerId, totalEntities, loadPromises)
-        );
+        let translated: HTMLElement, wrapped: DocumentFragment;
+        // * in place of the original once it has come, as Android shows it
+        if(isCaptionTranslated(story.id)) {
+          translated = TranslatableMessageTsx({
+            peerId: props.state.peerId,
+            // * the store's own entities, not its proxy: they go to the worker
+            textWithEntities: {_: 'textWithEntities', text: caption, entities: unwrap(entities) || []},
+            richTextOptions: getRichTextOptions(props.state.peerId, undefined, loadPromises),
+            enabled: true,
+            onError: () => {
+              toastNew({langPackKey: 'Translate.Error'});
+              toggleCaptionTranslation(story.id, false);
+            }
+          });
+        } else {
+          const {message, totalEntities} = wrapMessageEntities(caption, entities?.slice());
+          wrapped = wrapRichText(
+            message,
+            getRichTextOptions(props.state.peerId, totalEntities, loadPromises)
+          );
+        }
 
         uCaption(null);
         await Promise.all(loadPromises);
-        if(!middleware()) {
+        if(!middleware() || !runMiddleware()) {
           return;
         }
 
-        captionNode = documentFragmentToNodes(wrapped);
+        captionNode = translated || documentFragmentToNodes(wrapped);
       }
 
       uCaption(captionNode);
     });
 
+    // * the file a video plays from follows the quality chosen: another one is put in in its place
+    const videoDocId = story.media?._ === 'messageMediaDocument' && createMemo(() => {
+      const media = story.media as MessageMedia.messageMediaDocument;
+      return getStoryVideoDocuments(media, isStoryHighQuality(props.state.peerId, story)).doc?.id;
+    });
+
+    let wasWrapped = false;
     createEffect(() => {
-      const media = untrack(() => getMediaFromMessage(story));
-      const mediaId = media.id;
-      if(!mediaId) {
-        uContent();
-        return;
-      }
+      // * read for the effect to follow: an edit that puts other media in is wrapped anew. Media of a
+      // * kind this client cannot show has no id, and is wrapped all the same, into a note in its place
+      void untrack(() => getMediaFromMessage(story)).id;
+      videoDocId && videoDocId();
 
       uContent(null);
+
+      // * the other file starts where the story is (setVideoListeners), and the story waits for it as for a
+      // * stalled video: played or paused meanwhile, it is that once the file is in
+      const replacing = wasWrapped;
+      wasWrapped = true;
+      const bufferingOwner = {};
+      const stopBuffering = () => actions.setBuffering(bufferingOwner, false);
+
+      if(replacing && untrack(isActive)) {
+        setLoading(true);
+        actions.setBuffering(bufferingOwner, true);
+        onCleanup(stopBuffering);
+        createEffect(on(isActive, (isActive) => !isActive && stopBuffering(), {defer: true}));
+      }
 
       const wrapped = wrapStoryMedia({
         peerId: props.state.peerId,
@@ -1457,10 +1858,12 @@ const Stories = (props: {
           class: styles.ViewerStoryContentMediaContainer
         },
         childrenClassName: styles.ViewerStoryContentMedia,
-        useBlur: 40
+        useBlur: 40,
+        highQuality: untrack(() => isStoryHighQuality(props.state.peerId, story))
       });
 
       const onReady = () => {
+        setMediaUnsupported(wrapped.unsupported);
         uContent(wrapped.container);
       };
 
@@ -1470,7 +1873,10 @@ const Stories = (props: {
         }
 
         setLoading(false);
-        untrack(() => playOnOpen());
+        stopBuffering();
+        if(!replacing || !untrack(() => stories.startTime)) {
+          untrack(() => playOnOpen());
+        }
         // props.onReady?.();
       };
 
@@ -1494,7 +1900,7 @@ const Stories = (props: {
       const sentReaction = story.sent_reaction;
       const isDefault = isDefaultReaction(sentReaction);
       if(!sentReaction || isDefault) {
-        reactionNode = Icon('reactions_filled', ...['btn-reaction-icon', isDefault && 'btn-reaction-default'].filter(Boolean));
+        reactionNode = Icon(isDefault ? 'reactions_filled' : 'reactions', ...['btn-reaction-icon', isDefault && 'btn-reaction-default'].filter(Boolean));
         uReaction(reactionNode);
       } else {
         const div = document.createElement('div');
@@ -1553,6 +1959,7 @@ const Stories = (props: {
     });
 
     createEffect(async() => {
+      const managers = bindManagersToSession(rootScope.managers);
       const repostInfo = getStoryRepostInfo(story);
       if(!repostInfo) {
         uRepost();
@@ -1587,13 +1994,12 @@ const Stories = (props: {
         fromName: fwdFromName
       };
 
-      const {node, readyThumbPromise} = avatarNew({
+      // * the avatar fills in as it loads: the story waits for the names alone, never for a download, as the
+      // * author's does
+      const {node: headerAvatar} = avatarNew({
         peerId: fwdFromPeerId,
         peerTitle: fwdFromName,
         size: 16,
-        // props: {
-        //   class: styles.ViewerStoryHeaderRepostAvatar
-        // },
         middleware
       });
 
@@ -1626,7 +2032,7 @@ const Stories = (props: {
         setSubtitle(documentFragmentToNodes(wrapped));
       };
 
-      const storyPromise = fwdFromStoryId && rootScope.managers.acknowledged.appStoriesManager.getStoryById(
+      const storyPromise = fwdFromStoryId && managers.acknowledged.appStoriesManager.getStoryById(
         fwdFromPeerId,
         fwdFromStoryId
       ).then(async(ackedResult) => {
@@ -1639,11 +2045,11 @@ const Stories = (props: {
         return promise;
       });
 
-      const [reply, headerPeerTitle, headerAvatar] = await Promise.all([
+      const [reply, headerPeerTitle] = await Promise.all([
         wrapPeerTitle(peerTitleOptions).then(async(peerTitle) => {
           const title = document.createDocumentFragment();
           if(fwdFromPeerId) {
-            const isBroadcast = await rootScope.managers.appPeersManager.isBroadcast(fwdFromPeerId);
+            const isBroadcast = await managers.appPeersManager.isBroadcast(fwdFromPeerId);
             const icon = Icon(
               isBroadcast ? 'newchannel_filled' : (fwdFromPeerId.isUser() ? 'newprivate_filled' : 'group_filled'),
               'inline-icon',
@@ -1673,7 +2079,6 @@ const Stories = (props: {
           return container;
         }),
         wrapPeerTitle(peerTitleOptions),
-        readyThumbPromise.then(() => node),
         storyPromise
       ]);
       if(!middleware()) return;
@@ -1691,21 +2096,54 @@ const Stories = (props: {
       uRepost(ret);
     });
 
+    // * the author, before the time: a story reposted names where it comes from there instead
+    createEffect(async() => {
+      const authorPeerId = !props.state.peerId.isUser() && story.from_id && getPeerId(story.from_id);
+      if(!authorPeerId || authorPeerId === props.state.peerId) {
+        uAuthor();
+        return;
+      }
+
+      uAuthor(null);
+      // * the avatar fills in as it loads: the story waits for the name alone, never for a download
+      const {node} = avatarNew({
+        peerId: authorPeerId,
+        size: 16,
+        middleware
+      });
+
+      const title = await wrapPeerTitle({peerId: authorPeerId});
+      if(!middleware()) return;
+
+      title.classList.add(styles.ViewerStoryHeaderRepostTitle);
+      uAuthor({
+        peerId: authorPeerId,
+        name: title.textContent,
+        header: (
+          <span class={styles.ViewerStoryHeaderAuthor}>
+            {node}
+            {title}
+          </span>
+        )
+      });
+    });
+
     createEffect(
       on(
-        () => [inputReady(), uStackedAvatars?.(), uCaption(), uContent(), uReaction?.(), uMediaAreas(), uRepost()] as const,
+        () => [inputReady(), uStackedAvatars?.(), uCaption(), uContent(), uReaction?.(), uMediaAreas(), uRepost(), uAuthor()] as const,
         ([inputReady, ...u]) => {
           if(!inputReady || u.some((v) => v === null)) {
             return;
           }
 
-          const [stackedAvatars, caption, content, reaction, mediaAreas, repost] = u;
+          const [stackedAvatars, caption, content, reaction, mediaAreas, repost, author] = u;
           setStackedAvatars(stackedAvatars);
           setCaption(caption);
           setContent(content);
           setReaction(reaction);
           setMediaAreas(mediaAreas);
           setRepost(repost);
+          setAuthor(author);
           props.onReady?.();
 
           createEffect(() => {
@@ -1731,6 +2169,17 @@ const Stories = (props: {
     //     setStory(unwrap(story), hasViewer);
     //   }
     // ));
+  });
+
+  // * once the story has loaded, the next ones are fetched behind it, so that going on shows them at once
+  createEffect(() => {
+    if(!isActive() || loading()) {
+      return;
+    }
+
+    const middleware = createMiddleware().get();
+    const next = untrack(() => stories.getNearestStories(true, STORIES_PRELOAD));
+    preloadStoriesMedia(next.map(({peer, index}) => ({peerId: peer.peerId, storyItem: peer.stories[index]})), middleware);
   });
 
   const pollViewedStories = () => {
@@ -1820,17 +2269,21 @@ const Stories = (props: {
 
     const storyWidth = stories.width;
     const MARGIN = 40;
-    const multiplier = diff > 0 ? 1 : -1;
+    // * the sets further on in the list stand at the inline end: on the left in RTL
+    const multiplier = (diff > 0 ? 1 : -1) * (I18n.isRTL() ? -1 : 1);
     const smallStoryWidth = storyWidth * STORY_SCALE_SMALL;
     let offset = storyWidth * multiplier;
     const distance = (storyWidth - smallStoryWidth) / 2 - MARGIN;
     offset = (storyWidth - distance) * multiplier;
     if(Math.abs(diff) !== 1) {
-      const d = diff - 1 * multiplier;
+      const d = (Math.abs(diff) - 1) * multiplier;
       offset += d * smallStoryWidth + MARGIN * d;
     }
     return offset + 'px';
   };
+
+  // * add 0.001 just to differ video and photo stories
+  const getVideoStoryDuration = (playbackRate: number) => untrack(() => videoDuration()) / playbackRate + 0.001;
 
   const playOnReady = () => {
     if(untrack(() => loading())) {
@@ -1838,8 +2291,7 @@ const Stories = (props: {
     }
 
     const activeVideoDuration = untrack(() => videoDuration());
-    // * add 0.001 just to differ video and photo stories
-    const storyDuration = activeVideoDuration ? activeVideoDuration + 0.001 : STORY_DURATION;
+    const storyDuration = activeVideoDuration ? getVideoStoryDuration(untrack(() => stories.playbackRate)) : STORY_DURATION;
     actions.play(storyDuration);
   };
 
@@ -1894,7 +2346,7 @@ const Stories = (props: {
   );
 
   const copyLink = () => {
-    copyTextToClipboard(`https://t.me/${getPeerActiveUsernames(peer)[0]}/s/${currentStory().id}`);
+    copyTextToClipboard(makeStoryLink(getPeerActiveUsernames(peer)[0], currentStory().id));
     toastNew({
       langPackKey: 'LinkCopied'
     });
@@ -1966,6 +2418,7 @@ const Stories = (props: {
   const scrollPath = (path: number) => {
     const target = Math.max(0, path);
     const startTime = Date.now();
+    const duration = liteMode.isAvailable('motion') ? 300 : 0;
     scrolling = true;
 
     const story = currentStory();
@@ -1974,7 +2427,7 @@ const Stories = (props: {
         return false;
       }
 
-      const t = Math.min(1, (Date.now() - startTime) / 300);
+      const t = duration ? Math.min(1, (Date.now() - startTime) / duration) : 1;
       const value = easeOutCubicApply(t, 1);
       const currentPath = path * (1 - value);
       const scrollTop = Math.round(target - currentPath);
@@ -2080,12 +2533,13 @@ const Stories = (props: {
       elements.push(i18n('EditedMessage'));
     }
 
-    if(repost()) {
-      elements.unshift(repost().header as HTMLElement);
+    const source = repost()?.header ?? author()?.header;
+    if(source) {
+      elements.unshift(source as HTMLElement);
     }
 
     let joined: JSX.Element[] = joinElementsWith(elements, JOINER);
-    if(repost()) {
+    if(source) {
       joined = [
         joined[0],
         <span class={styles.ViewerStoryHeaderSecondary}>{joined.slice(1)}</span>
@@ -2103,7 +2557,7 @@ const Stories = (props: {
       a.addEventListener('click', (e) => {
         cancelEvent(e);
         props.close(() => {
-          appImManager.setInnerPeer({peerId});
+          hotReloadGuard.appImManager.setInnerPeer({peerId});
         });
       }, {capture: true, passive: false});
       a.append(i18n('ViewInChat'));
@@ -2119,11 +2573,47 @@ const Stories = (props: {
     });
   };
 
-  const needStoryInput = props.state.peerId !== CHANGELOG_PEER_ID &&
-    props.state.peerId !== rootScope.myId &&
-    props.state.peerId.isUser();
-  const [inputReady, setInputReady] = createSignal(!needStoryInput);
-  const storyInput = needStoryInput &&
+  // * a user's story is answered at once; a group's as its full chat says, which may come later
+  const isChangelog = props.state.peerId === CHANGELOG_PEER_ID;
+  const [replyMode, setReplyMode] = createSignal<StoryReplyMode>(
+    isMe || isChangelog ? 'none' : (props.state.peerId.isUser() ? 'reply' : undefined)
+  );
+  const [boostsNeeded, setBoostsNeeded] = createSignal<number>();
+  if(replyMode() === undefined) {
+    const managers = bindManagersToSession(rootScope.managers);
+    const middleware = createMiddleware().get();
+    const peerId = props.state.peerId;
+    const chatId = peerId.toChatId();
+    const updateReplyMode = () => {
+      managers.appStoriesManager.getReplyMode(peerId).then((result) => {
+        if(!middleware()) return;
+        // * no answer (the popup sandbox's managers give none) is no field
+        setBoostsNeeded(result?.boostsNeeded);
+        setReplyMode(result?.mode || 'none');
+      }, () => {
+        if(!middleware()) return;
+        setReplyMode('none');
+      });
+    };
+
+    updateReplyMode();
+    // * the member's rights, and the boosts the member has given, change while the story is open
+    const listenerSetter = createListenerSetter();
+    const onChatUpdate = (id: ChatId) => id === chatId && updateReplyMode();
+    listenerSetter.add(rootScope)('chat_update', onChatUpdate);
+    listenerSetter.add(rootScope)('chat_full_update', onChatUpdate);
+  }
+
+  const canReply = () => replyMode() === 'reply' && !mediaUnsupported();
+  const [inputReady, setInputReady] = createSignal(replyMode() === 'none');
+  // * the story waits for its field only where it has one: not where the footer stands instead
+  createEffect(() => {
+    if(replyMode() && !canReply()) {
+      setInputReady(true);
+    }
+  });
+
+  const storyInput = () => (
     <StoryInput
       {
         ...mergeProps(props, {
@@ -2132,7 +2622,7 @@ const Stories = (props: {
           focusedSignal,
           inputEmptySignal,
           inputMenuOpenSignal,
-          sendReaction,
+          likeButton,
           isPublic,
           shareStory: onShareClick,
           reaction,
@@ -2140,10 +2630,98 @@ const Stories = (props: {
           onMessageSent: () => {
             showMessageSentTooltip(i18n('Story.Tooltip.MessageSent'), props.state.peerId);
           },
-          setInputReady
+          setInputReady,
+          confirmSending: confirmStealthReply,
+          setChatInput: (input: ChatInput) => storyChatInput = input,
+          swipeProgress: swipeUpProgress
         })
       }
-    />;
+    />
+  );
+
+  // * who saw one's own story, and who reacted to a channel's or a group's one, which its stories' editors see
+  // * (iOS, Android's viewsAllowed)
+  const [canViewInteractions, setCanViewInteractions] = createSignal(isMe);
+  if(!props.state.peerId.isUser()) {
+    const managers = bindManagersToSession(rootScope.managers);
+    const middleware = createMiddleware().get();
+    const peerId = props.state.peerId;
+    const chatId = peerId.toChatId();
+    const updateCanViewInteractions = () => {
+      managers.appStoriesManager.canViewStoryInteractions(peerId).then((value) => {
+        if(middleware()) setCanViewInteractions(!!value);
+      }, noop);
+    };
+
+    updateCanViewInteractions();
+    // * the admin's rights change while the story is open
+    createListenerSetter().add(rootScope)('chat_update', (id) => id === chatId && updateCanViewInteractions());
+  }
+
+  // * a drag up opens that list where it is seen, and otherwise a user's story's reply field with the keyboard
+  // * (iOS, Android) — never a group's or a channel's; what comes rises after the finger until then
+  const [swipeUpProgress, setSwipeUpProgress] = createSignal(0);
+  const canSwipeToViews = () => canViewInteractions() && currentStory()?._ === 'storyItem';
+  const canSwipeToReply = () => canReply() && props.state.peerId.isUser();
+  const swipeUp: StorySwipeUp = {
+    move: (offset) => {
+      const distance = Math.min(200, windowSize.height * .15);
+      setSwipeUpProgress(canSwipeToViews() || canSwipeToReply() ? Math.min(1, offset / distance) : 0);
+    },
+    end: () => {
+      const done = swipeUpProgress() >= 1;
+      setSwipeUpProgress(0);
+      if(!done) {
+        return;
+      }
+
+      if(canSwipeToViews()) {
+        openViewsList();
+      } else if(canSwipeToReply() && storyChatInput) {
+        // * in the touch's own end, or the keyboard does not come
+        focusInput(storyChatInput.messageInput);
+      }
+    }
+  };
+  props.swipeUpHandlers.set(props.state, swipeUp);
+  onCleanup(() => {
+    if(props.swipeUpHandlers.get(props.state) === swipeUp) {
+      props.swipeUpHandlers.delete(props.state);
+    }
+  });
+
+  // * once ever, a while after the heart first stands on a story that plays: how to get past ❤ (iOS, Android)
+  createEffect(() => {
+    const button = likeButtonElement();
+    if(
+      appSettings.seenTooltips.storyReactions ||
+      !button ||
+      !isActive() ||
+      !stories.startTime ||
+      stories.paused ||
+      focused() ||
+      untrack(tooltipCloseCallback)
+    ) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      if(!button.isConnected || tooltipCloseCallback()) {
+        return;
+      }
+
+      setAppSettings('seenTooltips', 'storyReactions', true);
+      const {close} = showTooltip({
+        element: button,
+        container: div,
+        vertical: 'top',
+        textElement: i18n(IS_TOUCH_SUPPORTED ? 'Story.ReactionsHint.LongTap' : 'Story.ReactionsHint.RightClick'),
+        paddingX: 13
+      });
+      setTooltipCloseCallback(() => close);
+    }, 1000);
+    onCleanup(() => clearTimeout(timeout));
+  });
 
   // * top menu start
 
@@ -2185,9 +2763,153 @@ const Stories = (props: {
     peer: User.user | MTChat.channel,
     peerId: PeerId,
     story: StoryItem.storyItem | StoryItem.storyItemSkipped,
-    ignoreOnClose = false;
+    ignoreOnClose = false,
+    // * the story is the viewer's own, or a channel's whose stories they edit: what is left is someone
+    // * else's, whose menu holds what only a viewer needs (iOS performOtherMoreAction, Android's second one)
+    canEdit = false;
+
+  const isVideoStory = () => !!videoDuration();
+  const isOthersStory = () => story?._ === 'storyItem' && !canEdit;
+
+  const speedButton: ButtonMenuItemOptionsVerifiable = createSubmenuTrigger({
+    options: {
+      icon: getPlaybackRateIcon(1),
+      text: 'Story.PlaybackSpeed',
+      separatorDown: true,
+      verify: () => {
+        // * its icon says the speed the videos play at
+        speedButton.icon = getPlaybackRateIcon(stories.playbackRate);
+        return isVideoStory();
+      }
+    },
+    createSubmenu: () => {
+      const menu = ButtonMenuSync({
+        buttons: PLAYBACK_RATES.map((rate) => ({
+          ...getPlaybackRateMenuButton(rate),
+          icon: rate === stories.playbackRate ? 'check' : undefined,
+          onClick: () => actions.setPlaybackRate(rate)
+        }))
+      });
+      menu.classList.add('checkable-button-menu');
+      setPlaybackRateMenuState(menu, stories.playbackRate);
+      return menu;
+    }
+  });
+
+  const albumButton = createAddToAlbumSubmenuTrigger({
+    getPeerId: () => props.state.peerId,
+    getStoryIds: () => [story.id],
+    getAlbums: () => rootScope.managers.appStoriesManager.getAlbums(props.state.peerId),
+    verify: () => canEdit,
+    onCreateAlbum: async() => {
+      const managers = bindManagersToSession(rootScope.managers);
+      const peerId = props.state.peerId;
+      ignoreOnClose = true;
+      const onAnyPopupClose = bindOnAnyPopupClose(wasPlaying);
+      let albumId: number;
+      try {
+        albumId = await openCreateAlbumPopup(peerId, [story.id]);
+      } catch(err) {
+        toastNew({langPackKey: 'Error.AnError'});
+      } finally {
+        onAnyPopupClose();
+      }
+
+      if(albumId === undefined) {
+        return;
+      }
+
+      const albums = await managers.appStoriesManager.getAlbums(peerId);
+      const album = albums.find((album) => album.album_id === albumId);
+      toastNew({
+        langPackKey: 'Story.AddedToAlbum',
+        langPackArguments: [wrapEmojiText(album?.title ?? '')]
+      });
+    }
+  });
+
+  const setHighQuality = (highQuality: boolean) => {
+    setAppSettings('stories', 'highQuality', highQuality);
+    setQuizHint({
+      title: i18n(highQuality ? 'Story.ToastQualityHD.Title' : 'Story.ToastQualitySD.Title'),
+      textElement: i18n(highQuality ? 'Story.ToastQualityHD.Text' : 'Story.ToastQualitySD.Text'),
+      appendTo: storyDiv,
+      from: 'bottom',
+      duration: 3000,
+      icon: STORY_QUALITY_ICON
+    });
+  };
+
+  const isQualityShown = async() => isVideoStory() && isOthersStory() && !(await apiManagerProxy.isPremiumFeaturesHidden());
+  const isHighQuality = () => isStoryHighQuality(peerId, story as StoryItem.storyItem);
+
+  // * one's own story or a channel's one edits is saved freely; someone else's, unless it is protected,
+  // * with Premium only, which the item offers otherwise
+  const canSaveFreely = () => props.state.peerId === rootScope.myId || canEdit;
+  const canSaveWithPremium = () => story?._ === 'storyItem' && !story.pFlags.noforwards;
+
+  // * asked for as the menu opens, once for both of its items
+  let containedPacks: Promise<Record<StoryContainedPacksKind, StoryContainedPacks>>;
+  const createContainedPacksButton = (kind: StoryContainedPacksKind) => {
+    const button: ButtonMenuItemOptionsVerifiable = {
+      text: 'Loading',
+      multiline: true,
+      // * the line above the two goes with the first, and stays while either of them does
+      separator: kind === 'stickers',
+      onClick: () => {
+        ignoreOnClose = true;
+        const onAnyPopupClose = bindOnAnyPopupClose(wasPlaying);
+        containedPacks.then((packs) => {
+          const {inputs} = packs[kind];
+          if(inputs.length) {
+            showStickersPopup(inputs, kind === 'emoji', undefined, onAnyPopupClose);
+          } else {
+            onAnyPopupClose();
+          }
+        });
+      },
+      verify: () => !!containedPacks,
+      onOpen: () => {
+        const {element, textElement} = button;
+        if(!element) {
+          return;
+        }
+
+        // * one row says it is loading, the other one waits out of sight to be known; neither opens before
+        if(kind === 'emoji') {
+          element.classList.add('hide');
+        }
+
+        setButtonMenuItemDisabled(button, true);
+        containedPacks.then((packs) => {
+          if(button.element !== element) {
+            return;
+          }
+
+          const has = !!packs[kind].inputs.length;
+          element.classList.toggle('hide', !has);
+          setButtonMenuItemDisabled(button, !has);
+          if(has) {
+            replaceContent(textElement, wrapStoryContainedPacks(kind, packs[kind]));
+          }
+
+          if(kind === 'stickers') {
+            (button.separator as HTMLElement)?.classList?.toggle('hide', !has && !packs.emoji.inputs.length);
+          }
+        });
+      }
+    };
+
+    return button;
+  };
+
+  const containedPacksButtons = [createContainedPacksButton('stickers'), createContainedPacksButton('emoji')];
+
+  // * the submenus and the packs' items set themselves up on the menu built
+  const menuButtonsWithSetup = [albumButton, speedButton, ...containedPacksButtons];
+
   const btnMenu = ButtonMenuToggle({
-    buttons: [{
+    buttons: [albumButton, speedButton, {
       icon: 'settings',
       text: 'StorySettings',
       onClick: () => {
@@ -2238,6 +2960,24 @@ const Stories = (props: {
         return (story.pFlags.public/*  || appConfig.stories_export_nopublic_link */) && !!getPeerActiveUsernames(peer)[0];
       }
     }, {
+      icon: STORY_QUALITY_ICON,
+      text: 'Story.ContextMenuSD',
+      onClick: () => setHighQuality(false),
+      verify: async() => isHighQuality() && await isQualityShown()
+    }, {
+      icon: STORY_QUALITY_ICON,
+      text: 'Story.ContextMenuHD',
+      onClick: () => setHighQuality(true),
+      verify: async() => rootScope.premium && !isHighQuality() && await isQualityShown()
+    }, {
+      icon: 'premium_lock',
+      text: 'Story.ContextMenuHD',
+      onClick: () => {
+        ignoreOnClose = true;
+        showStoryQualityUpgradePopup(bindOnAnyPopupClose(wasPlaying));
+      },
+      verify: async() => !rootScope.premium && await isQualityShown()
+    }, {
       icon: 'download',
       text: 'MediaViewer.Context.Download',
       onClick: () => {
@@ -2248,21 +2988,49 @@ const Stories = (props: {
         }
         appDownloadManager.downloadToDisc({media: unwrap(media)});
       },
-      verify: () => {
-        if(props.state.peerId === rootScope.myId) {
-          return true;
-        }
-
-        const story = currentStory();
-        return !!(story?._ === 'storyItem' && !story.pFlags.noforwards && rootScope.premium);
-      }
+      verify: () => canSaveFreely() || (canSaveWithPremium() && rootScope.premium)
+    }, {
+      icon: 'premium_lock',
+      text: 'MediaViewer.Context.Download',
+      onClick: () => {
+        toastNew({
+          langPackKey: 'Story.ToastPremiumSaveToGallery',
+          langPackArguments: [anchorCallback(() => {
+            hideToast();
+            hotReloadGuard.showPremiumPopup({feature: 'stories'});
+          })],
+          // * it has a link to follow: longer than a toast that only tells
+          duration: 5000
+        });
+      },
+      verify: async() => !canSaveFreely() &&
+        canSaveWithPremium() &&
+        !rootScope.premium &&
+        !(await apiManagerProxy.isPremiumFeaturesHidden())
     }, {
       icon: 'eyecross',
       text: 'Stories.StealthMode.View',
-      onClick: () => {
+      onClick: async() => {
+        const managers = bindManagersToSession(rootScope.managers);
         ignoreOnClose = true;
-        const appConfig = useAppConfig();
         const onAnyPopupClose = bindOnAnyPopupClose(wasPlaying);
+        const stealthMode = await managers.appStoriesManager.getStealthMode();
+        // * already on: for how much longer, instead of the window that turns it on
+        const activeFor = (stealthMode?.active_until_date || 0) - tsNow(true);
+        if(activeFor > 0) {
+          setQuizHint({
+            title: i18n('Story.ToastStealthModeActiveTitle'),
+            textElement: i18n('Story.ToastStealthModeActiveText', [wrapStoriesStealthModeDuration(activeFor)]),
+            appendTo: storyDiv,
+            from: 'bottom',
+            duration: 5000,
+            icon: 'eyecross'
+          });
+          onAnyPopupClose();
+          return;
+        }
+
+        const appConfig = useAppConfig();
         showStoriesStealthModePopup({
           onActivate: () => {
             setQuizHint({
@@ -2279,8 +3047,13 @@ const Stories = (props: {
           },
           onClose: onAnyPopupClose
         });
-      }
-    }, {
+      },
+      // * a channel's stories are watched in the open either way: neither iOS nor Android offers it there
+      verify: () => props.state.peerId.isUser()
+    }, ...createStoriesNotifyMuteButtons(
+      () => props.state.peerId,
+      () => isOthersStory() && props.state.peerId !== CHANGELOG_PEER_ID
+    ), {
       icon: 'archive',
       text: 'ArchivePeerStories',
       onClick: () => togglePeerHidden(true),
@@ -2297,22 +3070,45 @@ const Stories = (props: {
       verify: async() => props.state.peerId !== rootScope.myId &&
         await rootScope.managers.appStoriesManager.getPeerStoriesRemoval(props.state.peerId) === 'remove'
     }, {
+      icon: 'premium_translate',
+      text: 'TranslateMessage',
+      onClick: () => toggleCaptionTranslation(story.id, true),
+      verify: async() => isOthersStory() &&
+        !isCaptionTranslated(story.id) &&
+        !!(await detectLanguageForTranslation((story as StoryItem.storyItem).caption))
+    }, {
+      icon: 'premium_translate',
+      text: 'Story.HideTranslation',
+      onClick: () => toggleCaptionTranslation(story.id, false),
+      verify: () => story?._ === 'storyItem' && isCaptionTranslated(story.id)
+    }, {
       icon: 'statistics_filled',
       text: 'ViewStatistics',
       onClick: () => {
         const storyId = currentStory().id;
         props.close(() => {
           setTimeout(() => {
-            appSidebarRight.createTab(AppStatisticsTab).open(peerId.toChatId(), undefined, storyId);
-            appSidebarRight.toggleSidebar(true);
+            hotReloadGuard.appSidebarRight.createTab(AppStatisticsTab).open(peerId.toChatId(), undefined, storyId);
+            hotReloadGuard.appSidebarRight.toggleSidebar(true);
           }, 0);
         });
       },
       verify: () => rootScope.managers.appProfileManager.canViewStatistics(peerId)
     }, {
+      // * a group's story with a reply field has no footer to open who reacted from: its admins open it here,
+      // * as the mouse and the keyboard have no swipe up
+      icon: 'reactions',
+      text: 'Reactions',
+      onClick: () => {
+        ignoreOnClose = true;
+        openViewsList(wasPlaying);
+      },
+      verify: () => story?._ === 'storyItem' && !peerId.isUser() && canViewInteractions() && canReply()
+    }, {
       icon: 'delete danger' as Icon,
       text: 'Delete',
       onClick: async() => {
+        const managers = bindManagersToSession(rootScope.managers);
         const id = currentStory().id;
         const peerId = props.state.peerId;
         ignoreOnClose = true;
@@ -2331,7 +3127,7 @@ const Stories = (props: {
           return;
         }
 
-        rootScope.managers.appStoriesManager.deleteStories(peerId, [id]);
+        managers.appStoriesManager.deleteStories(peerId, [id]);
       },
       verify: () => rootScope.managers.appStoriesManager.hasRights(peerId, story.id, 'delete')
     }, {
@@ -2345,9 +3141,30 @@ const Stories = (props: {
       },
       verify: () => !(story as StoryItem.storyItem).pFlags?.out && props.state.peerId !== CHANGELOG_PEER_ID
       // separator: true
-    }],
+    }, ...containedPacksButtons],
     direction: 'bottom-left',
-    ...topMenuOptions
+    positionPadding: {top: STORY_MENU_PADDING, bottom: STORY_MENU_PADDING},
+    ...topMenuOptions,
+    onOpenBefore: async() => {
+      const managers = bindManagersToSession(rootScope.managers);
+      await topMenuOptions.onOpenBefore();
+      containedPacks = story?._ === 'storyItem' && storyHasContainedPacks(story) ?
+        getStoryContainedPacks(story, managers) :
+        undefined;
+      canEdit = story?._ === 'storyItem' && await managers.appStoriesManager.hasRights(peerId, story.id, 'edit');
+    },
+    onOpen: (e, element) => {
+      topMenuOptions.onOpen(e, element);
+      // * as many items as it can have do not fit under the header of a short screen: it scrolls in the room it has,
+      // * as a floating menu does
+      const top = btnMenu.getBoundingClientRect().bottom + STORY_MENU_PADDING;
+      element.style.maxHeight = `${Math.max(0, getAppWindow().innerHeight - top - DEFAULT_MENU_WINDOW_MARGIN)}px`;
+      element.style.overflowY = 'auto';
+      menuButtonsWithSetup.forEach((button) => button.onOpen?.());
+    },
+    onClose: () => {
+      menuButtonsWithSetup.forEach((button) => button.onClose?.());
+    }
   });
   btnMenu.classList.add('night');
   btnMenu.setAttribute('aria-label', I18n.format('MultiAccount.More', true));
@@ -2355,13 +3172,6 @@ const Stories = (props: {
   // * top menu end
 
   // * privacy icon start
-
-  const privacyIconMap: {[key in StoryPrivacyType]: Icon} = {
-    close: 'star_filled',
-    contacts: 'newprivate_filled',
-    public: 'newchannel_filled',
-    selected: 'newgroup_filled'
-  };
 
   const onPrivacyIconClick = async() => {
     if(isMe) {
@@ -2416,7 +3226,7 @@ const Stories = (props: {
       onClick={() => onPrivacyIconClick()}
       aria-label={I18n.format('PrivacyTitle', true)}
     >
-      {Icon(privacyIconMap[privacyType()])}
+      {Icon(STORY_PRIVACY_ICONS[privacyType()])}
     </A11yButton>
   );
 
@@ -2443,55 +3253,41 @@ const Stories = (props: {
     }
   });
 
-  const openViewsList = isMe && (() => {
-    let nextOffset: string;
-    const viewsMap: Map<PeerId, StoryView.storyView> = new Map();
-    const popup = showPickUserPopup({
-      titleLangKey: 'StoryViewers',
-      peerType: ['custom'],
-      getMoreCustom: (q) => {
-        const loadCount = 50;
-        return rootScope.managers.appStoriesManager.getStoryViewsList(
-          props.state.peerId,
-          currentStory().id,
-          loadCount,
-          nextOffset,
-          q
-        ).then(({nextOffset: _nextOffset, views}) => {
-          nextOffset = _nextOffset;
-          return {
-            result: views.map((storyView) => {
-              const peerId = storyView.user_id.toPeerId(false);
-              viewsMap.set(peerId, storyView);
-              return peerId;
-            }),
-            isEnd: !nextOffset
-          };
-        });
+  const openViewsList = (wasPlaying?: boolean) => {
+    const story = currentStory();
+    if(story?._ !== 'storyItem' || !canViewInteractions()) {
+      return;
+    }
+
+    // * held still from the start, not once the list has come, and played on once it closes
+    const onClose = bindOnAnyPopupClose(wasPlaying);
+    actions.pause();
+    showStoryViewersPopup({
+      peerId: props.state.peerId,
+      storyId: story.id,
+      stories: () => props.state.stories,
+      // * the story the list goes to is the one the viewer stands on once it closes (iOS, Android)
+      onStoryChange: (id) => {
+        const index = props.state.stories.findIndex((story) => story.id === id);
+        if(index !== -1) {
+          actions.set({peer: props.state, index});
+        }
       },
-      processElementAfter: (peerId, dialogElement) => {
-        const view = viewsMap.get(peerId);
-        return processDialogElementForReaction({
-          dialogElement,
-          peerId,
-          date: view.date,
-          isMine: true,
-          middleware: popup.selector.middlewareHelperLoader.get(),
-          reaction: view.reaction
-        });
+      onOpenPeer: (peerId) => {
+        props.close(() => hotReloadGuard.appImManager.setInnerPeer({peerId}));
       },
-      onSelect: ([obj]) => {
-        props.close(() => {
-          appImManager.setInnerPeer(obj);
-        });
+      onOpenStory: (peerId, id) => {
+        props.close(() => createStoriesViewerWithPeer({peerId, id}));
       },
-      placeholder: 'SearchPlaceholder',
-      exceptSelf: true,
-      meAsSaved: false
+      onOpenMessage: (peerId, mid) => {
+        props.close(() => hotReloadGuard.appImManager.setInnerPeer({peerId, lastMsgId: mid}));
+      },
+      onClose
     });
-  });
+  };
 
   const onDeleteClick = isMe && (async() => {
+    const managers = bindManagersToSession(rootScope.managers);
     const peerId = props.state.peerId;
     const storyId = currentStory().id;
     await confirmationPopup({
@@ -2503,7 +3299,7 @@ const Stories = (props: {
       }
     });
 
-    rootScope.managers.appStoriesManager.deleteStories(peerId, [storyId]);
+    managers.appStoriesManager.deleteStories(peerId, [storyId]);
   });
 
   if(isMe) {
@@ -2550,57 +3346,137 @@ const Stories = (props: {
     });
   }
 
-  let footerReactionElement: HTMLButtonElement;
-  const footer = (isMe || CHANGELOG_PEER_ID === props.state.peerId || !props.state.peerId.isUser()) && (
+  // * a group whose own restrictions hold the member back lifts them for enough boosts (iOS, Android)
+  const openBoostToUnrestrict = async() => {
+    // * of the account the story is watched on: a switch while it opens opens nothing on the next one
+    const managers = bindManagersToSession(rootScope.managers);
+    const peerId = props.state.peerId;
+    // * held still while the popup loads, and played on once it closes, as for the story's other popups
+    const onClose = bindOnAnyPopupClose();
+    actions.pause();
+    try {
+      const peerTitle = await wrapPeerTitle({peerId});
+      await openBoosts({
+        peerId,
+        managers,
+        slider: hotReloadGuard.appSidebarRight,
+        reason: {
+          titleLangKey: 'BoostGroup',
+          descriptionLangKey: 'Story.BoostToUnrestrict',
+          descriptionArgs: [i18n('Story.BoostToUnrestrict.Times', [boostsNeeded()]), peerTitle]
+        },
+        onClose
+      });
+    } catch{
+      onClose();
+    }
+  };
+
+  // * the footer of a story with no reply field: what stands on its start is the story's own to say, the
+  // * heart and the sharing stand on its end
+  let footerReactionIcon: HTMLElement, footerShareButton: HTMLElement;
+  const storyViews = () => (currentStory() as StoryItem.storyItem).views;
+  // * a count stands beside its icon for as long as there is something to count, and one's own reaction is
+  // * counted before the server has (iOS, Android)
+  const footerCount = (count: number) => count > 0 && (
+    <span class={styles.ViewerStoryFooterCount}>{formatNumber(count, 1)}</span>
+  );
+  const reactionsCount = () => Math.max((currentStory() as StoryItem.storyItem).sent_reaction ? 1 : 0, storyViews()?.reactions_count || 0);
+  // * a channel's or a group's story is seen at least once, by whoever is looking at it (Android)
+  const channelViews = () => [
+    Icon('eye1_filled', styles.ViewerStoryFooterIconIcon),
+    footerCount(storyViews()?.views_count || 1)
+  ];
+  const footer = () => (
     <div
       class={classNames(
         styles.ViewerStoryFooter,
         styles.hideOnSmall,
-        rootScope.myId === props.state.peerId && styles.isMe,
-        CHANGELOG_PEER_ID === props.state.peerId && styles.isChangelog
+        isMe && styles.isMe,
+        isChangelog && styles.isChangelog
       )}
+      style={swipeUpProgress() ? {transform: `translateY(${-swipeUpProgress() * SWIPE_UP_RISE}px)`} : undefined}
     >
       {isMe ? (
         <>
-          <A11yButton class={styles.ViewerStoryFooterLeft} onClick={openViewsList}>
+          <A11yButton class={styles.ViewerStoryFooterLeft} onClick={() => openViewsList()}>
             {stackedAvatars() && stackedAvatars().container}
             {getViews()}
+            {/* * the reactions in red and the reposts in green follow the views (iOS, Android) */}
+            {storyViews()?.views_count > 0 && storyViews().reactions_count > 0 && (
+              <span class={classNames(styles.ViewerStoryFooterStat, styles.reactions)}>
+                {Icon('reactions_filled', styles.ViewerStoryFooterStatIcon)}
+                <span aria-hidden="true">{formatNumber(storyViews().reactions_count, 1)}</span>
+                <span class="sr-only">{i18n('ReactionsTooltip', [storyViews().reactions_count])}</span>
+              </span>
+            )}
+            {storyViews()?.views_count > 0 && storyViews().forwards_count > 0 && (
+              <span class={classNames(styles.ViewerStoryFooterStat, styles.reposts)}>
+                {Icon(STORY_REPOST_ICON, styles.ViewerStoryFooterStatIcon)}
+                <span aria-hidden="true">{formatNumber(storyViews().forwards_count, 1)}</span>
+                <span class="sr-only">{i18n('SharesTooltip', [storyViews().forwards_count])}</span>
+              </span>
+            )}
           </A11yButton>
           <div class={styles.ViewerStoryFooterRight}>
             <ButtonIconTsx icon="delete" onClick={onDeleteClick} />
           </div>
         </>
-      ) : (!props.state.peerId.isUser() ? (
+      ) : (!isChangelog && (!props.state.peerId.isUser() || mediaUnsupported()) ? (
         <>
           <div class={styles.ViewerStoryFooterLeft}>
-            <span class={styles.ViewerStoryFooterIcon}>
-              {Icon('eye1_filled', styles.ViewerStoryFooterIconIcon)}
-              {formatNumber((currentStory() as StoryItem.storyItem).views?.views_count || 1, 1)}
-            </span>
+            {mediaUnsupported() ? (
+              <span class={styles.ViewerStoryFooterText}>{i18n('StoryCantReply')}</span>
+            ) : replyMode() === 'boost' ? (
+              <A11yButton class={styles.ViewerStoryFooterLocked} onClick={openBoostToUnrestrict}>
+                <IconTsx icon="lock" class={styles.ViewerStoryFooterLockedIcon} />
+                <span class={styles.ViewerStoryFooterLockedText}>{i18n('Story.CommentsRestricted')}</span>
+                <span class={styles.ViewerStoryFooterLockedButton}>{i18n('Unlock')}</span>
+              </A11yButton>
+            ) : canViewInteractions() ? (
+              // * the admins who edit the stories open who reacted to them from the views (Android, iOS)
+              <A11yButton
+                as="span"
+                class={classNames(styles.ViewerStoryFooterIcon, styles.ViewerStoryFooterReaction)}
+                aria-label={I18n.format('Reactions', true)}
+                onClick={() => openViewsList()}
+              >
+                {channelViews()}
+              </A11yButton>
+            ) : (
+              <span class={styles.ViewerStoryFooterIcon}>
+                {channelViews()}
+              </span>
+            )}
           </div>
           <div class={styles.ViewerStoryFooterRight}>
-            {canShareStory() && (
-              <ButtonIconTsx
-                icon="forward"
+            {/* * a story shown as a note is not shared either (Android) */}
+            {canShareStory() && !mediaUnsupported() && (
+              <A11yButton
+                as="span"
+                ref={footerShareButton}
+                aria-label={I18n.format('Forward', true)}
+                class={classNames(styles.ViewerStoryFooterIcon, styles.ViewerStoryFooterReaction)}
                 onClick={(e) => {
-                  onShareButtonClick(e, e.target as HTMLElement);
+                  onShareButtonClick(e, footerShareButton);
                 }}
-              />
+              >
+                {Icon('forward', styles.ViewerStoryFooterIconIcon)}
+                {/* * how many times it was shared, with the button that shares it (iOS, Android) */}
+                {footerCount(storyViews()?.forwards_count)}
+              </A11yButton>
             )}
             <A11yButton
               as="span"
               aria-label={I18n.format('Reactions', true)}
               aria-pressed={!!(currentStory() as StoryItem.storyItem).sent_reaction}
-              ref={footerReactionElement}
-              class={classNames(
-                styles.ViewerStoryFooterIcon,
-                styles.ViewerStoryFooterReaction,
-                (currentStory() as StoryItem.storyItem).sent_reaction && styles.isReacted
-              )}
-              onClick={() => sendReaction({reaction: {_: 'reactionEmoji', emoticon: DEFAULT_REACTION_EMOTICON}, target: footerReactionElement.firstElementChild as HTMLElement})}
+              ref={likeButton.bind}
+              class={classNames(styles.ViewerStoryFooterIcon, styles.ViewerStoryFooterReaction)}
+              onClick={() => likeButton.toggle(footerReactionIcon)}
             >
-              <IconTsx icon={(currentStory() as StoryItem.storyItem).sent_reaction ? 'reactions_filled' : 'reactions'} class={styles.ViewerStoryFooterIconIcon}></IconTsx>
-              {(currentStory() as StoryItem.storyItem).views?.reactions_count || 0}
+              <span ref={footerReactionIcon} class={styles.ViewerStoryFooterReactionIcon}>{reaction()}</span>
+              {/* * counted for a channel's or a group's story, not for a person's */}
+              {!props.state.peerId.isUser() && footerCount(reactionsCount())}
             </A11yButton>
           </div>
         </>
@@ -2614,7 +3490,7 @@ const Stories = (props: {
     on(
       () => [isActive(), currentStory()],
       () => {
-        if(liteMode.isAvailable('animations')) {
+        if(liteMode.isAvailable('motion')) {
           return;
         }
 
@@ -2641,9 +3517,15 @@ const Stories = (props: {
       return;
     }
 
-    const peerId = props.state.peerId;
+    // * the author's name opens the author, the rest of it the group (Android)
+    openPeer(findUpClassName(e.target, styles.ViewerStoryHeaderAuthor) && author() ?
+      author().peerId :
+      props.state.peerId);
+  };
+
+  const openPeer = (peerId: PeerId) => {
     props.close(() => {
-      appImManager.setInnerPeer({peerId});
+      hotReloadGuard.appImManager.setInnerPeer({peerId});
     });
   };
 
@@ -2651,12 +3533,13 @@ const Stories = (props: {
     return props.index() - props.peers.indexOf(stories.peer);
   });
 
+  // * a set further on in the list turns in from the inline end: from the left in RTL
   const fromLeft = createMemo<boolean>((prev) => {
-    return sliding() ? prev : diffToActive() < 0;
+    return sliding() ? prev : (I18n.isRTL() ? diffToActive() > 0 : diffToActive() < 0);
   });
 
   const fromRight = createMemo<boolean>((prev) => {
-    return sliding() ? prev : diffToActive() > 0;
+    return sliding() ? prev : (I18n.isRTL() ? diffToActive() < 0 : diffToActive() > 0);
   });
 
   const [fadeIn, setFadeIn] = createSignal(false);
@@ -2698,6 +3581,9 @@ const Stories = (props: {
       return true;
     }
   });
+
+  // * where the story stands while held: its clock is stopped there
+  const seekProgress = () => stories.storyDuration ? clamp(stories.elapsedTimeOnPause / stories.storyDuration, 0, 1) : 0;
 
   let div: HTMLDivElement, storyDiv: HTMLDivElement, headerDiv: HTMLDivElement;
   const ret = (
@@ -2742,7 +3628,8 @@ const Stories = (props: {
           const {fwdFrom, mediaAreaChannelPost} = repostInfo;
           if(fwdFrom?.from || mediaAreaChannelPost) {
             e.stopPropagation();
-            props.close(() => {
+            const managers = bindManagersToSession(rootScope.managers);
+            props.close(async() => {
               const peerId = fwdFrom ? getPeerId(fwdFrom.from) : mediaAreaChannelPost.channel_id.toPeerId(true);
               if(fwdFrom?.story_id && !findUpClassName(e.target, styles.ViewerStoryHeaderRepost)) {
                 createStoriesViewerWithPeer({
@@ -2750,10 +3637,13 @@ const Stories = (props: {
                   id: fwdFrom.story_id
                 });
               } else {
-                appImManager.setInnerPeer({
-                  peerId,
-                  lastMsgId: mediaAreaChannelPost?.msg_id
-                });
+                // * the post by the client's id of it, not the server's: given the server's, the chat stopped
+                // * at the nearest post and said the one asked for did not exist
+                const lastMsgId = mediaAreaChannelPost && await managers.appMessagesIdsManager.generateMessageId(
+                  mediaAreaChannelPost.msg_id,
+                  peerId.toChatId()
+                );
+                hotReloadGuard.appImManager.setInnerPeer({peerId, lastMsgId});
               }
             });
           }
@@ -2773,14 +3663,20 @@ const Stories = (props: {
           findUpClassName(e.target, styles.ViewerStory)
         ) {
           const rect = div.getBoundingClientRect();
-          const next = e.clientX > (rect.left + rect.width / 3);
+          // * the first third from the inline start goes back: the right one in RTL
+          const x = I18n.getIsRTL() ? rect.right - e.clientX : e.clientX - rect.left;
+          const next = x > rect.width / 3;
           actions.goToNearestStorySafe(next);
         }
       }}
       onTransitionStart={onTransitionStart}
       onTransitionEnd={onTransitionEnd}
     >
-      <div ref={storyDiv} class={classNames(styles.ViewerStory, loading() && isActive() && 'shimmer')}>
+      <div ref={storyDiv} class={styles.ViewerStory}>
+        {/* fades out with the media fading in, rather than going in one frame */}
+        <Transition name="fade-2">
+          {loading() && isActive() && <div class={classNames(styles.ViewerStoryShimmer, 'shimmer')} />}
+        </Transition>
         <div class={styles.ViewerStoryContent}>
           {contentItem}
         </div>
@@ -2804,7 +3700,7 @@ const Stories = (props: {
                 <div
                   class={classNames(
                     // styles.ViewerStoryHeaderRow,
-                    repost() ? styles.hasRepost : styles.ViewerStoryHeaderSecondary,
+                    repost() || author() ? styles.hasRepost : styles.ViewerStoryHeaderSecondary,
                     styles.ViewerStoryHeaderTime
                   )}
                 >
@@ -2812,6 +3708,13 @@ const Stories = (props: {
                 </div>
               </div>
             </A11yButton>
+            {/* * the author's name inside the header's button opens the author by pointer only; from the
+              keyboard it is a control of its own, as the viewer's other ones for the keyboard */}
+            {Modes.a11y && author() && (
+              <button type="button" class="sr-only sr-only-focusable" onClick={() => openPeer(author().peerId)}>
+                {author().name}
+              </button>
+            )}
             <div class={styles.ViewerStoryHeaderRight}>
               {privacyType() && privacyIcon}
               <ButtonIconTsx
@@ -2838,8 +3741,20 @@ const Stories = (props: {
           <Show keyed when={music()}>
             {(doc) => <StoryMusicPanel doc={doc} menuOptions={topMenuOptions} />}
           </Show>
-          {reactionsMenu()?.widthContainer}
+          {reactionsMenu()?.menu.widthContainer}
         </div>
+        {/* held and dragged along, the story's own line stands alone, as a video's seek bar: it is not
+          mirrored (playback runs left to right), and holding hides the rest of the interface */}
+        <Transition name="fade-2">
+          {isActive() && stories.seeking && (
+            <div class={styles.ViewerStorySeek}>
+              <div class={styles.ViewerStorySeekBar} dir="ltr">
+                <div class={styles.ViewerStorySeekBarFill} style={{transform: `scaleX(${seekProgress()})`}} />
+              </div>
+              <div class={styles.ViewerStorySeekHint}>{i18n('Story.SlideToSeek')}</div>
+            </div>
+          )}
+        </Transition>
         {/* Media areas are part of the story, not of the interface drawn over it — holding to
           pause fades the interface away and has to leave them where they are (iOS keeps them in
           the content view for the same reason), so they live outside `hideOnSmall`. */}
@@ -2858,7 +3773,9 @@ const Stories = (props: {
           </div>
         )}
       </div>
-      {storyInput || footer}
+      <Show when={canReply()} fallback={replyMode() && footer()}>
+        {storyInput()}
+      </Show>
       {/* <MessageInputField /> */}
     </div>
   );
@@ -2920,7 +3837,7 @@ export default function StoriesViewer(props: {
 
     if(CANCELABLE_KEYS.has(e.key) || CANCELABLE_KEYS.has(e.code)) {
       cancelEvent(e);
-    } else {
+    } else if(!keepsKeyFromComposer(e)) {
       const input = activeStoryContainer.querySelector<HTMLElement>('.input-message-input');
       if(
         input &&
@@ -2942,9 +3859,10 @@ export default function StoriesViewer(props: {
   };
 
   const throttledKeyDown = throttle((e: KeyboardEvent) => {
-    if(e.key === 'ArrowRight') {
+    const inlineKeys = getInlineArrowKeys();
+    if(e.key === inlineKeys.next) {
       actions.goToNearestStorySafe(true);
-    } else if(e.key === 'ArrowLeft') {
+    } else if(e.key === inlineKeys.previous) {
       actions.goToNearestStorySafe(false);
     } else if(e.code === 'Space') {
       actions.toggle();
@@ -2970,7 +3888,9 @@ export default function StoriesViewer(props: {
     emoticonsDropdown.chatInput = undefined;
   });
 
+  let closed = false;
   const close = (callback?: () => void) => {
+    closed = true;
     callback && runWithOwner(owner, () => {
       onCleanup(() => {
         callback();
@@ -2992,6 +3912,7 @@ export default function StoriesViewer(props: {
 
   let div: HTMLDivElement, backgroundDiv: HTMLDivElement, closeButton: HTMLButtonElement;
   let dispose: () => void; // * dispose listeners on close to avoid effects during animation
+  const swipeUpHandlers: Map<StoriesContextPeerState, StorySwipeUp> = new Map();
   const ret = createRoot((_dispose) => {
     dispose = _dispose;
 
@@ -3008,6 +3929,8 @@ export default function StoriesViewer(props: {
 
     const openOnReady = () => {
       clearTimeout(timeout)
+      // * closed while it waited for its stories: it does not open after all
+      if(closed) return;
       wasReady = true;
       runWithOwner(owner, () => {
         onMount(() => {
@@ -3025,6 +3948,7 @@ export default function StoriesViewer(props: {
       });
       openOnReady();
     }, 250);
+    onCleanup(() => clearTimeout(timeout));
 
     const createStories = (peer: StoriesContextPeerState, index: Accessor<number>) => {
       const onReady = () => {
@@ -3055,6 +3979,7 @@ export default function StoriesViewer(props: {
           peers={itemsToRender()}
           isFull={isFull}
           transitionSignal={transitionSignal}
+          swipeUpHandlers={swipeUpHandlers}
         />
       );
 
@@ -3126,12 +4051,55 @@ export default function StoriesViewer(props: {
     );
   });
 
-  let pauseTimeout: number;
+  // * a video held still for a moment is moved through by dragging along it, the whole of it in 220 px
+  // * (Android) - the finger's own coordinates, as the video is not mirrored. Touch only, as on iOS and
+  // * Android: a mouse holds to pause alone
+  const SEEK_HOLD = 500, SEEK_DISTANCE = 220, SEEK_MOVE_TOLERANCE = 10;
+  let pauseTimeout: number, seekTimeout: number, seekFrom: number;
+  const startSeeking = () => {
+    const progress = actions.getProgress();
+    if(!stories.paused || !stories.hideInterface || progress === undefined || stories.storyDuration === STORY_DURATION) {
+      return;
+    }
+
+    seekFrom = progress;
+    actions.setSeeking(true);
+  };
+
+  // * which way the drag goes, told by its first few pixels: one going up is the story's, never a jump to
+  // * the next set or a close; the story waits meanwhile, its interface in sight, and plays on after it as
+  // * it did before it
+  let swipeAxis: 'up' | 'other', playingBeforeSwipeUp: boolean;
   const swipeHandler = new SwipeHandler({
     element: div,
     onSwipe: (xDiff, yDiff, e) => {
       if(!(e instanceof TouchEvent)) {
         return;
+      }
+
+      if(stories.seeking) {
+        actions.seek(seekFrom + xDiff / SEEK_DISTANCE);
+        return false;
+      }
+
+      // * a finger that moves first swipes, as before
+      if(Math.abs(xDiff) > SEEK_MOVE_TOLERANCE || Math.abs(yDiff) > SEEK_MOVE_TOLERANCE) {
+        window.clearTimeout(seekTimeout);
+      }
+
+      if(!swipeAxis && Math.max(Math.abs(xDiff), Math.abs(yDiff)) > 8) {
+        swipeAxis = yDiff < 0 && -yDiff > Math.abs(xDiff) && swipeUpHandlers.has(stories.peer) ? 'up' : 'other';
+        if(swipeAxis === 'up') {
+          window.clearTimeout(pauseTimeout);
+          window.clearTimeout(seekTimeout);
+          playingBeforeSwipeUp = !stories.paused || stories.playAfterGesture;
+          actions.pause();
+        }
+      }
+
+      if(swipeAxis === 'up') {
+        swipeUpHandlers.get(stories.peer)?.move(Math.max(0, -yDiff));
+        return false;
       }
 
       const jumpOn = Math.min(125, windowSize.width / 3);
@@ -3146,7 +4114,8 @@ export default function StoriesViewer(props: {
       }
 
       const peerIndex = stories.peers.indexOf(stories.peer);
-      const neighbourIndex = peerIndex + (xDiff < 0 ? 1 : -1);
+      // * a swipe toward the inline start brings the next set: to the right in RTL
+      const neighbourIndex = peerIndex + ((xDiff < 0) !== I18n.getIsRTL() ? 1 : -1);
       const neighbour = stories.peers[neighbourIndex];
       if(!neighbour) {
         close();
@@ -3177,9 +4146,30 @@ export default function StoriesViewer(props: {
       pauseTimeout = window.setTimeout(() => {
         actions.pause(true);
       }, 200);
+
+      if(IS_TOUCH_SUPPORTED) {
+        seekTimeout = window.setTimeout(startSeeking, SEEK_HOLD);
+      }
     },
     onReset: (e) => {
       window.clearTimeout(pauseTimeout);
+      window.clearTimeout(seekTimeout);
+      if(stories.seeking) {
+        actions.setSeeking(false);
+      }
+
+      const swipedUp = swipeAxis === 'up';
+      swipeAxis = undefined;
+      if(swipedUp) {
+        if(playingBeforeSwipeUp) {
+          actions.play();
+        }
+
+        // * after the story plays on again, so that what the drag opens pauses it for as long as it is open
+        swipeUpHandlers.get(stories.peer)?.end();
+        return;
+      }
+
       if(!e ||
         !stories.paused ||
         findUpClassName(e.target, 'btn-icon') ||
@@ -3210,7 +4200,8 @@ export default function StoriesViewer(props: {
   let avatarFrom: ReturnType<typeof AvatarNew>;
   const open = () => {
     const target = props.target?.();
-    if(!target || !target.classList.contains('avatar')) {
+    // * the avatar flies to the header with full animations only, so below them nothing waits for it
+    if(!target || !target.classList.contains('avatar') || !liteMode.isAvailable('motion')) {
       setShow(true);
       return;
     }
@@ -3259,12 +4250,15 @@ export default function StoriesViewer(props: {
 
     const story = findUpClassName(e.target, styles.ViewerStory);
     const caption = story?.querySelector('.' + styles.ViewerStoryCaptionText) as HTMLElement;
-    const callback = caption && onMediaCaptionClick(caption, e);
+    const callback = caption && hotReloadGuard.onMediaCaptionClick(caption, e);
     if(!callback) {
       return;
     }
 
-    close(callback);
+    // * a hashtag of a story looks for the public stories with it, not for messages
+    const hashtag = findUpClassName(e.target, 'anchor-hashtag') as HTMLAnchorElement;
+    const session = getAccountSession();
+    close(hashtag ? () => openStoriesSearchByHashtag(hashtag, session) : callback);
     return false;
   };
 
@@ -3281,6 +4275,26 @@ export default function StoriesViewer(props: {
       }
 
       close();
+    },
+    closeOutright: async() => {
+      // * still waiting for its first story: nothing has shown, so nothing has to move away
+      if(!wasShown()) {
+        close();
+        animating = false;
+        props.onExit?.();
+        actions.stop();
+        deferred.resolve();
+        return;
+      }
+
+      while(animating) {
+        await deferred;
+      }
+
+      close();
+      // * and settles once it is gone: its cleanup lets go of what the next account's viewer would hold (the
+      // * emoji panel's input, its night colours) - close() only starts the exit, which resolves this
+      await deferred;
     }
   };
 
@@ -3299,9 +4313,21 @@ export default function StoriesViewer(props: {
 
     const containers = Array.from(el.querySelectorAll(`.${styles.ViewerStoryContainer}`));
     let needAvatarOpacity: boolean;
+    const dropAvatarFrom = () => {
+      if(avatarFrom) {
+        avatarFrom.node.remove();
+        avatarFrom = undefined;
+      }
+    };
     const target = untrack(() => {
       const target = props.target?.();
       if(!target) {
+        return;
+      }
+
+      // reduced animations: the viewer fades where it stands instead of flying from the avatar
+      if(!liteMode.isAvailable('motion')) {
+        dropAvatarFrom();
         return;
       }
 
@@ -3312,11 +4338,7 @@ export default function StoriesViewer(props: {
 
       const visibleRect = getVisibleRect(target as HTMLElement, overflowElement);
       if(!visibleRect) {
-        if(avatarFrom) {
-          avatarFrom.node.remove();
-          avatarFrom = undefined;
-        }
-
+        dropAvatarFrom();
         return;
       }
 
@@ -3419,7 +4441,7 @@ export default function StoriesViewer(props: {
       }
 
       return containers.map((container, idx, arr) => {
-        const offsetX = (next ? idx + 1 : (arr.length - idx)) * 60 * (next ? -1 : 1);
+        const offsetX = (next ? idx + 1 : (arr.length - idx)) * 60 * (next ? -1 : 1) * (I18n.getIsRTL() ? -1 : 1);
         return container.animate(makeKeyframes([{
           transform: `translate3d(calc(var(--translateX) + ${offsetX}px), 0, 0) scale3d(${STORY_SCALE_SMALL / 2}, ${STORY_SCALE_SMALL / 2}, 1)`,
           opacity: 0.001 // fix lag with fractal opacity so element should be prepared for animation
@@ -3457,7 +4479,14 @@ export default function StoriesViewer(props: {
   };
 
   let overlaysActive: number;
+  // * taken as it shows: one closed before it ever showed gives back nothing
+  let holdsOverlay = false;
   const toggleOverlay = (active: boolean) => {
+    if(holdsOverlay === active) {
+      return;
+    }
+
+    holdsOverlay = active;
     actions.toggleSorting('viewer', active);
     overlayCounter.isDarkOverlayActive = active;
     animationIntersector.checkAnimations2(active);
@@ -3492,15 +4521,9 @@ export default function StoriesViewer(props: {
     }
   });
 
-  let wasPlayingBeforeOverlay: boolean;
+  // * what opens over the viewer holds the story, and it plays on, if it played, once nothing is over it
   listenerSetter.add(overlayCounter)('change', () => {
-    const active = overlayCounter.overlaysActive;
-    if(active > overlaysActive) {
-      wasPlayingBeforeOverlay = !stories.paused;
-      actions.pause();
-    } else if(active === overlaysActive && wasPlayingBeforeOverlay) {
-      actions.play();
-    }
+    actions.setCovered(overlayCounter.overlaysActive > overlaysActive);
   });
 
   let deferred: CancellablePromise<void> = deferredPromise<void>();
@@ -3577,8 +4600,15 @@ export const createStoriesViewer = (
     });
   }
 
+  // * over what stands open, a popup it is opened from (a profile's shared media) included: last in
+  // * the page, as the media viewer comes, and under the popups it opens itself
+  const mount = getAppWindow().document.getElementById('stories-viewer');
+  if(mount.nextElementSibling) {
+    mount.parentElement.append(mount);
+  }
+
   return (
-    <Portal mount={getAppWindow().document.getElementById('stories-viewer')}>
+    <Portal mount={mount}>
       <StoriesViewer {...props} />
     </Portal>
   );
@@ -3609,11 +4639,12 @@ export const createStoriesViewerWithPeer = async(
     id?: number,
   }
 ): Promise<void> => {
+  const managers = bindManagersToSession(rootScope.managers);
   const [, rest] = splitProps(props, ['peerId', 'id']);
-  const peerStories = await rootScope.managers.appStoriesManager.getPeerStories(props.peerId);
+  const peerStories = await managers.appStoriesManager.getPeerStories(props.peerId);
   const storyIndex = props.id ? peerStories.stories.findIndex((story) => story.id === props.id) : undefined;
   if(props.id) {
-    const storyItem = await rootScope.managers.appStoriesManager.getStoryById(props.peerId, props.id);
+    const storyItem = await managers.appStoriesManager.getStoryById(props.peerId, props.id);
     if(!storyItem) {
       toastNew({langPackKey: 'Story.ExpiredToast'});
       return;

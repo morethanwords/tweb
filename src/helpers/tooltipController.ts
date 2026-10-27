@@ -14,4 +14,5 @@ class TooltipController {
 }
 
 const tooltipController = new TooltipController();
+if(import.meta.hot) import.meta.hot.accept();
 export default tooltipController;

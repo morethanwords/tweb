@@ -252,12 +252,13 @@
       width: 100%;
     }
 
+    // * towards the tab's side: the tabs run the other way in RTL
     &--go-left {
-      transform: translateX(-100%);
+      transform: translateX(calc(-100% * var(--reflect)));
     }
 
     &--go-right {
-      transform: translateX(100%);
+      transform: translateX(calc(100% * var(--reflect)));
     }
   }
 
@@ -308,10 +309,11 @@
       width: 20px;
       height: 20px;
       top: 50%;
-      left: calc((100% - 20px) * var(--normalized) + 10px);
+      // * a value slider: its minimum at the start of the line, as the native input under it in RTL
+      inset-inline-start: calc((100% - 20px) * var(--normalized) + 10px);
 
       border-radius: 50%;
-      transform: translate(-50%, -50%);
+      transform: translate(calc(-50% * var(--reflect)), -50%);
       background-color: var(--color);
       transition: width .1s, height .1s, box-shadow .1s;
     }
@@ -330,7 +332,7 @@
 
       background-color: #2f2f2f;
 
-      left: 0;
+      inset-inline-start: 0;
       width: 100%;
     }
 
@@ -342,8 +344,8 @@
       border-radius: 2px;
 
       width: var(--w);
-      left: var(--bar-left);
-      right: var(--bar-right);
+      inset-inline-start: var(--bar-left);
+      inset-inline-end: var(--bar-right);
 
       background-color: var(--color);
 
@@ -351,9 +353,8 @@
 
       &--shadow {
         background-color: transparent;
-        left: 0;
+        inset-inline: 0;
         width: 100%;
-        right: 0;
       }
     }
   }
@@ -554,7 +555,7 @@
     &-slider {
       position: absolute;
       top: 50%;
-      left: 16px;
+      inset-inline-start: 16px;
       transform: translateY(-50%);
 
       transition: .2s;
@@ -660,6 +661,11 @@
 
         background: linear-gradient(to right, var(--bg-color), transparent);
         transition: .1s;
+      }
+
+      // * the tool points at its name, which is on the other side in RTL
+      :root.is-rtl & {
+        transform: scaleX(-1);
       }
     }
   }
@@ -1369,7 +1375,7 @@
 
   &__finish-button {
     position: absolute;
-    right: 16px;
+    inset-inline-end: 16px;
     bottom: 16px;
     width: 54px;
     height: 54px;
@@ -1390,7 +1396,7 @@
     &--hidden {
       opacity: 0;
       pointer-events: none;
-      transform: translate(4px, 4px);
+      transform: translate(calc(4px * var(--reflect)), 4px);
     }
 
     &:hover {

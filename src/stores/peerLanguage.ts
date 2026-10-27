@@ -114,6 +114,8 @@ let _createStore = () => {
     resetPeerLanguage(peerId);
   });
   rootScope.addEventListener('state_cleared', resetPeerLanguages);
+  // * a peer's messages are another set of messages for another account
+  rootScope.addEventListener('account_switched', resetPeerLanguages);
 };
 
 function createEmpty(): TT {

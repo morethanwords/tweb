@@ -1,6 +1,6 @@
 import deferredPromise from '@helpers/cancellablePromise';
 
-import {getCurrentAccountFromURL} from '@lib/accounts/getCurrentAccountFromURL';
+import getClientAccount from '@lib/serviceWorker/clientAccounts';
 import {ActiveAccountNumber} from '@lib/accounts/types';
 import CacheStorageController from '@lib/files/cacheStorage';
 import {get500ErrorResponse} from '@lib/serviceWorker/errors';
@@ -28,7 +28,7 @@ export async function onHlsQualityFileFetch(event: FetchEvent, params: string, s
     const docId = params;
 
     const client = await ctx.clients.get(event.clientId);
-    const accountNumber = getCurrentAccountFromURL(client.url);
+    const accountNumber = await getClientAccount(client);
 
     const result = await requestSynchronizer.performRequest(
       getHlsQualityCacheFilename(docId),

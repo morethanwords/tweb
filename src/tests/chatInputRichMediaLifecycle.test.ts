@@ -14,6 +14,8 @@ vi.mock('@components/mediaEditor', () => ({
   openMediaEditorFromMedia: mediaEditor.open,
   openMediaEditorFromMediaNoAnimation: mediaEditor.open
 }));
+// an audio's row is prepared before it goes in: jsdom never loads its metadata
+vi.mock('@components/chat/inputEditor/prepareRichMediaUpload', () => ({default: async(file: File) => ({file})}));
 vi.mock('@components/chat/editMessageMedia', async(importOriginal) => ({
   ...await importOriginal<typeof import('@components/chat/editMessageMedia')>(),
   createImageSource: vi.fn()
@@ -31,9 +33,13 @@ function createSource() {
 
 afterEach(() => vi.restoreAllMocks());
 
-test.each(['none', 'peer', 'thread', 'edit', 'destroy'] as const)('rich media permission completion respects %s context', async(interruption) => {
-  const permission = deferredPromise<boolean>();
+// an audio inserted through the composer's own services, its upload work stubbed
+function mountAudioInsert({canSend, prepareRichMessageMedia = async() => ({document: {_: 'document', id: 'local'}})}: {
+  canSend: () => Promise<boolean>,
+  prepareRichMessageMedia?: () => Promise<{document: unknown}>
+}) {
   const middleware = getMiddleware();
+  const cancelRichMessageMedia = vi.fn();
   const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:media-context');
   vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
   const editor = {
@@ -43,9 +49,10 @@ test.each(['none', 'peer', 'thread', 'edit', 'destroy'] as const)('rich media pe
   const host = Object.assign(Object.create(ChatInput.prototype), {
     richMessageInput: {editor, expanded: true, insertMedia: undefined as RichMediaUploads['insert']},
     editMsgId: undefined,
-    chat: {peerId: 42, threadId: 1, canSend: () => permission},
+    chat: {peerId: 42, threadId: 1, canSend},
     getMiddleware: () => middleware.get(),
-    inputValueGeneration: 0
+    inputValueGeneration: 0,
+    managers: {appMessagesManager: {prepareRichMessageMedia, cancelRichMessageMedia}}
   });
   const uploads = new RichMediaUploads({
     getEditor: () => editor as unknown as ChatInputEditor,
@@ -57,6 +64,14 @@ test.each(['none', 'peer', 'thread', 'edit', 'destroy'] as const)('rich media pe
   const task = host.insertRichMediaFiles([
     new File(['test'], 'test.mp3', {type: 'audio/mpeg'})
   ], {type: 'text', from: 1, to: 1, revision: 0});
+  return {cancelRichMessageMedia, createObjectURL, editor, host, middleware, task, uploads};
+}
+
+test.each(['none', 'peer', 'thread', 'edit', 'destroy'] as const)('rich media permission completion respects %s context', async(interruption) => {
+  const permission = deferredPromise<boolean>();
+  const {cancelRichMessageMedia, createObjectURL, editor, host, middleware, task, uploads} = mountAudioInsert({
+    canSend: () => permission
+  });
   if(interruption === 'peer') host.chat.peerId = 43;
   if(interruption === 'thread') host.chat.threadId = 2;
   if(interruption === 'edit') host.editMsgId = 99;
@@ -66,6 +81,28 @@ test.each(['none', 'peer', 'thread', 'edit', 'destroy'] as const)('rich media pe
     expect(await task).toBe(interruption === 'none');
     expect(editor.beginRichMediaUploads).toHaveBeenCalledTimes(interruption === 'none' ? 1 : 0);
     expect(createObjectURL).toHaveBeenCalledTimes(interruption === 'none' ? 1 : 0);
+  } finally {
+    uploads.destroy();
+    middleware.destroy();
+  }
+  // what was prepared for the upload is let go with the field
+  expect(cancelRichMessageMedia).toHaveBeenCalledTimes(interruption === 'none' ? 1 : 0);
+});
+
+test('an audio prepared for an insertion that no longer applies lets its upload go', async() => {
+  const prepared = deferredPromise<{document: unknown}>();
+  const prepareRichMessageMedia = vi.fn(() => prepared);
+  const {cancelRichMessageMedia, editor, host, middleware, task, uploads} = mountAudioInsert({
+    canSend: async() => true,
+    prepareRichMessageMedia
+  });
+  await vi.waitFor(() => expect(prepareRichMessageMedia).toHaveBeenCalledOnce());
+  host.chat.peerId = 43;
+  prepared.resolve({document: {_: 'document', id: 'local'}});
+  try {
+    expect(await task).toBe(false);
+    expect(editor.beginRichMediaUploads).not.toHaveBeenCalled();
+    expect(cancelRichMessageMedia).toHaveBeenCalledOnce();
   } finally {
     uploads.destroy();
     middleware.destroy();

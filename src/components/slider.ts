@@ -1,14 +1,37 @@
 import {horizontalMenu} from '@components/horizontalMenu';
 import TransitionSlider from '@components/transition';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
-import SliderSuperTab, {SliderSuperTabConstructable} from '@components/sliderTab';
+import SliderSuperTab, {SliderSuperTabConstructable, SliderSuperTabEventable} from '@components/sliderTab';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import safeAssign from '@helpers/object/safeAssign';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 import {MaybePromise} from '@types';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const TRANSITION_TIME = 250;
+// * a closed tab is destroyed this long after its close - its destroy handlers (saving what it edited) run then
+const TAB_DESTROY_DELAY = TRANSITION_TIME + 30;
+
+// * the tabs of every slider on their way out, each settling once it is destroyed and what its destroy
+// * handlers do has settled - and what is about to close more of them (a settings popup closing its slider)
+const tabsBeingDestroyed: Set<Promise<void>> = new Set();
+
+export function trackTabsDestruction(promise: Promise<void>) {
+  const settled = () => tabsBeingDestroyed.delete(promise);
+  tabsBeingDestroyed.add(promise);
+  promise.then(settled, settled);
+}
+
+/**
+ * Settles once no tab of any slider is on its way out any more - including tabs whose destruction starts
+ * while it waits.
+ */
+export async function whenTabsDestroyed() {
+  while(tabsBeingDestroyed.size) {
+    await Promise.all(tabsBeingDestroyed);
+  }
+}
 
 export {SliderSuperTab};
 
@@ -27,7 +50,7 @@ export default class SidebarSlider {
   protected tabs: Map<any, SliderSuperTab>; // * key is any, since right sidebar is ugly now
   private canHideFirst = false;
   private navigationType: NavigationItem['type'];
-  protected managers: AppManagers;
+  protected managers: ReadingManagers;
   protected middlewareHelper: MiddlewareHelper;
   public onOpenTab: () => MaybePromise<void>;
   public onTabsCountChange?: () => void;
@@ -249,10 +272,22 @@ export default class SidebarSlider {
 
       // @ts-ignore
       if(tab.onCloseAfterTimeout) {
-        setTimeout(() => {
-          // @ts-ignore
-          tab.onCloseAfterTimeout();
-        }, TRANSITION_TIME + 30);
+        trackTabsDestruction(new Promise<void>((resolve) => {
+          setTimeout(() => {
+            // * an eventable tab hands over what its destroy handlers still do
+            let saved: Promise<void>;
+            if(tab instanceof SliderSuperTabEventable) {
+              tab.eventListener.addEventListener('destroyAfter', (promise: Promise<void>) => saved = promise, {once: true});
+            }
+
+            try {
+              // @ts-ignore
+              tab.onCloseAfterTimeout();
+            } finally {
+              resolve(saved);
+            }
+          }, TAB_DESTROY_DELAY);
+        }));
       }
     }
   }
@@ -284,9 +319,13 @@ export default class SidebarSlider {
     }
 
     const tab = new ctor(doNotAppend ? undefined : this, destroyable);
-    tab.managers = this.managers;
+    // * a tab is a screen of the account it opens on, and goes with it
+    tab.managers = bindManagersToSession(this.managers);
     return tab;
   }
+
+  // * brings the slider into sight where it can be out of it — the right sidebar does
+  public reveal() {}
 
   public hasTabsInNavigation() {
     return !!appNavigationController.findItemByType(this.navigationType);

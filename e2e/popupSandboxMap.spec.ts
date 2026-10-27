@@ -16,7 +16,7 @@ for(const action of ['preserve', 'edit', 'cancel'] as const) test(`map picker ${
   await page.evaluate(() => window.popupSandbox.ready());
   await page.evaluate(async() => {
     const path = '/src/components/popups/richMessageLocation.tsx';
-    const {default: showPicker} = await import(/* @vite-ignore */ path);
+    const {default: showPicker} = await window.e2eImport(path);
     void showPicker({editing: true, map: {
       latitude: 20, longitude: 0, zoom: 2, width: 400, height: 200,
       accuracyRadius: 50, caption: 'Original place\nOriginal address',

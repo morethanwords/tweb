@@ -1,4 +1,4 @@
-import appDialogsManager, {AppDialogsManager} from '@lib/appDialogsManager';
+import {AppDialogsManager} from '@lib/appDialogsManager';
 import Scrollable from '@components/scrollable';
 import InputSearch from '@components/inputSearch';
 import replaceContent from '@helpers/dom/replaceContent';
@@ -9,6 +9,7 @@ import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {Message} from '@layer';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import type {SearchGroup, SearchGroupType} from '@components/searchGroup';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export type {SearchGroup, SearchGroupType};
 
@@ -161,7 +162,7 @@ export default class AppSearch {
       messages.forEach((message) => {
         try {
           const peerId = this.peerId ? message.fromId : message.peerId;
-          appDialogsManager.addDialogAndSetLastMessage({
+          hotReloadGuard.appDialogsManager.addDialogAndSetLastMessage({
             peerId: this.fromSavedDialog ? rootScope.myId : peerId,
             container: this.scrollable/* searchGroup.list */,
             avatarSize: 'bigger',

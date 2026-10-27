@@ -45,6 +45,8 @@ afterEach(() => {
 
 function instanceWith(main?: Record<string, unknown>, cachedInput: InputGroupCall | null = CACHED) {
   return {
+    // * the call leaves through its own account's managers
+    managers: {appGroupCallsManager},
     connections: main ? {main} : {},
     toInputGroupCall: vi.fn(() => cachedInput ?? undefined),
     hangUp: vi.fn(async() => {}),

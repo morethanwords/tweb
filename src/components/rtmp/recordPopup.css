@@ -4,7 +4,7 @@
 }
 
 .rtmp-record-popup .popup-close {
-  margin-right: 16px;
+  margin-inline-end: 16px;
 }
 
 .rtmp-record-popup .popup-header {

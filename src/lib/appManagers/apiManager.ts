@@ -39,7 +39,7 @@ import {getCommonDatabaseState} from '@config/databases/state';
 import {saveEncryptionKeyForHandoff} from '@lib/passcode/keyHandoff';
 import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 import {MTAuthKey} from '@lib/mtproto/authKey';
-import TempAuthKeys from '@lib/mtproto/tempAuthKeys';
+import TempAuthKeys, {StoredTempAuthKey} from '@lib/mtproto/tempAuthKeys';
 /**
  * To not be used in an ApiManager instance as there is no account number attached to it
  */
@@ -65,6 +65,7 @@ export class ApiManager extends ApiManagerMethods {
   private gettingNetworkers: {[dcIdAndType: string]: Promise<MTPNetworker>};
   // * Perfect Forward Secrecy: temporary keys per DC, and per its media cluster
   private tempAuthKeys: {[dcIdAndCluster: string]: TempAuthKeys};
+  private droppedTempAuthKeys: boolean;
   private baseDcId: DcId;
 
   private afterMessageTempIds: {
@@ -242,7 +243,7 @@ export class ApiManager extends ApiManagerMethods {
     }
 
     const accountData = await AccountController.get(this.getAccountNumber());
-    const baseDcId = accountData.dcId;
+    const baseDcId = accountData.dcId || accountData.sign_in_dc_id;
     if(!this.baseDcId) {
       if(!baseDcId) {
         this.setBaseDcId(App.baseDcId);
@@ -266,11 +267,15 @@ export class ApiManager extends ApiManagerMethods {
       userAuth.dcID = baseDcId;
     }
 
-    AccountController.update(this.getAccountNumber(), {
+    // * a sign-in is over once the account is recorded: a tab that switches to it right after reads it
+    await AccountController.update(this.getAccountNumber(), {
       date: (userAuth as UserAuth).date,
       userId: (userAuth as UserAuth).id,
-      dcId: (userAuth as UserAuth).dcID as TrueDcId
+      dcId: (userAuth as UserAuth).dcID as TrueDcId,
+      sign_in_dc_id: undefined
     });
+
+    this.appAccountManager.saveSessionUser();
   }
 
   public setBaseDcId(dcId: DcId) {
@@ -287,8 +292,15 @@ export class ApiManager extends ApiManagerMethods {
 
     this.baseDcId = dcId;
 
-    AccountController.update(this.getAccountNumber(), {
-      dcId: this.baseDcId as TrueDcId
+    // * a slot with a DC is a signed-in account to Web A, which opens it as one: until the sign-in records it
+    // * (setUserAuth), the DC is kept apart, for a sign-in that goes on after a reload
+    AccountController.update(this.getAccountNumber(), (data) => {
+      const dcId = this.baseDcId as TrueDcId;
+      if(data.userId) {
+        return data.dcId === dcId ? undefined : {dcId};
+      }
+
+      return data.sign_in_dc_id === dcId ? undefined : {sign_in_dc_id: dcId};
     });
   }
 
@@ -316,6 +328,9 @@ export class ApiManager extends ApiManagerMethods {
     const clear = async() => {
       if(wasCleared) return;
       wasCleared = true;
+
+      // * a write still on its way would bring the data back after it is gone
+      await AccountController.whenUpdated(accountNumber);
 
       this.baseDcId = undefined;
       // * totalAccounts can be 0 somehow
@@ -470,6 +485,10 @@ export class ApiManager extends ApiManagerMethods {
       };
     }
 
+    if(!Modes.pfs) {
+      this.dropTempAuthKeys();
+    }
+
     let transport = this.chooseServer(dcId, connectionType, transportType);
     return this.gettingNetworkers[getKey] = AccountController
     .get(this.getAccountNumber())
@@ -571,8 +590,45 @@ export class ApiManager extends ApiManagerMethods {
         ...options,
         dcId,
         serverSalt: options.authKey.serverSalt
-      })
+      }),
+      load: async() => (await AccountController.get(this.getAccountNumber())).temp_auth_keys?.[key],
+      store: (stored) => this.storeTempAuthKey(key, stored)
     });
+  }
+
+  // * Kept in the account's data next to the permanent keys they are bound to: encrypted with them
+  // * under a passcode, and gone with them at log out
+  private storeTempAuthKey(key: string, stored: StoredTempAuthKey) {
+    AccountController.update(this.getAccountNumber(), (data) => {
+      // * nothing is written for an account that is logging out, nor while the accounts move to
+      // * other slots after a log out - this one may no longer be in its own
+      if(this.loggingOut || AccountController.shifting) {
+        return;
+      }
+
+      const keys = {...data.temp_auth_keys};
+      if(stored) {
+        keys[key] = stored;
+      } else {
+        delete keys[key];
+      }
+
+      return {temp_auth_keys: keys};
+    }).catch((err) => {
+      this.log.error('can\'t keep temporary auth key', err);
+    });
+  }
+
+  // * with PFS off (?noPfs=1) the kept keys have no use, and are not kept
+  private dropTempAuthKeys() {
+    if(this.droppedTempAuthKeys) {
+      return;
+    }
+
+    this.droppedTempAuthKeys = true;
+    AccountController.update(this.getAccountNumber(), (data) => {
+      return !this.loggingOut && !AccountController.shifting && data.temp_auth_keys ? {temp_auth_keys: undefined} : undefined;
+    }).catch(noop);
   }
 
   private changeNetworkerTransport(networker: MTPNetworker, transport?: MTTransport) {

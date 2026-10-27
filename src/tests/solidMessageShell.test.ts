@@ -1,5 +1,5 @@
 import {Message, RichMessage} from '@layer';
-import {getSolidMessageBodyStructure} from '@components/chat/bubbleParts/solidMessageShell';
+import {getSolidMessageBodyStructure, hasMessageTextSpoilers} from '@components/chat/bubbleParts/solidMessageShell';
 
 const peerId = 10 as PeerId;
 
@@ -99,5 +99,18 @@ describe('Solid message legacy-shell compatibility', () => {
     });
 
     expect(getSolidMessageBodyStructure(withSpoiler)).toEqual(getSolidMessageBodyStructure(source));
+  });
+
+  test('finds a spoiler inside a rich message, which carries no entities of its own', () => {
+    const withSpoiler: RichMessage = {
+      ...rich(''),
+      blocks: [{_: 'pageBlockParagraph', text: {_: 'textConcat', texts: [
+        {_: 'textPlain', text: 'shown '},
+        {_: 'textSpoiler', text: {_: 'textPlain', text: 'hidden'}}
+      ]}}]
+    };
+
+    expect(hasMessageTextSpoilers(message({message: '', rich_message: withSpoiler}))).toBe(true);
+    expect(hasMessageTextSpoilers(message({message: '', rich_message: rich('shown')}))).toBe(false);
   });
 });

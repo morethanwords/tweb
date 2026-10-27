@@ -1,38 +1,424 @@
+@use "../../shared" as *;
+
 /* Conference-call verification and authenticated-membership UI. */
 
-.conference-fingerprint {
-  display: inline-flex;
-  align-items: center;
-  min-width: 0;
+// The call's encryption key (fingerprintBadge.tsx): a pill in a row of its own over the
+// participants (in a wide panel, at the top of their column rather than over the video, and in
+// the header beside its buttons while the column is hidden) that opens into a card in the middle
+// of the panel — the call popups' own look: a raised fill, a bold title, the secondary text.
+$header-height: 3.625rem; // .group-call-header with its margin
+$row-height: 2.75rem;
+$pill-height: 2rem;
+$radius: $pill-height * .5;
+$pill-top: $header-height + ($row-height - $pill-height) * .5;
+// in the middle of the band over the video: the header with its margin, down to where the stage
+// begins (the header's own buttons sit a pixel higher, in the middle of the header alone)
+$header-pill-top: ($header-height - $pill-height) * .5;
+// Where the pill ends in the header, from the panel's inline end: the panel's and the header's
+// padding (1.5rem), the buttons there, 2.5rem each — full screen and the column's, or the column's
+// alone in full screen — and a little air before them. Keyed by what the panel's class adds.
+$header-pill-ends: (
+  '': 1.5rem + 2 * 2.5rem + .25rem,
+  '.is-full-screen': 1.5rem + 2.5rem + .25rem
+);
+// In a wide panel, no wider than the participants' rows of a windowed one (its 17.5rem column,
+// less 1rem), full screen too: what the title leaves it in the header is reckoned by this.
+$pill-max-width: 16.5rem;
+// what the title keeps in the header however narrow the panel: the pill narrows instead
+$header-title-min-width: 4rem;
+
+.conference-encryption {
+  &-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    // a popup's
+    background-color: rgba(0, 0, 0, .3);
+    opacity: 0;
+    visibility: hidden;
+
+    @include animation-level(1) {
+      transition: opacity .2s ease-in-out, visibility 0s .2s;
+    }
+
+    .is-expanded > & {
+      opacity: 1;
+      visibility: visible;
+
+      @include animation-level(1) {
+        transition: opacity .2s ease-in-out, visibility 0s;
+      }
+    }
+  }
+
+  // What carries the pill in a wide panel. As big as the panel, it moves by the panel's own width:
+  // to the participants' column (at the inline end) while it is shown; once it is hidden, to the
+  // inline end of the header, where the pill's own half-width shift (`-card`) brings it up to the
+  // buttons — in step with the column's slide. Back in place for the card, which opens in the
+  // middle.
+  &-track {
+    position: absolute;
+    inset: 0;
+    z-index: 11;
+    pointer-events: none;
+
+    @each $panel, $end in $header-pill-ends {
+      .group-call.is-big-layout#{$panel}:not(.is-right-column-shown) .conference-encryption:not(.is-expanded) > & {
+        translate: calc((50% - #{$end}) * var(--reflect)) ($header-pill-top - $pill-top);
+      }
+    }
+
+    .group-call.is-big-layout.is-right-column-shown .conference-encryption:not(.is-expanded) > & {
+      translate: calc((50% - var(--gc-right-column-width) / 2) * var(--reflect)) 0;
+    }
+
+    // not while the morph moves the pill (fingerprintBadge.tsx)
+    .group-call.is-big-layout &:not(.is-morphing) {
+      @include animation-level(2) {
+        transition: translate var(--transition-standard-in);
+      }
+    }
+  }
+
+  &-card {
+    --conference-encryption-surface: var(--light-filled-secondary-text-color);
+    position: absolute;
+    top: $pill-top;
+    right: 0;
+    left: 0;
+    // The key reads left to right in every language, as a hash does: two people compare it side by
+    // side. Its words follow the interface (`-label`, `-details`). So the card's own logical
+    // properties resolve left to right too: its sides below are physical.
+    direction: ltr;
+    // the surface's slices go under the content, inside the card
+    isolation: isolate;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    column-gap: .125rem;
+    width: fit-content;
+    height: $pill-height;
+    margin: 0 auto;
+    padding: 0 .5rem;
+    border: 0;
+    border-radius: $radius;
+    background-color: var(--conference-encryption-surface);
+    color: var(--gc-primary-text-color);
+    font: inherit;
+    font-size: var(--font-size-14);
+    cursor: pointer;
+    user-select: none;
+    pointer-events: auto;
+
+    // no transition on its fill: the surface takes over from it, and back, within one frame;
+    // the scale is the press, which reduced animations keep
+    @include animation-level(1) {
+      transition: scale .15s ease-out;
+    }
+
+    // its surface draws it while it changes its shape
+    &.is-morphing {
+      background: none;
+    }
+
+    &:not(.is-expanded) {
+      // opaque: the slices overlap, and a translucent fill would show where they do
+      @include hover() {
+        --conference-encryption-surface: color-mix(in srgb, var(--gc-primary-text-color) 6%, var(--light-filled-secondary-text-color));
+      }
+
+      &:active {
+        scale: .97;
+      }
+    }
+
+    :where(.a11y) &:focus-visible {
+      outline: 2px solid var(--gc-primary-text-color);
+      outline-offset: 2px;
+    }
+
+    .group-call.is-big-layout &:not(.is-expanded) {
+      max-width: $pill-max-width;
+    }
+
+    // In the header, narrower still where a full-screen panel is too narrow for it and the title's
+    // first letters: of the panel's width, the title's start (5.5rem), its least width, a gap
+    // (.5rem) and where the pill ends.
+    @each $panel, $end in $header-pill-ends {
+      .group-call.is-big-layout#{$panel}:not(.is-right-column-shown) &:not(.is-expanded) {
+        max-width: min(#{$pill-max-width}, calc(100% - #{6rem + $header-title-min-width + $end}));
+      }
+    }
+
+    // in the header it ends where the track has brought its middle
+    .group-call.is-big-layout:not(.is-right-column-shown) &:not(.is-expanded) {
+      translate: calc(-50% * var(--reflect)) 0;
+    }
+
+    // with the track, and the same way: not while the morph moves it
+    .group-call.is-big-layout &:not(.is-morphing) {
+      @include animation-level(2) {
+        transition: scale .15s ease-out, translate var(--transition-standard-in);
+      }
+    }
+
+    &.is-expanded {
+      inset: 0;
+      width: 18.5rem;
+      display: grid;
+      grid-template-columns: repeat(4, auto);
+      justify-content: center;
+      align-items: start;
+      column-gap: 1rem;
+      height: fit-content;
+      margin: auto;
+      padding: 1.25rem 1rem;
+      cursor: default;
+    }
+  }
+
+  // The card's background while it changes its shape (fingerprintBadge.tsx): nine pieces laid out
+  // as the open card, centred on the card — the corners slide, the edges stretch along themselves,
+  // the middle both ways. Each piece reaches 4px past where the next begins: those it covers only
+  // slide or stretch the other way, so no seam opens between them.
+  &-surface {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: -1;
+    translate: -50% -50%;
+    pointer-events: none;
+
+    .is-morphing > & {
+      display: block;
+    }
+
+    > span {
+      position: absolute;
+      background-color: var(--conference-encryption-surface);
+    }
+
+    &-tl,
+    &-tr,
+    &-bl,
+    &-br {
+      width: calc(#{$radius} + 4px);
+      height: calc(#{$radius} + 4px);
+    }
+
+    &-tl {
+      top: 0;
+      left: 0;
+      border-top-left-radius: $radius;
+    }
+
+    &-tr {
+      top: 0;
+      right: 0;
+      border-top-right-radius: $radius;
+    }
+
+    &-bl {
+      bottom: 0;
+      left: 0;
+      border-bottom-left-radius: $radius;
+    }
+
+    &-br {
+      right: 0;
+      bottom: 0;
+      border-bottom-right-radius: $radius;
+    }
+
+    &-t,
+    &-b {
+      right: $radius;
+      left: $radius;
+      height: calc(#{$radius} + 4px);
+    }
+
+    &-t {
+      top: 0;
+    }
+
+    &-b {
+      bottom: 0;
+    }
+
+    &-l,
+    &-r {
+      top: $radius;
+      bottom: $radius;
+      width: calc(#{$radius} + 4px);
+    }
+
+    &-l {
+      left: 0;
+    }
+
+    &-r {
+      right: 0;
+    }
+
+    &-c {
+      inset: $radius;
+    }
+  }
+
+  &-emoji {
+    // over the label fading under them as they spread
+    z-index: 1;
+    flex: 0 0 auto;
+    width: 1.25em;
+    height: 1.25em;
+    margin-top: calc(($pill-height - 1.25em) / 2);
+    font-size: 1rem;
+    line-height: 1.25em;
+    text-align: center;
+    overflow: hidden;
+    transform-origin: 0 0;
+
+    .is-expanded > & {
+      margin-top: 0;
+      font-size: 2rem;
+    }
+
+    // the reel's emoji come in and go out softly
+    .is-syncing > & {
+      mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent);
+    }
+
+    .emoji {
+      width: 1em;
+      height: 1em;
+      vertical-align: -.125em;
+    }
+
+    &-value {
+      display: block;
+
+      @include animation-level(1) {
+        animation: fade-in-opacity .2s ease-out;
+      }
+    }
+
+    // where a key will be, while it cannot spin
+    &-pending {
+      display: block;
+      width: .375em;
+      height: .375em;
+      margin: .4375em auto;
+      border-radius: 50%;
+      background-color: currentColor;
+      opacity: .4;
+    }
+  }
+
+  // a key on its way: the emoji roll by, as on a slot machine (macOS: 0.7 s a turn)
+  &-reel {
+    display: flex;
+    flex-direction: column;
+    transform: translateY(-6.25em);
+
+    > span {
+      flex: 0 0 1.25em;
+    }
+
+    @include animation-level(2) {
+      animation: conference-encryption-reel .7s linear infinite;
+    }
+  }
+
+  // words in the card that runs left to right (`-card`): they read in the interface's direction
+  &-label,
+  &-details {
+    :where(.is-rtl) & {
+      direction: rtl;
+    }
+  }
+
+  &-label {
+    // what a column too narrow for it leaves out (its words are the card's name as well)
+    min-width: 0;
+    margin-inline: .375rem;
+    font-weight: var(--font-weight-bold);
+    line-height: $pill-height;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    // over the open card's top edge, faded out (the morph fades it, fingerprintBadge.tsx)
+    .is-expanded > & {
+      position: absolute;
+      top: 0;
+      right: 0;
+      left: 0;
+      margin: 0;
+      text-align: center;
+      opacity: 0;
+    }
+  }
+
+  &-title {
+    display: block;
+    margin-top: .75rem;
+    font-size: var(--font-size-20);
+    font-weight: var(--font-weight-bold);
+    line-height: 1.5rem;
+  }
+
+  &-details {
+    display: none;
+    grid-column: 1 / -1;
+    text-align: center;
+
+    .is-expanded > & {
+      display: block;
+
+      @include animation-level(1) {
+        animation: fade-in-opacity .2s .1s ease-out backwards;
+      }
+    }
+  }
+
+  &-info {
+    display: block;
+    margin-top: .375rem;
+    color: var(--secondary-text-color);
+    font-size: var(--font-size-15);
+    line-height: 1.25rem;
+    white-space: normal;
+  }
 }
 
-.conference-fingerprint-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.125rem 0.5rem;
-  border: 0;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  color: inherit;
-  font: inherit;
-  user-select: none;
-
-  &__visual {
-    display: contents;
+@keyframes conference-encryption-reel {
+  from {
+    transform: translateY(-6.25em);
   }
 
-  &__emoji {
-    font-size: 1.25rem;
-    line-height: 1;
+  to {
+    transform: translateY(-1.25em);
+  }
+}
+
+.group-call.is-conference {
+  // the row the pill takes over the participants
+  > .popup-body > .group-call-participants {
+    margin-top: $row-height;
   }
 
-  &__pending {
-    display: inline-block;
-    width: 4.5rem;
-    height: 1.25rem;
-    border-radius: 4px;
-    background: rgba(255, 255, 255, 0.08);
+  // The title clear of the pill in the header, of the header's own width (the panel's less 3rem):
+  // the button before it (2.5rem) and its margin (1.5rem) at its start, a gap (.5rem), the widest
+  // pill and where it ends at its end — but never less than its least width, where the pill
+  // narrows instead (`-card`). The buttons after it stay at the far end.
+  &.is-big-layout:not(.is-right-column-shown) > .group-call-header .group-call-header-info {
+    margin-inline-end: auto;
   }
 
+  @each $panel, $end in $header-pill-ends {
+    &.is-big-layout#{$panel}:not(.is-right-column-shown) > .group-call-header .group-call-header-info {
+      max-width: max(#{$header-title-min-width}, calc(100% - #{3rem + $end + $pill-max-width}));
+    }
+  }
 }

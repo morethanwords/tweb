@@ -1,13 +1,10 @@
 import {ChannelParticipant, Chat, ChatAdminRights, ChatParticipant, User} from '@layer';
 import hasRights from '@appManagers/utils/chats/hasRights';
 import {isParticipantAdmin} from '@appManagers/utils/chats/isParticipantAdmin';
-import appImManager from '@lib/appImManager';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import rootScope from '@lib/rootScope';
-import appSidebarRight from '@components/sidebarRight';
 import confirmationPopup from '@components/confirmationPopup';
 import showPickUserPopup from '@components/popups/pickUser';
-import {openUserPermissionsTab} from '@components/solidJsTabs/tabs';
 import {toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import type {AddBotToChatScope} from '@appManagers/utils/bots/getBotAddToChatScope';
@@ -18,6 +15,8 @@ import getBotExistingAdminRights from '@appManagers/utils/bots/getBotExistingAdm
 import hasBotAdminRights from '@appManagers/utils/bots/hasBotAdminRights';
 import mergeBotAdminRights from '@appManagers/utils/bots/mergeBotAdminRights';
 import tsNow from '@helpers/tsNow';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 function makeMissingParticipant(
   chat: Chat.chat | Chat.channel,
@@ -107,6 +106,7 @@ export default async function showAddBotToChat(options: {
       return canAddAsAdmin || (!user.pFlags.bot_nochats && hasRights(peer, 'invite_users'));
     },
     onSelect: async(chosen) => {
+      const managers = bindManagersToSession(rootScope.managers);
       const peerId = chosen[0].peerId;
       const chatId = peerId.toChatId();
       const chat = apiManagerProxy.getChat(chatId) as Chat.chat | Chat.channel;
@@ -124,7 +124,7 @@ export default async function showAddBotToChat(options: {
         const existingAdminRights = getBotExistingAdminRights(chat, participant);
         const initialAdminRights = mergeBotAdminRights(rights, existingAdminRights);
 
-        openUserPermissionsTab(appSidebarRight, chatId, participant, true, {
+        hotReloadGuard.tabs.openUserPermissionsTab(hotReloadGuard.appSidebarRight, chatId, participant, true, {
           initialAdminRights,
           existingAdminRights,
           addingBot: {
@@ -133,7 +133,7 @@ export default async function showAddBotToChat(options: {
             existingAdmin: isParticipantAdmin(participant)
           }
         });
-        appSidebarRight.toggleSidebar(true);
+        hotReloadGuard.appSidebarRight.toggleSidebar(true);
         return;
       }
 
@@ -148,12 +148,12 @@ export default async function showAddBotToChat(options: {
           langKey: 'Add'
         }
       });
-      await rootScope.managers.appMessagesManager.addBotToChat(
+      await managers.appMessagesManager.addBotToChat(
         options.botId,
         chatId,
         options.startParam
       );
-      appImManager.setInnerPeer({peerId});
+      hotReloadGuard.appImManager.setInnerPeer({peerId});
     }
   });
 }

@@ -42,12 +42,16 @@ export const ChatCodeBlock = CodeBlock.extend({
   parseHTML() {
     return [{
       tag: 'pre',
+      // ahead of inline code's `[data-markup*="monospace"]`, which this block's own markup carries too
+      priority: 51,
       preserveWhitespace: 'full',
       contentElement: (element) => element.querySelector('code') || element,
       getAttrs: (element) => {
         const languageClass = [...(element.firstElementChild?.classList || [])]
         .find((className) => className.startsWith('language-'));
         return {
+          joinAfter: element.hasAttribute('data-join-after'),
+          joinBefore: element.hasAttribute('data-join-before'),
           language: element.getAttribute('data-language') || languageClass?.slice('language-'.length) || ''
         };
       }
@@ -59,7 +63,10 @@ export const ChatCodeBlock = CodeBlock.extend({
     return ['pre', mergeAttributes(HTMLAttributes, {
       'class': 'chat-input-code-block code quote-like quote-like-border',
       'data-language': language,
-      'data-markup': 'markup-monospace'
+      'data-markup': 'markup-monospace',
+      // a code block inside a line of the text: copied and pasted, it stays inside it
+      'data-join-after': node.attrs.joinAfter ? '' : undefined,
+      'data-join-before': node.attrs.joinBefore ? '' : undefined
     }), ['code', {class: 'code-code'}, 0]];
   },
 

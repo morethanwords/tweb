@@ -81,7 +81,7 @@
   align-items: center;
 
   :global(.button-icon) {
-    margin-left: .25rem;
+    margin-inline-start: .25rem;
   }
 }
 
@@ -113,12 +113,12 @@
 
 .uniqueGiftPropName {
   opacity: 0.6;
-  text-align: right;
+  text-align: end;
   flex: 1 0 auto;
 }
 
 .uniqueGiftPropValue {
-  text-align: left;
+  text-align: start;
   font-weight: 600;
   flex: 1 0 auto;
 }

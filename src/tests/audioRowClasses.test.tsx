@@ -28,6 +28,7 @@ const ROOT_CLASSES = [
   'is-out',
   'can-transcribe',
   'is-unread',
+  'is-playing',
   'is-outgoing',
   'audio-with-thumb',
   'corner-download',

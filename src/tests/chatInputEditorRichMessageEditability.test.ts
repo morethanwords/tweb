@@ -51,6 +51,12 @@ describe('rich-message editability', () => {
       caption: {_: 'pageCaption', text: empty, credit: empty}
     }]))).toBe(true);
     expect(canSafelyEditRichMessage(richMessage([{_: 'pageBlockDivider'}]))).toBe(true);
+    // a file, as the composer puts one in
+    expect(canSafelyEditRichMessage(richMessage([{
+      _: 'pageBlockDocument',
+      document_id: 2,
+      caption: {_: 'pageCaption', text: {_: 'textBold', text: text('Report')}, credit: empty}
+    }]))).toBe(true);
   });
 
   test('accepts mixed checkboxes and lossless ordered-list attributes', () => {
@@ -165,6 +171,17 @@ describe('rich-message editability', () => {
     expect(canSafelyEditRichMessage(richMessage([{
       _: 'pageBlockParagraph',
       text: {_: 'textAnchor', name: 'anchor', text: empty}
+    }]))).toBe(true);
+    // the server wraps a paragraph holding an anchor in it, code, links and dates included: the
+    // anchor then loads as a marker, the text keeping its formatting
+    expect(canSafelyEditRichMessage(richMessage([{
+      _: 'pageBlockParagraph',
+      text: {_: 'textAnchor', name: 'section', text: {_: 'textConcat', texts: [
+        text('Plain '),
+        {_: 'textFixed', text: text('code')},
+        {_: 'textUrl', text: text(' link'), url: 'https://telegram.org/', webpage_id: 0},
+        {_: 'textDate', pFlags: {short_date: true}, text: text(' date'), date: 1725120000}
+      ]}}
     }]))).toBe(true);
   });
 

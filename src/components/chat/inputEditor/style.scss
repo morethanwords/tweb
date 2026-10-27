@@ -223,6 +223,11 @@
     width: .625rem;
     z-index: 5;
 
+    // * on the selection's bottom inline-end corner (`tableView.ts`)
+    :where(.is-rtl) & {
+      cursor: nesw-resize;
+    }
+
     &::after {
       content: '';
       inset: -.5rem;
@@ -233,6 +238,10 @@
   .chat-input-table-range-dragging {
     cursor: nwse-resize;
     user-select: none;
+
+    :where(.is-rtl) & {
+      cursor: nesw-resize;
+    }
   }
 
   .chat-input-table-drop-indicator,
@@ -297,6 +306,27 @@
 
     [data-chat-input-paragraph] {
       min-height: 1em;
+    }
+
+    // A column grows for what cannot wrap in it (instantView `Table`), and an empty cell's
+    // placeholder is not content: as text, in a column narrower than the label, the first
+    // keystroke would make the columns jump. Out of the flow it lines up with the text, and the
+    // trailing break holds the line the label no longer does.
+    [data-table-cell-placeholder] {
+      position: relative;
+
+      > .chat-input-context-placeholder-label {
+        position: absolute;
+        inset-block-start: 0;
+        inset-inline: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      > .ProseMirror-trailingBreak {
+        display: inline;
+      }
     }
 
     &-active-cell-frame {
@@ -426,15 +456,14 @@
     display: none;
   }
 
-  .chat-input-context-placeholder-empty::after {
+  // a centered placeholder is a label instead (placeholderLabelDecoration), which leaves the
+  // element's own ::after alone: the pullquote draws its closing quote mark there. `:where` keeps
+  // the specificity, so a block's own placeholder color (the blockquote's) still wins
+  .chat-input-context-placeholder-empty:where(:not(.chat-input-context-placeholder-centered))::after {
     color: var(--secondary-text-color);
     content: attr(data-placeholder);
     opacity: .65;
     pointer-events: none;
-  }
-
-  .chat-input-context-placeholder-centered::after {
-    content: none;
   }
 
   .chat-input-context-placeholder-label {
@@ -514,18 +543,42 @@
 
     }
 
-    &-item-audio {
+    // a file or an audio: a row drawn as a bubble draws one, its upload included; a failed one offers
+    // its actions at the row's end, in the interface's colours rather than over a picture
+    &-item-row {
+      // the row's gutter: an audio's play button sits in from the audio's own edge, so an audio's
+      // gutter is that much narrower and the button lines up with a file's icon and the text around
+      --rich-media-row-padding: var(--padding-horizontal, 0px);
+      // the menu at the row's end, in the middle of its height, with the row's text kept clear of it
+      --rich-media-row-more-inset: 1rem;
       min-height: 3rem;
+      padding-inline: var(--rich-media-row-padding) calc(var(--rich-media-row-more-inset) + 3rem);
+
+      &[data-media-type="pageBlockAudio"] {
+        --rich-media-row-padding: calc(var(--padding-horizontal, 0px) - .5rem);
+      }
+
+      // a file not sent yet does nothing on a click but what a photo's click does
+      &[data-media-type="pageBlockDocument"] > .document {
+        cursor: inherit;
+      }
+
+      // centred whatever size the composer gives its buttons
+      > .chat-input-rich-media-more {
+        right: auto;
+        inset-inline-end: var(--rich-media-row-more-inset);
+        top: 50%;
+        transform: translateY(-50%);
+      }
 
       > .chat-input-rich-media-upload {
-        border-radius: 50%;
-        inset: 0 auto 0 0;
-        width: 3rem;
+        justify-content: flex-end;
+        padding-inline-end: calc(var(--padding-horizontal, 0px) + 2.5rem);
 
-        &[data-state="error"] {
-          border-radius: 0;
-          inset-inline-end: 0;
-          width: auto;
+        .chat-input-rich-media-upload-action {
+          background-color: var(--surface-color);
+          border-color: var(--primary-color);
+          color: var(--primary-color);
         }
       }
     }
@@ -566,6 +619,12 @@
 
       .preloader-container {
         pointer-events: auto;
+
+        // the progress gives way to the actions once the upload failed; the container's own display
+        // outweighs the attribute
+        &[hidden] {
+          display: none;
+        }
       }
 
       &-progress {
@@ -610,7 +669,7 @@
       background-color: rgba(0, 0, 0, .2);
       color: #fff;
       position: absolute;
-      right: .25rem;
+      inset-inline-end: .25rem;
       top: .25rem;
       z-index: 4;
 
@@ -631,17 +690,6 @@
       color: var(--secondary-text-color);
       font-size: .875rem;
       padding: 2rem;
-    }
-
-    &[data-rich-media-type="pageBlockAudio"] {
-      .chat-input-rich-media-preview {
-        user-select: auto;
-
-        .document {
-          flex: 1 1 auto;
-          min-width: 0;
-        }
-      }
     }
   }
 
@@ -685,8 +733,6 @@
 
   // layer 229's buttons: drawn as they will be sent, a click opens their box
   .chat-input-rich-button {
-    user-select: none;
-
     &.ProseMirror-selectednode {
       outline: 2px solid var(--primary-color);
       outline-offset: 1px;
@@ -702,17 +748,20 @@
     display: flex;
     align-items: center;
     gap: .25rem;
+    // the row's space is the line's, as on a page, so two rows share it rather than add it up
+    margin-block: var(--page-button-row-spacing);
 
     &.ProseMirror-selectednode .chat-input-button-row-buttons {
       outline: 2px solid var(--primary-color);
       outline-offset: 2px;
-      border-radius: calc(.75rem * var(--iv-scale));
+      border-radius: var(--page-button-border-radius);
     }
   }
 
   .chat-input-button-row-buttons {
     flex: 1 1 auto;
     min-width: 0;
+    margin-block: 0;
   }
 
   .chat-input-button-row-menu {
@@ -740,4 +789,73 @@
 
 .can-send-collapsed > .chat-input-quote-toggle {
   display: block;
+}
+
+// `.RichMessage` resets a message's box, and on an InputField (`.input-field-input`) it took the
+// field's own height and background with it: the field keeps them.
+.input-field-input.chat-input-plain-field {
+  min-height: var(--height);
+  background-color: var(--surface-color);
+}
+
+// A plain field that can hold a quote or code keeps the trailing paragraph only to have a line after
+// one that ends it (index.ts): like the collapsed composer, it never shows it as a row of its own.
+.chat-input-plain-field > .chat-input-trailing-placeholder {
+  display: none;
+}
+
+// A plain field's paragraphs are its lines — a caption, a folder name, a poll option. The field's
+// own padding is where its placeholder and label sit, and a rich message's page gutter on top of it
+// pushed the text a gutter past them (the chat input drops the gutter the same way, collapsed). The
+// gutter comes from the IV knob, so it goes through the knob, on the paragraph: the field's own
+// padding reads a variable of the same name.
+.chat-input-plain-field > [data-chat-input-paragraph] {
+  --padding-horizontal: 0px;
+}
+
+// A field with vertical padding of its own (InputField's, a form field's) takes no block spacing
+// around its lines either. A message field has none: its lines keep it, as the chat input's do.
+.chat-input-plain-field:not(.input-message-input) > [data-chat-input-paragraph] {
+  --iv-scale: 0;
+}
+
+// An emoji the platform's font would draw differently (`extensions/emojiImages.ts`): the text stays
+// in the document and under the caret, its glyph goes transparent, and the app's image is painted in
+// its place at the size `.emoji-image` has in a message. Every field on the composer's engine gets it.
+.chat-input-emoji-image {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  overflow: hidden;
+  vertical-align: middle;
+  color: transparent;
+  line-height: 18px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+
+  // selected, the browser would paint the glyph in its selection colour over the image
+  &::selection {
+    color: transparent;
+    background-color: transparent;
+  }
+}
+
+// the parts of one emoji split over text nodes after its first, which carries the image
+.chat-input-emoji-image-rest {
+  display: inline-block;
+  width: 0;
+  overflow: hidden;
+  vertical-align: middle;
+  color: transparent;
+
+  &::selection {
+    color: transparent;
+    background-color: transparent;
+  }
+}
+
+// the selection's own colour, behind the image, while the field holds the selection
+.ProseMirror-focused .chat-input-emoji-image-selected {
+  background-color: Highlight;
 }

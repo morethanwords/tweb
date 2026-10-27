@@ -55,6 +55,36 @@ defineStories('Chat & moderation', [
     }
   },
   {
+    id: 'reactedList/read',
+    title: 'Who read — no reactions',
+    managers: (ctx) => {
+      const readers = [ctx.peer('private'), ctx.peer('bot')];
+      return {
+        appMessagesManager: {
+          getGroupsFirstMessage: (message: unknown) => message,
+          canViewMessageReadParticipants: () => true,
+          getMessageReadParticipants: () => readers.map((peerId, idx) => ({
+            _: 'readParticipantDate',
+            user_id: peerId.toUserId(),
+            date: NOW - 60 * (idx + 1)
+          })),
+          getMessageReactionsListAndReadParticipants: () => ({
+            reactions: [],
+            readParticipantDates: [],
+            combined: readers.map((peerId, idx) => ({peerId, date: NOW - 60 * (idx + 1)}))
+          })
+        },
+        appReactionsManager: {
+          canDeleteParticipantReactions: () => false
+        }
+      };
+    },
+    open: async(ctx) => {
+      const {default: showReactedListPopup} = await import('@components/popups/reactedList');
+      showReactedListPopup(ctx.message('private'));
+    }
+  },
+  {
     id: 'deleteMegagroupMessages',
     title: 'Delete & ban — supergroup',
     open: async(ctx) => {
@@ -121,6 +151,30 @@ defineStories('Chat & moderation', [
           users: []
         }
       });
+    }
+  },
+  {
+    id: 'contactDetails',
+    title: 'Shared contact — vCard details',
+    open: async() => {
+      const [{default: showContactDetailsPopup}, {default: parseVcard}] = await Promise.all([
+        import('@components/popups/contactDetails'),
+        import('@helpers/parseVcard')
+      ]);
+      showContactDetailsPopup(parseVcard([
+        'BEGIN:VCARD',
+        'VERSION:3.0',
+        'N:Appleseed;Johnny;;;',
+        'ORG:Sandbox Inc.;',
+        'TEL;TYPE=CELL:+1 555 010 0100',
+        'TEL;TYPE=WORK:+1 555 010 0101',
+        'EMAIL;TYPE=INTERNET:johnny@example.com',
+        'ADR;TYPE=HOME:;;1 Infinite Loop;Cupertino;CA;95014;USA',
+        'URL:https://example.com',
+        'BDAY:1990-01-15',
+        'NOTE:Call after 10:30',
+        'END:VCARD'
+      ].join('\r\n')));
     }
   },
   {
@@ -254,3 +308,7 @@ defineStories('Chat & moderation', [
     }
   }
 ]);
+
+// The sandbox reloads on an edit anyway (watchForEdits). Accepting here keeps an edit of a popup this story imports
+// from climbing through the story to the app's root once the sandbox has been opened on the dev server.
+if(import.meta.hot) import.meta.hot.accept();

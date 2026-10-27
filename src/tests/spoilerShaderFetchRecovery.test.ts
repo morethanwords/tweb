@@ -104,3 +104,29 @@ describe('withTimeout timer hygiene', () => {
     clearSpy.mockRestore();
   });
 });
+
+describe('a spoiler without WebGL', () => {
+  // a GPU on the blocklist, WebGL turned off, Firefox headless: `getContext('webgl2')` answers null
+  const makeContextlessCore = () => new DotRendererCore(
+    {getContext: (): null => null} as any,
+    {vertex: VERTEX_URL, fragment: FRAGMENT_URL}
+  );
+
+  test('comes up with nothing to simulate instead of throwing, and fetches no shaders', () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const core = makeContextlessCore();
+    expect(core.init()).toBe(false);
+    expect(core.inited).toBeFalsy();
+    expect(fetchMock).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  test('draws nothing and resizes without a context', () => {
+    const core = makeContextlessCore();
+    core.init();
+    expect(() => core.draw()).not.toThrow();
+    expect(() => core.resize(10, 10, 1, {} as any)).not.toThrow();
+  });
+});

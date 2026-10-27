@@ -1,3 +1,6 @@
+import type {MarkupTooltipTypes} from '@components/chat/markupTooltip';
+import type {InputFormattingTypes} from '@helpers/dom/getInputFormattingTypes';
+
 /**
  * What a message can carry as plain text plus entities.
  *
@@ -8,16 +11,17 @@
  * detected after the fact. One source, two uses: a node added to the composer
  * has to be classified here once, and both the mode check and the plain field
  * follow.
+ *
+ * A list is not here: entities have no list, and what a field shows as one must
+ * not leave as `1. ` text. The official clients send a list as a rich message
+ * too, and keep list-looking text literal where a message carries entities only.
  */
 export const PLAIN_MESSAGE_NODE_NAMES = new Set([
   'blockquote',
   'blockquoteCaption',
-  'bulletList',
   'codeBlock',
   'customEmoji',
   'hardBreak',
-  'listItem',
-  'orderedList',
   'paragraph',
   'text'
 ]);
@@ -37,20 +41,29 @@ export const PLAIN_MESSAGE_MARK_NAMES = new Set([
 
 /**
  * Schemaless extensions the plain field keeps. Plugins carry no node to classify
- * them by, so they are listed: everything driving rich blocks, tables, media
- * uploads or block reordering is left out, and what remains is caret, list and
- * custom-emoji behaviour plus history.
+ * them by, so they are listed: everything driving lists, rich blocks, tables,
+ * media uploads or block reordering is left out, and what remains is caret and
+ * emoji behaviour, pasted lists kept as text, pasted text kept line by line,
+ * plus history.
  */
 const PLAIN_MESSAGE_PLUGIN_NAMES = new Set([
+  'chatCopiedMessagePaste',
   'chatCustomEmojiText',
+  'chatEmojiImages',
   'chatEmptyDocumentSelection',
   'chatInlineAtomNavigation',
   'chatInputPlaceholders',
-  'chatListBackspace',
-  'chatListBehavior',
-  'chatListKeymap',
+  'chatPastedBlocks',
+  'chatPlainListPaste',
   'chatRichMessageAttributes',
+  'chatTextPaste',
   'undoRedo'
+]);
+
+/** The blocks a plain message has besides its paragraphs. */
+const PLAIN_MESSAGE_BLOCK_NAMES = new Set([
+  'blockquote',
+  'codeBlock'
 ]);
 
 /**
@@ -60,20 +73,18 @@ const PLAIN_MESSAGE_PLUGIN_NAMES = new Set([
  * content is the same as a plain message's: text, custom emoji and their marks.
  */
 const BLOCK_STRUCTURE_NODE_NAMES = new Set([
-  'blockquote',
+  ...PLAIN_MESSAGE_BLOCK_NAMES,
   'blockquoteCaption',
-  'bulletList',
-  'codeBlock',
-  'hardBreak',
-  'listItem',
-  'orderedList'
+  'hardBreak'
 ]);
 
-const BLOCK_STRUCTURE_PLUGIN_NAMES = new Set([
-  'chatListBackspace',
-  'chatListBehavior',
-  'chatListKeymap'
-]);
+/**
+ * Whether a plain field's schema can hold a block — a quote or code — and so may
+ * end with one, which then needs a line after it to type on.
+ */
+export function holdsPlainMessageBlocks(extensions: readonly ClassifiableExtension[]) {
+  return extensions.some(({type, name}) => type === 'node' && PLAIN_MESSAGE_BLOCK_NAMES.has(name));
+}
 
 type ClassifiableExtension = {
   name: string,
@@ -91,7 +102,38 @@ export default function isPlainMessageExtension(extension: ClassifiableExtension
 
 export function isSingleLineMessageExtension(extension: ClassifiableExtension) {
   if(!isPlainMessageExtension(extension)) return false;
-  return extension.type === 'node' ?
-    !BLOCK_STRUCTURE_NODE_NAMES.has(extension.name) :
-    !BLOCK_STRUCTURE_PLUGIN_NAMES.has(extension.name);
+  return extension.type !== 'node' || !BLOCK_STRUCTURE_NODE_NAMES.has(extension.name);
+}
+
+/**
+ * What each formatting type a field can declare (`can-format`, see
+ * `getInputFormattingTypes`) puts into the schema. A field builds its schema
+ * without the parts of the types it does not declare, so neither a shortcut, nor
+ * markdown typed or pasted, nor formatted HTML pasted in can produce what the
+ * field cannot carry — and its tooltip, asking the schema, offers none of it.
+ */
+const FORMATTING_SCHEMA_NAMES: Record<MarkupTooltipTypes, readonly string[]> = {
+  bold: ['bold'],
+  italic: ['italic'],
+  underline: ['underline'],
+  strikethrough: ['strike'],
+  monospace: ['code', 'codeBlock'],
+  spoiler: ['spoiler'],
+  quote: ['blockquote', 'blockquoteCaption'],
+  link: ['link'],
+  date: ['formattedDate'],
+  highlight: ['highlight'],
+  subscript: ['subscript'],
+  superscript: ['superscript']
+};
+
+const FORMATTING_TYPE_BY_SCHEMA_NAME = new Map<string, MarkupTooltipTypes>(
+  (Object.entries(FORMATTING_SCHEMA_NAMES) as [MarkupTooltipTypes, readonly string[]][])
+  .flatMap(([type, names]) => names.map((name) => [name, type] as const))
+);
+
+export function isDeclaredFormattingExtension(extension: ClassifiableExtension, formatting: InputFormattingTypes) {
+  if(formatting === 'all') return true;
+  const type = FORMATTING_TYPE_BY_SCHEMA_NAME.get(extension.name);
+  return !type || formatting.has(type);
 }

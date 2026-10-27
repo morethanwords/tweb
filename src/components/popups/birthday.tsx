@@ -13,13 +13,13 @@ import {createButtonMenuSelect} from '@components/buttonMenuSelect';
 import {IconTsx} from '@components/iconTsx';
 
 import styles from '@components/popups/birthday.module.scss';
-import appSidebarLeft from '@components/sidebarLeft';
-import {AppPrivacyBirthdayTab} from '@components/solidJsTabs/tabs';
 import rootScope from '@lib/rootScope';
 import {doubleRaf} from '@helpers/schedulers';
 import {toastNew} from '@components/toast';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import MediaHeader from '@components/mediaHeader';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const MIN_YEAR = 1900;
 
@@ -57,6 +57,7 @@ export default async function showBirthdayPopup(props: {
   fromSuggestion?: boolean
   onSave: (date: Birthday | null) => MaybePromise<boolean>
 }) {
+  const managers = bindManagersToSession(rootScope.managers);
   const privacy = props.suggestForPeer ? null : await rootScope.managers.appPrivacyManager.getPrivacy('inputPrivacyKeyBirthday');
   const isContactsOnly = !privacy || (
     privacy.length === 2 &&
@@ -207,7 +208,7 @@ export default async function showBirthdayPopup(props: {
     });
 
     function openPrivacySettings() {
-      appSidebarLeft.createTab(AppPrivacyBirthdayTab).open();
+      hotReloadGuard.appSidebarLeft.createTab(hotReloadGuard.tabs.AppPrivacyBirthdayTab).open();
       setShow(false);
     }
 
@@ -221,7 +222,7 @@ export default async function showBirthdayPopup(props: {
     const doubleRafPromise = doubleRaf();
 
     return (
-      <PopupElement class={styles.popup} show={show()} old>
+      <PopupElement managers={managers} class={styles.popup} show={show()} old>
         <PopupElement.Header floating>
           <PopupElement.CloseButton />
         </PopupElement.Header>

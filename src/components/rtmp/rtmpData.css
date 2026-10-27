@@ -67,6 +67,11 @@
   color: #fff;
 }
 
+/* the URL and the key read left to right (dir="ltr"), and still line up with their labels */
+.is-rtl .rtmp-data-row-item-text {
+  text-align: right;
+}
+
 .rtmp-data-row-item-text_hidden,
 .rtmp-data-row-item-text_hidden .skeleton-child {
   font-size: 32px;

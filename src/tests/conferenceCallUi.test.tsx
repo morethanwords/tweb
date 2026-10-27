@@ -61,14 +61,19 @@ vi.mock('@components/stackedAvatars', () => ({
   }
 }));
 
-import ListenerSetter from '@helpers/listenerSetter';
 import I18n from '@lib/langPack';
-import makeButton, {setCallButtonBusy, setCallButtonDisabled} from '@components/call/button';
+import liteMode from '@helpers/liteMode';
+import CallButton from '@components/call/button';
 import FingerprintBadge from '@components/conferenceCall/fingerprintBadge';
+import {emojiFingerprint} from '@lib/calls/e2e/emojiFingerprint';
 import {
+  GROUP_CALL_MICROPHONE_BUTTON_STATE,
+  getGroupCallMicrophoneButtonState,
   getMicrophoneControlAccessibility,
-  performMicrophoneControlAction
+  performMicrophoneControlAction,
+  shouldCarryOutMicrophonePress
 } from '@components/groupCall/microphoneControl';
+import {UNMUTE_INTENT_TTL_MS} from '@lib/calls/constants';
 import GroupCallTitleElement from '@components/groupCall/title';
 import wrapCallBubble, {getConferenceCallParticipants} from '@components/wrappers/callBubble';
 import {MESSAGE_ID_OFFSET} from '@appManagers/constants';
@@ -86,82 +91,99 @@ I18n.strings.set('Chat.CallMessage.TimeAndDuration', {
 
 afterEach(() => {
   document.body.replaceChildren();
+  vi.restoreAllMocks();
 });
 
 describe('conference call controls accessibility', () => {
-  it('builds a native named button and honours the disabled state', () => {
-    const listenerSetter = new ListenerSetter();
-    const callback = vi.fn();
-    const element = makeButton('test-call', listenerSetter, {
-      ariaLabel: 'VoiceChat.Leave',
-      callback,
-      noRipple: true
-    });
+  it('names a native button by the label under it', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const onClick = vi.fn();
+    const [label, setLabel] = createSignal<'Call.Mute' | 'VoipUnmute'>('Call.Mute');
+    const dispose = render(() => (
+      <CallButton class="test-call" label={label()} icon="close" noRipple onClick={onClick} />
+    ), host);
 
-    expect(element).toBeInstanceOf(HTMLButtonElement);
-    const button = element as HTMLButtonElement;
+    const button = host.querySelector('button');
+    const text = host.querySelector('.call-button-text');
     expect(button.type).toBe('button');
-    expect(button.getAttribute('aria-label')).toBe('VoiceChat.Leave');
+    expect(button.classList).toContain('test-call-button');
+    expect(text.id).not.toBe('');
+    expect(button.getAttribute('aria-labelledby')).toBe(text.id);
+    expect(text.textContent).toBe('Call.Mute');
+    // a label that names the next action is not a toggle
+    expect(button.hasAttribute('aria-pressed')).toBe(false);
 
     button.click();
-    expect(callback).toHaveBeenCalledTimes(1);
+    expect(onClick).toHaveBeenCalledTimes(1);
 
-    button.disabled = true;
-    button.click();
-    expect(callback).toHaveBeenCalledTimes(1);
-    listenerSetter.removeAll();
+    setLabel('VoipUnmute');
+    expect(text.textContent).toBe('VoipUnmute');
+    dispose();
   });
 
-  it('disables the native button inside a labelled control while it is busy', () => {
-    const listenerSetter = new ListenerSetter();
-    const container = makeButton('test-call', listenerSetter, {
-      text: 'VoiceChat.Leave',
-      noRipple: true
-    });
-    const button = container.querySelector('button');
-    const label = container.querySelector('.call-button-text');
+  it('keeps a pressed state and a fill apart from the classes ripple adds', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const [on, setOn] = createSignal(false);
+    const dispose = render(() => (
+      <CallButton class="test-call" label="Call.Camera" color="red" active={on()} pressed={on()} onClick={() => {}} />
+    ), host);
 
-    expect(button).toBeInstanceOf(HTMLButtonElement);
-    expect(label?.id).not.toBe('');
-    expect(button?.getAttribute('aria-labelledby')).toBe(label?.id);
+    const button = host.querySelector('button');
+    expect(button.classList).toContain('rp');
+    expect(button.classList).toContain('test-call-button-red');
+    expect(button.getAttribute('aria-pressed')).toBe('false');
 
-    setCallButtonBusy(container, true);
-    expect(button?.disabled).toBe(true);
-    expect(button?.getAttribute('aria-busy')).toBe('true');
+    setOn(true);
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+    expect(button.classList).toContain('active');
+    expect(button.classList).toContain('rp');
+    dispose();
+  });
+
+  it('cannot be pressed while busy and gets its own disabled state back', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const onClick = vi.fn();
+    const [disabled, setDisabled] = createSignal(true);
+    const [busy, setBusy] = createSignal(false);
+    const dispose = render(() => (
+      <CallButton class="test-call" label="VoiceChat.Leave" noRipple disabled={disabled()} busy={busy()} onClick={onClick} />
+    ), host);
+
+    const container = host.firstElementChild;
+    const button = host.querySelector('button');
+    expect(button.disabled).toBe(true);
     expect(container.classList).toContain('btn-disabled');
 
-    setCallButtonBusy(container, false);
-    expect(button?.disabled).toBe(false);
-    expect(button?.hasAttribute('aria-busy')).toBe(false);
-    listenerSetter.removeAll();
-  });
-
-  it('restores the independent disabled state after busy work finishes', () => {
-    const listenerSetter = new ListenerSetter();
-    const button = makeButton('test-call', listenerSetter, {
-      disabled: true,
-      noRipple: true
-    }) as HTMLButtonElement;
-
-    setCallButtonBusy(button, true);
-    setCallButtonBusy(button, false);
+    setBusy(true);
+    setDisabled(false);
     expect(button.disabled).toBe(true);
-    expect(button.classList).toContain('btn-disabled');
+    expect(button.getAttribute('aria-busy')).toBe('true');
+    button.click();
+    expect(onClick).not.toHaveBeenCalled();
 
-    setCallButtonBusy(button, true);
-    setCallButtonDisabled(button, false);
-    expect(button.disabled).toBe(true);
-    setCallButtonBusy(button, false);
+    setBusy(false);
     expect(button.disabled).toBe(false);
-    expect(button.classList).not.toContain('btn-disabled');
-    listenerSetter.removeAll();
+    expect(button.hasAttribute('aria-busy')).toBe(false);
+    expect(container.classList).not.toContain('btn-disabled');
+    button.click();
+    expect(onClick).toHaveBeenCalledTimes(1);
+    dispose();
   });
 
   it('derives microphone action labels from the current participant', () => {
+    // before the server lists us: what we joined with, never "Connecting..."
     expect(getMicrophoneControlAccessibility()).toEqual({
-      disabled: true,
-      label: 'VoiceChat.Status.Connecting'
+      disabled: false,
+      label: 'VoipUnmute'
     });
+    expect(getMicrophoneControlAccessibility(undefined, false)).toEqual({
+      disabled: false,
+      label: 'Call.Mute'
+    });
+    expect(getGroupCallMicrophoneButtonState()).toBe(GROUP_CALL_MICROPHONE_BUTTON_STATE.MUTED);
     expect(getMicrophoneControlAccessibility({
       pFlags: {can_self_unmute: true, muted: true}
     } as any)).toEqual({
@@ -195,6 +217,19 @@ describe('conference call controls accessibility', () => {
     });
   });
 
+  it('carries out a press made before we were listed only as what it asked for, while fresh', () => {
+    const listed = {pFlags: {can_self_unmute: true, muted: true}} as any;
+    const unmute = {muted: false, at: 1000};
+    expect(shouldCarryOutMicrophonePress(unmute, listed, true, 2000)).toBe(true);
+    // the microphone is already what was asked for: pressing again would undo it
+    expect(shouldCarryOutMicrophonePress(unmute, listed, false, 2000)).toBe(false);
+    // an old press must not open the microphone by surprise
+    expect(shouldCarryOutMicrophonePress(unmute, listed, true, 1000 + UNMUTE_INTENT_TTL_MS)).toBe(false);
+    // the label never offered to raise a hand
+    expect(shouldCarryOutMicrophonePress(unmute, {pFlags: {}} as any, true, 2000)).toBe(false);
+    expect(shouldCarryOutMicrophonePress({muted: true, at: 1000}, {pFlags: {can_self_unmute: true}} as any, false, 2000)).toBe(true);
+  });
+
   it('guards a missing participant and propagates microphone failures', async() => {
     const missing = {
       participant: undefined as any,
@@ -224,30 +259,46 @@ describe('conference call controls accessibility', () => {
 });
 
 describe('conference verification and entry UI', () => {
-  it('renders pending and verified fingerprints without a fake action', () => {
+  it('shows the key spinning until there is one, then its four emoji, and says so', () => {
+    vi.spyOn(liteMode, 'isAvailable').mockReturnValue(true);
     const host = document.createElement('div');
     document.body.append(host);
     const [hash, setHash] = createSignal<Uint8Array>();
     const dispose = render(() => <FingerprintBadge emojiHash={hash()} />, host);
 
-    const badge = host.querySelector('.conference-fingerprint-badge') as HTMLElement;
-    const status = host.querySelector('.conference-fingerprint') as HTMLElement;
-    expect(badge).toBeInstanceOf(HTMLSpanElement);
-    expect(host.querySelector('button')).toBeNull();
-    expect(status.getAttribute('role')).toBe('status');
-    expect(status.getAttribute('aria-label')).toBe('ConferenceCall.Fingerprint.Pending');
+    const card = host.querySelector('.conference-encryption-card') as HTMLElement;
+    const status = host.querySelector('.conference-encryption [role="status"]') as HTMLElement;
+    expect(card.getAttribute('aria-label')).toBe('ConferenceEncryptedSyncing');
+    expect(card.getAttribute('aria-busy')).toBe('true');
+    expect(card.getAttribute('aria-expanded')).toBe('false');
+    expect(card.classList.contains('is-syncing')).toBe(true);
+    expect(host.querySelectorAll('.conference-encryption-reel')).toHaveLength(4);
+    expect(status.textContent).toBe('ConferenceEncryptedSyncing');
     expect(status.getAttribute('aria-live')).toBe('polite');
     expect(status.getAttribute('aria-atomic')).toBe('true');
 
-    setHash(new Uint8Array(32));
-    const renderedEmojis = Array.from(
-      host.querySelectorAll('.conference-fingerprint-badge__emoji')
-    ).map((element) => element.textContent!);
-    const accessibleLabel = status.getAttribute('aria-label')!;
-    expect(accessibleLabel).toContain('ConferenceCall.Fingerprint.Verified');
-    expect(renderedEmojis).toHaveLength(4);
-    renderedEmojis.forEach((emoji) => expect(accessibleLabel).toContain(emoji));
-    expect(status.querySelector('.conference-fingerprint-badge__instruction')).toBeNull();
+    const emojiHash = new Uint8Array(32);
+    setHash(emojiHash);
+    const label = card.getAttribute('aria-label')!;
+    expect(label).toBe('ConferenceEncrypted: ' + emojiFingerprint(emojiHash).join(' '));
+    expect(status.textContent).toBe(label);
+    expect(card.classList.contains('is-syncing')).toBe(false);
+    expect(card.hasAttribute('aria-busy')).toBe(false);
+    expect(host.querySelectorAll('.conference-encryption-reel')).toHaveLength(0);
+    expect(host.querySelectorAll('.conference-encryption-emoji-value')).toHaveLength(4);
+    dispose();
+  });
+
+  // a reel that cannot spin would stand still on four random emoji, which read as a key
+  it('shows no emoji at all for a key on its way when animations are off', () => {
+    vi.spyOn(liteMode, 'isAvailable').mockReturnValue(false);
+    const host = document.createElement('div');
+    document.body.append(host);
+    const dispose = render(() => <FingerprintBadge />, host);
+
+    expect(host.querySelectorAll('.conference-encryption-reel')).toHaveLength(0);
+    expect(host.querySelectorAll('.conference-encryption-emoji-pending')).toHaveLength(4);
+    expect(host.querySelector('.conference-encryption-card').textContent).not.toMatch(/\p{Extended_Pictographic}/u);
     dispose();
   });
 

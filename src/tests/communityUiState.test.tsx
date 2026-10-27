@@ -21,6 +21,14 @@ import {
   saveCreatedCommunityFields,
   saveCurrentCommunityAvatar
 } from '@components/communities/communityEditState';
+import * as mocked1 from '@lib/appDialogsManager';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+
+// the code under test reads the top level from the registry, not from the modules mocked above
+registerHotReloadGuard({
+  appDialogsManager: (mocked1 as any).default
+});
+
 
 vi.hoisted(() => {
   class IntersectionObserverMock {

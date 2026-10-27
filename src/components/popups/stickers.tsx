@@ -5,14 +5,13 @@ import wrapSticker from '@components/wrappers/sticker';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import {putPreloader} from '@components/putPreloader';
 import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
-import appImManager from '@lib/appImManager';
 import mediaSizes from '@helpers/mediaSizes';
 import {i18n} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {toastNew} from '@components/toast';
 import createStickersContextMenu from '@helpers/dom/createStickersContextMenu';
-import attachStickerViewerListeners from '@components/stickerViewer';
+import attachMediaPeekListeners from '@components/mediaPeek';
 import {Document, StickerSet} from '@layer';
 import RowTsx from '@components/rowTsx';
 import rootScope from '@lib/rootScope';
@@ -21,7 +20,6 @@ import emoticonsDropdown from '@components/emoticonsDropdown';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
-import {onMediaCaptionClick} from '@components/mediaViewer';
 import DEBUG from '@config/debug';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import appDownloadManager from '@lib/appDownloadManager';
@@ -34,6 +32,7 @@ import MyShow from '@helpers/solid/myShow';
 import Button from '@components/button';
 import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import isStickerSetAdded from '@appManagers/utils/stickers/isStickerSetAdded';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const ANIMATION_GROUP: AnimationItemGroup = 'STICKERS-POPUP';
 export const STICKERS_POPUP_KIND = Symbol('stickers-popup');
@@ -43,7 +42,8 @@ const TEST_LOADING_DELAY = 0;
 export default function showStickersPopup(
   stickerSetInput: Parameters<AppStickersManager['getStickerSet']>[0] | Parameters<AppStickersManager['getStickerSet']>[0][],
   isEmojisInitial?: boolean,
-  chatInput: ChatInput = appImManager.chat?.input
+  chatInput: ChatInput = hotReloadGuard.appImManager.chat?.input,
+  onClose?: () => void
 ) {
   const [show, setShow] = createSignal(true);
 
@@ -167,7 +167,7 @@ export default function showStickersPopup(
 
       const shouldHide = isEmojis ?
         chatInput.onEmojiSelected(emoji, false) :
-        await appImManager.chat.input.sendMessageWithDocument({document: docId, target});
+        await hotReloadGuard.appImManager.chat.input.sendMessageWithDocument({document: docId, target});
       if(shouldHide) handle.hide();
     };
 
@@ -333,10 +333,10 @@ export default function showStickersPopup(
     };
 
     onMount(() => {
-      attachStickerViewerListeners({listenTo: scrollableEl, listenerSetter});
+      attachMediaPeekListeners({listenTo: scrollableEl, listenerSetter});
 
       const onContainerClick = (e: MouseEvent) => {
-        const callback = onMediaCaptionClick(containerEl, e);
+        const callback = hotReloadGuard.onMediaCaptionClick(containerEl, e);
         if(callback) {
           deferredCloseCallbacks.push(callback);
           handle.hide();
@@ -397,6 +397,7 @@ export default function showStickersPopup(
       show={show()}
       kind={STICKERS_POPUP_KIND}
       animationGroup={ANIMATION_GROUP}
+      onClose={onClose}
       containerProps={{ref: (el) => containerEl = el}}
       onCloseAfterTimeout={() => {
         deferredCloseCallbacks.splice(0).forEach((cb) => cb());

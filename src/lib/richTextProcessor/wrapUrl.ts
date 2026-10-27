@@ -33,6 +33,9 @@ export default function wrapUrl(url: string, safe?: boolean) {
 
     if(path[0] && path[0][0] === '$' && path[0].length > 1) {
       onclick = 'invoice';
+    } else if(path[0].toLowerCase() === 'getpremium') {
+      // t.me/GetPremium is the Premium offer in any case and with any tail, never the profile @GetPremium
+      onclick = 'premium_offer';
     } else if(/^\+/.test(fullPath) && !PHONE_NUMBER_REG_EXP.test(fullPath)) { // second regexp is for phone numbers (t.me/+38050...)
       onclick = 'joinchat';
     } else if(path[0]) switch(path[0]) {

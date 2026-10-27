@@ -29,6 +29,7 @@ import {createSignal, JSX} from 'solid-js';
 import classNames from '@helpers/string/classNames';
 import getWebPageActionOnClick from '@components/chat/getWebPageActionOnClick';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
+import {setDirection} from '@helpers/dom/setInnerHTML';
 
 /**
  * Top-level body component so solid-refresh can swap it on HMR. All
@@ -153,6 +154,8 @@ export default function createChatPinnedMessage(
   let waitForScrollBottom = false;
   let getCurrentIndexPromise: Promise<any> | undefined;
   let loading = false;
+  // * a fetch in flight comes back after the chat is gone - closed, or its account switched away from
+  let destroyed = false;
   let userHidden = false;
   let locked = false;
   const isStatic = !chat.isPinnedMessagesNeeded();
@@ -340,6 +343,10 @@ export default function createChatPinnedMessage(
 
   function setCorrectIndex(lastScrollDirection?: number) {
     const bound = log.bindPrefix('setCorrectIndex');
+    if(destroyed) {
+      return;
+    }
+
     if(isStatic) {
       debug && bound('not needed, static');
       return;
@@ -445,7 +452,7 @@ export default function createChatPinnedMessage(
           chat.peerId,
           chat.threadId
         ).then((p) => {
-          if(!p.maxId) return;
+          if(!p.maxId || destroyed) return;
           pinnedMaxMid = p.maxId;
 
           if(!gotRest && correctAfter) {
@@ -461,6 +468,7 @@ export default function createChatPinnedMessage(
       }
 
       const result = (await Promise.all(promises))[0];
+      if(destroyed) return;
 
       const history = result.history;
 
@@ -503,6 +511,8 @@ export default function createChatPinnedMessage(
         setPinnedMessageDebounced();
       }
     } catch(err) {
+      // * what came back after the chat was gone was dropped
+      if(destroyed) return;
       log.error('getCurrentIndex error', err);
     }
 
@@ -602,6 +612,8 @@ export default function createChatPinnedMessage(
       debug && log('setPinnedMessage: fromTop', fromTop, pinnedIndex, wasPinnedIndex);
 
       const writeTo = animatedSubtitle.getRow(pinnedIndex);
+      // * the message's text: ordered and truncated by its own direction
+      setDirection(writeTo);
       const writeMediaTo = animatedMedia.getRow(pinnedIndex);
       writeMediaTo.classList.add('pinned-message-media');
       const loadPromises: Promise<any>[] = [];
@@ -762,6 +774,8 @@ export default function createChatPinnedMessage(
       'pinned-message-action-button',
       'text-overflow-no-wrap'
     );
+    // * a bot's button label: truncated at its own end, whatever the layout's direction
+    setDirection(btn);
     if(typeof opts.text === 'string') {
       btn.textContent = opts.text;
     } else {
@@ -821,6 +835,7 @@ export default function createChatPinnedMessage(
       plateSetHidden(false);
     },
     destroy: () => {
+      destroyed = true;
       // deferred work would otherwise run against destroyed rows / a detached plate
       setPinnedMessageDebounced.clearTimeout();
       setCorrectIndexThrottled.clear();

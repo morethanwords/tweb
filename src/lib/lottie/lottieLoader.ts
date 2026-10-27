@@ -26,6 +26,8 @@ const TLOTTIE_WASM_URL = new URL(
 ).href;
 
 export type LottieAssetName =
+  | 'BusinessHours'
+  | 'BusinessLocation'
   | 'EmptyFolder'
   | 'Folders_1'
   | 'Folders_2'
@@ -69,7 +71,16 @@ export type LottieAssetName =
   | 'key'
   | 'UtyanDisappear'
   | 'hand_stop'
+  | 'collectible_username'
+  | 'collectible_phone'
 ;
+
+/**
+ * An asset whose data is already being fetched — what a tab's `getInitArgs` starts
+ * with {@link LottieLoader.loadAnimationFromURLManually}, so the sticker is there by
+ * the time the tab's component renders.
+ */
+export type PreloadedLottieAsset = ReturnType<LottieLoader['loadAnimationFromURLManually']>;
 
 export class LottieLoader {
   private loadPromise: Promise<void>;
@@ -77,6 +88,7 @@ export class LottieLoader {
 
   private players: {[reqId: number]: LottiePlayer} = {};
   private playersByCacheName: {[cacheName: string]: Set<LottiePlayer>} = {};
+  private assetData = new Map<string, Promise<Blob>>();
 
   private log = logger('LOTTIE', LogTypes.Error);
 
@@ -166,7 +178,25 @@ export class LottieLoader {
 
   public loadAnimationAsAsset(params: Omit<LottieOptions, 'animationData' | 'name'>, name: LottieAssetName) {
     // (params as LottieOptions).name = name;
-    return this.loadAnimationFromURL(params, this.makeAssetUrl(name));
+    const url = this.makeAssetUrl(name);
+    return this.loadAssetData(url).then((blob) => {
+      return this.loadAnimationFromURLNext(blob, params, url);
+    });
+  }
+
+  /**
+   * An app asset is fetched once. A list of the same animated icon — a video chat's microphones —
+   * used to send a request per icon, which the browser's per-host connection limit served in
+   * waves: on a slow link the icons appeared one batch after another.
+   */
+  private loadAssetData(url: string) {
+    let promise = this.assetData.get(url);
+    if(!promise) {
+      this.assetData.set(url, promise = this.loadAnimationDataFromURL(url));
+      promise.catch(() => this.assetData.delete(url));
+    }
+
+    return promise;
   }
 
   public loadAnimationDataFromURL(url: string, method: 'json'): Promise<any>;
@@ -195,7 +225,7 @@ export class LottieLoader {
 
   public loadAnimationFromURLManually(name: LottieAssetName) {
     const url = this.makeAssetUrl(name);
-    return this.loadAnimationDataFromURL(url).then((blob) => {
+    return this.loadAssetData(url).then((blob) => {
       return (params: Omit<LottieOptions, 'animationData'>) => this.loadAnimationFromURLNext(blob, params, url);
     });
   }
@@ -372,6 +402,9 @@ export class LottieLoader {
   }
 }
 
+// made once: a hot update keeps it and moves it onto the edited class (see @helpers/hotRegistry)
 const lottieLoader = new LottieLoader();
 MOUNT_CLASS_TO.lottieLoader = lottieLoader;
 export default lottieLoader;
+
+if(import.meta.hot) import.meta.hot.accept();

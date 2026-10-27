@@ -57,11 +57,16 @@
       margin: 0 .25rem;
       min-width: 1px; // * fix width
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: background-color var(--tabs-transition) !important;
       }
 
       @include hover-background-effect();
+
+      // * a tab whose context menu is open keeps the hover plate, as a row or a menu toggle does
+      &.menu-open {
+        background-color: var(--light-secondary-text-color);
+      }
 
       .c-ripple {
         display: none;

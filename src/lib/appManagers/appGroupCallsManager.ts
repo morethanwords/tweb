@@ -1080,6 +1080,13 @@ export class AppGroupCallsManager extends AppManager {
     }
   }
 
+  // Which of `sources` the server still holds for us in the call — an empty
+  // answer for our main source means it dropped us and the client must rejoin
+  // (tdesktop / iOS checkGroupCall).
+  public checkGroupCall(call: InputGroupCall, sources: number[]): Promise<number[]> {
+    return this.apiManager.invokeApi('phone.checkGroupCall', {call, sources});
+  }
+
   public async leaveGroupCall(call: InputGroupCall, source: number): Promise<void> {
     const updates = await this.apiManager.invokeApi('phone.leaveGroupCall', {call, source});
     this.processGroupCallTermination(call, updates);

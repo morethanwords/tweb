@@ -1,27 +1,6 @@
 import {Component, createEffect, createRoot, createSignal, For, JSX, onMount, Show} from 'solid-js';
 import {createStore, SetStoreFunction} from 'solid-js/store';
 import {AccountPassword, GlobalPrivacySettings, InputPrivacyKey, Passkey, WebAuthorization} from '@layer';
-import {AppTwoStepVerificationTab, AppTwoStepVerificationEnterPasswordTab, AppTwoStepVerificationEmailConfirmationTab} from '@components/solidJsTabs/tabs';
-import {
-  AppActiveWebSessionsTab,
-  AppBlockedUsersTab,
-  AppMessagesAutoDeleteTab,
-  AppPasscodeEnterPasswordTab,
-  AppPasscodeLockTab,
-  AppPasskeysTab,
-  AppPrivacyAboutTab,
-  AppPrivacyAddToGroupsTab,
-  AppPrivacyBirthdayTab,
-  AppPrivacyCallsTab,
-  AppPrivacyForwardMessagesTab,
-  AppPrivacyGiftsTab,
-  AppPrivacyLastSeenTab,
-  AppPrivacyMessagesTab,
-  AppPrivacyPhoneNumberTab,
-  AppPrivacyProfilePhotoTab,
-  AppPrivacySavedMusicTab,
-  AppPrivacyVoicesTab
-} from '@components/solidJsTabs/tabs';
 import rootScope from '@lib/rootScope';
 import {i18n, LangPackKey} from '@lib/langPack';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
@@ -41,7 +20,7 @@ import {joinDeepPath} from '@helpers/object/setDeepProperty';
 import createAgeVerification from '@components/popups/ageVerification';
 import {clearSensitiveSpoilers} from '@components/wrappers/mediaSpoiler';
 import useContentSettings from '@stores/contentSettings';
-import ChangeLoginEmailTab from '@components/sidebarLeft/tabs/changeLoginEmail';
+import {openChangeLoginEmailTab} from '@components/sidebarLeft/tabs/changeLoginEmail';
 import {wrapEmailPattern} from '@components/emailVerification';
 import IS_WEB_AUTHN_SUPPORTED from '@environment/webAuthn';
 import showPasskeyPopup from '@components/popups/passkey';
@@ -51,6 +30,8 @@ import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import type {AppPrivacyAndSecurityTab} from '@components/solidJsTabs/tabs';
 import Row from '@components/rowTsx';
 import {renderComponent} from '@helpers/solid/renderComponent';
+import type {AppPrivacyLastSeenTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const PrivacyAndSecurity: Component = () => {
   const [tab] = useSuperTab<typeof AppPrivacyAndSecurityTab>();
@@ -129,7 +110,6 @@ const PrivacyAndSecurity: Component = () => {
       {
         let blockedPeerIds: PeerId[];
         let passwordState: AccountPassword;
-        let passcodeEnabled: boolean;
         let websites: WebAuthorization[];
         let passkeys: Passkey[];
         let setPasskeys: SetStoreFunction<Passkey[]>;
@@ -154,7 +134,7 @@ const PrivacyAndSecurity: Component = () => {
         const [passkeysHidden, setPasskeysHidden] = createSignal(false);
 
         const openPasskeysTab = () => {
-          tab.slider.createTab(AppPasskeysTab).open({
+          tab.slider.createTab(hotReloadGuard.tabs.AppPasskeysTab).open({
             passkeys,
             setPasskeys
           });
@@ -190,31 +170,12 @@ const PrivacyAndSecurity: Component = () => {
           });
         };
 
-        const openPasscodeLock = () => {
-          if(passcodeEnabled) {
-            tab.slider.createTab(AppPasscodeEnterPasswordTab)
-            .open({
-              buttonText: 'PasscodeLock.Next',
-              inputLabel: 'PasscodeLock.EnterYourPasscode',
-              onSubmit: async(passcode, _, {isMyPasscode}) => {
-                const isCorrect = await isMyPasscode(passcode);
-                passcode = '';
-                if(!isCorrect) throw {};
-
-                tab.slider.createTab(AppPasscodeLockTab).open();
-              }
-            })
-          } else {
-            tab.slider.createTab(AppPasscodeLockTab).open();
-          }
-        };
-
         renderComponent({
           element: sessionsContent,
           Component: () => (
             <>
               <Row clickable={() => {
-                if(!blockedFrozen()) tab.slider.createTab(AppBlockedUsersTab).open({peerIds: blockedPeerIds});
+                if(!blockedFrozen()) tab.slider.createTab(hotReloadGuard.tabs.AppBlockedUsersTab).open({peerIds: blockedPeerIds});
               }}>
                 <Row.Icon icon="person_crossed_filled" />
                 <Row.Title>{i18n('BlockedUsers')}</Row.Title>
@@ -224,7 +185,7 @@ const PrivacyAndSecurity: Component = () => {
                 classList={{hide: websitesHidden()}}
                 clickable={() => {
                   if(websitesFrozen()) return;
-                  const webTab = tab.slider.createTab(AppActiveWebSessionsTab);
+                  const webTab = tab.slider.createTab(hotReloadGuard.tabs.AppActiveWebSessionsTab);
                   webTab.eventListener.addEventListener('destroy', () => {
                     updateActiveWebsites();
                   });
@@ -237,7 +198,7 @@ const PrivacyAndSecurity: Component = () => {
               </Row>
               <Row clickable={() => {
                 if(autoDeleteFrozen() || isNaN(autoDeletePeriod)) return;
-                tab.slider.createTab(AppMessagesAutoDeleteTab).open({
+                tab.slider.createTab(hotReloadGuard.tabs.AppMessagesAutoDeleteTab).open({
                   period: autoDeletePeriod,
                   onSaved: (period) => {
                     autoDeletePeriod = period;
@@ -249,27 +210,12 @@ const PrivacyAndSecurity: Component = () => {
                 <Row.Title>{i18n('AutoDeleteMessages')}</Row.Title>
                 <Row.Subtitle>{autoDeleteSubtitle()}</Row.Subtitle>
               </Row>
-              <Row clickable={() => !passcodeFrozen() && openPasscodeLock()}>
+              <Row clickable={() => !passcodeFrozen() && hotReloadGuard.tabs.AppPasscodeLockTab.openChecked(tab.slider)}>
                 <Row.Icon icon="key_filled" />
                 <Row.Title>{i18n('PasscodeLock.Item.Title')}</Row.Title>
                 <Row.Subtitle>{passcodeSubtitle()}</Row.Subtitle>
               </Row>
-              <Row clickable={() => {
-                if(twoFactorFrozen()) return;
-                if(passwordState.pFlags.has_password) {
-                  tab.slider.createTab(AppTwoStepVerificationEnterPasswordTab).open({state: passwordState});
-                } else if(passwordState.email_unconfirmed_pattern) {
-                  tab.managers.passwordManager.resendPasswordEmail();
-                  tab.slider.createTab(AppTwoStepVerificationEmailConfirmationTab).open({
-                    state: passwordState,
-                    email: wrapEmailPattern(passwordState.email_unconfirmed_pattern),
-                    length: 6,
-                    isFirst: true
-                  });
-                } else {
-                  tab.slider.createTab(AppTwoStepVerificationTab).open({state: passwordState});
-                }
-              }}>
+              <Row clickable={() => !twoFactorFrozen() && hotReloadGuard.tabs.AppTwoStepVerificationTab.openChecked(tab.slider, passwordState)}>
                 <Row.Icon icon="two_factor_auth_filled" />
                 <Row.Title>{i18n('TwoStepVerification')}</Row.Title>
                 <Row.Subtitle>{twoFactorSubtitle()}</Row.Subtitle>
@@ -277,9 +223,7 @@ const PrivacyAndSecurity: Component = () => {
               <Show when={!emailHidden()}>
                 <Row clickable={() => {
                   if(emailFrozen()) return;
-                  tab.slider.createTab(ChangeLoginEmailTab).open({
-                    isInitialSetup: passwordState.login_email_pattern.includes(' ')
-                  });
+                  openChangeLoginEmailTab(tab.slider, passwordState);
                 }}>
                   <Row.Icon icon="email_filled" />
                   <Row.Title>{i18n('LoginEmail')}</Row.Title>
@@ -351,7 +295,6 @@ const PrivacyAndSecurity: Component = () => {
         });
 
         const setPasscodeEnabledState = (enabled?: boolean) => {
-          passcodeEnabled = enabled;
           setPasscodeSubtitle(i18n(enabled ? 'PrivacyAndSecurity.Item.On' : 'PrivacyAndSecurity.Item.Off'));
         };
         tab.managers.appStateManager.getState().then((state) => {
@@ -414,25 +357,25 @@ const PrivacyAndSecurity: Component = () => {
         };
 
         addRow('inputPrivacyKeyPhoneNumber', i18n('PrivacyPhoneTitle'), () => {
-          tab.slider.createTab(AppPrivacyPhoneNumberTab).open();
+          tab.slider.createTab(hotReloadGuard.tabs.AppPrivacyPhoneNumberTab).open();
         });
         addRow('inputPrivacyKeyStatusTimestamp', i18n('LastSeenTitle'), () => {
-          openTabWithGlobalPrivacy(AppPrivacyLastSeenTab, 'inputPrivacyKeyStatusTimestamp');
+          openTabWithGlobalPrivacy(hotReloadGuard.tabs.AppPrivacyLastSeenTab, 'inputPrivacyKeyStatusTimestamp');
         });
         addRow('inputPrivacyKeyProfilePhoto', i18n('PrivacyProfilePhotoTitle'), () => {
-          tab.slider.createTab(AppPrivacyProfilePhotoTab).open();
+          tab.slider.createTab(hotReloadGuard.tabs.AppPrivacyProfilePhotoTab).open();
         });
         addRow('inputPrivacyKeyAbout', i18n('Privacy.BioRow'), () => {
-          tab.slider.createTab(AppPrivacyAboutTab).open();
+          tab.slider.createTab(hotReloadGuard.tabs.AppPrivacyAboutTab).open();
         });
         addRow('inputPrivacyKeyPhoneCall', i18n('WhoCanCallMe'), () => {
-          tab.slider.createTab(AppPrivacyCallsTab).open();
+          tab.slider.createTab(hotReloadGuard.tabs.AppPrivacyCallsTab).open();
         });
         addRow('inputPrivacyKeyForwards', i18n('PrivacyForwardsTitle'), () => {
-          tab.slider.createTab(AppPrivacyForwardMessagesTab).open();
+          tab.slider.createTab(hotReloadGuard.tabs.AppPrivacyForwardMessagesTab).open();
         });
         addRow('inputPrivacyKeyChatInvite', i18n('WhoCanAddMe'), () => {
-          tab.slider.createTab(AppPrivacyAddToGroupsTab).open();
+          tab.slider.createTab(hotReloadGuard.tabs.AppPrivacyAddToGroupsTab).open();
         });
 
         const createPremiumTitle = (langKey: LangPackKey) => {
@@ -449,10 +392,10 @@ const PrivacyAndSecurity: Component = () => {
 
         if(!isPremiumFeaturesHidden) {
           addRow('inputPrivacyKeyVoiceMessages', createPremiumTitle('PrivacyVoiceMessagesTitle'), () => {
-            tab.slider.createTab(AppPrivacyVoicesTab).open();
+            tab.slider.createTab(hotReloadGuard.tabs.AppPrivacyVoicesTab).open();
           });
           addRow('new_noncontact_peers_require_premium', createPremiumTitle('PrivacyMessagesTitle'), () => {
-            tab.slider.createTab(AppPrivacyMessagesTab).open({
+            tab.slider.createTab(hotReloadGuard.tabs.AppPrivacyMessagesTab).open({
               onSaved: (updatedPrivacy) => {
                 p.globalPrivacy = updatedPrivacy;
                 updatePrivacyRow('new_noncontact_peers_require_premium');
@@ -462,13 +405,13 @@ const PrivacyAndSecurity: Component = () => {
         }
 
         addRow('inputPrivacyKeyBirthday', i18n('Privacy.BirthdayRow'), () => {
-          tab.slider.createTab(AppPrivacyBirthdayTab).open();
+          tab.slider.createTab(hotReloadGuard.tabs.AppPrivacyBirthdayTab).open();
         });
         addRow('inputPrivacyKeyStarGiftsAutoSave', i18n('Privacy.GiftsRow'), () => {
-          openTabWithGlobalPrivacy(AppPrivacyGiftsTab, 'inputPrivacyKeyStarGiftsAutoSave');
+          openTabWithGlobalPrivacy(hotReloadGuard.tabs.AppPrivacyGiftsTab, 'inputPrivacyKeyStarGiftsAutoSave');
         });
         addRow('inputPrivacyKeySavedMusic', i18n('Privacy.SavedMusicRow'), () => {
-          tab.slider.createTab(AppPrivacySavedMusicTab).open();
+          tab.slider.createTab(hotReloadGuard.tabs.AppPrivacySavedMusicTab).open();
         });
 
         renderComponent({
@@ -529,7 +472,9 @@ const PrivacyAndSecurity: Component = () => {
 
             const subtitle: JSX.Element[] = [i18n(langKey)];
             if(disallowLength || allowLength) {
-              subtitle.push(` (${[-disallowLength, allowLength ? '+' + allowLength : 0].filter(Boolean).join(', ')})`);
+              // * signed counts read left to right in any language, "(-2, +3)", not "(2-, 3+)"
+              const counts = `(${[-disallowLength, allowLength ? '+' + allowLength : 0].filter(Boolean).join(', ')})`;
+              subtitle.push(' ', <span dir="ltr">{counts}</span>);
             }
             subtitleSignal[1](subtitle);
           });
@@ -603,7 +548,7 @@ const PrivacyAndSecurity: Component = () => {
             return;
           }
 
-          if(newEnabled && contentSettings.needAgeVerification() && !contentSettings.ageVerified()) {
+          if(newEnabled && contentSettings.needAgeVerification()) {
             sensitiveSignal[1](false);
             createAgeVerification().then((verified) => {
               if(verified) {
@@ -618,7 +563,11 @@ const PrivacyAndSecurity: Component = () => {
 
           tab.managers.appPrivacyManager.setContentSettings({
             sensitive_enabled: newEnabled
-          }).catch(() => {
+          }).then(() => {
+            if(newEnabled) {
+              clearSensitiveSpoilers();
+            }
+          }, () => {
             toastNew({langPackKey: 'Error.AnError'});
             sensitiveSignal[1](!newEnabled);
           }).finally(() => {

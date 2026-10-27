@@ -756,6 +756,10 @@
       {
         "name": "countries",
         "type": "HelpCountriesList.helpCountriesList"
+      },
+      {
+        "name": "rtl",
+        "type": "boolean"
       }
     ]
   },
@@ -1341,6 +1345,24 @@
       {
         "name": "button",
         "type": "RichText.textButton"
+      }
+    ],
+    "type": "MessageEntity"
+  },
+  {
+    "predicate": "messageEntityIcon",
+    "params": [
+      {
+        "name": "offset",
+        "type": "number"
+      },
+      {
+        "name": "length",
+        "type": "number"
+      },
+      {
+        "name": "icon",
+        "type": "Icon"
       }
     ],
     "type": "MessageEntity"

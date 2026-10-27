@@ -1,0 +1,83 @@
+@use "../shared" as *;
+
+// A member tag's colour says whose it is: a member's stays the grey of its place, an admin's and
+// the owner's take the green and the violet of names. `--member-tag-color` carries it to a piece
+// that paints with it otherwise (a disc, a tint) — resolved on the element itself, so a chat's own
+// theme reaches it; the fallbacks stand in until the peer colours are set.
+.member-tag {
+  &-admin {
+    --member-tag-color: rgb(var(--peer-3-color-rgb, 64, 169, 32));
+  }
+
+  &-owner {
+    --member-tag-color: rgb(var(--peer-2-color-rgb, 149, 92, 219));
+  }
+
+  &-admin,
+  &-owner {
+    color: var(--member-tag-color);
+
+    // * the role colours read poorly as text this small; with the stronger contrast asked for, the
+    // * text leans towards the theme's own, as a folder tag's does - further, as it stands on its
+    // * own tint (the green holds 4.5:1 in `light` from here)
+    .high-contrast & {
+      color: color-mix(in srgb, var(--member-tag-color) 45%, var(--primary-text-color));
+    }
+  }
+}
+
+// An admin's and the owner's tag stands on a pill of its colour, round at both ends; a member's is
+// plain text
+.member-tag-pill {
+  padding-inline: .375rem;
+  border-radius: 1rem;
+  background-color: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+// A tag that opens something when pressed (`makeMemberTagPressable`): pressed as a link is, with a
+// ripple in its own colour (desktop's, a tenth of it) over its whole box - the pill, or a box the
+// size of one around a plain tag's text. Under the pointer a plain tag shows that pill, and a pill
+// deepens (desktop's members list). It is no text link to underline
+.member-tag-pressable {
+  --link-plate-color: color-mix(in srgb, currentColor 10%, transparent);
+  border-radius: 1rem;
+
+  @include hover() {
+    background-color: color-mix(in srgb, currentColor 12%, transparent);
+  }
+
+  &.member-tag-pill {
+    @include hover() {
+      background-color: color-mix(in srgb, currentColor 18%, transparent);
+    }
+  }
+
+  &.is-link-hovered {
+    text-decoration: none;
+  }
+
+  > .link-plate {
+    padding: 0;
+  }
+}
+
+// A tag I may change, at the end of a member's row: a click opens its editor. A plain one's box
+// reaches past its text, which stays where it stands
+.member-tag-editable {
+  // * desktop's rows press a little deeper than its messages
+  --link-plate-color: color-mix(in srgb, currentColor 12%, transparent);
+  cursor: pointer;
+  // * the row's contents leave the pointer to the row (`.row-row`), this one takes it back
+  pointer-events: auto;
+  margin-inline: -.375rem;
+  padding-inline: .375rem;
+
+  &.member-tag-pill {
+    margin-inline: 0;
+  }
+}
+
+// my own row with no tag offers one
+.member-tag-add {
+  color: var(--primary-color);
+}

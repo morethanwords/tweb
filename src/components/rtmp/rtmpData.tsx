@@ -54,7 +54,7 @@ export const RtmpData = (props: RtmpDataProps) => {
       >
         <IconTsx icon="link" class={cnRtmpData('-row-icon')} />
         <div class={cnRtmpData('-row-item')}>
-          <div class={cnRtmpData('-row-item-text')}>
+          <div class={cnRtmpData('-row-item-text')} dir="ltr">
             <Skeleton loading={props.loading}>
               {props.url}
             </Skeleton>
@@ -72,7 +72,7 @@ export const RtmpData = (props: RtmpDataProps) => {
       >
         <IconTsx icon="lock" class={cnRtmpData('-row-icon')} />
         <div class={cnRtmpData('-row-item')}>
-          <div aria-hidden={!keyVisible()} classList={{
+          <div aria-hidden={!keyVisible()} dir="ltr" classList={{
             [cnRtmpData('-row-item-text')]: true,
             [cnRtmpData('-row-item-text_hidden')]: !keyVisible()
           }}>

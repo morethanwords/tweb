@@ -113,10 +113,12 @@ const ViewTonePopup = (props: ViewTonePopupProps) => {
           >
             {(content) => (
               <Scrollable relative class={styles.comparisonContent}>
-                {wrapRichText(content.text, {
-                  entities: content.entities,
-                  middleware: createMiddleware().get()
-                })}
+                <div dir="auto">
+                  {wrapRichText(content.text, {
+                    entities: content.entities,
+                    middleware: createMiddleware().get()
+                  })}
+                </div>
               </Scrollable>
             )}
           </Show>

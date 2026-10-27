@@ -55,12 +55,15 @@ export default class InlineHelper extends AutocompleteHelper {
         const {peerId, botId, queryId} = this.list.dataset;
         return this.chat.input.getReadyToSend(() => {
           const queryAndResultIds = generateQId(queryId, (target as HTMLElement).dataset.resultId);
-          this.managers.appInlineBotsManager.sendInlineResult(peerId.toPeerId(), botId, queryAndResultIds, {
-            ...this.chat.getMessageSendingParams(),
-            clearDraft: true
-          });
+          const sendingParams = this.chat.getMessageSendingParams();
+          this.chat.input.whenSendingConfirmed(() => {
+            this.managers.appInlineBotsManager.sendInlineResult(peerId.toPeerId(), botId, queryAndResultIds, {
+              ...sendingParams,
+              clearDraft: true
+            });
 
-          this.chat.input.onMessageSent(true, true);
+            this.chat.input.onMessageSent(true, true);
+          });
         });
       }
     });

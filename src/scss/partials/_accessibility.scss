@@ -46,6 +46,12 @@
   outline: none;
 }
 
+// The media viewer holds the focus only for its keys (arrows, Space, Escape): it is no control,
+// and a ring around the whole screen would point at nothing.
+:root:where(.a11y) .media-viewer-whole:focus-visible {
+  outline: none;
+}
+
 // Screen-reader-only content: exposed to the accessibility tree, visually
 // hidden. Used for skip links, live regions and supplementary labels.
 .sr-only {
@@ -60,8 +66,9 @@
   border: 0;
 }
 
+// a name is a link too (PeerTitle `link`), but it is drawn as a name everywhere
 .high-contrast .anchor-url,
-.high-contrast .i18n a {
+.high-contrast .i18n a:not(.peer-title) {
   text-decoration: underline;
 }
 

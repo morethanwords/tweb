@@ -16,12 +16,14 @@
   overflow: hidden;
   padding: var(--offset) var(--offset) 0 !important;
   box-shadow: none;
-  animation: none !important;
-  visibility: visible !important;
-  transition: none !important;
-  
+
+  // * the list rises out of the input on full animations; below them it takes
+  // * the fade every autocomplete helper has
   @include animation-level(2) {
     display: flex !important;
+    animation: none !important;
+    visibility: visible !important;
+    transition: none !important;
   }
 
   .scrollable {

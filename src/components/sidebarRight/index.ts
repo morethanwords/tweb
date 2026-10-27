@@ -1,17 +1,17 @@
-import appImManager, {APP_TABS} from '@lib/appImManager';
+import appImManager from '@lib/appImManager';
 import SidebarSlider from '@components/slider';
 import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
 import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMediaTab';
 import {MOUNT_CLASS_TO} from '@config/debug';
-import {AppManagers} from '@lib/managers';
+import {TabManagers} from '@lib/managers';
 import appNavigationController from '@components/appNavigationController';
 import rootScope from '@lib/rootScope';
 import {installColumnWidthsUpdater} from '@helpers/updateColumnWidths';
 import installColumnResize from '@helpers/installColumnResize';
 import animationIntersector from '@components/animationIntersector';
+import {APP_TABS, RIGHT_COLUMN_ACTIVE_CLASSNAME} from '@lib/appColumns';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
-
-export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
 
 export class AppSidebarRight extends SidebarSlider {
   public sharedMediaTab: AppSharedMediaTab;
@@ -27,7 +27,7 @@ export class AppSidebarRight extends SidebarSlider {
     this.sidebarEl.inert = !document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME);
   }
 
-  construct(managers: AppManagers) {
+  construct(managers: TabManagers) {
     this.managers = managers;
 
     mediaSizes.addEventListener('changeScreen', (from, to) => {
@@ -101,6 +101,10 @@ export class AppSidebarRight extends SidebarSlider {
     rootScope.dispatchEventSingle('right_sidebar_toggle', false);
   }
 
+  public reveal() {
+    this.toggleSidebar(true);
+  }
+
   public toggleSidebar(enable?: boolean, animate?: boolean) {
     const active = document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME);
     let willChange: boolean;
@@ -138,6 +142,10 @@ export class AppSidebarRight extends SidebarSlider {
   }
 }
 
+// made once: a hot update keeps it and moves it onto the edited class (see @helpers/hotRegistry)
 const appSidebarRight = new AppSidebarRight();
 MOUNT_CLASS_TO.appSidebarRight = appSidebarRight;
+registerHotReloadGuard({appSidebarRight});
 export default appSidebarRight;
+
+if(import.meta.hot) import.meta.hot.accept();

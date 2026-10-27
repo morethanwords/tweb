@@ -1,4 +1,4 @@
-import {createEffect, createRoot} from 'solid-js';
+import {createEffect, createRoot, untrack} from 'solid-js';
 import {Dialog} from '@appManagers/appMessagesManager';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '@appManagers/constants';
 import getLinkedCommunityId from '@appManagers/utils/communities/getLinkedCommunityId';
@@ -6,6 +6,7 @@ import isCollapsedCommunity from '@appManagers/utils/communities/isCollapsedComm
 import getDialogIndex from '@appManagers/utils/dialogs/getDialogIndex';
 import getDialogIndexKey from '@appManagers/utils/dialogs/getDialogIndexKey';
 import {isDialog, isForumTopic} from '@appManagers/utils/dialogs/isDialog';
+import {setRollingText} from '@components/animatedCounter';
 import ArchiveDialog, {createArchiveDialogState, DisposableArchiveDialogState} from '@components/archiveDialog';
 import {AutonomousDialogListBase, BaseConstructorArgs, LoadDialogsInnerArgs} from '@components/autonomousDialogList/base';
 import {BADGE_TRANSITION_TIME} from '@components/autonomousDialogList/constants';
@@ -24,12 +25,17 @@ import namedPromises from '@helpers/namedPromises';
 import noop from '@helpers/noop';
 import {Chat, Message} from '@layer';
 import apiManagerProxy from '@lib/apiManagerProxy';
-import {AppDialogsManager, DialogDom} from '@lib/appDialogsManager';
+import {AppDialogsManager} from '@lib/appDialogsManager';
+import {DialogDom} from '@components/dialogElement';
 import rootScope from '@lib/rootScope';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {runWithHotReloadGuard} from '@lib/solidjs/runWithHotReloadGuard';
+import useChatListUnreadOnly from '@stores/chatListUnreadOnly';
 import {useCommunityDialogs} from '@stores/communities';
 import {usePeers} from '@stores/peers';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+
+const [unreadOnly] = useChatListUnreadOnly();
 
 
 type ConstructorArgs = BaseConstructorArgs & {
@@ -92,6 +98,12 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
   private projectedPeerFolderIds = new Map<PeerId, number>();
   private filterPinnedPeerIds = new Set<PeerId>();
   private communityProjectionDestroyed = false;
+  // * while the list shows only unread chats: the folder's chats that have been unread since it was
+  // * built, from its counter (`folder_unread`). One read meanwhile stays until the list is built
+  // * again - kept here, not by the rows the list holds, which it drops far out of sight
+  private keptPeerIds: Set<PeerId>;
+  // * which build of the list the set is of: every `clear` starts another
+  private keptBuild = 0;
 
   constructor({filterId, ...args}: ConstructorArgs) {
     super(args);
@@ -142,14 +154,24 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
       }
 
       const peerId = userId.toPeerId();
-      const dom = this.getDialogDom(peerId);
-      if(!dom) {
+      const dialogElement = this.getDialogElement(peerId);
+      if(!dialogElement) {
         return;
+      }
+
+      // * the row offers its bot's main mini app only while the bot has one (setUnreadMessages)
+      if(
+        dialogElement.hasBotMainApp !== undefined &&
+        dialogElement.hasBotMainApp !== !!apiManagerProxy.getUser(userId)?.pFlags?.bot_has_main_app
+      ) {
+        this.managers.appMessagesManager.getDialogOnly(peerId).then((dialog) => {
+          if(dialog) this.appDialogsManager.setUnreadMessagesN({dialog, dialogElement});
+        });
       }
 
       const status = await this.managers.appUsersManager.getUserStatus(userId);
       const online = status?._ === 'userStatusOnline';
-      this.setOnlineStatus(dom.avatarEl.node, online);
+      this.setOnlineStatus(dialogElement.dom.avatarEl.node, online);
     });
 
     this.listenerSetter.add(rootScope)('chat_update', async(chatId) => {
@@ -249,6 +271,34 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
       this.updateDialog(dialog);
     });
 
+    // * a chat that turns unread joins a list of unread ones, and one that is read stays in it until
+    // * the list is built again - the chat just opened does not slip away from under the pointer.
+    // * The counter is updated after the dialog is, so the chat is added from here
+    this.listenerSetter.add(rootScope)('folder_unread', (folder) => {
+      const kept = this.keptPeerIds;
+      if(folder.id !== this.filterId || !kept) {
+        return;
+      }
+
+      const added = [...folder.unreadPeerIds].filter((peerId) => !kept.has(peerId));
+      added.forEach((peerId) => kept.add(peerId));
+      if(!this.isActive || !added.length) {
+        return;
+      }
+
+      if(this.communityProjectionSnapshot.length) {
+        void this.scheduleCommunityProjection().catch(noop);
+      }
+
+      for(const peerId of added) {
+        this.managers.appMessagesManager.getDialogOnly(peerId).then((dialog) => {
+          if(dialog && this.keptPeerIds === kept) {
+            this.updateDialog(dialog);
+          }
+        });
+      }
+    });
+
     this.listenerSetter.add(rootScope)('dialog_notify_settings', (dialog) => {
       if(!this.isActive || !isDialog(dialog)) {
         return;
@@ -272,12 +322,13 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     });
 
     this.listenerSetter.add(rootScope)('filter_update', async(filter) => {
+      const managers = bindManagersToSession(this.managers);
       if(filter.id === this.filterId && !REAL_FOLDERS.has(filter.id)) {
         this.filterPinnedPeerIds = new Set(filter.pinnedPeerIds);
         await this.scheduleCommunityProjection();
       }
       if(this.isActive && filter.id === this.filterId && !REAL_FOLDERS.has(filter.id)) {
-        const dialogs = await this.managers.dialogsStorage.getCachedDialogs(true);
+        const dialogs = await managers.dialogsStorage.getCachedDialogs(true);
         await this.validateListForFilter();
         for(let i = 0, length = dialogs.length; i < length; ++i) {
           const dialog = dialogs[i];
@@ -297,6 +348,17 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
 
   private get isActive() {
     return this.appDialogsManager.xd === this;
+  }
+
+  // * read untracked: the list changes by being built again (`appDialogsManager.setUnreadOnly`),
+  // * not by an effect that happened to read it - the archive row's would put it back at once
+  private get isUnreadOnly() {
+    return this.filterId !== FOLDER_ID_ARCHIVE && untrack(unreadOnly);
+  }
+
+  // * the chats the list lets in while it shows only some of the folder's, for stepping between them
+  public getShownPeerIds() {
+    return this.isUnreadOnly ? [...this.keptPeerIds ?? []] : undefined;
   }
 
   public getRectFromForPlaceholder() {
@@ -342,6 +404,7 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
       requestItemForIdx: this.requestItemForIdx,
       onListShrinked: this.onListShrinked,
       itemSize: 72,
+      folderTagsFilterId: filterId,
       onListLengthChange: () => {
         scrollable.onSizeChange();
         this.appDialogsManager.onListLengthChange?.();
@@ -356,8 +419,9 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     this.setupCommunityProjection();
 
     // a press on a chat row opens the chat, so the pinned block is dragged only in the mode where it
-    // does not - the one the rows are selected in (Android reorders its pins there too)
-    this.attachPinnedReorder(() => this.appDialogsManager.selection.isSelecting);
+    // does not - the one the rows are selected in (Android reorders its pins there too). Not among
+    // unread chats only: the order of the pins that are shown is not the order of all of them
+    this.attachPinnedReorder(() => this.appDialogsManager.selection.isSelecting && !this.isUnreadOnly);
 
     // list.classList.add('hide');
     // scrollable.container.style.backgroundColor = '#' + (Math.random() * (16 ** 6 - 1) | 0).toString(16);
@@ -381,7 +445,32 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
       return false;
     }
 
-    return true;
+    return !this.isUnreadOnly || !!this.keptPeerIds?.has(dialog.peerId);
+  }
+
+  protected async dialogsFetcher(offsetIndex: number, limit: number) {
+    if(!this.isUnreadOnly) {
+      return super.dialogsFetcher(offsetIndex, limit);
+    }
+
+    // * a page that comes back to a list built again since tells nothing about it. And the set comes
+    // * with the first page, not before: until then no update adds a row - one added while every
+    // * dialog is still loading would cut the first page short
+    const build = this.keptBuild;
+    const result = await this.managers.dialogsStorage.getUnreadDialogs({
+      filterId: this.filterId,
+      offsetIndex,
+      limit,
+      skipMigrated: this.skipMigrated,
+      keepPeerIds: this.keptPeerIds && [...this.keptPeerIds]
+    });
+
+    if(build === this.keptBuild) {
+      const kept = this.keptPeerIds ??= new Set();
+      result.unreadPeerIds.forEach((peerId) => kept.add(peerId));
+    }
+
+    return result;
   }
 
   protected async loadDialogsInner({offsetIndex, canFinish}: LoadDialogsInnerArgs) {
@@ -523,17 +612,26 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     projection: CommunityProjection[],
     canFinish: () => boolean
   ) {
+    const managers = bindManagersToSession(this.managers);
     if(!canFinish()) {
       return;
     }
 
+    const isUnreadOnly = this.isUnreadOnly;
     const hasCommunityRows = this.filterId === FOLDER_ID_ALL;
+    const isInFolder = ({folderId, filterIndex}: CommunityProjection['dialogs'][0]) => {
+      return REAL_FOLDERS.has(this.filterId) ? folderId === this.filterId : filterIndex !== undefined;
+    };
+    // * among unread chats only, a community is shown while one of its chats in the folder has been
+    // * unread since the list was built, like a chat
+    const rowCommunityIds = new Set(
+      projection.filter((item) => {
+        return !isUnreadOnly || item.dialogs.some((dialog) => isInFolder(dialog) && this.keptPeerIds?.has(dialog.peerId));
+      }).map(({communityId}) => communityId)
+    );
     if(hasCommunityRows) {
-      const projectedCommunityIds = new Set(
-        projection.map(({communityId}) => communityId)
-      );
       for(const [communityId, row] of this.communityProjectionRows) {
-        if(projectedCommunityIds.has(communityId)) {
+        if(rowCommunityIds.has(communityId)) {
           continue;
         }
 
@@ -546,7 +644,7 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     const hiddenPeerIds = new Set<PeerId>();
     const peerFolderIds = new Map<PeerId, number>();
     for(const item of projection) {
-      if(hasCommunityRows) {
+      if(hasCommunityRows && rowCommunityIds.has(item.communityId)) {
         let row = this.communityProjectionRows.get(item.communityId);
         if(!row) {
           row = this.createCommunityProjectionRow(item.communityId);
@@ -563,12 +661,11 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
         }
       }
 
-      for(const {peerId, folderId, filterIndex} of item.dialogs) {
+      for(const dialog of item.dialogs) {
+        const {peerId, folderId} = dialog;
         peerFolderIds.set(peerId, folderId);
-        const hiddenInFilter = REAL_FOLDERS.has(this.filterId) ?
-          folderId === this.filterId :
-          filterIndex !== undefined &&
-            !this.filterPinnedPeerIds.has(peerId);
+        const hiddenInFilter = isInFolder(dialog) &&
+          (REAL_FOLDERS.has(this.filterId) || !this.filterPinnedPeerIds.has(peerId));
         if(!hiddenInFilter) {
           continue;
         }
@@ -585,7 +682,7 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
         continue;
       }
 
-      const dialog = await this.managers.appMessagesManager
+      const dialog = await managers.appMessagesManager
       .getDialogOnly(peerId);
       if(!canFinish()) {
         return;
@@ -603,7 +700,9 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
       }
     }
 
-    const folderCountDelta = REAL_FOLDERS.has(this.filterId) ?
+    // * among unread chats only, the count is of the chats kept (`keptPeerIds`): a chat that was
+    // * never unread moving between folders shifts nothing in it
+    const folderCountDelta = REAL_FOLDERS.has(this.filterId) && !isUnreadOnly ?
       getCommunityProjectionFolderCountDelta(
         this.projectedPeerFolderIds,
         peerFolderIds,
@@ -613,9 +712,19 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     this.projectedPeerIds = hiddenPeerIds;
     this.projectedPeerFolderIds = peerFolderIds;
     // Community rows join the list, their hidden ordinary peers leave it.
-    const communityRowsCount = hasCommunityRows ? projection.length : 0;
+    const communityRowsCount = hasCommunityRows ? rowCommunityIds.size : 0;
+    let hiddenCount = hiddenPeerIds.size;
+    if(isUnreadOnly) {
+      hiddenCount = 0;
+      for(const peerId of hiddenPeerIds) {
+        if(this.keptPeerIds?.has(peerId)) {
+          ++hiddenCount;
+        }
+      }
+    }
+
     this.sortedList.setTotalCountOffset(
-      communityRowsCount - hiddenPeerIds.size,
+      communityRowsCount - hiddenCount,
       folderCountDelta
     );
   }
@@ -721,12 +830,11 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
   public setCallStatus(dom: DialogDom, visible: boolean) {
     let {callIcon, listEl} = dom;
     if(!callIcon && visible) {
-      const {canvas, startAnimation} = dom.callIcon = callIcon = groupCallActiveIcon(listEl.classList.contains('active'));
-      canvas.classList.add('dialog-group-call-icon');
-      listEl.append(canvas);
+      const {element} = dom.callIcon = callIcon = groupCallActiveIcon();
+      element.classList.add('dialog-group-call-icon');
+      listEl.append(element);
 
       listEl.classList.add('has-group-call-icon');
-      startAnimation();
     }
 
     if(!callIcon) {
@@ -734,12 +842,12 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     }
 
     SetTransition({
-      element: dom.callIcon.canvas,
+      element: dom.callIcon.element,
       className: 'is-visible',
       forwards: visible,
       duration: BADGE_TRANSITION_TIME,
       onTransitionEnd: visible ? undefined : () => {
-        dom.callIcon.canvas.remove();
+        dom.callIcon.element.remove();
         dom.callIcon = undefined;
         listEl.classList.remove('has-group-call-icon');
       },
@@ -784,9 +892,11 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     const reuseClassNames = ['unread', 'mention'];
     this.sortedList.getAllDialogElementsMap().forEach((dialogElement) => {
       const {dom} = dialogElement;
-      const unreadContent = dom.unreadBadge?.textContent;
+      // * not the badge's own text, which holds the rolling characters while its count changes
+      const unreadContent = dialogElement.unreadText;
       if(
         !unreadContent ||
+        !dom.unreadBadge ||
         dom.unreadBadge.classList.contains('backwards') ||
         dom.unreadBadge.classList.contains('dialog-pinned-icon')
       ) {
@@ -796,7 +906,7 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
       const isUnreadAvatarBadgeMounted = !!dom.unreadAvatarBadge;
       dialogElement.createUnreadAvatarBadge();
       dialogElement.toggleBadgeByKey('unreadAvatarBadge', true, isUnreadAvatarBadgeMounted);
-      dom.unreadAvatarBadge.textContent = unreadContent;
+      setRollingText({element: dom.unreadAvatarBadge, text: unreadContent, direction: 0, animate: false});
       const unreadAvatarBadgeClassList = dom.unreadAvatarBadge.classList;
       const unreadBadgeClassList = dom.unreadBadge.classList;
       reuseClassNames.forEach((className) => {
@@ -825,7 +935,8 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
   private async onHasArchiveDialogChanged(hasArchiveDialog: boolean) {
     if(!this.customPinnedDialog || !this.archiveDialogState) return;
 
-    if(hasArchiveDialog) {
+    // * the archive is no chat of its own, and its unread ones are not this list's
+    if(hasArchiveDialog && !this.isUnreadOnly) {
       await this.sortedList.ensurePinned(this.customPinnedDialog);
     } else {
       this.sortedList.removePinned(this.customPinnedDialog);
@@ -841,6 +952,8 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     this.communityProjectionRows.clear();
     this.projectedPeerIds.clear();
     this.projectedPeerFolderIds.clear();
+    this.keptPeerIds = undefined;
+    ++this.keptBuild;
     super.clear();
   }
 

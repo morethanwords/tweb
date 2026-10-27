@@ -3,6 +3,8 @@ import {CreatePollContextValue, CreatePollStore} from '@components/popups/create
 import {canSubmitPoll, getFinalPayload, validateCountryRestriction} from '@components/popups/createPoll/utils';
 import {MessageEntity, Poll, PollAnswer, PollAnswerVoters, PollResults} from '@layer';
 
+// * full animations, so the scroll to the restriction glides
+vi.mock('@helpers/liteMode', () => ({default: {isAvailable: () => true}}));
 
 const makeStore = (overrides: Partial<CreatePollStore> = {}): CreatePollStore => ({
   question: 'Question',

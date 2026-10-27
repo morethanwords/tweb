@@ -19,29 +19,6 @@
   background-color: rgba(0, 0, 0, 0.35);
 }
 
-.videoCreatingProgress {
-  position: absolute;
-  inset: 0;
-}
-
-.videoCreatingCancel {
-  position: relative;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: white;
-  font-size: 1.25rem;
-}
-
-.videoCreatingCancelIcon {
-  font-size: 14px;
-}
-
 .videoAttachmentWrapper {
   position: relative;
   overflow: hidden;

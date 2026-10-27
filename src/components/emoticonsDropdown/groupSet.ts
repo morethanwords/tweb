@@ -3,7 +3,7 @@ import ListenerSetter from '@helpers/listenerSetter';
 import rootScope from '@lib/rootScope';
 import getGroupStickerSet from '@appManagers/utils/chats/getGroupStickerSet';
 import hasRights from '@appManagers/utils/chats/hasRights';
-import type {AppManagers} from '@lib/managers';
+import type {ReadingManagers} from '@lib/managers';
 
 /**
  * The category the group's own set is filed under. It is deliberately not the set's id:
@@ -35,7 +35,7 @@ export default class GroupSetController {
   private requestId = 0;
 
   constructor(private options: {
-    managers: AppManagers,
+    managers: ReadingManagers,
     listenerSetter: ListenerSetter,
     isEmoji?: boolean,
     getPeerId: () => PeerId,

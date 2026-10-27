@@ -7,6 +7,7 @@ import nMap from '@helpers/number/nMap';
 import {i18n} from '@lib/langPack';
 
 import styles from '@components/sidebarLeft/tabs/privacy/messages/starsRangeInput.module.scss';
+import onRangeInlineArrowKey from '@helpers/dom/onRangeInlineArrowKey';
 
 
 const starsPerUnits: [units: number, stars: number][] = [
@@ -91,6 +92,7 @@ const StarRangeInput: Component<{
           step={1}
           value={units()}
           onInput={onInput}
+          onKeyDown={onRangeInlineArrowKey}
         />
         <div class={styles.Background} />
         <div class={styles.Thumb} />

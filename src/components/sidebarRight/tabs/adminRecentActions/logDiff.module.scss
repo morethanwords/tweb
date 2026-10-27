@@ -15,8 +15,8 @@
 
 .Block {
   position: relative;
-  padding: 6px 8px;
-  padding-left: 7px;
+  padding-block: 6px;
+  padding-inline: 7px 8px;
   border-radius: 5px;
   overflow: hidden;
 
@@ -46,21 +46,23 @@
     border-bottom-right-radius: 0;
   }
 
+  // * the names say it for LTR: side by side these are the edges where the two blocks meet - the
+  // * first block's inline end and the second one's inline start
   &.unroundedRight {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
   }
 
   &.unroundedLeft {
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
   }
 }
 
 .Border {
   position: absolute;
   top: 0;
-  left: 0;
+  inset-inline-start: 0;
   width: 3px;
   height: 100%;
 
@@ -86,8 +88,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding-left: 2px;
-  padding-right: 4px;
+  padding-inline: 2px 4px;
   opacity: 0.3;
 
   font-size: 14px;

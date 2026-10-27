@@ -4,6 +4,7 @@ import {createMemo} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import {AttachedMedia, CreatePollContextValue, CreatePollPayload, CreatePollStore, FinalizedAttachedMedia, StorePollOption, SupportedMediaType, useCreatePollContext} from './storeContext';
 import {useCreatePollLimits} from './useCreatePollLimits';
+import smoothScrollBehavior from '@helpers/dom/smoothScrollBehavior';
 
 
 type CreatePollValidationLimits = {
@@ -79,7 +80,7 @@ export const validateCountryRestriction = (
   if(!isBroadcast || !store.limitByCountry || store.countriesIso2.length) return true;
 
   onError();
-  countriesElement?.scrollIntoView({behavior: 'smooth', block: 'center'});
+  countriesElement?.scrollIntoView({behavior: smoothScrollBehavior(), block: 'center'});
   return false;
 };
 

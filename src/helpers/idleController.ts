@@ -14,6 +14,11 @@ export class IdleController extends EventListenerBase<{
   private focusPromise: Promise<void>;
   private focusResolve: () => void;
 
+  // * the app is out of sight though the window has the focus (see holdFocus)
+  private holds = 0;
+  private heldPromise: Promise<void>;
+  private heldResolve: () => void;
+
   private boundWindow: Window;
   private onBlur = () => {
     this.isIdle = true;
@@ -68,8 +73,36 @@ export class IdleController extends EventListenerBase<{
     }
   }
 
-  public getFocusPromise() {
-    return this.focusPromise;
+  /**
+   * Settles once the user can see the app: the window has the focus, and nothing holds it (holdFocus) -
+   * a hold that came while it waited for the focus included.
+   */
+  public getFocusPromise(): Promise<void> {
+    if(this.holds) {
+      return this.heldPromise.then(() => this.getFocusPromise());
+    }
+
+    return this.focusPromise.then(() => this.holds ? this.getFocusPromise() : undefined);
+  }
+
+  /**
+   * The app is out of the user's sight while the window keeps the focus - an account's sign-in stands over
+   * it: what waits for their eyes (a chat's read mark) waits until the returned release. Nothing else of
+   * being idle comes with it.
+   */
+  public holdFocus() {
+    if(!this.holds++) {
+      this.heldPromise = new Promise((resolve) => this.heldResolve = resolve);
+    }
+
+    let released = false;
+    return () => {
+      if(released) return;
+      released = true;
+      if(!--this.holds) {
+        this.heldResolve();
+      }
+    };
   }
 
   public get isIdle() {

@@ -1,7 +1,6 @@
 import {
   createSignal,
   createMemo,
-  createRenderEffect,
   Show,
   createEffect,
   createRoot,
@@ -13,7 +12,7 @@ import {
 } from 'solid-js';
 
 import LoadingDialogSkeleton, {LoadingDialogSkeletonSize} from '@components/loadingDialogSkeleton';
-import VerticalVirtualList, {VerticalVirtualListItemProps, VIRTUAL_LIST_ITEM_CLASS_NAME} from '@components/verticalVirtualList';
+import VerticalVirtualList, {createItemGlide, createItemsLayout, VerticalVirtualListItemProps, VIRTUAL_LIST_ITEM_CLASS_NAME} from '@components/verticalVirtualList';
 
 
 type CreateDeferredSortedVirtualListArgs<T> = {
@@ -33,6 +32,11 @@ type CreateDeferredSortedVirtualListArgs<T> = {
   requestItemForIdx: (idx: number, itemsLength: number) => void,
   sortWith: (a: number, b: number) => number,
   itemSize: LoadingDialogSkeletonSize,
+  /**
+   * How tall an item is, for a list whose items are not all `itemSize` tall - read in a tracking
+   * scope, so a height that changes lays the list out again. An item still loading is `itemSize`
+   */
+  getItemHeight?: (item: T) => number,
   noAvatar?: boolean,
   onListLengthChange?: () => void,
   extraPaddingBottom?: number
@@ -79,6 +83,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     requestItemForIdx,
     sortWith,
     itemSize,
+    getItemHeight,
     onListLengthChange,
     noAvatar,
     extraPaddingBottom = 8
@@ -107,6 +112,12 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     return new Array(Math.max(totalCount() + pinnedItems().length, realItems.length))
     .fill(null)
     .map((_, idx) => realItems[idx] || null);
+  });
+
+  const layout = getItemHeight && createMemo(() => {
+    return createItemsLayout(fullItems(), (item: DeferredSortedVirtualListItem<T>) => {
+      return item ? getItemHeight(item.value) : itemSize;
+    });
   });
 
   const itemsLength = createMemo(() => items().length);
@@ -233,7 +244,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
 
   let list: HTMLUListElement;
 
-  const InnerItem = (props: {id: any, value: T, top: number, animating: boolean}) => {
+  const InnerItem = (props: {id: any, value: T, top: number, glide: boolean}) => {
     const element = createMemo(() => {
       const element = getItemElement(props.value, props.id);
       element?.classList.add(VIRTUAL_LIST_ITEM_CLASS_NAME);
@@ -251,12 +262,10 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
       if(_element) untrack(() => onItemMount?.(props.value, _element));
     });
 
-    createRenderEffect(() => {
-      element()?.style.setProperty('top', props.top + 'px');
-    });
+    const gliding = createItemGlide(element, () => props.top, () => props.glide);
 
     createEffect(() => {
-      if(props.animating)
+      if(gliding())
         element()?.style.setProperty('--background', /* 'red' */'var(--surface-color)');
       else
         element()?.style.removeProperty('--background');
@@ -354,6 +363,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   <VerticalVirtualList
     ref={list}
     itemHeight={itemSize}
+    layout={layout?.()}
     list={fullItems()}
     forceHostHeight={!wasAtLeastOnceFetched()}
     animate={blockedAnimationCount() === 0}
@@ -408,7 +418,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
             id={props.item?.id}
             value={props.item?.value}
             top={props.top}
-            animating={props.animating}
+            glide={props.glide}
           />
         </Show>
       );

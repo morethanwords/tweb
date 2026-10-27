@@ -5,11 +5,6 @@ import Section from '@components/section';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {
-  AppAddGroupToCommunityTab,
-  AppCommunityChatSettingsTab,
-  AppCreateCommunityTab
-} from '@components/solidJsTabs/tabs';
-import {
   useJoinedCommunities
 } from '@stores/communities';
 import {
@@ -21,6 +16,8 @@ import {
 } from '@components/communities/communityPeerDialogList';
 import MediaHeader from '@components/mediaHeader';
 import CommunityAvatar from '@components/communities/communityAvatar';
+import type {AppAddGroupToCommunityTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export default function AddGroupToCommunity() {
   const [tab] = useSuperTab<typeof AppAddGroupToCommunityTab>();
@@ -56,11 +53,11 @@ export default function AddGroupToCommunity() {
   }, (): undefined => undefined);
 
   const openCreate = () => {
-    tab.slider.createTab(AppCreateCommunityTab).open({peerId});
+    tab.slider.createTab(hotReloadGuard.tabs.AppCreateCommunityTab).open({peerId});
   };
 
   const openCommunity = (communityId: ChatId) => {
-    tab.slider.createTab(AppCommunityChatSettingsTab).open({
+    tab.slider.createTab(hotReloadGuard.tabs.AppCommunityChatSettingsTab).open({
       communityId,
       peerId,
       mode: 'add',

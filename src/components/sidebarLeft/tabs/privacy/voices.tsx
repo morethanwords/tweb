@@ -2,7 +2,7 @@ import privacyTab from './privacyTab';
 import PrivacySection from '@components/privacySection';
 import {LangPackKey, i18n} from '@lib/langPack';
 import anchorCallback from '@helpers/dom/anchorCallback';
-import showPremiumPopup from '@components/popups/premium';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const caption: LangPackKey = 'PrivacyVoiceMessagesInfo';
 
@@ -17,7 +17,7 @@ export default privacyTab('privacy-voices', (tab) => {
     managers: tab.managers,
     premiumOnly: true,
     premiumCaption: i18n('Privacy.VoiceMessagesPremiumCaption', [anchorCallback(() => {
-      showPremiumPopup();
+      hotReloadGuard.showPremiumPopup();
     })]),
     premiumError: 'PrivacySettings.Voice.PremiumError'
   });

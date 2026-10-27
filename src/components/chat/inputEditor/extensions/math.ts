@@ -1,17 +1,49 @@
 import {Node, type NodeViewRendererProps, mergeAttributes} from '@tiptap/core';
 import {NodeSelection} from '@tiptap/pm/state';
-import type {NodeView} from '@tiptap/pm/view';
+import type {EditorView, NodeView} from '@tiptap/pm/view';
 import {instantViewStyles} from '@components/instantViewFormatting';
 import {renderLatexInto} from '@components/instantViewMath';
 import attachChatInputMathTooltip from '@components/chat/inputEditor/mathTooltip';
 import classNames from '@helpers/string/classNames';
 import {createFullySelectedNodeDecorationPlugin} from '@components/chat/inputEditor/extensions/nodeViewHelpers';
 
+// WebKit cannot hold a selection beside an uneditable block: ProseMirror makes the block after each end
+// editable for the moment it sets a node selection. A block formula typeset afterwards (the first one
+// on a page waits for Temml to load) makes WebKit move such a selection, there and then, to the next
+// editable place, whether it is on the formula or on an uneditable block beside it, and the editor
+// would follow it. Put it back the same way, before the editor's mutation observer reads it, so it
+// runs synchronously after the typeset.
+function keepNodeSelectionInDOM(view: EditorView) {
+  const {selection} = view.state;
+  if(!(selection instanceof NodeSelection) || selection.$from.parent.inlineContent || !view.hasFocus()) return;
+  // where ProseMirror puts the ends of a node selection
+  const anchor = view.domAtPos(selection.from, selection.from ? -1 : 1);
+  const head = view.domAtPos(selection.to, -1);
+  const domSelection = view.dom.ownerDocument.getSelection();
+  if(
+    !domSelection || (
+      domSelection.anchorNode === anchor.node &&
+      domSelection.anchorOffset === anchor.offset &&
+      domSelection.focusNode === head.node &&
+      domSelection.focusOffset === head.offset
+    )
+  ) return;
+  const uneditable = [selection.from, selection.to].map((position) => {
+    const {node, offset} = view.domAtPos(position);
+    const after = node.childNodes[offset];
+    return after instanceof HTMLElement && after.contentEditable === 'false' ? after : undefined;
+  }).filter(Boolean);
+  uneditable.forEach((element) => element.contentEditable = 'true');
+  domSelection.setBaseAndExtent(anchor.node, anchor.offset, head.node, head.offset);
+  uneditable.forEach((element) => element.contentEditable = 'false');
+}
+
 function createMathNodeView(
   {editor, getPos, node: initialNode}: NodeViewRendererProps,
   inline: boolean
 ): NodeView {
   let node = initialNode;
+  let destroyed = false;
   const dom = document.createElement(inline ? 'span' : 'div');
   const latex = inline ? dom : document.createElement('div');
   dom.className = inline ? classNames(
@@ -38,7 +70,9 @@ function createMathNodeView(
     const source = `${node.attrs.source || ''}`;
     dom.dataset.source = source;
     dom.setAttribute('aria-label', source ? `Formula: ${source}` : 'Empty formula');
-    renderLatexInto(latex, source, !inline, undefined, true);
+    renderLatexInto(latex, source, !inline, undefined, true, inline ? undefined : () => {
+      if(!destroyed) keepNodeSelectionInDOM(editor.view);
+    });
   };
   render();
   const destroyMathTooltip = attachChatInputMathTooltip({
@@ -89,11 +123,17 @@ function createMathNodeView(
     dom,
     update: (updatedNode) => {
       if(updatedNode.type !== node.type) return false;
+      // an update can be the selection's decoration alone: typesetting again would replace the
+      // formula under the selection for nothing (see keepNodeSelectionInDOM)
+      const sourceChanged = updatedNode.attrs.source !== node.attrs.source;
       node = updatedNode;
-      render();
+      if(sourceChanged) render();
       return true;
     },
-    destroy: destroyMathTooltip,
+    destroy: () => {
+      destroyed = true;
+      destroyMathTooltip();
+    },
     ignoreMutation: () => true
   };
 }

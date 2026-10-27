@@ -1,4 +1,3 @@
-import appDialogsManager from '@lib/appDialogsManager';
 import {SavedDialog} from '@appManagers/appMessagesManager';
 import {isSavedDialog} from '@appManagers/utils/dialogs/isDialog';
 import rootScope from '@lib/rootScope';
@@ -44,7 +43,7 @@ export class AutonomousSavedDialogList extends AutonomousDialogListBase<SavedDia
   }
 
   public getRectFromForPlaceholder() {
-    return appDialogsManager.chatsContainer;
+    return this.appDialogsManager.chatsContainer;
   }
 
   protected getFilterId() {

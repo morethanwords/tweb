@@ -8,6 +8,7 @@ import type {
   RichMessage
 } from '@layer';
 import type {MarkdownType} from '@helpers/dom/getRichElementValue';
+import type {InputFormattingTypes} from '@helpers/dom/getInputFormattingTypes';
 import type {InstantViewHeadingLevel} from '@components/instantViewFormatting';
 import type {ButtonBackground, ButtonRowAlign} from '@components/wrappers/buttonTypes';
 
@@ -55,6 +56,11 @@ export type ChatInputEditorOptions = {
   plainOnly?: boolean,
   /** Restrict it further to one line: no block structure, no break, no Enter. */
   singleLine?: boolean,
+  /**
+   * The formatting a plain field declares (`getInputFormattingTypes`); its schema
+   * leaves out the rest. Everything a plain message carries when not given.
+   */
+  formatting?: InputFormattingTypes,
   isNewLineShortcutPressed?: (event: KeyboardEvent) => boolean,
   onCodeBlockLanguagePicker?: (element: HTMLElement) => void,
   onLinkEditor?: (selection: ChatInputEditorSelection) => void,
@@ -66,6 +72,20 @@ export type ChatInputEditorInputEvent = Event & {
   chatInputEditorStructuralChange?: true,
   chatInputEditorUserInput?: true
 };
+
+export type ChatInputFormatting =
+  | 'bulletList'
+  | 'buttonRow'
+  | 'codeBlock'
+  | 'details'
+  | 'divider'
+  | 'footer'
+  | 'heading'
+  | 'inlineButton'
+  | 'math'
+  | 'orderedList'
+  | 'pullquote'
+  | 'taskList';
 
 export type ChatInputTableOptions = {
   columns?: number,
@@ -134,12 +154,15 @@ export type ChatInputMapOptions = {
   zoom?: number
 };
 
+// a file is a document row, as an audio is: one per block, never in a collage
+export type ChatInputRichMediaType = 'audio' | 'document' | 'photo' | 'video';
+
 export type ChatInputRichMedia = {
   document?: Document.document,
   photo?: Photo.photo,
   previewUrl?: string,
   spoiler?: boolean,
-  type: 'audio' | 'photo' | 'video'
+  type: ChatInputRichMediaType
 };
 
 export type ChatInputRichMediaLayout = 'collage' | 'slideshow';
@@ -151,6 +174,8 @@ export type ChatInputRichMediaOptions = {
 };
 
 export type ChatInputRichMediaUploadItem = {
+  /** A file's or an audio's document as prepared for its upload, from the local file: its row's */
+  document?: Document.document,
   duration?: number,
   fileName?: string,
   fileSize?: number,
@@ -159,7 +184,9 @@ export type ChatInputRichMediaUploadItem = {
   mimeType?: string,
   progress: number,
   state: 'error' | 'preparing' | 'processing' | 'ready' | 'uploading',
-  type: 'audio' | 'photo' | 'video',
+  type: ChatInputRichMediaType,
+  /** The upload the row shows, as an outgoing message's (`appDownloadManager.getUpload`) */
+  uploadingFileName?: string,
   width?: number
 };
 
@@ -187,6 +214,8 @@ export type ChatInputRichMessage = {
 export interface ChatInputEditor {
   readonly input: HTMLElement;
   readonly isComposing: boolean;
+  /** Runs on a plain message's schema (`plainOnly` or `singleLine`): no rich block fits it. */
+  readonly plainOnly: boolean;
 
   applyMarkup(options: {
     type: MarkdownType,
@@ -201,6 +230,14 @@ export interface ChatInputEditor {
   beginRichMediaUpload(options: ChatInputRichMediaUploadOptions): boolean;
   beginRichMediaUploads(options: ChatInputRichMediaUploadOptions[]): boolean;
   canInsertTable(options?: ChatInputTableOptions): boolean;
+  /**
+   * Whether a toolbar control would change anything at the selection. A table
+   * cell, a table title, a details summary and a pullquote hold text only, so
+   * the block controls have nothing to do there.
+   */
+  canApplyFormatting(type: ChatInputFormatting): boolean;
+  /** The same for the selection tooltip: a code block carries no marks. */
+  canApplyMarkup(type: MarkdownType): boolean;
   canMergeTableCells(): boolean;
   canRedo(): boolean;
   canSplitTableCell(): boolean;
@@ -227,14 +264,25 @@ export interface ChatInputEditor {
   getMarkupState(type: MarkdownType): ChatInputMarkupState;
   getOrderedListState(): ChatInputOrderedListState | undefined;
   getBlockquoteCaption(): string | undefined;
+  /** A pullquote, or a quote with an author, around or in the selection. */
+  isRichQuoteSelected(): boolean;
   getPendingRichMediaUploadIds(): string[];
   getReferencedRichMediaUploadIds(): string[] | undefined;
   getRichMessage(options?: {draft?: boolean}): ChatInputRichMessage;
+  /**
+   * The content as a plain message (`richMessageToPlainMessage`), where it holds what only a rich
+   * message carries; undefined where it is a plain message already.
+   */
+  getPlainMessage(): {text: string, entities: MessageEntity[]} | undefined;
+  /** Leaves only what a plain message carries, as one step undo takes back: Android's Remove Formatting. */
+  convertToPlainMessage(): boolean;
   getSelectedRichMessage(): ChatInputRichMessage | undefined;
   getSelectedLink(): ChatInputSelectedLink | undefined;
   getSelectedMap(): ChatInputMapOptions | undefined;
   getSelectedMath(): ChatInputSelectedMath | undefined;
   getSelectedText(): string;
+  /** The selection as `getRichValue` gives the whole field: its text, with the entities cut to it */
+  getSelectedRichValue(): {value: string, entities: MessageEntity[]};
   getTableTitle(): string | undefined;
   hasPendingRichMediaUploads(): boolean;
   getRichValue(withEntities?: boolean, withCaret?: boolean): {
@@ -272,6 +320,8 @@ export interface ChatInputEditor {
   replaceAllRichMessage(message: RichMessage): boolean;
   completeRichMediaUpload(uploadId: string, media: ChatInputRichMedia[]): boolean;
   removeRichMediaUpload(uploadId: string): boolean;
+  /** The user's cancel: removes the pending media as an edit Undo can revert. */
+  cancelRichMediaUpload(uploadId: string): boolean;
   replaceRichMediaItem(position: number, activeIndex: number, media: ChatInputRichMedia): boolean;
   replaceSelection(text: string, entities?: MessageEntity[]): boolean;
   replaceTextRange(from: number, to: number, text: string, entities?: MessageEntity[]): boolean;
@@ -289,7 +339,9 @@ export interface ChatInputEditor {
   setBlockquoteCaption(caption: string): boolean;
   setDocument(document: JSONContent): boolean;
   setEditable(editable: boolean): void;
+  isExpanded(): boolean;
   setExpanded(expanded: boolean): void;
+  setInlineBotPlaceholder(placeholder?: string): void;
   setNoAutolink(noAutolink: boolean): void;
   setRichMessage(message: RichMessage): boolean;
   setTableTitle(title: string): boolean;

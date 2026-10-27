@@ -12,12 +12,12 @@
 	box-shadow: 0 0 20px 0 rgba(0, 0, 0, .15);
 	transform: translateZ(0);
 	opacity: 0;
-	transition:
-		opacity var(--layer-transition),
-		transform var(--layer-transition);
+	// reduced: it fades, and moves to a new selection at once
+	@include animation-level-transition(opacity var(--layer-transition), transform var(--layer-transition));
 	position: fixed;
+	// * `left` only: with `right` and `width` set too, an RTL layout drops `left` instead, and the
+	// * physical `translate3d` x that places the tooltip would push it off the right edge
 	top: 0;
-	right: 0;
 	bottom: 0;
 	left: 0;
 	height: $rowHeight;
@@ -78,14 +78,15 @@
 				z-index: 1;
 			}
 
+			// * the edges of the source, which reads left to right whatever the layout: physical sides
 			&::before {
 				background: linear-gradient(to right, var(--surface-color), transparent);
-				inset-inline-start: 0;
+				left: 0;
 			}
 
 			&::after {
 				background: linear-gradient(to left, var(--surface-color), transparent);
-				inset-inline-end: 0;
+				right: 0;
 			}
 
 			&.can-scroll-start::before,
@@ -94,7 +95,9 @@
 			}
 		}
 
+		// * LaTeX source: left to right, so its scroll position and edges stay physical
 		.markup-tooltip-math-input {
+			direction: ltr;
 			margin: 0;
 			min-width: 0;
 			text-indent: 1rem;
@@ -102,12 +105,7 @@
 		}
 	}
 
-	body.animation-level-0 & {
-		transition: none;
-	}
-
 	&-wrapper {
-		direction: ltr;
 		display: flex;
 		align-items: center;
 		justify-content: flex-start;

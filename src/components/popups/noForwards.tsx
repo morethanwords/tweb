@@ -5,7 +5,7 @@ export default function showNoForwardsPopup(onConfirm: () => void) {
   showFeatureDetailsPopup({
     title: i18n('DisableSharing'),
     rows: [{
-      icon: 'sharingoff_filled',
+      icon: 'reply_crossed',
       title: i18n('DisableSharing.Row1.Title'),
       subtitle: i18n('DisableSharing.Row1.Subtitle')
     }, {

@@ -26,7 +26,8 @@ async function createRichMediaPreviewFrame(
 }
 
 export async function loadRichMediaPreview(item: RichMediaUploadTaskItem) {
-  if(item.type === 'audio') return;
+  // a file or an audio is a row with no picture to prepare
+  if(item.type !== 'photo' && item.type !== 'video') return;
 
   let duration: number | undefined;
   let height: number;

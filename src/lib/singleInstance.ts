@@ -126,6 +126,11 @@ export class SingleInstance extends EventListenerBase<{
     }
   }
 
+  // * the last active instance names its account (t.me sends the user back to it): this one has another now
+  public onAccountSwitch() {
+    this.checkInstance();
+  }
+
   private deactivateInstance(reason: InstanceDeactivateReason) {
     if(this.masterInstance || this.deactivated) {
       return;

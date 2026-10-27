@@ -11,6 +11,7 @@ import type Chat from '@components/chat/chat';
 import {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 
 import showPriceChangedTooltip from '@components/chat/priceChangedInterceptor/priceChangedTooltip';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 
 type PendingRequest = {
@@ -90,11 +91,12 @@ class PriceChangedInterceptor {
   }
 
   private async getAndUpdateStarsAmountIfNecessary(peerId: PeerId) {
-    if(!peerId.isUser()) return this.managers.appPeersManager.getStarsAmount(peerId);
+    const managers = bindManagersToSession(this.managers);
+    if(!peerId.isUser()) return managers.appPeersManager.getStarsAmount(peerId);
 
     const starsAmount = await this.getStarsAmountForUser(peerId.toUserId());
 
-    await this.managers.appUsersManager.updateCachedUserFullStarsAmount(peerId.toUserId(), starsAmount);
+    await managers.appUsersManager.updateCachedUserFullStarsAmount(peerId.toUserId(), starsAmount);
 
     return starsAmount;
   }
@@ -143,13 +145,14 @@ class PriceChangedInterceptor {
   }
 
   private async confirmResend({pendingRequests}: ConfirmResendArgs) {
+    const managers = bindManagersToSession(this.managers);
     const messageCount = accumulate(pendingRequests.map(r => r.messageCount), 0);
 
     const preparedPaymentResult = await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(messageCount);
 
     if(preparedPaymentResult === PAYMENT_REJECTED) return;
 
-    await Promise.all(pendingRequests.map(({id}) => this.managers.appMessagesManager.confirmRepayRequest(id, preparedPaymentResult)));
+    await Promise.all(pendingRequests.map(({id}) => managers.appMessagesManager.confirmRepayRequest(id, preparedPaymentResult)));
   }
 
   cleanup() {

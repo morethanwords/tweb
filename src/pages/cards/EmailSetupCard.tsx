@@ -37,6 +37,7 @@ export default function EmailSetupCard(props: {spec: Spec}) {
       <EnterEmailStep
         isInitialSetup
         variant="card"
+        managers={managers}
         purpose={{_: 'emailVerifyPurposeLoginSetup', phone_number, phone_code_hash}}
         onCodeSent={(sentCode) => navigate({
           name: 'emailSetupCode',

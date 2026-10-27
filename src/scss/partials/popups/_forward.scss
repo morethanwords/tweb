@@ -31,12 +31,6 @@
     margin: 0;
   }
 
-  .menu-send {
-    top: unset;
-    bottom: calc(var(--popup-footer-padding) + 3rem + .25rem);
-    inset-inline-end: calc(var(--popup-footer-padding) + .25rem);
-  }
-
   &-auto-height {
     height: auto !important;
 
@@ -95,12 +89,15 @@
     interpolate-size: allow-keywords;
     max-height: max-content;
 
-    @include animation-level(2) {
-      transition: max-height .3s ease, opacity .3s ease;
+    // folding up is growth in place, the box's padding with it: reduced animations keep all of it
+    @include animation-level(1) {
+      transition: max-height .3s ease, padding-block .3s ease, opacity .3s ease;
     }
 
     &.is-collapsed {
       max-height: 0;
+      // max-height does not take a padding away: a section would leave its gap below behind
+      padding-block: 0;
       opacity: 0;
       overflow: clip;
       pointer-events: none;

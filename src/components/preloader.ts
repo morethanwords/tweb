@@ -5,12 +5,15 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import isInDOM from '@helpers/dom/isInDOM';
 import safeAssign from '@helpers/object/safeAssign';
+import PreloaderRing from '@components/preloaderRing';
 
 const TRANSITION_TIME = 200;
 
 export default class ProgressivePreloader {
   public preloader: HTMLDivElement;
+  // the old spinner's circle; a cancelable progress is a ring of dots instead
   public circle: SVGCircleElement;
+  public ring: PreloaderRing;
 
   private tempId = 0;
   public detached = true;
@@ -88,6 +91,10 @@ export default class ProgressivePreloader {
           <div class="loading"></div>
         </div>
       </div>`;
+    } else if(this.cancelable && !this.streamable) {
+      this.ring = new PreloaderRing(this.preloader);
+      attachClickEvent(this.preloader, this.onClick);
+      return;
     } else {
       this.preloader.innerHTML = `
       <div class="you-spin-me-round">
@@ -140,19 +147,34 @@ export default class ProgressivePreloader {
     }
   };
 
+  /**
+   * Resolves once the indicator has caught up with the end of the transfer: the ring's line comes round
+   * to the end first. For a place that hides it as soon as the file is in (a file's icon, an audio's
+   * button) to wait for, as the media's own detach does.
+   */
+  public whenCaughtUp() {
+    return this.ring ? this.ring.finish() : Promise.resolve();
+  }
+
   public setDownloadFunction(func: ProgressivePreloader['loadFunc']) {
     this.loadFunc = func;
   }
 
   public setManual() {
     this.preloader.classList.add('manual');
+    this.ring?.setManual(true, this.isShown());
     this.setProgress(0);
+  }
+
+  private isShown() {
+    return isInDOM(this.preloader) && this.preloader.classList.contains('is-visible');
   }
 
   public attachPromise(promise: CancellablePromise<any>) {
     if(this.isUpload && this.promise) return;
 
     this.promise = promise;
+    this.ring?.begin();
 
     const tempId = --this.tempId;
     const startTime = Date.now();
@@ -173,8 +195,15 @@ export default class ProgressivePreloader {
 
         const delay = TRANSITION_TIME * 0.75;
 
-        if(elapsedTime < delay) {
+        // * pressed, the arrow turning into the ring plays out even for a file that comes at once
+        if(elapsedTime < delay && !this.ring?.isChanging()) {
           this.detach();
+        } else if(this.ring) { // * the line comes round to the end first
+          this.ring.finish().then(() => {
+            if(tempId === this.tempId) {
+              this.detach();
+            }
+          });
         } else {
           setTimeout(() => { // * wait for transition complete
             if(tempId === this.tempId) {
@@ -225,8 +254,11 @@ export default class ProgressivePreloader {
 
     this.construct?.();
 
-    if(this.preloader.parentElement) {
+    // * pressed: a new download makes the arrow the ring; shown again without one (a try that failed
+    // * puts the arrow back a frame later) the ring keeps its arrow
+    if(this.preloader.parentElement && this.preloader.classList.contains('manual') && (!this.ring || promise)) {
       this.preloader.classList.remove('manual');
+      this.ring?.setManual(false, this.isShown());
     }
 
     this.detached = false;
@@ -250,6 +282,7 @@ export default class ProgressivePreloader {
       duration: transitionDuration,
       useRafs
     });
+    this.ring?.onAttach();
 
     if(this.cancelable && reset) {
       this.setProgress(0);
@@ -285,6 +318,7 @@ export default class ProgressivePreloader {
         duration: TRANSITION_TIME,
         onTransitionEnd: () => {
           this.preloader.remove();
+          this.ring?.halt();
         },
         useRafs: 1
       });
@@ -294,6 +328,11 @@ export default class ProgressivePreloader {
   }
 
   public setProgress(percents: number) {
+    if(this.ring) {
+      this.ring.setTarget(percents / 100);
+      return;
+    }
+
     if(!this.totalLength && !isInDOM(this.circle)) {
       return;
     }

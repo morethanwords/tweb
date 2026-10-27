@@ -90,10 +90,6 @@
     background-color: var(--danger-color);
     border-radius: 50%;
     margin-inline: .4375rem; // * to match the button size
-
-    @include animation-level(2) {
-      animation: recordBlink 1.25s infinite;
-    }
   }
 
   &-play {
@@ -171,6 +167,15 @@
       visibility: visible;
       pointer-events: auto;
       transition: opacity .15s ease, visibility 0s linear 0s;
+    }
+
+    // * only while recording: the panel stays in every chat's input, hidden, and an endless
+    // * animation in it - not painted, so not on the compositor - kept the page making a frame
+    // * every 16 ms for as long as a chat was open
+    &-dot {
+      @include animation-level(2) {
+        animation: recordBlink 1.25s infinite;
+      }
     }
 
     // The chat input adds .is-locked while recording (originally to block

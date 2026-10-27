@@ -3,7 +3,7 @@ import animationIntersector, {AnimationItemGroup} from '@components/animationInt
 import Scrollable from '@components/scrollable';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import {doubleRaf} from '@helpers/schedulers';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import rootScope from '@lib/rootScope';
 import LazyLoadQueueRepeat2 from '@components/lazyLoadQueueRepeat2';
 import wrapVideo from '@components/wrappers/video';
@@ -15,7 +15,7 @@ export default class GifsMasonry {
   public lazyLoadQueue: LazyLoadQueueRepeat2;
   private scrollPromise: CancellablePromise<void> = Promise.resolve();
   private timeout: number = 0;
-  private managers: AppManagers;
+  private managers: ReadingManagers;
   private middlewareHelper: MiddlewareHelper;
   private map: Map<DocId, HTMLElement>;
 

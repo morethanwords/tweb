@@ -1,7 +1,6 @@
 import {JSX, Show, createSignal} from 'solid-js';
 import {InputFieldTsx} from '@components/inputFieldTsx';
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
-import rootScope from '@lib/rootScope';
 
 import Row from '@components/rowTsx';
 import CheckboxField from '@components/checkboxField';
@@ -28,8 +27,10 @@ export function showRtmpRecordPopup() {
 
   const onSubmit = (params: CallRecordParams) => {
     setShow(false);
-    rootScope.managers.appGroupCallsManager.startRecording(
-      rtmpCallsController.currentCall.inputCall,
+    // * on the stream's account: the tab may show another one by now
+    const {currentCall} = rtmpCallsController;
+    currentCall.managers.appGroupCallsManager.startRecording(
+      currentCall.inputCall,
       params
     ).catch(() => {
       toastNew({

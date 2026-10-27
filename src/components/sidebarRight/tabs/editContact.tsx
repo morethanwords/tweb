@@ -277,7 +277,7 @@ const EditContact: Component = () => {
             Component: () => (
               <Row>
                 <Row.Icon icon="phone_filled" />
-                <Row.Title>{user.phone ? formatUserPhone(user.phone) : i18n('MobileHidden')}</Row.Title>
+                <Row.Title>{user.phone ? <span dir="ltr">{formatUserPhone(user.phone)}</span> : i18n('MobileHidden')}</Row.Title>
                 <Row.Subtitle>{
                   user.phone ?
                     i18n('Phone') :

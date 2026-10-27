@@ -6,6 +6,7 @@ const OPAQUE_RICH_BLOCK_LABELS: Partial<Record<PageBlock['_'], string>> = {
   pageBlockAudio: 'Audio',
   pageBlockCollage: 'Collage',
   pageBlockDivider: 'Divider',
+  pageBlockDocument: 'File',
   pageBlockFooter: 'Footer',
   pageBlockMap: 'Map',
   pageBlockPhoto: 'Photo',

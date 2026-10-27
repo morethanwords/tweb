@@ -8,8 +8,12 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import createFocusTrap, {FocusTrap} from '@helpers/dom/focusTrap';
 
 import {getEnabledMenuItems, handleMenuKeyDown} from '@helpers/dom/menuKeyboard';
+import getInlineArrowKeys from '@helpers/dom/getInlineArrowKeys';
 import {onAppWindowChange} from '@helpers/appWindow';
 import Modes from '@config/modes';
+
+// * on the root while a menu is open (_leftSidebar.scss)
+const BTN_MENU_OPEN_CLASS_NAME = 'has-open-btn-menu';
 
 type AdditionalMenuItem = {
   level: number,
@@ -57,7 +61,8 @@ class ContextMenuController extends OverlayClickHandler {
     }
 
 
-    if(e.key === 'ArrowLeft' && menu !== this.element) {
+    // * back toward the parent menu, which a submenu opens away from along the line
+    if(e.key === getInlineArrowKeys().previous && menu !== this.element) {
       e.preventDefault();
       this.closeFocusedAdditionalMenu();
       return;
@@ -221,6 +226,8 @@ class ContextMenuController extends OverlayClickHandler {
 
     if(this.element) {
       this.element.classList.remove('active');
+      this.element.ownerDocument.documentElement.classList.remove(BTN_MENU_OPEN_CLASS_NAME);
+      document.documentElement.classList.remove(BTN_MENU_OPEN_CLASS_NAME); // * moved to another window meanwhile
       this.menuOpenTarget?.classList.remove('menu-open');
       this.menuOpenTarget = undefined;
 
@@ -271,6 +278,9 @@ class ContextMenuController extends OverlayClickHandler {
     super.open(element);
 
     this.element.classList.add('active', 'was-open');
+    // * what the page shows while a menu is open (the columns' resize handles go) reads this, rather
+    // * than an `html:has(.btn-menu.active)` the browser searched the document for on every restyle
+    this.element.ownerDocument.documentElement.classList.add(BTN_MENU_OPEN_CLASS_NAME);
     this.menuOpenTarget = triggerElement ?? this.element.parentElement;
     this.menuOpenTarget?.classList.add('menu-open');
 
@@ -330,4 +340,5 @@ class ContextMenuController extends OverlayClickHandler {
 }
 
 const contextMenuController = new ContextMenuController();
+if(import.meta.hot) import.meta.hot.accept();
 export default contextMenuController;

@@ -232,9 +232,10 @@ const AdminRecentActionsTab = () => {
 
             if(shouldAnimateIn && areAnimationsAvailable) {
               onMount(() => {
+                // reduced animations: the entries fade in where they stand
                 ref?.animate({
                   opacity: [0, 1],
-                  transform: ['translateY(-4px)', 'translateY(0)']
+                  ...(liteMode.isAvailable('motion') && {transform: ['translateY(-4px)', 'translateY(0)']})
                 }, {
                   duration: animateInDuration,
                   delay: props.idx * (cachedAreAllExpanded() ? staggerDelayExpanded : staggerDelay) + (!isFirstAnimation ? reAnimateDelay : 0)

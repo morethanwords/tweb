@@ -4,9 +4,12 @@ FROM node:24
 # Set the working directory in the container
 WORKDIR /app
 
-COPY ../package.json ./
+# pnpm-workspace.yaml holds the build-script approvals (allowBuilds) pnpm 11
+# refuses to install without, and the patches the lockfile applies
+COPY ../package.json ../pnpm-workspace.yaml ../pnpm-lock.yaml ./
+COPY ../patches ./patches
 
 # Install app dependencies
 RUN npm install -g pnpm@11.16.0
 
-RUN pnpm install
+RUN pnpm install --frozen-lockfile

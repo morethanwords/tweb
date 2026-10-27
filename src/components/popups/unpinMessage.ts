@@ -3,6 +3,7 @@ import showPeerPopup, {PopupPeerButtonCallbackCheckboxes, PopupPeerOptions} from
 import rootScope from '@lib/rootScope';
 import {FormatterArguments, LangPackKey} from '@lib/langPack';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export default async function showPinMessagePopup(
   peerId: PeerId,
@@ -15,7 +16,7 @@ export default async function showPinMessagePopup(
   let title: LangPackKey, description: LangPackKey, descriptionArgs: FormatterArguments;
   const buttons: PopupPeerOptions['buttons'] = [], checkboxes: PopupPeerOptions['checkboxes'] = [];
 
-  const managers = rootScope.managers;
+  const managers = bindManagersToSession(rootScope.managers);
 
   const canUnpin = await managers.appPeersManager.canPinMessage(peerId);
 

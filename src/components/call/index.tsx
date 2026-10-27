@@ -6,7 +6,7 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import {addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen} from '@helpers/dom/fullScreen';
 import replaceContent from '@helpers/dom/replaceContent';
 import safePlay from '@helpers/dom/safePlay';
-import MovablePanel from '@helpers/movablePanel';
+import MovablePanel, {IS_MOVABLE_PANEL} from '@helpers/movablePanel';
 import onMediaLoad from '@helpers/onMediaLoad';
 import themeController from '@helpers/themeController';
 import classNames from '@helpers/string/classNames';
@@ -14,7 +14,7 @@ import ListenerSetter from '@helpers/listenerSetter';
 import CallInstance from '@lib/calls/callInstance';
 import ConferenceInviteInstance from '@lib/calls/conferenceInviteInstance';
 import CALL_STATE from '@lib/calls/callState';
-import I18n, {i18n} from '@lib/langPack';
+import {i18n, LangPackKey} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {animateValue} from '@helpers/animateValue';
 import animationIntersector from '@components/animationIntersector';
@@ -26,11 +26,13 @@ import {MovableState} from '@components/movableElement';
 import PeerTitle from '@components/peerTitle';
 import StackedAvatars from '@components/stackedAvatars';
 import PopupElement, {createPopup, PopupContext} from '@components/popups/indexTsx';
-import SetTransition from '@components/singleTransition';
-import makeButton, {setCallButtonBusy} from '@components/call/button';
+import CallButton from '@components/call/button';
 import CallDescriptionElement from '@components/call/description';
 import callVideoCanvasBlur from '@components/call/videoCanvasBlur';
 import showCallSettingsPopup from '@components/call/settingsPopup';
+import createCallNotice, {CallNotice} from '@components/call/notice';
+import createCallSignalBars from '@components/call/signalBars';
+import qualityStyles from '@components/call/callQuality.module.scss';
 import {toastNew} from '@components/toast';
 import {createSignal, onCleanup, onMount, untrack, useContext} from 'solid-js';
 
@@ -86,6 +88,8 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
    */
   const callInstance = inviteInstance ? undefined : instance as CallInstance;
   const peerId = instance.interlocutorUserId.toPeerId();
+  // * the call's: the tab may switch to another account while the panel is up
+  const {accountNumber} = instance;
 
   const [show, setShow] = createSignal(true);
   const [noVideo, setNoVideo] = createSignal(true);
@@ -94,31 +98,23 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
 
   let containerEl!: HTMLDivElement;
 
-  // Pieces the imperative update path keeps mutating. They are all built by
-  // DOM-returning helpers (`makeButton`, `ButtonIcon`, `avatarNew`), so they
-  // stay plain elements rather than signals — only the container's own classes
-  // are reactive.
+  // Pieces the imperative update path keeps mutating. They are built by
+  // DOM-returning helpers (`ButtonIcon`, `avatarNew`), so they stay plain
+  // elements; the call buttons (`CallButton`) follow signals of their own.
   let description: CallDescriptionElement;
   let emojisSubtitle: HTMLElement;
-  let partyMutedState: HTMLElement;
-  let declineI18nElement: I18n.IntlElement;
-  let muteI18nElement: I18n.IntlElement;
   let microphoneIcon: GroupCallMicrophoneIconMini;
-  let btnAccept: HTMLElement;
-  let btnVideo: HTMLElement;
-  let btnScreen: HTMLElement;
-  let btnMute: HTMLElement;
   let btnFullScreen: HTMLButtonElement;
   let btnExitFullScreen: HTMLButtonElement;
 
   let movablePanel: MovablePanel;
   let controlsHover: ControlsHover;
 
-  // One renderer per gradient state. All three drift continuously; only the
-  // canvas matching `gradientState` is opaque, the others sit at opacity 0
-  // and crossfade in/out on state change. Pre-warming all of them means the
-  // newly-revealed canvas already has a live, moving gradient — no "static
-  // until first tick" pop during the fade.
+  // One renderer per gradient state. Only the canvas matching `gradientState`
+  // is opaque and drifts; the others sit at opacity 0, holding the picture they
+  // were drawn with, and crossfade in/out on state change. Pre-warming all of
+  // them means the newly-revealed canvas already has a gradient, which starts
+  // moving as its fade starts — no "static until first tick" pop.
   let gradientRenderers: Record<GradientStateKey, ChatBackgroundGradientRenderer>;
   let gradientCanvases: Record<GradientStateKey, HTMLCanvasElement>;
   let gradientCancels: Partial<Record<GradientStateKey, () => void>> = {};
@@ -143,9 +139,13 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
   // motion. The renderer computes `transitionValue = 2v - v²`; setting
   // `v = 1 - sqrt(1 - t)` makes `transitionValue ≡ t`, i.e. constant tail
   // velocity, i.e. constant-speed drift.
+  //
+  // Only the canvas shown drifts: a faded-out one keeps the picture it stood at, and starts again as
+  // it is shown - three loops for one visible backdrop cost two full redraws of nothing every frame
+  // for the whole call.
   const tickGradient = (state: GradientStateKey) => {
     const renderer = gradientRenderers?.[state];
-    if(!renderer) return;
+    if(!renderer || gradientCancels[state]) return;
     let progress = 0;
     gradientCancels[state] = animateValue(0, 1, 2000, (t) => {
       progress = 1 - Math.sqrt(1 - t);
@@ -153,6 +153,7 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
       easing: (p) => p,
       onEnd: () => {
         gradientCancels[state] = undefined;
+        if(gradientCanvases?.[state]?.classList.contains('is-hidden')) return;
         tickGradient(state);
       }
     });
@@ -202,6 +203,7 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
     // and the canvas snaps to opacity 1 with no fade.
     void nextCanvas.offsetWidth;
     nextCanvas.classList.remove('is-hidden');
+    tickGradient(next);
 
     // Cancel any pending hide from a prior transition — the canvas it was
     // meant to hide may now be the active one.
@@ -216,6 +218,8 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
       // Skip if the state has flipped back to `prev` since we scheduled
       // (i.e. prev is now the active canvas).
       if(gradientState === prev) return;
+      // * its drift goes on to the end of the move it is in (cut short, the renderer's own loop would
+      // * wait for the rest of it for good), and no other starts (tickGradient)
       prevCanvas.classList.add('is-hidden');
     }, FADE_MS + 50);
   };
@@ -309,12 +313,14 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
       middleware,
       isBig: true,
       peerId,
-      size: 'full'
+      size: 'full',
+      accountNumber
     });
     avatarContainer.append(node);
 
     const title = new PeerTitle({
-      peerId
+      peerId,
+      accountNumber
     }).element;
 
     title.classList.add(className + '-title');
@@ -325,10 +331,20 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
     const subtitle = document.createElement('div');
     subtitle.classList.add(className + '-subtitle');
 
+    // Reception, as the engine measures it (0..4), while the call is connected — undefined hides
+    // the bars, the way Android waits for its first count.
+    const [signalBars, setSignalBars] = createSignal<number>();
+    if(callInstance) {
+      subtitle.classList.add(qualityStyles.subtitle);
+      subtitle.append(createCallSignalBars(signalBars));
+    }
+
     description = new CallDescriptionElement(subtitle);
 
     emojisSubtitle = document.createElement('div');
     emojisSubtitle.classList.add(className + '-emojis');
+    // The key is a hash: both sides compare it in the same order, whatever their languages.
+    emojisSubtitle.dir = 'ltr';
 
     // iOS-style gradient backdrop. Uses the same renderer as chat backgrounds
     // (Telegram "swirl" gradient): 50×50 ImageData blended in JS, stretched
@@ -351,7 +367,9 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
       }
       gradientCanvases[key] = created.canvas;
       gradientRenderers[key] = created.gradientRenderer;
-      tickGradient(key);
+      if(key === gradientState) {
+        tickGradient(key);
+      }
     }
 
     /**
@@ -370,7 +388,8 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
 
       const stackedAvatars = new StackedAvatars({
         avatarSize: 30,
-        middleware
+        middleware,
+        accountNumber
       });
       stackedAvatars.render(peerIds);
 
@@ -436,116 +455,145 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
       }
     }
 
+    // The pills above the controls. A weak link — iOS raises its banner once the quality drops to a
+    // fifth (`PrivateCallScreen`: `quality <= 0.2`), i.e. at no bars at all. Then what the other
+    // side's MediaState says about them: a closed microphone, and a battery about to run out
+    // (tdesktop `Panel::createRemoteLowBattery`, macOS `CallTooltipType.batteryLow`). They share one
+    // column, so two of them at once stack instead of overlapping.
     let partyStates: HTMLElement;
+    let weakNetworkNotice: CallNotice;
+    let mutedNotice: CallNotice;
+    let lowBatteryNotice: CallNotice;
     if(!inviteInstance) {
       partyStates = document.createElement('div');
       partyStates.classList.add(className + '-party-states');
 
-      partyMutedState = document.createElement('div');
-      partyMutedState.classList.add(className + '-party-state');
-      const stateText = i18n('VoipUserMicrophoneIsOff', [new PeerTitle({peerId, onlyFirstName: true, limitSymbols: 18}).element]);
-      stateText.classList.add(className + '-party-state-text');
+      weakNetworkNotice = createCallNotice({text: () => i18n('VoipWeakNetwork')});
+
+      const peerName = () => new PeerTitle({peerId, onlyFirstName: true, limitSymbols: 18, accountNumber}).element;
+
       const mutedIcon = new GroupCallMicrophoneIconMini(false, true, 36);
       mutedIcon.setState(false, false);
-      partyMutedState.append(
-        mutedIcon.container,
-        stateText
-      );
+      mutedNotice = createCallNotice({
+        text: () => i18n('VoipUserMicrophoneIsOff', [peerName()]),
+        icon: mutedIcon.container
+      });
 
-      partyStates.append(partyMutedState);
+      lowBatteryNotice = createCallNotice({
+        text: () => i18n('Call.Toast.LowBattery', [peerName()]),
+        icon: (
+          <svg class={qualityStyles.batteryIcon} viewBox="0 0 29 13" fill="none" aria-hidden="true">
+            <rect x="1.5" y=".5" width="24" height="12" rx="4" stroke="currentColor" />
+            <path d="M27 4.67v4c.8-.34 1.33-1.13 1.33-2s-.53-1.66-1.33-2z" fill="currentColor" />
+            <rect x="4.5" y="3.5" width="2" height="6" rx="1" fill="currentColor" />
+          </svg>
+        ) as SVGSVGElement
+      });
+
+      const notices = [weakNetworkNotice, mutedNotice, lowBatteryNotice];
+      partyStates.append(
+        ...notices.map((notice) => notice.element),
+        ...notices.map((notice) => notice.announcement)
+      );
     }
 
-    const makeCallButton = makeButton.bind(null, className, listenerSetter);
+    // What the buttons show; `updateInstance` keeps it in step with the call.
+    const [isClosed, setIsClosed] = createSignal(false);
+    const [canAccept, setCanAccept] = createSignal(false);
+    const [declineLabel, setDeclineLabel] = createSignal<LangPackKey>('Call.Decline');
+    const [isMuted, setIsMuted] = createSignal(false);
+    // follows the microphone icon's animation, a step behind `isMuted`
+    const [muteFilled, setMuteFilled] = createSignal(false);
+    const [sharingVideo, setSharingVideo] = createSignal(false);
+    const [sharingScreen, setSharingScreen] = createSignal(false);
+    const [mediaBusy, setMediaBusy] = createSignal(false);
+
+    const onMediaClick = (action: () => Promise<void>, errorKey: 'ConferenceCall.Media.CameraError' | 'ConferenceCall.Media.ScreenError') => {
+      setMediaBusy(true);
+      runControlAction(action, errorKey, () => setMediaBusy(false));
+    };
 
     let firstButtonsRow: HTMLElement;
     if(!inviteInstance) {
-      firstButtonsRow = document.createElement('div');
-      firstButtonsRow.classList.add(className + '-buttons', 'is-first');
-
-      btnVideo = makeCallButton({
-        text: 'Call.Camera',
-        icon: 'videocamera_filled',
-        callback: () => {
-          setMediaControlsBusy(true);
-          runControlAction(
-            () => callInstance.toggleVideoSharing(),
-            'ConferenceCall.Media.CameraError',
-            () => setMediaControlsBusy(false)
-          );
-        }
-      });
-
-      btnScreen = makeCallButton({
-        text: 'Call.Screen',
-        icon: 'sharescreen_filled',
-        callback: () => {
-          setMediaControlsBusy(true);
-          runControlAction(
-            () => callInstance.toggleScreenSharing(),
-            'ConferenceCall.Media.ScreenError',
-            () => setMediaControlsBusy(false)
-          );
-        }
-      });
-
-      const setMediaControlsBusy = (busy: boolean) => {
-        setCallButtonBusy(btnVideo, busy);
-        setCallButtonBusy(btnScreen, busy);
-      };
-
-      if(!IS_SCREEN_SHARING_SUPPORTED) {
-        btnScreen.classList.add('hide');
-      }
-
-      muteI18nElement = new I18n.IntlElement({
-        key: 'Call.Mute'
-      });
-      btnMute = makeCallButton({
-        text: muteI18nElement.element,
-        callback: () => {
-          runControlAction(
-            () => callInstance.toggleMuted(),
-            'ConferenceCall.Media.MicrophoneError'
-          );
-        }
-      });
-
       microphoneIcon = new GroupCallMicrophoneIconMini(true, true, 36);
-      btnMute.firstElementChild.append(microphoneIcon.container);
 
-      firstButtonsRow.append(btnVideo, btnScreen, btnMute);
+      firstButtonsRow = (
+        <div class={classNames(className + '-buttons', 'is-first')}>
+          <CallButton
+            class={className}
+            label="Call.Camera"
+            icon="videocamera_filled"
+            active={sharingVideo()}
+            pressed={sharingVideo()}
+            disabled={isClosed()}
+            busy={mediaBusy()}
+            onClick={() => onMediaClick(() => callInstance.toggleVideoSharing(), 'ConferenceCall.Media.CameraError')}
+          />
+          {IS_SCREEN_SHARING_SUPPORTED && (
+            <CallButton
+              class={className}
+              label="Call.Screen"
+              icon="sharescreen_filled"
+              active={sharingScreen()}
+              pressed={sharingScreen()}
+              busy={mediaBusy()}
+              onClick={() => onMediaClick(() => callInstance.toggleScreenSharing(), 'ConferenceCall.Media.ScreenError')}
+            />
+          )}
+          <CallButton
+            class={className}
+            label={isMuted() ? 'VoipUnmute' : 'Call.Mute'}
+            active={muteFilled()}
+            onClick={() => runControlAction(() => callInstance.toggleMuted(), 'ConferenceCall.Media.MicrophoneError')}
+          >
+            {microphoneIcon.container}
+          </CallButton>
+        </div>
+      ) as HTMLElement;
     }
 
-    const secondButtonsRow = document.createElement('div');
-    secondButtonsRow.classList.add(className + '-buttons', 'is-second');
+    const secondButtonsRow = (
+      <div class={classNames(className + '-buttons', 'is-second')}>
+        <CallButton
+          class={className}
+          label={declineLabel()}
+          icon="endcall_filled"
+          color="red"
+          onClick={() => runControlAction(
+            () => inviteInstance ?
+              inviteInstance.hangUp() :
+              callInstance.hangUp('phoneCallDiscardReasonHangup'),
+            'Error.AnError'
+          )}
+        />
+        <CallButton
+          class={className}
+          label="Call.Accept"
+          icon="phone_filled"
+          color="green"
+          containerClass={canAccept() ? undefined : 'hide-me'}
+          disabled={!canAccept()}
+          onClick={() => runControlAction(() => instance.acceptCall(), 'Error.AnError')}
+        />
+      </div>
+    ) as HTMLElement;
 
-    declineI18nElement = new I18n.IntlElement({
-      key: 'Call.Decline'
-    });
-    const btnDecline = makeCallButton({
-      text: declineI18nElement.element,
-      icon: 'endcall_filled',
-      callback: () => {
-        runControlAction(
-          () => inviteInstance ?
-            inviteInstance.hangUp() :
-            callInstance.hangUp('phoneCallDiscardReasonHangup'),
-          'Error.AnError'
-        );
-      },
-      isDanger: true
-    });
+    // Reception drives the bars, the weak-network pill and the palette, as in iOS
+    // `PrivateCallScreen`: connecting (purple/blue) before the call is up, active (green/teal)
+    // while it is, and weak (warm orange/pink) when the bars drop to none. Only a connected call
+    // has a reception to speak of — a reconnecting one is back to "Connecting...".
+    const updateSignal = () => {
+      if(callInstance.isClosing) {
+        return;
+      }
 
-    btnAccept = makeCallButton({
-      text: 'Call.Accept',
-      icon: 'phone_filled',
-      callback: () => {
-        runControlAction(() => instance.acceptCall(), 'Error.AnError');
-      },
-      isConfirm: true
-    });
-
-    secondButtonsRow.append(btnDecline, btnAccept);
+      const isConnected = callInstance.connectionState === CALL_STATE.CONNECTED;
+      const bars = isConnected ? callInstance.signalBars : undefined;
+      const isWeak = bars === 0;
+      setSignalBars(bars);
+      weakNetworkNotice.setVisible(isWeak);
+      setGradientState(isConnected ? (isWeak ? 'weak' : 'active') : 'connecting');
+    };
 
     const updateInstance = () => {
       const {connectionState} = instance;
@@ -554,7 +602,7 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
           cancelFullScreen();
         }
 
-        btnVideo?.classList.add('disabled');
+        setIsClosed(true);
 
         context.hide();
         return;
@@ -566,59 +614,35 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
       // the moment the invitation is accepted or declined.
       if(inviteInstance) {
         const isPending = connectionState === CALL_STATE.PENDING;
-        declineI18nElement.compareAndUpdate({
-          key: isPending ? 'Call.Decline' : 'Call.End'
-        });
-        btnAccept.classList.toggle('disable', !isPending);
-        btnAccept.classList.toggle('hide-me', !isPending);
+        setDeclineLabel(isPending ? 'Call.Decline' : 'Call.End');
+        setCanAccept(isPending);
         description.update(instance);
         return;
       }
 
-      // Drive the gradient palette — mirrors iOS PrivateCallScreen:
-      // - connecting (purple/blue) for any pre-connected state
-      // - active (green/teal) once both sides are talking
-      // The weak-signal palette (warm orange/pink) is defined in GRADIENT_COLORS
-      // for the day we surface a quality metric; not yet triggered.
-      setGradientState(connectionState === CALL_STATE.CONNECTED ? 'active' : 'connecting');
+      updateSignal();
 
       const isPendingIncoming = !instance.isOutgoing && connectionState === CALL_STATE.PENDING;
-      declineI18nElement.compareAndUpdate({
-        key: connectionState === CALL_STATE.PENDING ? 'Call.Decline' : 'Call.End'
-      });
-      btnAccept.classList.toggle('disable', !isPendingIncoming);
-      btnAccept.classList.toggle('hide-me', !isPendingIncoming);
+      setDeclineLabel(connectionState === CALL_STATE.PENDING ? 'Call.Decline' : 'Call.End');
+      setCanAccept(isPendingIncoming);
       setTwoButtonRows(isPendingIncoming);
 
-      const isMuted = callInstance.isMuted;
-      const onFrame = () => {
-        btnMute.firstElementChild.classList.toggle('active', isMuted);
-      };
+      const muted = callInstance.isMuted;
+      const onFrame = () => setMuteFilled(muted);
 
       const player = microphoneIcon.getItem().player;
-      microphoneIcon.setState(!isMuted, !isMuted, onFrame);
+      microphoneIcon.setState(!muted, !muted, onFrame);
       if(!player) {
         onFrame();
       }
 
-      muteI18nElement.compareAndUpdate({
-        key: isMuted ? 'VoipUnmute' : 'Call.Mute'
-      });
-
-      const isSharingVideo = callInstance.isSharingVideo;
-      btnVideo.firstElementChild.classList.toggle('active', isSharingVideo);
-
-      const isSharingScreen = callInstance.isSharingScreen;
-      btnScreen.firstElementChild.classList.toggle('active', isSharingScreen);
+      setIsMuted(muted);
+      setSharingVideo(callInstance.isSharingVideo);
+      setSharingScreen(callInstance.isSharingScreen);
 
       const outputState = callInstance.getMediaState('output');
-
-      SetTransition({
-        element: partyMutedState,
-        className: 'is-visible',
-        forwards: !!outputState?.muted,
-        duration: 300
-      });
+      mutedNotice.setVisible(!!outputState?.muted);
+      lowBatteryNotice.setVisible(!!outputState?.lowBattery);
 
       const oldContainers = {...videoContainers};
       ['input' as const, 'output' as const].forEach((type) => {
@@ -704,6 +728,7 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
     } else {
       listenerSetter.add(callInstance)('state', updateInstance);
       listenerSetter.add(callInstance)('mediaState', updateInstance);
+      listenerSetter.add(callInstance)('signalBars', updateSignal);
     }
 
     onMount(() => {
@@ -801,7 +826,9 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
 
   createPopup(() => (
     <PopupElement
-      class="popup-call"
+      class={classNames('popup-call', IS_MOVABLE_PANEL && 'movable-element')}
+      managers={instance.managers}
+      keepOnAccountSwitch
       withoutOverlay
       closable
       show={show()}

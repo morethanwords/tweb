@@ -9,6 +9,8 @@ describe('rich-message Attach menu policy', () => {
   test.each<RichMessageAttachMenuAction>([
     'visualMedia',
     'audio',
+    // a file block, as the other clients' rich editors attach one
+    'document',
     'location',
     'groupCollage',
     'groupSlideshow'
@@ -18,11 +20,12 @@ describe('rich-message Attach menu policy', () => {
   });
 
   test.each<RichMessageAttachMenuAction>([
-    'document',
     'editMedia',
     'giftPremium',
     'poll',
     'standaloneChecklist',
+    // it is what expands the editor
+    'article',
     'attachBot'
   ])('hides the standalone action %s while the editor is expanded', (action) => {
     expect(isRichMessageAttachMenuActionAllowed(action)).toBe(false);

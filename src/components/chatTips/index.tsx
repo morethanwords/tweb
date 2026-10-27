@@ -61,16 +61,16 @@ const REVEAL_TIMEOUT = 2000;
  * the chat column only ever shows up with a chat in it. So the deck isn't drawn at all, not just
  * hidden: nothing mounts, nothing is fetched, until the window is wide enough for two columns.
  */
-function ChatTips() {
+function ChatTips(props: {page: HTMLElement}) {
   const mediaSizes = useMediaSizes();
   return (
     <Show when={!mediaSizes.isLessThanFloatingLeftSidebar}>
-      <ChatTipsDeck />
+      <ChatTipsDeck page={props.page} />
     </Show>
   );
 }
 
-function ChatTipsDeck() {
+function ChatTipsDeck(props: {page: HTMLElement}) {
   // Through the guard, not `useCurrentPeerId`: that hook imports `appImManager` statically, and a
   // hot update hands the re-evaluated module a second, uninitialised copy of the singleton whose
   // `chat` is undefined — the render then throws and the deck disappears.
@@ -103,10 +103,11 @@ function ChatTipsDeck() {
   };
 
   // Where a card waits while it isn't the one showing: its side is its cyclic position relative to
-  // the current tip — next waits on the right, previous on the left. That makes a step animate
-  // correctly both ways without tracking which way we went, because the card being left behind
-  // becomes "previous" and leaves to the left while the arriving one was "next" and comes in from
-  // the right (mirrored when stepping back).
+  // the current tip — next waits at the inline end, previous at the start (right and left in LTR;
+  // the stylesheet turns the offset with `--reflect`). That makes a step animate correctly both
+  // ways without tracking which way we went, because the card being left behind becomes "previous"
+  // and leaves toward the start while the arriving one was "next" and comes in from the end
+  // (mirrored when stepping back).
   const offsetOf = (i: number) =>
     (i - index() + TIPS.length) % TIPS.length === 1 ? `${SLIDE}px` : `${-SLIDE}px`;
 
@@ -158,12 +159,15 @@ function ChatTipsDeck() {
   // stay mounted and ready, just not painted.
   return (
     <div ref={pinServiceColor} class={classNames(styles.host, !shown() && styles.hostHidden)}>
-      {/* Portalled to the body and fixed, the way the auth flow pins its corner buttons.
+      {/* Portalled to the page and fixed, the way the auth flow pins its corner buttons.
           `#column-center` carries a translateX that centres the chat beside the sidebar, so its
           box overflows the viewport on the right — anything pinned to that box's own corner
-          lands off-screen. */}
+          lands off-screen. The page has no transform of its own, and when it steps back behind
+          the sign-in screens of another account (`@lib/accounts/addAccount`), the button goes
+          with it. The element itself, not its id: it moves between the tab and a PiP window,
+          and the deck can mount again before the page is back in the document it is looked up in. */}
       <Show when={shown()}>
-        <Portal mount={document.body}>
+        <Portal mount={props.page}>
           <Button.Icon
             ref={pinServiceColor}
             class={styles.toggleButton}
@@ -267,9 +271,11 @@ export function renderChatTips(anchor: HTMLElement) {
   container.classList.add(MOUNT_CLASS, styles.mount);
   anchor.after(container);
 
+  // * the page the chats are in, where the deck's corner button goes
+  const page = anchor.closest<HTMLElement>('.page-chats') || document.body;
   container.disposeChatTips = render(() => (
     <SolidJSHotReloadGuardProvider>
-      <ChatTips />
+      <ChatTips page={page} />
     </SolidJSHotReloadGuardProvider>
   ), container);
 

@@ -15,6 +15,7 @@ import rootScope from '@lib/rootScope';
 import {createSignal, onCleanup} from 'solid-js';
 import {getMiddleware} from '@helpers/middleware';
 import ListenerSetter from '@helpers/listenerSetter';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const CLASS_NAME = 'popup-chatlist-invite';
 
@@ -26,7 +27,7 @@ export default async function showSharedFolderInvitePopup(options: Partial<{
   updating: boolean
 }>) {
   const {chatlistInvite, slug, deleting, updating} = options;
-  const managers = rootScope.managers;
+  const managers = bindManagersToSession(rootScope.managers);
   const middlewareHelper = getMiddleware();
   const middleware = middlewareHelper.get();
   const listenerSetter = new ListenerSetter();
@@ -239,7 +240,7 @@ export default async function showSharedFolderInvitePopup(options: Partial<{
     });
 
     return (
-      <PopupElement class={'popup-forward ' + CLASS_NAME} closable show={show()}>
+      <PopupElement managers={managers} class={'popup-forward ' + CLASS_NAME} closable show={show()}>
         <PopupElement.Header>
           <PopupElement.CloseButton />
           <PopupElement.Title>{i18n(titleKey)}</PopupElement.Title>

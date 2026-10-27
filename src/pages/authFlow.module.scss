@@ -51,11 +51,11 @@ $corner-button-size: 2.5rem;
 }
 
 .closeButton {
-  left: $corner-button-inset;
+  inset-inline-start: $corner-button-inset;
 }
 
 .themeButton {
-  right: $corner-button-inset;
+  inset-inline-end: $corner-button-inset;
 }
 
 // `toIm()` sets `.leaving` on the host when the IM page takes over: the cards
@@ -289,6 +289,16 @@ $corner-button-size: 2.5rem;
   }
 }
 
+// Where nothing puts a gap between the error line and what is above it — the code
+// card lays its children out itself, `.fieldWithError` keeps a field and its line
+// in one cell of the wrapper's grid — the line needs room of its own, or it touches
+// the code cells or the field. Padding, not a margin, so that `AutoHeight` measures
+// it with the line
+.pageAuthCode .errorLabel,
+.fieldWithError .errorLabel {
+  padding-top: .75rem;
+}
+
 .pagePassword {
   :global(.input-wrapper) {
     @include respond-to(handhelds) {
@@ -313,12 +323,24 @@ $corner-button-size: 2.5rem;
 
 // ----- Animations ----------------------------------------------------
 
-// Host enter when arriving from another account (writes happen in
-// `runEnterSequence` in AuthCardsHost.tsx).
+// Host enter when opened from the app of another account (writes happen in
+// `runEnterSequence` in AuthCardsHost.tsx). Reduced animations fade it in where
+// it stands, quicker.
 .hostEnter {
-  transition: 0.4s;
   opacity: 0;
-  transform: translateX(100px);
+  transform: translateX(calc(100px * var(--reflect)));
+
+  @include animation-level-global(1) {
+    transition: opacity .2s;
+  }
+
+  @include animation-level-global(2) {
+    transition: opacity .4s, transform .4s;
+  }
+
+  @include animation-level-below-global(2) {
+    transform: none;
+  }
 }
 
 .hostEntering {
@@ -326,16 +348,37 @@ $corner-button-size: 2.5rem;
   opacity: 1;
 }
 
-// Host exit before changeAccount (back button in AuthCardsHost.tsx).
+// Host exit once it is done: back to the previous account, or the IM page of
+// the one signed in to over the app (`leave` in AuthCardsHost.tsx).
 .hostExit {
-  transition: 0.2s;
   transform: scale(1);
   opacity: 1;
+
+  @include animation-level-transition(opacity .2s, transform .2s, $global: true);
 }
 
 .hostExiting {
   transform: scale(1.025);
   opacity: 0;
+
+  @include animation-level-below-global(2) {
+    transform: none;
+  }
+}
+
+// Signing in to another account over the app of this one
+// (`@lib/accounts/addAccount`): the app stays underneath, faded out and inert,
+// and the host stands over it rather than below it in the page. Popups and
+// toasts the cards open still come above it.
+.overApp {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+
+  // * where the focus lands as it opens (keyboard layer): the screens themselves, not a control
+  &:focus {
+    outline: none;
+  }
 }
 
 // Card-to-card transitions for `<Transition mode="outin">`. The leaving card
@@ -347,7 +390,7 @@ $corner-button-size: 2.5rem;
 
 .cardEnter {
   opacity: 0;
-  transform: translateX(24px);
+  transform: translateX(calc(24px * var(--reflect)));
 }
 
 .cardEnterTo {
@@ -362,5 +405,5 @@ $corner-button-size: 2.5rem;
 
 .cardExitTo {
   opacity: 0;
-  transform: translateX(-24px);
+  transform: translateX(calc(-24px * var(--reflect)));
 }

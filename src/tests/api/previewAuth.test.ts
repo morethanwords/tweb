@@ -17,6 +17,11 @@
  *               and the original seed session is still alive (not logged out)
  *   4. emit   — write the fresh keys to tmp/seed-preview.json for the preview
  *
+ * A seed with `"isTest": 1` is an account on the test DCs (0: a production one, said outright):
+ * it is minted there, whatever TG_API_PROD_DC says, and the preview seed it gives keeps the
+ * flag, so the preview boots in test mode too. A test number (99966XYYYY) gets no code at all -
+ * it is X, repeated.
+ *
  * Run (production seed):
  *   TG_API_TEST=1 TG_API_PROD_DC=1 TG_API_SEED=./tmp/seed.json \
  *     pnpm test src/tests/api/previewAuth
@@ -37,6 +42,15 @@ const TELEGRAM_SERVICE_ID = 777000;
 
 function delay(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * The code a test-DC test number (99966XYYYY) logs in with: no code is sent, it is the DC's digit
+ * X repeated - https://core.telegram.org/api/auth#test-accounts
+ */
+function getTestNumberLoginCode(phone: string, codeLength: number): string | undefined {
+  const match = phone.match(/^99966(\d)\d{4}$/);
+  return match ? match[1].repeat(codeLength) : undefined;
 }
 
 /** Pull a login code of `codeLength` digits out of a service message. */
@@ -95,8 +109,15 @@ async function muteManagerStorm(): Promise<() => void> {
 describeOrSkip('preview auth', () => {
   test('mint a fresh independent authorization for a preview', async() => {
     const seed = JSON.parse(readFileSync(seedPath!, 'utf8')) as AccountSeed;
-    const testDc = process.env.TG_API_PROD_DC !== '1';
+    // * the seed knows which DCs its account lives on; the environment only for a seed that does not say
+    const testDc = seed.isTest !== undefined ? !!seed.isTest : process.env.TG_API_PROD_DC !== '1';
     const homeDc = seed.dcId as TrueDcSeed;
+
+    // * before anything of the network loads: the transports work the test servers' addresses out
+    // * once, as their module is evaluated - and muting the managers below loads the stack already
+    if(testDc) {
+      (await import('@config/modes')).default.test = true;
+    }
 
     // patch the manager stack into a logged-out state before any client boots
     const restoreApi = await muteManagerStorm();
@@ -144,7 +165,7 @@ describeOrSkip('preview auth', () => {
       console.log(`[previewAuth] auth.sendCode ok — type=${sentCode?.type?._} length=${codeLength}`);
 
       // read the login code from the Telegram service chat via the seed session
-      let code: string | undefined;
+      let code: string | undefined = testDc ? getTestNumberLoginCode(phone, codeLength) : undefined;
       for(let attempt = 0; attempt < 20 && !code; attempt++) {
         await delay(1500);
         const history: any = await serviceHistory(5);
@@ -215,7 +236,9 @@ describeOrSkip('preview auth', () => {
       // handshake on the base DC and hit AUTH_KEY_UNREGISTERED. Force an
       // authorized call to every other DC so tweb exports/imports the auth and
       // persists each dc{n}_auth_key into account2.
-      for(let dcId = 1 as TrueDcSeed; dcId <= 5; dcId = (dcId + 1) as TrueDcSeed) {
+      // * the test servers have three DCs
+      const lastDcId = testDc ? 3 : 5;
+      for(let dcId = 1 as TrueDcSeed; dcId <= lastDcId; dcId = (dcId + 1) as TrueDcSeed) {
         if(dcId === homeDc) continue;
         try {
           await fresh.apiManager.invokeApi('users.getUsers', {
@@ -236,7 +259,8 @@ describeOrSkip('preview auth', () => {
         userId: seed.userId,
         dcId: seed.dcId,
         authKeys: {},
-        timeOffset: timeOffset ?? undefined
+        timeOffset: timeOffset ?? undefined,
+        isTest: testDc || undefined
       };
       // re-read account2 — Phase 3.5 authorized more DCs after the earlier snapshot
       const account2Final: any = await sessionStorage.get('account2' as any);

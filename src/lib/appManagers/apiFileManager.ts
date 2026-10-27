@@ -349,7 +349,8 @@ export class ApiFileManager extends AppManager {
       }
     }
 
-    return canceled;
+    // a rich message's media past its bytes is still uploading: the messages manager gives it up
+    return canceled || !!this.appMessagesManager?.cancelPreparedRichMessageMedia(fileName);
   }
 
   public cancelDownloadByReference(reference: ReferenceBytes) {

@@ -1,6 +1,8 @@
-import {createSignal, onCleanup, onMount, Component, createSelector, createMemo, For, Show, Ref, createComputed, on, Accessor, untrack} from 'solid-js';
+import {createSignal, onCleanup, onMount, Component, createSelector, createMemo, For, Show, Ref, createComputed, on, Accessor, createRenderEffect, untrack} from 'solid-js';
 
-import createAnimatedValue from '@helpers/solid/createAnimatedValue';
+import {simpleEasing} from '@helpers/easings';
+import liteMode from '@helpers/liteMode';
+import noop from '@helpers/noop';
 import ListenerSetter from '@helpers/listenerSetter';
 import useElementSize from '@hooks/useElementSize';
 import styles from '@components/verticalVirtualList.module.scss';
@@ -13,7 +15,8 @@ export type VerticalVirtualListItemProps<T = any> = {
   item: T;
   top: number;
   idx: number;
-  animating: boolean;
+  /** whether a move to another `top` may glide there (`createItemGlide`) */
+  glide: boolean;
 };
 
 const VerticalVirtualList: Component<{
@@ -63,12 +66,30 @@ const VerticalVirtualList: Component<{
 
   // * where every item starts, and where the last one ends: for a list of equal items it is their
   // * index times the height, as it always was
-  const getLayout = (): ItemsLayout => props.layout || createUniformLayout(props.itemHeight);
+  const uniformLayout = createMemo(() => createUniformLayout(props.itemHeight));
+  const getLayout = (): ItemsLayout => props.layout || uniformLayout();
 
+  // * once the update is through: the list takes its new height in a render effect, after this is
+  // * asked for, and a host scrolled further than the old height lets it would stop short
+  let pendingScrollShift = 0;
   const onScrollShift = (amount: number) => {
-    untrack(() => {
-      props.scrollableHost.scrollTop -= amount;
+    if(!amount) {
+      return;
+    }
+
+    if(!pendingScrollShift) queueMicrotask(() => {
+      if(pendingScrollShift) props.scrollableHost.scrollTop -= pendingScrollShift;
+      pendingScrollShift = 0;
     });
+
+    pendingScrollShift += amount;
+  };
+
+  let listEl: HTMLUListElement;
+  // * where the screen starts, in the list: the host can scroll something above the list too (the
+  // * chat list's stories), and a shift asked for in this task is not in it yet
+  const getVisibleTop = () => {
+    return props.scrollableHost.getBoundingClientRect().top - listEl.getBoundingClientRect().top - pendingScrollShift;
   };
 
   const shouldAnimate = useShouldAnimate({
@@ -76,10 +97,12 @@ const VerticalVirtualList: Component<{
     hostHeight,
     getLayout,
     scrollAmount,
+    getVisibleTop,
     onScrollShift
   });
 
-  const canAnimate = createMemo(() => shouldAnimate() && props.animate);
+  // rows glide to a new place only with full animations - with reduced ones they step there
+  const canAnimate = createMemo(() => shouldAnimate() && props.animate && liteMode.isAvailable('motion'));
 
   const isVisible = createSelector(
     () => [scrollAmount(), hostHeight(), getLayout(), props.thresholdPadding] as const,
@@ -94,14 +117,12 @@ const VerticalVirtualList: Component<{
 
 
   const Item: Component<{idx: number, item: any}> = (itemProps) => {
-    const animatedTop = createAnimatedValue(() => getLayout().top(itemProps.idx), 120, undefined, canAnimate);
-
     return (
       <props.ListItem
         idx={itemProps.idx}
         item={itemProps.item}
-        top={animatedTop()}
-        animating={animatedTop.animating()}
+        top={getLayout().top(itemProps.idx)}
+        glide={canAnimate()}
       />
     );
   };
@@ -124,7 +145,10 @@ const VerticalVirtualList: Component<{
   // listitems: a deliberate change, not an attribute.
   return (
     <ul
-      ref={props.ref}
+      ref={(el) => {
+        listEl = el;
+        if(typeof props.ref === 'function') props.ref(el);
+      }}
       class={props.class}
       role="presentation"
       style={{
@@ -143,6 +167,77 @@ const VerticalVirtualList: Component<{
   );
 };
 
+const GLIDE_TIME = 120;
+
+/**
+ * Puts an item at `top`, and when it may glide there carries it from where it was drawn: the item
+ * is at its new place at once, and a transform animation the compositor runs takes it there. A
+ * `top` animated a frame at a time laid the list out again in every frame of every row that moved
+ * (a chat going up the list moves every row above its old place). Gives whether it is gliding.
+ */
+export function createItemGlide(element: Accessor<HTMLElement>, top: Accessor<number>, canGlide: Accessor<boolean>) {
+  const [gliding, setGliding] = createSignal(false);
+  let glide: {animation: Animation, from: number, to: number}, lastElement: HTMLElement, lastTop: number;
+
+  // * where the item is drawn now: a glide that is cut short starts the next one from there (the
+  // * animation's own time - it starts with the next frame, not when it is asked for)
+  const getDrawnTop = () => {
+    if(!glide) {
+      return lastTop;
+    }
+
+    const time = Number(glide.animation.currentTime) || 0;
+    const progress = simpleEasing(Math.min(1, time / GLIDE_TIME));
+    return glide.from + (glide.to - glide.from) * progress;
+  };
+
+  const stop = () => {
+    glide?.animation.cancel();
+    glide = undefined;
+  };
+
+  createRenderEffect(() => {
+    const _element = element(), _top = top();
+    // * an update that moves nothing (the dialog updated again in the place it has just taken)
+    // * leaves the glide running
+    if(_element && _element === lastElement && _top === lastTop) {
+      return;
+    }
+
+    const from = _element && _element === lastElement ? getDrawnTop() : undefined;
+    stop();
+    lastElement = _element;
+    lastTop = _top;
+    if(!_element) {
+      setGliding(false);
+      return;
+    }
+
+    _element.style.setProperty('top', _top + 'px');
+    if(from === undefined || from === _top || !untrack(canGlide) || typeof(_element.animate) !== 'function') {
+      setGliding(false);
+      return;
+    }
+
+    const animation = _element.animate([
+      {transform: `translateY(${from - _top}px)`},
+      {transform: 'translateY(0)'}
+    ], {duration: GLIDE_TIME, easing: 'ease'}); // * `simpleEasing`
+    glide = {animation, from, to: _top};
+    setGliding(true);
+    animation.finished.then(() => {
+      if(glide?.animation === animation) {
+        glide = undefined;
+        setGliding(false);
+      }
+    }, noop);
+  });
+
+  onCleanup(stop);
+
+  return gliding;
+}
+
 /** Where the items of a list start: `top(idx)` for any index up to the length, which is where the list ends */
 export type ItemsLayout = {
   top: (idx: number) => number
@@ -152,6 +247,18 @@ function createUniformLayout(itemHeight: number): ItemsLayout {
   return {
     top: (idx) => idx * itemHeight
   };
+}
+
+/** The first of the `length` items that reaches below `offset` - `length` when none does */
+export function findItemAtOffset(layout: ItemsLayout, length: number, offset: number) {
+  let low = 0, high = length;
+  while(low < high) {
+    const middle = (low + high) >> 1;
+    if(layout.top(middle + 1) <= offset) low = middle + 1;
+    else high = middle;
+  }
+
+  return low;
 }
 
 /** Lays out a list whose items differ in height, for `VerticalVirtualList`'s `layout` */
@@ -172,6 +279,8 @@ type UseShouldAnimateArgs = {
   scrollAmount: Accessor<number>;
   getLayout: Accessor<ItemsLayout>;
   hostHeight: Accessor<number>;
+  /** where the screen starts in the list, measured: unlike `scrollAmount`, nothing lags behind */
+  getVisibleTop: () => number;
 
   onScrollShift: (amount: number) => void;
 };
@@ -182,7 +291,7 @@ type UseShouldAnimateArgs = {
  * For example when a new chat appears on top, and we have some scroll, prevent all the chats from viewport
  * moving at the same time
  */
-function useShouldAnimate({list, scrollAmount, hostHeight, getLayout, onScrollShift}: UseShouldAnimateArgs) {
+function useShouldAnimate({list, scrollAmount, hostHeight, getLayout, getVisibleTop, onScrollShift}: UseShouldAnimateArgs) {
   const [shouldAnimate, setShouldAnimate] = createSignal(true);
 
   const isActuallyVisible = (layout: ItemsLayout, idx: number) => {
@@ -191,11 +300,31 @@ function useShouldAnimate({list, scrollAmount, hostHeight, getLayout, onScrollSh
       layout.top(idx) <= top + hostHeight();
   };
 
-  // * the layout the previous list was laid out with - an item that has not moved in the list can
-  // * still have moved on screen, when an item of another height went in above it
+  // * the same items, only some of another height now (a chat list's row got its folder tags, or the
+  // * list narrowed and they all lost theirs): the item at the top of the screen stays where it is, as
+  // * a browser anchors its scroll, or a row that grew above the screen would push what is on it down
+  const onHeightsChange = (length: number, layout: ItemsLayout) => {
+    const anchorIdx = findItemAtOffset(prevLayout, length, getVisibleTop());
+    const shift = anchorIdx < length ? prevLayout.top(anchorIdx) - layout.top(anchorIdx) : 0;
+    // * an item moved by the scroll must not slide to its place on top of it
+    setShouldAnimate(!shift);
+    onScrollShift(shift);
+  };
+
+  // * the layout the list was last laid out with, heights included - an item that has not moved in
+  // * the list can still have moved on screen, when an item of another height went in above it
   let prevLayout: ItemsLayout;
-  createComputed(on(list, (current, prev = []) => {
-    const layout = getLayout();
+  createComputed(on([list, getLayout], ([current, layout], prevInput) => {
+    const prev = prevInput?.[0] || [];
+    if(current === prev) {
+      if(prevLayout && layout !== prevLayout) {
+        onHeightsChange(current.length, layout);
+      }
+
+      prevLayout = layout;
+      return;
+    }
+
     const visiblePrev = prevLayout ? prev.filter((_, i) => isActuallyVisible(prevLayout, i)) : [];
     const visibleNow = current.filter((_, i) => isActuallyVisible(layout, i));
 

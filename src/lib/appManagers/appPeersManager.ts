@@ -10,6 +10,7 @@ import type {LangPackKey} from '@lib/langPack';
 import isObject from '@helpers/object/isObject';
 import {AppManager} from '@appManagers/manager';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
+import getChatMigratedTo from '@appManagers/utils/peers/getChatMigratedTo';
 import isUser from '@appManagers/utils/peers/isUser';
 import isAnyChat from '@appManagers/utils/peers/isAnyChat';
 import {NULL_PEER_ID} from '@appManagers/constants';
@@ -122,7 +123,7 @@ export class AppPeersManager extends AppManager {
 
   public getPeerPhoto(peerId: PeerId) {
     const peer = this.getPeer(peerId) as User.user | Chat;
-    return getPeerPhoto(peer);
+    return getPeerPhoto(peer, this.appPrivacyManager.getIgnoredRestrictionReasons());
   }
 
   public getPeerMigratedTo(peerId: PeerId) {
@@ -130,11 +131,7 @@ export class AppPeersManager extends AppManager {
       return;
     }
 
-    const chat = this.appChatsManager.getChat(peerId.toChatId()) as Chat.chat;
-    const migratedTo = chat?.migrated_to;
-    if(migratedTo && chat.pFlags.deactivated) {
-      return getPeerId(migratedTo);
-    }
+    return getChatMigratedTo(this.appChatsManager.getChat(peerId.toChatId()));
   }
 
   public getOutputPeer(peerId: PeerId): Peer {
@@ -263,7 +260,11 @@ export class AppPeersManager extends AppManager {
 
   public isPeerRestricted(peerId: PeerId) {
     return callbackify(this.appPrivacyManager.getContentSettings(), (settings) => {
-      return isPeerRestricted(this.getPeer(peerId), !!settings.pFlags.sensitive_can_change);
+      return isPeerRestricted(
+        this.getPeer(peerId),
+        !this.appPrivacyManager.isSensitiveBlocked(settings),
+        this.appPrivacyManager.getIgnoredRestrictionReasons()
+      );
     });
   }
 

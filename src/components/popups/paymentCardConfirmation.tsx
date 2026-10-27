@@ -4,8 +4,10 @@ import {AccountPassword, AccountTmpPassword} from '@layer';
 import {InputState} from '@components/inputField';
 import PasswordInputField from '@components/passwordInputField';
 import Section from '@components/section';
+import {toastNew} from '@components/toast';
 import rootScope from '@lib/rootScope';
 import {createSignal, onMount} from 'solid-js';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export default function showPaymentCardConfirmationPopup(options: {
   card: string,
@@ -18,17 +20,20 @@ export default function showPaymentCardConfirmationPopup(options: {
   const passwordInputField = new PasswordInputField({labelText: passwordState.hint ?? ''});
 
   const onPay = async() => {
+    const managers = bindManagersToSession(rootScope.managers);
     try {
-      const inputCheckPassword = await rootScope.managers.passwordManager.getInputCheckPassword(passwordInputField.value, passwordState);
-      const tmpPassword = await rootScope.managers.passwordManager.getTmpPassword(inputCheckPassword, 60);
+      const inputCheckPassword = await managers.passwordManager.getInputCheckPassword(passwordInputField.value, passwordState);
+      const tmpPassword = await managers.passwordManager.getTmpPassword(inputCheckPassword, 60);
 
       options.onFinish?.(tmpPassword);
     } catch(err) {
       if((err as ApiError).type === 'PASSWORD_HASH_INVALID') {
-        (err as ApiError).handled = true;
         passwordInputField.setError('PASSWORD_HASH_INVALID');
+      } else if(!(err as ApiError).handled) {
+        toastNew({langPackKey: 'Error.AnError'});
       }
 
+      (err as ApiError).handled = true;
       throw err;
     }
   };

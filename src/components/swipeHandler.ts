@@ -15,6 +15,7 @@ import debounce from '@helpers/schedulers/debounce';
 import {logger} from '@lib/logger';
 import isSwipingBackSafari from '@helpers/dom/isSwipingBackSafari';
 import windowSize from '@helpers/windowSize';
+import {hotListen} from '@helpers/hotModule';
 
 type E = {
   clientX: number,
@@ -49,7 +50,7 @@ function getTouchCenter(a: Touch, b: Touch) {
 // (stories viewer, media-viewer pan, reorder, …) lives there, so a main-document listener never sees
 // the gesture and the swipe sticks. Equals `document` when not popped out, so behaviour is unchanged.
 let RESET_GLOBAL = false;
-contextMenuController.addEventListener('toggle', (visible) => {
+hotListen(import.meta.hot, contextMenuController, 'toggle', (visible) => {
   RESET_GLOBAL = visible;
 });
 
@@ -69,6 +70,8 @@ export type SwipeHandlerOptions = {
   setCursorTo?: HTMLElement,
   middleware?: Middleware,
   withDelay?: boolean,
+  // a two-finger trackpad swipe (wheel events) drags as a mouse drag does
+  wheelSwipe?: boolean,
   minZoom?: number,
   maxZoom?: number
 };
@@ -116,6 +119,7 @@ export default class SwipeHandler {
   private yAdded: number;
 
   private withDelay: boolean;
+  private wheelSwipe: boolean;
   private listenerSetter: ListenerSetter;
 
   private initialDistance: number;
@@ -160,7 +164,7 @@ export default class SwipeHandler {
       // The gesture-end listener (`mouseup`/`touchend`) is bound lazily in `handleStart` — see the
       // note there — not here, so its target document is resolved while the element is live.
 
-      if(this.onZoom || this.onDoubleClick) {
+      if(this.onZoom || this.onDoubleClick || this.wheelSwipe) {
         this.listenerSetter.add(this.element)('wheel', this.handleWheel, WHEEL_OPTIONS);
       }
     } else {
@@ -224,7 +228,7 @@ export default class SwipeHandler {
       this.isMouseDown =
       undefined;
 
-    if(this.onZoom) {
+    if(this.onZoom || this.wheelSwipe) {
       this.initialDistance = 0;
       this.initialTouchCenter = {
         x: windowSize.width / 2,

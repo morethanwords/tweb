@@ -10,7 +10,7 @@ import type {ChatInputEditor, ChatInputEditorOptions} from '@components/chat/inp
 import InputField from '@components/inputField';
 import slideshowStyles from '@components/slideshow.module.scss';
 import type {MarkdownType} from '@helpers/dom/getRichElementValue';
-import type {Document, MessageEntity, PageBlock, Photo} from '@layer';
+import type {Document, Message, MessageEntity, MessageMedia, PageBlock, Photo} from '@layer';
 import I18n from '@lib/langPack';
 import {setAppSettingsSilent} from '@stores/appSettings';
 
@@ -93,13 +93,25 @@ vi.mock('@components/chat/markupTooltip', () => ({
   }
 }));
 
+// the row as the wrapper makes it: its document from the message, as a bubble's; the message, and with
+// it the document, replaced once the upload is done, as a bubble's is once sent
 vi.mock('@components/wrappers/document', () => ({
-  default: vi.fn(async({doc}: {doc: {duration?: number}}) => {
+  default: vi.fn(async({doc: docOverride, message, uploadingFileName}: {
+    doc?: Document.document,
+    message?: Message.message,
+    uploadingFileName?: string
+  }) => {
+    const doc = docOverride ?? (message?.media as MessageMedia.messageMediaDocument)?.document as Document.document;
     const element = document.createElement('audio-element') as HTMLElement & {
-      doc?: unknown
+      doc?: unknown,
+      replaceMessage?: (message: Message.message) => void,
+      uploadingFileName?: string
     };
     element.classList.add('audio');
     element.doc = doc;
+    element.message = message;
+    element.uploadingFileName = uploadingFileName ?? message?.uploadingFileName?.[0];
+    element.replaceMessage = (message) => element.message = message;
     const time = document.createElement('span');
     const duration = Math.max(0, Math.floor(doc.duration || 0));
     time.className = 'audio-time';
@@ -179,6 +191,12 @@ vi.mock('@components/buttonMenuToggle', () => ({
 vi.mock('@environment/webpSupport', () => ({default: true}));
 
 vi.mock('@lib/richTextProcessor/wrapRichText', () => ({
+  // a button chip draws its label through it; the text is what these tests read
+  default: (text: string) => {
+    const fragment = document.createDocumentFragment();
+    fragment.append(text);
+    return fragment;
+  },
   ENTITY_ELEMENT_MAP: new WeakMap(),
   isCustomFillerNeededBySiblingNode: () => false
 }));
@@ -365,12 +383,19 @@ export function useChatInputEditorHarness() {
     const placeholders = input.querySelectorAll<HTMLElement>(
       '.chat-input-trailing-placeholder'
     );
+    const position = doc.content.size - terminal!.nodeSize;
+    // An empty document is this paragraph and nothing else: the field's own placeholder
+    // stands there, so the terminal one is labelled only once it follows something.
+    if(doc.childCount < 2) {
+      expect(placeholders).toHaveLength(0);
+      return {node: terminal!, position};
+    }
+
     expect(placeholders).toHaveLength(1);
     expect(placeholders[0].dataset.placeholder).toBe(I18n.format(
       'Chat.Input.Editor.TrailingPlaceholder',
       true
     ));
-    const position = doc.content.size - terminal!.nodeSize;
     expect(tiptap.view.nodeDOM(position)).toBe(placeholders[0]);
     return {node: terminal!, position};
   }

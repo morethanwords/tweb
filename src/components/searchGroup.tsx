@@ -1,10 +1,11 @@
-import appDialogsManager, {AppDialogsManager} from '@lib/appDialogsManager';
+import {AppDialogsManager} from '@lib/appDialogsManager';
 import {i18n, LangPackKey} from '@lib/langPack';
 import Section from '@components/section';
 import {createMemo, createRoot, createSignal, JSX, Show} from 'solid-js';
 import classNames from '@helpers/string/classNames';
 import {Middleware} from '@helpers/middleware';
 import Scrollable from '@components/scrollable2';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export type SearchGroupType = 'contacts' | 'globalContacts' | 'messages' | string;
 
@@ -74,7 +75,7 @@ export function createSearchGroup(options: {
       </NameRight>
     );
   });
-  const list = appDialogsManager.createChatList();
+  const list = hotReloadGuard.appDialogsManager.createChatList();
   let container: HTMLDivElement;
   let nameEl: HTMLDivElement;
   let placeholder: HTMLElement;
@@ -112,7 +113,7 @@ export function createSearchGroup(options: {
   });
 
   if(clickable) {
-    appDialogsManager.setListClickListener({
+    hotReloadGuard.appDialogsManager.setListClickListener({
       list,
       onFound,
       withContext: undefined,

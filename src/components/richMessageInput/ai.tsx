@@ -21,6 +21,7 @@ import {getChatInputEditor} from '@components/chat/inputEditor/registry';
 import captureInputContent from '@components/chat/inputEditor/captureInputContent';
 import type {AiEditorSendOptions} from '@components/popups/aiEditorPopup/aiEditorPopup';
 import {flattenRichMessageSummary} from '@lib/richMessage';
+import type {TextWithEntities} from '@layer';
 import shouldOpenCreateWithAi from '@components/chat/inputState/shouldOpenCreateWithAi';
 
 export const defaultShouldShowFromHeight = 72;
@@ -115,6 +116,13 @@ const createAiEditorButton = ({
     children: icon,
     onClick: async() => {
       const editor = getChatInputEditor(inputField.input);
+      // Only content a plain message cannot carry goes to the structured endpoints, judged as on send;
+      // the rest, and all of a field that sends only plain messages (a caption, the composer with rich
+      // posting off), goes to the plain ones and gets text back, as on Android. A rich result may hold
+      // a block a plain field has no room for (a translation's footer), and an account that may not
+      // post rich messages is refused the structured endpoints (RICH_MESSAGE_UNSUPPORTED).
+      const canHoldRichMessage = !!editor && !editor.plainOnly;
+      const richEditor = canHoldRichMessage && editor.getMode() === 'rich' ? editor : undefined;
       const session = context.capture();
       const {peerId} = session;
       const contentIsCurrent = captureInputContent(inputField.input, editor);
@@ -129,7 +137,7 @@ const createAiEditorButton = ({
       const hasEditorSelection = !!editorSelection &&
         editorSelection.type !== 'cell' &&
         editorSelection.from !== editorSelection.to;
-      const shouldCreateRichMessage = !!editor && shouldOpenCreateWithAi(
+      const shouldCreateRichMessage = canHoldRichMessage && shouldOpenCreateWithAi(
         !!inputField.input.closest('.is-message-input-expanded'),
         editorSelection
       );
@@ -173,17 +181,21 @@ const createAiEditorButton = ({
         return;
       }
 
-      const {value, entities} = getRichValueWithCaret(inputField.input, true, false);
-      const selectedRichMessage = hasEditorSelection ? editor.getSelectedRichMessage() : undefined;
-      // Rewriting rich-editor content always uses the structured compose endpoint, preserving
-      // blocks and marks. Create with AI is handled separately above because it has no source.
-      const editorRichMessage = selectedRichMessage || editor?.getRichMessage();
-      const popupText = editorRichMessage ?
-        flattenRichMessageSummary(editorRichMessage.output, 0) :
-        {
-          _: 'textWithEntities' as const,
-          ...trimRichText(value, entities)
-        };
+      // Rich content is rewritten by the structured compose endpoint, preserving blocks and marks.
+      // Create with AI is handled separately above because it has no source.
+      const editorRichMessage = richEditor &&
+        ((hasEditorSelection && richEditor.getSelectedRichMessage()) || richEditor.getRichMessage());
+      let popupText: TextWithEntities.textWithEntities;
+      if(editorRichMessage) {
+        popupText = flattenRichMessageSummary(editorRichMessage.output);
+      } else if(hasEditorSelection) {
+        // plain content goes as the field sends it, and a selection as itself serialized the same way
+        const {value, entities} = editor.getSelectedRichValue();
+        popupText = {_: 'textWithEntities', text: value, entities};
+      } else {
+        const {value, entities} = getRichValueWithCaret(inputField.input, true, false);
+        popupText = {_: 'textWithEntities', ...trimRichText(value, entities)};
+      }
 
       const {module: {openAiEditorPopup}, initialTones} = await namedPromises({
         module: import('@components/popups/aiEditorPopup'),
@@ -231,7 +243,7 @@ const createAiEditorButton = ({
               );
             }
             if(editor) return editor.replaceAllRichMessage(richMessage);
-            onApply?.(flattenRichMessageSummary(richMessage, 0));
+            onApply?.(flattenRichMessageSummary(richMessage));
           });
         },
         canSendWhenOnline: session.canSendWhenOnline,
@@ -240,7 +252,7 @@ const createAiEditorButton = ({
         onSendRichMessage: canSendResult ? (richMessage, options) => {
           if(!canApplyResult()) return false;
           const payload = tiptapToRichMessage(richMessageToTiptap(richMessage));
-          return sendResult(flattenRichMessageSummary(payload.output, 0), options, payload);
+          return sendResult(flattenRichMessageSummary(payload.output), options, payload);
         } : undefined,
         initialTones
       }, HotReloadGuard);

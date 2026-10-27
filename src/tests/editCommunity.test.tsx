@@ -233,6 +233,16 @@ vi.mock('@stores/communities', () => ({
 }));
 
 import EditCommunity from '@components/communities/editCommunity';
+import * as mocked1 from '@components/solidJsTabs/tabs';
+import * as mocked2 from '@lib/appImManager';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+
+// the code under test reads the top level from the registry, not from the modules mocked above
+registerHotReloadGuard({
+  appImManager: (mocked2 as any).default,
+  tabs: {...mocked1} as any
+});
+
 
 const communityId = 10 as ChatId;
 const linkedChatId = 20 as ChatId;

@@ -20,6 +20,7 @@ import I18n from '@lib/langPack';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import ensureButtonSemantics from '@helpers/dom/ensureButtonSemantics';
 import Modes from '@config/modes';
+import verifyMenuItem from '@helpers/verifyMenuItem';
 
 // TODO: refactor for attachClickEvent, because if move finger after touchstart, it will start anyway
 export function ButtonMenuToggleHandler({
@@ -72,7 +73,7 @@ export function ButtonMenuToggleHandler({
 }
 
 export function filterButtonMenuItems(buttons: ButtonMenuItemOptionsVerifiable[]) {
-  return filterAsync(buttons, (button) => button?.verify ? button.verify() ?? false : true);
+  return filterAsync(buttons, verifyMenuItem);
 }
 
 /**
@@ -111,7 +112,8 @@ export default function ButtonMenuToggle({
   icon = 'more',
   appendTo,
   floatingDirection,
-  positionPadding
+  positionPadding,
+  canOpen
 }: {
   buttonOptions?: Parameters<typeof ButtonIcon>[1],
   listenerSetter?: ListenerSetter,
@@ -126,7 +128,9 @@ export default function ButtonMenuToggle({
   onCloseAfter?: () => void,
   noIcon?: boolean,
   icon?: (string & {}) | Icon,
-  positionPadding?: MenuPositionPadding
+  positionPadding?: MenuPositionPadding,
+  // * asked once more right before the menu shows: false drops an open its trigger outlived
+  canOpen?: () => boolean
 }) {
   const resolvedButtonOptions = buttonOptions ? {...buttonOptions} : {};
   // Without the a11y layer a toggle given button options is a <div>, as it was
@@ -235,6 +239,11 @@ export default function ButtonMenuToggle({
       await doubleRaf();
       if(_tempId !== tempId) {
         _element.remove();
+      }
+
+      if(canOpen && !canOpen()) {
+        _element.remove();
+        return;
       }
 
       return _element

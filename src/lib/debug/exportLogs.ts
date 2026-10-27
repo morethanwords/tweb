@@ -11,6 +11,7 @@ import Modes from '@config/modes';
 import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {getLogEntries, LogEntry} from './logsBuffer';
+import {getMemoryLogEntries} from './memoryWatch';
 
 const WORKER_TIMEOUT = 5000;
 
@@ -57,6 +58,9 @@ export async function collectLogs(): Promise<LogEntry[]> {
       console.error('[logs] failed to collect service worker logs:', err);
     }
   }
+
+  // * memoryWatch's samples and the records set in between, in line with what was logged around them
+  all.push(...getMemoryLogEntries());
 
   all.sort((a, b) => a.t - b.t);
   return all;

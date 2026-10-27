@@ -3,6 +3,7 @@ import rootScope from '@lib/rootScope';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import confirmationPopup from '@components/confirmationPopup';
 import showSharedFolderInvitePopup from '@components/popups/sharedFolderInvite';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export function getEditFolderInitArgs() {
   return {
@@ -11,7 +12,8 @@ export function getEditFolderInitArgs() {
 }
 
 export async function deleteFolder(filterId: number) {
-  const filter = await rootScope.managers.filtersStorage.getFilter(filterId);
+  const managers = bindManagersToSession(rootScope.managers);
+  const filter = await managers.filtersStorage.getFilter(filterId);
   if(filter?._ === 'dialogFilterChatlist' && !filter.pFlags.has_my_invites) {
     showSharedFolderInvitePopup({
       filter,
@@ -30,7 +32,7 @@ export async function deleteFolder(filterId: number) {
     }
   });
 
-  return rootScope.managers.filtersStorage.updateDialogFilter(
+  return managers.filtersStorage.updateDialogFilter(
     {
       _: 'dialogFilter',
       id: filterId

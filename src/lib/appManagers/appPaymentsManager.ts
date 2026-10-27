@@ -16,8 +16,11 @@ import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId'
 import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
 import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
 import {getStarsTransactionMessagePeerId} from '@appManagers/utils/payments/starsTransaction';
+import toJSONValue from '@appManagers/utils/toJSONValue';
 import forEachReverse from '@helpers/array/forEachReverse';
 import makeError from '@helpers/makeError';
+import noop from '@helpers/noop';
+import tsNow from '@helpers/tsNow';
 
 export default class AppPaymentsManager extends AppManager {
   private premiumPromo: MaybePromise<HelpPremiumPromo>;
@@ -140,6 +143,36 @@ export default class AppPaymentsManager extends AppManager {
         return this.premiumPromo = helpPremiumPromo;
       }
     });
+  }
+
+  /**
+   * The Premium offer came up. `source` says where from — a link's `ref`, the feature it opened
+   * on, or `settings` — and travels with the order of features the server asked for.
+   */
+  public async reportPremiumPromoShown(source: string) {
+    const appConfig = await this.apiManager.getAppConfig();
+    return this.saveAppLog('premium.promo_screen_show', {
+      premium_promo_order: appConfig.premium_promo_order || [],
+      source
+    });
+  }
+
+  /** The subscribe button of the Premium offer was pressed. */
+  public reportPremiumPromoAccepted() {
+    return this.saveAppLog('premium.promo_screen_accept', null);
+  }
+
+  // * statistics: nobody waits for it, and a failure is not the user's business
+  private saveAppLog(type: string, data: any) {
+    return this.apiManager.invokeApi('help.saveAppLog', {
+      events: [{
+        _: 'inputAppEvent',
+        time: tsNow() / 1000 + this.timeManager.getServerTimeOffset(),
+        type,
+        peer: 0,
+        data: toJSONValue(data)
+      }]
+    }, {ignoreErrors: true}).catch(noop);
   }
 
   public checkGiftCode(slug: string) {
@@ -276,36 +309,39 @@ export default class AppPaymentsManager extends AppManager {
   }
 
   public getStarsStatus(overwrite?: boolean) {
-    if(overwrite) {
-      this.starsStatus = undefined;
-    }
-
-    return this.starsStatus ??= this.apiManager.invokeApiSingleProcess({
-      method: 'payments.getStarsStatus',
-      params: {
-        peer: this.getStarsOwnerInputPeer()
-      },
-      processResult: (starsStatus) => {
-        return this.starsStatus = this.saveStarsStatus(starsStatus);
-      }
-    });
+    return this.loadStarsStatus('starsStatus', overwrite);
   }
 
   public getStarsStatusTon(overwrite?: boolean) {
+    return this.loadStarsStatus('starsStatusTon', overwrite);
+  }
+
+  private loadStarsStatus(key: 'starsStatus' | 'starsStatusTon', overwrite?: boolean) {
     if(overwrite) {
-      this.starsStatusTon = undefined;
+      this[key] = undefined;
     }
 
-    return this.starsStatusTon ??= this.apiManager.invokeApiSingleProcess({
+    if(this[key]) {
+      return this[key];
+    }
+
+    const promise = this[key] = this.apiManager.invokeApiSingleProcess({
       method: 'payments.getStarsStatus',
       params: {
         peer: this.getStarsOwnerInputPeer(),
-        ton: true
+        ton: key === 'starsStatusTon' || undefined
       },
       processResult: (starsStatus) => {
-        return this.starsStatusTon = this.saveStarsStatus(starsStatus);
+        return this[key] = this.saveStarsStatus(starsStatus);
       }
     });
+
+    // a request that failed is not the balance: the next one asks again
+    promise.catch(() => {
+      if(this[key] === promise) this[key] = undefined;
+    });
+
+    return promise;
   }
 
   public getPeerStarsStatus(peerId: PeerId, ton?: boolean) {

@@ -4,7 +4,7 @@ import classNames from '@helpers/string/classNames';
 import mediaSizes from '@helpers/mediaSizes';
 import I18n, {i18n, LangPackKey, FormatterArguments} from '@lib/langPack';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
-import InputField from '@components/inputField';
+import {createTimeInputs, padTime} from '@components/timeInputs';
 import rootScope from '@lib/rootScope';
 import ListenerSetter from '@helpers/listenerSetter';
 import {formatTime, earliestSelectableMinuteMs} from '@helpers/date';
@@ -13,6 +13,7 @@ import {wrapReplyMedia} from '@components/chat/replyContainer';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {Message, MessagesFilter} from '@layer';
 import {ScrollableContextValue} from '@components/scrollable2';
+import smoothScrollBehavior from '@helpers/dom/smoothScrollBehavior';
 
 const MILLIS_IN_MINUTE = 60 * 1000;
 
@@ -182,8 +183,6 @@ export default function showDatePickerPopup(opts: DatePickerPopupOptions): void 
         setSelectionEnd(null);
       });
     }
-    const [hoursValue, setHoursValue] = createSignal(('0' + initHours).slice(-2));
-    const [minutesValue, setMinutesValue] = createSignal(('0' + initMinutes).slice(-2));
 
     // Scroll state — fed from PopupElement.Scrollable's onScroll callback
     const [scrollTop, setScrollTop] = createSignal(0);
@@ -208,54 +207,14 @@ export default function showDatePickerPopup(opts: DatePickerPopupOptions): void 
     maxMonth.setDate(1);
     maxMonth.setHours(0, 0, 0, 0);
 
-    // Time inputs (kept imperative — InputField is a legacy DOM construction helper)
-    let hoursInputField: InputField;
-    let minutesInputField: InputField;
-    if(opts.withTime) {
-      hoursInputField = new InputField({plainText: true});
-      minutesInputField = new InputField({plainText: true});
-      hoursInputField.input.setAttribute('aria-label', I18n.format('AccDescr.Hours', true));
-      minutesInputField.input.setAttribute('aria-label', I18n.format('AccDescr.Minutes', true));
-      hoursInputField.setValueSilently(hoursValue());
-      minutesInputField.setValueSilently(minutesValue());
-
-      const handleTimeInput = (
-        max: number,
-        inputField: InputField,
-        setStateValue: (v: string) => void,
-        onInput: (length: number) => void,
-        onOverflow?: (number: number) => void
-      ) => {
-        const maxString = '' + max;
-        listenerSetter.add(inputField.input)('input', () => {
-          let value = inputField.value.replace(/\D/g, '');
-          if(value.length > 2) {
-            value = value.slice(0, 2);
-          } else {
-            if((value.length === 1 && +value[0] > +maxString[0]) || (value.length === 2 && +value > max)) {
-              if(value.length === 2 && onOverflow) {
-                onOverflow(+value[1]);
-              }
-              value = '0' + value[0];
-            }
-          }
-          inputField.setValueSilently(value);
-          setStateValue(value);
-          onInput(value.length);
-        });
-      };
-
-      handleTimeInput(23, hoursInputField, setHoursValue, (length) => {
-        if(length === 2) minutesInputField.input.focus();
-      }, (number) => {
-        const next = (number + minutesInputField.value).slice(0, 2);
-        minutesInputField.setValueSilently(next);
-        setMinutesValue(next);
-      });
-      handleTimeInput(59, minutesInputField, setMinutesValue, (length) => {
-        if(!length) hoursInputField.input.focus();
-      });
-    }
+    // Time inputs — the shared HH:MM pair (see @components/timeInputs)
+    const timeInputs = opts.withTime ? createTimeInputs({
+      listenerSetter,
+      hours: initHours,
+      minutes: initMinutes
+    }) : undefined;
+    const hoursValue = () => timeInputs?.hours() ?? padTime(initHours);
+    const minutesValue = () => timeInputs?.minutes() ?? padTime(initMinutes);
 
     // ─────────────────────────────────────────────────────────────────────────
     // Build the chronological list of month sections (oldest → newest).
@@ -390,7 +349,7 @@ export default function showDatePickerPopup(opts: DatePickerPopupOptions): void 
       // would suppress the scroll event we need to update reactive state.
       scrollableHostRef.scrollTo({
         top: section.offset,
-        behavior: smooth ? 'smooth' : 'auto'
+        behavior: smooth ? smoothScrollBehavior() : 'auto'
       });
     }
 
@@ -887,9 +846,9 @@ export default function showDatePickerPopup(opts: DatePickerPopupOptions): void 
 
         <Show when={opts.withTime}>
           <div class="date-picker-time">
-            {hoursInputField.container}
+            {timeInputs.hoursInputField.container}
             <div class="date-picker-time-delimiter">:</div>
-            {minutesInputField.container}
+            {timeInputs.minutesInputField.container}
           </div>
         </Show>
 

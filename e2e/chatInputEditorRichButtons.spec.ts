@@ -1,5 +1,6 @@
 import {openEditor, settleNativeSelection} from './fixtures/chatInputEditorTest';
-import {expect, test, type Page} from '@playwright/test';
+import {expect, type Page} from '@playwright/test';
+import {test} from './workerContext';
 import type {JSONContent} from '@tiptap/core';
 import type {ChatInputEditorBrowserHarness} from './fixtures/chatInputEditor';
 
@@ -55,7 +56,11 @@ test('draws buttons the way they will be sent and sends them as textButton and p
   await expect(inline).toHaveText('the docs');
   // where a link button leads is shown on hover, as on desktop
   await expect(inline).toHaveAttribute('title', 'https://core.telegram.org');
-  await expect(page.locator('[data-button-row] .chat-input-rich-button')).toHaveText(['Copy', 'Soon']);
+  const rowButtons = page.locator('[data-button-row] .chat-input-rich-button');
+  // the label, apart from the corner icon a row's button wears for its type, as the message draws it
+  await expect(rowButtons.locator('[class*="PageButtonLabel"]')).toHaveText(['Copy', 'Soon']);
+  await expect(rowButtons.nth(0).locator('.tgico')).toHaveCount(1);
+  await expect(rowButtons.nth(1).locator('.tgico')).toHaveCount(0);
   // the fixture stubs ButtonMenuToggle out, so only that the row carries its menu is checked here
   await expect(page.locator('[data-button-row] .chat-input-button-row-menu')).toHaveCount(1);
 

@@ -75,7 +75,7 @@
   &-inline &-counter {
     font-size: inherit !important;
     order: -1;
-    margin-right: .0625rem !important;
+    margin-inline-end: .0625rem !important;
   }
 
   &-block {
@@ -275,6 +275,8 @@
       width: 43px;
       height: 30px;
       fill: var(--background-color);
+      // * the tag's point is drawn on the right: it points to the line's end
+      transform: scaleX(var(--reflect));
 
       // &-circle {
       //   fill: rgba(155, 160, 165, .4);
@@ -283,7 +285,7 @@
 
     &-dot {
       position: relative;
-      margin-left: 5px;
+      margin-inline-start: 5px;
       width: .375rem;
       height: .375rem;
       background-color: var(--dot-color);

@@ -144,7 +144,11 @@ export default class CountryInputField extends InputField {
           if(!options.noPhoneCodes) {
             const span = document.createElement('span');
             span.classList.add('phone-code');
-            span.innerText = '+' + countryCode.country_code;
+            // the code reads left to right ("+44") inside a cell that keeps the layout's side
+            const code = document.createElement('span');
+            code.dir = 'ltr';
+            code.textContent = '+' + countryCode.country_code;
+            span.append(code);
             li.appendChild(span);
           }
 

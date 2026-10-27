@@ -93,6 +93,9 @@ export async function selectTarget({
     animate = false;
   }
 
+  // with reduced animations the stripe steps to the tab, while the content still crossfades
+  const moveStripe = animate && liteMode.isAvailable('motion');
+
   if(target.classList.contains('active') || id === prevId) {
     return false;
   }
@@ -108,7 +111,7 @@ export async function selectTarget({
   }
 
   // a great stripe from Jolly Cobra
-  if(prevId !== -1 && animate) {
+  if(prevId !== -1 && moveStripe) {
     const selector = '.menu-horizontal-div-item-background';
     mutateCallback(() => {
       const indicator = target.querySelector(selector) as HTMLElement;

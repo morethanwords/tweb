@@ -17,6 +17,21 @@ describe('Tiptap chat input editor: Quotes', () => {
     });
   });
 
+  // The same split, from a value: the whitespace at it is trimmed node by node, and a node trimmed
+  // away hands its place to the next — which reading on by the old index ran past the end.
+  test('opens a value whose quote covers the start of a line before formatted text', () => {
+    const {editor} = mountEditor();
+    editor.setTextWithEntities('quoted bold', [
+      {_: 'messageEntityBlockquote', offset: 0, length: 6, pFlags: {}},
+      {_: 'messageEntityBold', offset: 7, length: 4}
+    ]);
+
+    const {value, entities} = editor.getRichValue(true, false);
+    expect(value).toBe('quoted\nbold');
+    expect(findEntity(entities, 'messageEntityBlockquote')).toMatchObject({offset: 0, length: 6});
+    expect(findEntity(entities, 'messageEntityBold')).toMatchObject({offset: 7, length: 4});
+  });
+
   test('splits a selected part of a paragraph into a standalone quote block', () => {
     const {editor, input} = mountEditor();
     editor.setTextWithEntities('before selected after');
@@ -128,6 +143,23 @@ describe('Tiptap chat input editor: Quotes', () => {
     const destination = (pasted.editor as TiptapEditorInternals).editor;
     expect(destination.view.pasteHTML(copied.dom.innerHTML, new Event('paste') as ClipboardEvent)).toBe(true);
     expect(pasted.editor.getRichValue(true, false).value).toBe('Before\nQuote\nAfter');
+  });
+
+  test('pastes a pullquote copied out of a rich message bubble as a pullquote', () => {
+    const {editor} = mountEditor();
+    const tiptap = (editor as TiptapEditorInternals).editor;
+    // what a selection of the bubble's page copies: its hashed classes plus the composer's markup
+    const html = `<div class="${instantViewStyles.Pullquote} quote-like" data-pullquote="">` +
+      `<div class="${instantViewStyles.PullquoteText} text-italic" data-pullquote-text=""><span>Pulled</span></div>` +
+      `<div class="${instantViewStyles.BlockquoteCaption} ${instantViewStyles.PullquoteAuthor} text-bold" data-pullquote-caption=""><span>Author</span></div>` +
+      '</div>';
+    expect(tiptap.view.pasteHTML(html, new Event('paste') as ClipboardEvent)).toBe(true);
+
+    const pullquote = tiptap.state.doc.content.content.find((node) => node.type.name === 'pullquote');
+    expect(pullquote?.content.content.map((node) => [node.type.name, node.textContent])).toEqual([
+      ['pullquoteText', 'Pulled'],
+      ['pullquoteCaption', 'Author']
+    ]);
   });
 
   test('migrates an old inline-quote hot-reload snapshot to block nodes', () => {
@@ -320,7 +352,10 @@ describe('Tiptap chat input editor: Quotes', () => {
 
   test('lifts a whole list item into a standalone quote block', () => {
     const {editor} = mountEditor();
-    editor.setTextWithEntities('- item');
+    editor.setDocument({type: 'doc', content: [{type: 'bulletList', content: [{
+      type: 'listItem',
+      content: [{type: 'paragraph', content: [{type: 'text', text: 'item'}]}]
+    }]}]});
     editor.restoreSelection({from: 3, to: 7}, false);
 
     expect(editor.applyMarkup({type: 'quote'})).toBe(true);

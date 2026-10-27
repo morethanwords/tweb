@@ -15,7 +15,7 @@ import rtmpCallsController, {RtmpCallInstance} from '@lib/calls/rtmpCallsControl
 import GroupCallInstance from '@lib/calls/groupCallInstance';
 import CallInstance from '@lib/calls/callInstance';
 import apiManagerProxy from '@lib/apiManagerProxy';
-import {AppManagers} from '@lib/managers';
+import {TabManagers} from '@lib/managers';
 import SetTransition from '@components/singleTransition';
 import PopupElement from '@components/popups/indexTsx';
 import showGroupCallPopup, {GROUP_CALL_POPUP_KIND} from '@components/groupCall';
@@ -79,7 +79,7 @@ export type TopbarCallController = {
   destroy: () => void
 };
 
-export default function createTopbarCall(managers: AppManagers): TopbarCallController {
+export default function createTopbarCall(managers: TabManagers): TopbarCallController {
   const listenerSetter = new ListenerSetter();
   let instanceListenerSetter: ListenerSetter | undefined;
 
@@ -135,12 +135,13 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
   };
 
   const setTitle = (inst: AnyInstance) => {
+    const {accountNumber} = inst;
     if(inst instanceof RtmpCallInstance) {
-      replaceContent(titleEl, new PeerTitle({peerId: inst.peerId}).element);
+      replaceContent(titleEl, new PeerTitle({peerId: inst.peerId, accountNumber}).element);
     } else if(inst instanceof GroupCallInstance) {
       groupCallTitle!.update(inst);
     } else {
-      replaceContent(titleEl, new PeerTitle({peerId: inst.interlocutorUserId.toPeerId()}).element);
+      replaceContent(titleEl, new PeerTitle({peerId: inst.interlocutorUserId.toPeerId(), accountNumber}).element);
     }
   };
 
@@ -463,7 +464,7 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
           aria-label={i18n('Call.Open').textContent}
           aria-describedby={`${CLASS_NAME}-status`}
         >
-          <StackedAvatarsTsx peerIds={avatarPeers()} avatarSize={16} />
+          <StackedAvatarsTsx peerIds={avatarPeers()} avatarSize={16} accountNumber={instance()?.accountNumber} />
           <div class={`${CLASS_NAME}-text`}>
             <div class={`${CLASS_NAME}-title`} ref={titleEl} />
             <div

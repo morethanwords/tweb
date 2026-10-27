@@ -17,6 +17,8 @@ const containers: PageBlock[] = [
   {_: 'pageBlockDetails', pFlags: {open: true}, title: plain, blocks: [list]},
   {_: 'pageBlockTable', pFlags: {striped: true}, title: auto, rows: [{_: 'pageTableRow', cells: [{_: 'pageTableCell', pFlags: {}, text: auto}]}]},
   {_: 'pageBlockPhoto', pFlags: {spoiler: true}, photo_id: '1', caption},
+  {_: 'pageBlockAudio', audio_id: '2', caption},
+  {_: 'pageBlockDocument', document_id: '3', caption},
   {_: 'pageBlockBlockquote', pFlags: {}, text: auto, caption: credit},
   {_: 'pageBlockPullquote', text: auto, caption: credit}
 ];

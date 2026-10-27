@@ -1385,7 +1385,7 @@ describe('InstantViewBlocks streaming updates', () => {
     ), container);
 
     await vi.waitFor(() => {
-      expect((container.querySelector('[data-photo-id="1"]')?.parentElement as HTMLElement).style.left).toBe('0%');
+      expect((container.querySelector('[data-photo-id="1"]')?.parentElement as HTMLElement).style.insetInlineStart).toBe('0%');
     });
     const firstPhoto = container.querySelector('[data-photo-id="1"]');
     const secondPhoto = container.querySelector('[data-photo-id="2"]');
@@ -1399,8 +1399,8 @@ describe('InstantViewBlocks streaming updates', () => {
       const photos = container.querySelectorAll('[data-photo-id]');
       expect(photos[0]).toBe(secondPhoto);
       expect(photos[1]).toBe(firstPhoto);
-      expect((secondPhoto.parentElement as HTMLElement).style.left).toBe('0%');
-      expect((firstPhoto.parentElement as HTMLElement).style.left).not.toBe('0%');
+      expect((secondPhoto.parentElement as HTMLElement).style.insetInlineStart).toBe('0%');
+      expect((firstPhoto.parentElement as HTMLElement).style.insetInlineStart).not.toBe('0%');
     });
 
     dispose();
@@ -1442,6 +1442,36 @@ describe('InstantViewBlocks streaming updates', () => {
     expect(options.message.media.photo.id).toBe(2);
     expect(options.nextTargets.map((target) => target.message.media.photo.id)).toEqual([1]);
     expect(container.querySelectorAll('[data-photo-id]')[1]).toBe(firstPhoto);
+
+    dispose();
+    container.remove();
+  });
+
+  // * the viewer's album strip groups the items of one list by their index: the opened one has to carry it too
+  test('opens an album item with its place among the page media', async() => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const dispose = render(() => (
+      <InstantViewBlocks
+        webPageId={1}
+        page={makeMediaPage([1, 2, 3], true)}
+        sourceRevision={1}
+        openNewPage={() => {}}
+        collapse={() => {}}
+      />
+    ), container);
+    await Promise.resolve();
+
+    (container.querySelector('[data-photo-id="2"]') as HTMLElement).click();
+    await vi.waitFor(() => expect(instantViewMocks.openMedia).toHaveBeenCalledOnce());
+    const options = instantViewMocks.openMedia.mock.calls[0][0] as {
+      index: number,
+      prevTargets: Array<{index: number}>,
+      nextTargets: Array<{index: number}>
+    };
+    expect(options.index).toBe(1);
+    expect(options.prevTargets.map((target) => target.index)).toEqual([0]);
+    expect(options.nextTargets.map((target) => target.index)).toEqual([2]);
 
     dispose();
     container.remove();

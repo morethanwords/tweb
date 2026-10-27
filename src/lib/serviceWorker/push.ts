@@ -15,10 +15,13 @@ import IDBStorage from '@lib/files/idb';
 import {log, serviceMessagePort} from '@lib/serviceWorker/index.service';
 import {ServicePushPingTaskPayload} from '@lib/serviceWorker/serviceMessagePort';
 import {CURRENT_ACCOUNT_QUERY_PARAM} from '@lib/accounts/constants';
+import getClientAccount from '@lib/serviceWorker/clientAccounts';
 import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 import EncryptionKeyStore from '@lib/passcode/keyStore';
 import pause from '@helpers/schedulers/pause';
 import {getWindowClients} from '@helpers/context';
+import getLoginCodeEntity from '@appManagers/utils/messages/getLoginCodeEntity';
+import encodeSpoiler from '@lib/richTextProcessor/encodeSpoiler';
 
 const ctx = self as any as ServiceWorkerGlobalScope;
 const defaultBaseUrl = location.protocol + '//' + location.hostname + location.pathname.split('/').slice(0, -1).join('/') + '/';
@@ -295,12 +298,15 @@ function onNotificationClick(event: NotificationEvent) {
     return;
   }
 
+  // * clicks can overlap while the tabs' accounts are looked up: the order tells which one is newer
+  const clickId = ++lastClickId;
+
   const promise = Promise.all([
     ctx.clients.matchAll({type: 'window'}),
     getter.get('push_settings'),
     getter.get('push_accounts'),
     isPasscodeLocked()
-  ]).then(([clientList, settings, accounts, isLocked]) => {
+  ]).then(async([clientList, settings, accounts, isLocked]) => {
     data.action = action;
     for(const _accountNumber in accounts) { // * find correct account number for this notification
       const accountNumber = +_accountNumber as ActiveAccountNumber;
@@ -310,7 +316,9 @@ function onNotificationClick(event: NotificationEvent) {
       }
     }
 
-    pendingNotification = data;
+    // * all at once: a tab that has not said its account yet is waited for, and the focus must come soon.
+    // * The click stays here meanwhile: a tab pinging in that time would take it as pending
+    const clientAccounts = await Promise.all(clientList.map((client) => getClientAccount(client)));
     for(let i = 0; i < clientList.length; ++i) {
       const client = clientList[i];
       if(!('focus' in client)) {
@@ -318,21 +326,26 @@ function onNotificationClick(event: NotificationEvent) {
       }
 
       // * verify account number
-      const url = new URL(client.url);
-      if((+url.searchParams.get(CURRENT_ACCOUNT_QUERY_PARAM) || 1) !== data.accountNumber) {
+      if(clientAccounts[i] !== data.accountNumber) {
         continue;
       }
 
       client.focus();
-      if(isLocked) { // * wait until app is unlocked
+      if(isLocked) { // * wait until app is unlocked: the tab pings for it then
+        setPendingNotification(data, clickId);
         return;
       }
 
-      serviceMessagePort.invokeVoid('pushClick', pendingNotification, client);
-      pendingNotification = undefined;
+      serviceMessagePort.invokeVoid('pushClick', data, client);
+      // * and an earlier click still pending is superseded by this one - not a newer one
+      if(pendingNotificationClickId < clickId) {
+        pendingNotification = undefined;
+      }
       return;
     }
 
+    // * for the tab opened now, or the next one to ping
+    setPendingNotification(data, clickId);
     if(ctx.clients.openWindow) {
       const url = new URL(settings.baseUrl || defaultBaseUrl);
       if(data.accountNumber && data.accountNumber > 1) { // * set account number
@@ -349,7 +362,16 @@ function onNotificationClick(event: NotificationEvent) {
 }
 
 const notifications: Set<Notification> = new Set();
-let pendingNotification: PushNotificationObject;
+let pendingNotification: PushNotificationObject, pendingNotificationClickId = 0, lastClickId = 0;
+// * a click left for a tab to ping for: an older one does not take the place of a newer
+function setPendingNotification(data: PushNotificationObject, clickId: number) {
+  if(pendingNotification && pendingNotificationClickId > clickId) {
+    return;
+  }
+
+  pendingNotification = data;
+  pendingNotificationClickId = clickId;
+}
 function pushToNotifications(notification: Notification) {
   if(!notifications.has(notification)) {
     notifications.add(notification);
@@ -427,6 +449,11 @@ function fireNotification(
   let title = obj.title || 'Telegram';
   let body = obj.description || '';
   let tag = 'peer' + peerId;
+
+  const loginCodeEntity = getLoginCodeEntity(+peerId, body);
+  if(loginCodeEntity) {
+    body = encodeSpoiler(body, loginCodeEntity).text;
+  }
 
   const messageKey = peerId + '_' + obj.custom.msg_id;
   if(ignoreMessages.has(messageKey)) {

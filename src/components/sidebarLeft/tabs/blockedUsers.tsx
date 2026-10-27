@@ -1,7 +1,7 @@
 import {onCleanup, onMount} from 'solid-js';
 import {getOverlayRoot} from '@helpers/appWindow';
 import {ButtonMenuSync} from '@components/buttonMenu';
-import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '@lib/appDialogsManager';
+import {DIALOG_LIST_ELEMENT_TAG} from '@components/dialogElement';
 import showPickUserPopup from '@components/popups/pickUser';
 import rootScope from '@lib/rootScope';
 import findUpTag from '@helpers/dom/findUpTag';
@@ -16,6 +16,7 @@ import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUserna
 import Section from '@components/section';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import type {AppBlockedUsersTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const BlockedUsers = () => {
   const [tab] = useSuperTab<typeof AppBlockedUsersTab>();
@@ -24,10 +25,10 @@ const BlockedUsers = () => {
   let captionEl!: HTMLDivElement;
   let menuElement: HTMLElement;
 
-  const list = appDialogsManager.createChatList();
+  const list = hotReloadGuard.appDialogsManager.createChatList();
 
   const add = async(peerId: PeerId, append: boolean) => {
-    const dialogElement = appDialogsManager.addDialogNew({
+    const dialogElement = hotReloadGuard.appDialogsManager.addDialogNew({
       peerId: peerId,
       container: list,
       rippleEnabled: true,

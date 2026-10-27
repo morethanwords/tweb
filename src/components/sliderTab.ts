@@ -1,4 +1,5 @@
 import EventListenerBase, {EventListenerListeners} from '@helpers/eventListenerBase';
+import {getManagersSession, isSessionLeaving} from '@lib/accounts/getCurrentAccount';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import ListenerSetter from '@helpers/listenerSetter';
 import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
@@ -95,6 +96,9 @@ export default class SliderSuperTab {
   }
 
   public async open(...args: Parameters<typeof this['init']>) {
+    // * the account session the tab opens in: one it still sets itself up for when the tab switches to another
+    // * is not among the screens the switch closes - it is not shown at all, and goes
+    const session = getManagersSession(this.managers);
     if(this.init) {
       try {
         const result = this.init(...args);
@@ -106,6 +110,11 @@ export default class SliderSuperTab {
       } catch(err) {
         console.error('open tab error', err);
       }
+    }
+
+    if(isSessionLeaving(session)) {
+      this.onCloseAfterTimeout();
+      return;
     }
 
     updateScrollRegionFocusable(this.scrollable.container, this.title.textContent);

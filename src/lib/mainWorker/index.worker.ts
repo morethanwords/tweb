@@ -16,6 +16,7 @@ import toggleStorages from '@helpers/toggleStorages';
 import appTabsManager from '@appManagers/appTabsManager';
 import callbackify from '@helpers/callbackify';
 import Modes from '@config/modes';
+import {IS_POPUP_SANDBOX} from '@config/debug';
 import {IS_WORKER} from '@helpers/context';
 import {ActiveAccountNumber} from '@lib/accounts/types';
 import commonStateStorage from '@lib/commonStateStorage';
@@ -61,7 +62,10 @@ port.addMultipleEventsListeners({
   environment: (environment) => {
     setEnvironment(environment);
 
-    if(import.meta.env.VITE_MTPROTO_AUTO && Modes.multipleTransports) {
+    // Probes the base DC every 10 s until a WebSocket opens. The popup sandbox runs on fixtures
+    // with no session (this worker's URL carries the page's `?popups=1`): nothing there may reach
+    // Telegram, and nothing needs a transport.
+    if(import.meta.env.VITE_MTPROTO_AUTO && Modes.multipleTransports && !IS_POPUP_SANDBOX) {
       transportController.waitForWebSocket();
     }
   },
@@ -195,6 +199,13 @@ port.addMultipleEventsListeners({
 
   toggleStorages: ({enabled, clearWrite}) => {
     return toggleStorages(enabled, clearWrite);
+  },
+
+  // * the snapshots travel the same port ahead of the reply, so they are in place when it resolves
+  mirrorAll: ({accountNumber}, source) => {
+    return callbackify(appManagersManager.getManagersByAccount(), (managers) => {
+      mirrorAccountTo(managers[accountNumber], source);
+    });
   },
 
   event: (payload, source) => {
@@ -412,14 +423,21 @@ const onTabConnect = (source: MessageEventSource) => {
   } else {
     callbackify(appManagersManager.getManagersByAccount(), (managers) => {
       for(const key in managers) {
-        const accountNumber = key as any as ActiveAccountNumber
-        managers[accountNumber].thumbsStorage.mirrorAll(source);
-        managers[accountNumber].appPeersManager.mirrorAllPeers(source);
-        managers[accountNumber].appMessagesManager.mirrorAllMessages(source);
+        mirrorAccountTo(managers[key as any as ActiveAccountNumber], source);
       }
     });
   }
 };
+
+// * snapshots of one account's mirrors for one tab: on connect, and when the tab switches to that account
+function mirrorAccountTo(
+  managers: Awaited<ReturnType<typeof appManagersManager.getManagersByAccount>>[ActiveAccountNumber],
+  source: MessageEventSource
+) {
+  managers.thumbsStorage.mirrorAll(source);
+  managers.appPeersManager.mirrorAllPeers(source);
+  managers.appMessagesManager.mirrorAllMessages(source);
+}
 
 const onTabDisconnect = (source: MessageEventSource) => {
   objectUrlRegistry.releaseSource(source);

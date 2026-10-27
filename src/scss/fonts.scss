@@ -1,6 +1,12 @@
+@use "sass:meta";
+@use "variables" as *;
 @use "fonts/roboto";
-@use "fonts/robotoSerif";
-@use "fonts/merriweather";
 @use "fonts/robotoMono";
 @use "fonts/mediaEditorFonts";
 @use "tgico";
+
+// shipped only with $serif-fonts (variables.scss)
+@if $serif-fonts {
+  @include meta.load-css("fonts/robotoSerif");
+  @include meta.load-css("fonts/merriweather");
+}

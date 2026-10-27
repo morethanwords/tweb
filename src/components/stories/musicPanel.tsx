@@ -33,9 +33,10 @@ export default function StoryMusicPanel(props: {
     <div class={classNames(pillStyles.Pill, styles.Panel)}>
       <IconTsx icon="note_filled" class={styles.Icon} />
       <span class={styles.Text}>
-        {performer && <span>{wrapEmojiText(performer)}</span>}
+        {/* * each name in its own direction, so an RTL one does not reorder the other around the dot */}
+        {performer && <span dir="auto">{wrapEmojiText(performer)}</span>}
         {performer && title && <span class={styles.Separator}> • </span>}
-        {title && <span class={styles.Title}>{wrapEmojiText(title)}</span>}
+        {title && <span class={styles.Title} dir="auto">{wrapEmojiText(title)}</span>}
       </span>
     </div>
   ) as HTMLDivElement;
@@ -60,12 +61,12 @@ export default function StoryMusicPanel(props: {
 
   const contextMenu = createContextMenu({
     buttons: [{
-      icon: 'note_filled',
+      icon: 'note',
       text: 'SavedMusic.AddToProfile',
       onClick: () => addToProfileMusic(props.doc.id),
       verify: async() => !(await isInProfile())
     }, {
-      icon: 'delete',
+      icon: 'note_crossed',
       text: 'SavedMusic.RemoveFromProfile',
       onClick: () => removeFromProfileMusic(props.doc.id),
       verify: isInProfile

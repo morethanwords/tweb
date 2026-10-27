@@ -2,13 +2,13 @@ import {Component, onMount} from 'solid-js';
 import Button from '@components/buttonTsx';
 import PasswordInputField from '@components/passwordInputField';
 import TrackingMonkey from '@components/monkeys/tracking';
-import {AppTwoStepVerificationHintTab} from '@components/solidJsTabs/tabs';
 import {InputState} from '@components/inputField';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import Section from '@components/section';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import type {AppTwoStepVerificationReEnterPasswordTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const TwoStepVerificationReEnterPassword: Component = () => {
   const [tab] = useSuperTab<typeof AppTwoStepVerificationReEnterPasswordTab>();
@@ -38,7 +38,7 @@ const TwoStepVerificationReEnterPassword: Component = () => {
 
     if(!verifyInput()) return;
 
-    tab.slider.createTab(AppTwoStepVerificationHintTab).open({
+    tab.slider.createTab(hotReloadGuard.tabs.AppTwoStepVerificationHintTab).open({
       state,
       plainPassword,
       newPassword

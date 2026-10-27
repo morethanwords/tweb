@@ -502,28 +502,19 @@ describe('upstream editor behavior through the tweb schema', () => {
     '<unknown>do not lose this', 'A &amp; B', '\\*literal\\*',
     '| code |\n| --- |\n| `a || b` |',
     'hello $$$x^2$$$', '$x$ and $$$y$$$', '```js\n<x>\n```',
-    '**bold** and _italic_', 'a. alpha\nb. beta'
+    '**bold** and _italic_', 'a. alpha\nb. beta',
+    // a list is rich-only: list markers in Telegram text stay its lines
+    '- [ ] parent\n  - [ ] checkbox child\n  - plain child',
+    '- [ ] parent\n  - [ ] level2\n    - [ ] level3\n    - deep plain',
+    '- [ ] parent\n  - plain first\n  - [ ] checkbox after',
+    '- [ ] parent\n  - [ ] child 1\n  - [x] child 2',
+    '1. one\n2. two\n- bullet'
   ])('Telegram text preserves literal syntax without CommonMark parsing: %s', (value) => {
     const result = setup([paragraph()]);
     result.editor.setTextWithEntities(value);
     expect(result.editor.getRichValue(true, false).value).toBe(value);
     expect(result.editor.getRichValue(true, false).entities).toEqual([]);
     expect(result.editor.getDocument().content?.every((node) => node.type === 'paragraph')).toBe(true);
-  });
-
-  test.each([
-    '- [ ] parent\n  - [ ] checkbox child\n  - plain child',
-    '- [ ] parent\n  - [ ] checkbox child\n  - plain 1\n  - plain 2',
-    '- [ ] parent\n  - [ ] level2\n    - [ ] level3\n    - deep plain',
-    '- [ ] parent\n  - plain first\n  - [ ] checkbox after',
-    '- [ ] parent\n  - [ ] child 1\n  - [x] child 2'
-  ])('preserves every nested mixed task/bullet sibling: %s', (value) => {
-    const result = setup([paragraph()]);
-    result.editor.setTextWithEntities(value);
-    expect(result.editor.getRichValue(true, false).value).toBe(value);
-    const expectedText = value.split('\n').map((line) => line.replace(/^\s*- (\[[ x]\] )?/, '')).join('');
-    expect(result.tiptap.state.doc.textContent).toBe(expectedText);
-    expect(() => result.tiptap.state.doc.check()).not.toThrow();
   });
 
   test.each(['inlineMath', 'blockMath'])('rejects clearing %s to a blank formula without destroying the existing formula', (type) => {

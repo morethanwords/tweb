@@ -6,7 +6,7 @@ import ReactionsElement from '@components/chat/reactions';
 import {horizontalMenu} from '@components/horizontalMenu';
 import Scrollable from '@components/scrollable';
 import ScrollableLoader from '@helpers/scrollableLoader';
-import appDialogsManager, {DialogDom, DialogElement} from '@lib/appDialogsManager';
+import {DialogDom, DialogElement} from '@components/dialogElement';
 import replaceContent from '@helpers/dom/replaceContent';
 import wrapSticker from '@components/wrappers/sticker';
 import ReactionElement, {ReactionLayoutType} from '@components/chat/reaction';
@@ -36,7 +36,9 @@ export async function processDialogElementForReaction({
   middleware,
   isMine,
   date,
-  mediaSize = _mediaSize
+  mediaSize = _mediaSize,
+  icon,
+  after
 }: {
   peerId: PeerId,
   dialogElement: DialogElement,
@@ -44,15 +46,19 @@ export async function processDialogElementForReaction({
   middleware: Middleware,
   isMine: boolean,
   date: number,
-  mediaSize?: MediaSize
+  mediaSize?: MediaSize,
+  // * what the date is marked with, a reaction's or a view's own otherwise, and what follows it
+  icon?: Icon,
+  after?: (string | Node)[]
 }) {
+  const managers = bindManagersToSession(rootScope.managers);
   const {dom} = dialogElement;
   if(reaction) {
     const stickerContainer = document.createElement('div');
     stickerContainer.classList.add('reacted-list-reaction-icon');
 
     if(reaction._ === 'reactionEmoji') {
-      const availableReaction = await rootScope.managers.appReactionsManager.getReaction(reaction.emoticon);
+      const availableReaction = await managers.appReactionsManager.getReaction(reaction.emoticon);
 
       wrapSticker({
         doc: availableReaction.static_icon,
@@ -75,13 +81,13 @@ export async function processDialogElementForReaction({
   if(date && isMine) {
     const c = document.createElement('span');
     dom.lastMessageSpan.style.cssText = `display: flex !important; align-items: center;`;
-    const span = Icon(reaction ? 'reactions' : 'checks', 'reacted-list-checks');
+    const span = Icon(icon || (reaction ? 'reactions' : 'checks'), 'reacted-list-checks');
     const fragment = document.createDocumentFragment();
-    c.append(formatFullSentTime(date, false));
+    c.append(formatFullSentTime(date, false), ...(after || []));
     fragment.append(span, c);
     replaceContent(dom.lastMessageSpan, fragment);
   } else if(peerId.isUser()) {
-    const user = await rootScope.managers.appUsersManager.getUser(peerId.toUserId());
+    const user = await managers.appUsersManager.getUser(peerId.toUserId());
     replaceContent(dom.lastMessageSpan, getUserStatusString(user));
   } else if(date) {
     replaceContent(dom.lastMessageSpan, formatFullSentTime(date, false));
@@ -90,8 +96,11 @@ export async function processDialogElementForReaction({
 
 import {createSignal, onCleanup, onMount} from 'solid-js';
 import {getMiddleware} from '@helpers/middleware';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export default async function showReactedListPopup(message$: Message.message, initialReaction?: Reaction) {
+  const managers = bindManagersToSession(rootScope.managers);
   const middlewareHelper = getMiddleware();
   const middleware = middlewareHelper.get();
   const listenerSetter = new ListenerSetter();
@@ -126,7 +135,7 @@ export default async function showReactedListPopup(message$: Message.message, in
           participantPeerId,
           knownReaction: reaction,
           isMyReaction,
-          managers: rootScope.managers,
+          managers: bindManagersToSession(rootScope.managers),
           onConfirm: () => {
             setShow(false);
           }
@@ -145,7 +154,7 @@ export default async function showReactedListPopup(message$: Message.message, in
   }
 
   function createFakeReaction(icon: Icon, count: number) {
-  const reaction = new ReactionElement();
+  const reaction = ReactionElement.create();
   reaction.init(ReactionLayoutType.Block, middleware);
   reaction.reactionCount = {
     _: 'reactionCount',
@@ -163,16 +172,16 @@ export default async function showReactedListPopup(message$: Message.message, in
   return reaction;
   }
 
-  const message = await rootScope.managers.appMessagesManager.getGroupsFirstMessage(message$);
+  const message = await managers.appMessagesManager.getGroupsFirstMessage(message$);
   if(!middleware()) return;
   const [canViewReadParticipants, canDeleteReactions] = await Promise.all([
-    rootScope.managers.appMessagesManager.canViewMessageReadParticipants(message),
-    rootScope.managers.appReactionsManager.canDeleteParticipantReactions(message.peerId)
+    managers.appMessagesManager.canViewMessageReadParticipants(message),
+    managers.appReactionsManager.canDeleteParticipantReactions(message.peerId)
   ]);
   if(!middleware()) return;
   // this.body.append(generateDelimiter());
 
-  const reactionsElement = new ReactionsElement();
+  const reactionsElement = ReactionsElement.create();
   const newMessage: Message.message = {
     ...message,
     mid: 0,
@@ -225,7 +234,7 @@ export default async function showReactedListPopup(message$: Message.message, in
   let hasReadParticipants = false;
   if(canViewReadParticipants) {
     try {
-      const readUserIds = await rootScope.managers.appMessagesManager.getMessageReadParticipants(message.peerId, message.mid);
+      const readUserIds = await managers.appMessagesManager.getMessageReadParticipants(message.peerId, message.mid);
       if(!middleware()) return;
       if(!readUserIds.length) {
         throw '';
@@ -253,11 +262,11 @@ export default async function showReactedListPopup(message$: Message.message, in
     const scrollable = new Scrollable(undefined);
     scrollable.container.classList.add('tabs-tab');
 
-    const chatlist = appDialogsManager.createChatList({
+    const chatlist = hotReloadGuard.appDialogsManager.createChatList({
       dialogSize: 72
     });
 
-    appDialogsManager.setListClickListener({
+    hotReloadGuard.appDialogsManager.setListClickListener({
       list: chatlist,
       onFound: () => {
         setShow(false);
@@ -283,7 +292,7 @@ export default async function showReactedListPopup(message$: Message.message, in
         nextOffset = result.nextOffset;
 
         await Promise.all(result.combined.map(async({peerId, reaction, date, isMyReaction}) => {
-          const dialogElement = appDialogsManager.addDialogNew({
+          const dialogElement = hotReloadGuard.appDialogsManager.addDialogNew({
             peerId: peerId,
             autonomous: true,
             container: chatlist,
@@ -332,9 +341,10 @@ export default async function showReactedListPopup(message$: Message.message, in
 
 
   const selectTab = horizontalMenu(reactionsElement, tabsContainer, (id, tabContent) => {
-    if(Modes.a11y ?
-      id >= tabsContainer.childElementCount :
-      id >= (reactionsElement.childElementCount - (reactionsElement.customEmojiRenderer ? 2 : 1))) {
+    // a tab per list: what the strip holds after them (the emoji renderer, the close button once
+    // mounted) is no tab. Counted from the strip instead, the first selection — made before the
+    // close button is in — took the only tab, the readers' one, for the button and showed nothing
+    if(id >= tabsContainer.childElementCount) {
       return false;
     }
 
@@ -371,7 +381,7 @@ export default async function showReactedListPopup(message$: Message.message, in
     });
 
     return (
-      <PopupElement class="popup-reacted-list" closable show={show()} containerProps={{'aria-label': I18n.format('Reactions', true)}}>
+      <PopupElement managers={managers} class="popup-reacted-list" closable show={show()} containerProps={{'aria-label': I18n.format('Reactions', true)}}>
         <PopupElement.Header ref={(element) => headerEl = element}>
           <PopupElement.CloseButton />
         </PopupElement.Header>

@@ -11,7 +11,7 @@
     flex: 0 0 auto;
     cursor: default;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: background-color var(--transition-standard-in);
     }
 
@@ -86,7 +86,7 @@
         z-index: 1;
         background-color: var(--border-color);
 
-        @include animation-level(2) {
+        @include animation-level(1) {
           transition: opacity var(--transition-standard-in);
         }
       }

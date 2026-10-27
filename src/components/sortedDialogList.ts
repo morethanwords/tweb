@@ -1,10 +1,11 @@
-import {batch, onCleanup} from 'solid-js';
+import {batch, createMemo, createRoot, onCleanup} from 'solid-js';
 import namedPromises from '@helpers/namedPromises';
 import reorderIndexes from '@helpers/array/reorderIndexes';
 import pickKeys from '@helpers/object/pickKeys';
 import safeAssign from '@helpers/object/safeAssign';
-import {default as appDialogsManager, DialogElement} from '@lib/appDialogsManager';
-import {AppManagers} from '@lib/managers';
+import {default as appDialogsManager} from '@lib/appDialogsManager';
+import {DialogElement} from '@components/dialogElement';
+import {ReadingManagers} from '@lib/managers';
 import getDialogIndex from '@appManagers/utils/dialogs/getDialogIndex';
 import getDialogIndexKey from '@appManagers/utils/dialogs/getDialogIndexKey';
 import {logger} from '@lib/logger';
@@ -13,10 +14,13 @@ import {LoadingDialogSkeletonSize} from '@components/loadingDialogSkeleton';
 import Scrollable from '@components/scrollable';
 import {attachCommunityChildBadge} from '@components/communities/communityDialog';
 import rootScope from '@lib/rootScope';
+import useElementSize from '@hooks/useElementSize';
+import {DIALOG_WITH_FOLDER_TAGS_HEIGHT, DialogFolderTagsContext} from '@components/folderTags/dialogFolderTags';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export default class SortedDialogList {
   private appDialogsManager: typeof appDialogsManager;
-  public managers: AppManagers;
+  public managers: ReadingManagers;
   public log: ReturnType<typeof logger>;
   public list: HTMLElement;
   public indexKey: ReturnType<typeof getDialogIndexKey>;
@@ -35,6 +39,9 @@ export default class SortedDialogList {
   }
 
   private virtualList: ReturnType<typeof createDeferredSortedVirtualList<SortedDialogListItem>>;
+  /** what the rows get for their folder tags, in a folder's chat list */
+  private folderTags: DialogFolderTagsContext;
+  private disposeFolderTags: () => void;
   private totalCount = 0;
   private totalCountOffset = 0;
 
@@ -59,7 +66,9 @@ export default class SortedDialogList {
     onListShrinked: () => void,
     itemSize: LoadingDialogSkeletonSize,
     noAvatar?: boolean // For the loading skeleton placeholder,
-    extraPaddingBottom?: number
+    extraPaddingBottom?: number,
+    // the folder whose chat list this is: its rows wear the tags of the other folders
+    folderTagsFilterId?: number
   }) {
     safeAssign(this, pickKeys(options, [
       'appDialogsManager',
@@ -143,6 +152,12 @@ export default class SortedDialogList {
       requestItemForIdx: options.requestItemForIdx,
       sortWith: (a, b) => b - a,
       itemSize: options.itemSize,
+      // * a row with folder tags is a line taller
+      getItemHeight: options.folderTagsFilterId !== undefined ? (item) => {
+        return item.type === 'dialog' && item.value.folderTags?.hasTags() ?
+          DIALOG_WITH_FOLDER_TAGS_HEIGHT :
+          options.itemSize;
+      } : undefined,
       noAvatar: options.noAvatar,
       onListLengthChange: options.onListLengthChange,
       extraPaddingBottom: options.extraPaddingBottom
@@ -151,14 +166,37 @@ export default class SortedDialogList {
     this.list = this.virtualList.list;
 
     this.list.classList.add('chatlist', 'virtual-chatlist');
+
+    if(options.folderTagsFilterId !== undefined) {
+      createRoot((dispose) => {
+        this.disposeFolderTags = dispose;
+        // * every row is as wide as the list's content, so the one observer serves them all
+        const listSize = useElementSize(() => this.list);
+        const rowWidth = createMemo(() => {
+          const width = listSize.width;
+          if(!width) {
+            return 0;
+          }
+
+          const style = getComputedStyle(this.list);
+          return width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+        });
+
+        this.folderTags = {
+          filterId: options.folderTagsFilterId,
+          width: rowWidth
+        };
+      });
+    }
   }
 
 
   public async getIndexForKey(key: any) {
+    const managers = bindManagersToSession(this.managers);
     if(key instanceof CustomPinnedDialog) return 0;
     if(key instanceof CustomSortedDialog) {
       return key.getIndex({
-        managers: this.managers,
+        managers,
         indexKey: this.indexKey
       });
     }
@@ -166,11 +204,11 @@ export default class SortedDialogList {
     if(key === this.virtualFilterId && key !== rootScope.myId) return 0;
 
     if(this.monoforumParentPeerId) {
-      const dialog = await this.managers.monoforumDialogsStorage.getDialogByParent(this.monoforumParentPeerId, key);
+      const dialog = await managers.monoforumDialogsStorage.getDialogByParent(this.monoforumParentPeerId, key);
       return getDialogIndex(dialog);
     }
 
-    return this.managers.dialogsStorage.getDialogIndex(
+    return managers.dialogsStorage.getDialogIndex(
       this.virtualFilterId ?? key,
       this.indexKey,
       this.virtualFilterId ? key : undefined
@@ -199,7 +237,8 @@ export default class SortedDialogList {
       monoforumParentPeerId: key !== this.monoforumParentPeerId ? this.monoforumParentPeerId : undefined,
       asAllChats: this.getAsAllChats(key),
       meAsSaved: !this.monoforumParentPeerId,
-      wrapOptions: undefined
+      wrapOptions: undefined,
+      folderTags: this.folderTags
     };
 
     return {options, loadPromises};
@@ -395,6 +434,7 @@ export default class SortedDialogList {
 
   public destroy() {
     this.virtualList?.dispose();
+    this.disposeFolderTags?.();
   }
 }
 
@@ -414,7 +454,7 @@ interface CustomSortedDialogCtorArgs {
   render: () => HTMLElement;
   destroy?: () => void;
   getIndex: (context: {
-    managers: AppManagers,
+    managers: ReadingManagers,
     indexKey: ReturnType<typeof getDialogIndexKey>
   }) => MaybePromise<number>;
 };

@@ -1,7 +1,9 @@
 import hasRichTextContent from '@lib/richTextProcessor/hasRichTextContent';
 import concatRichText from '@lib/richTextProcessor/concatRichText';
 import {inputPageBlock, inputRichText} from '@lib/richTextProcessor/inputRichMessageBlocks';
+import {getDocumentRowBlockId, isDocumentRowBlock, type DocumentRowBlock} from '@lib/richMessage';
 import type {JSONContent} from '@tiptap/core';
+import type {Node as ProseMirrorNode} from '@tiptap/pm/model';
 import type {
   Document,
   InputRichMessage,
@@ -37,6 +39,7 @@ import {
   richButtonStyle
 } from '@components/chat/inputEditor/richButtonModel';
 import {getPageButtonRowAlign} from '@components/wrappers/buttonTypes';
+import {canAnchorTextHoldLink} from '@components/chat/inputEditor/richMessageEditability';
 
 type RichMessageDocumentOptions = {
   draft?: boolean,
@@ -240,7 +243,7 @@ function inlineNodeToRichText(node: JSONContent): RichText {
   return applyRichTextMarks(text, node.marks);
 }
 
-function inlineContentToRichText(content: JSONContent[] = []): RichText {
+export function inlineContentToRichText(content: JSONContent[] = []): RichText {
   return concatRichText(content.map(inlineNodeToRichText));
 }
 
@@ -512,7 +515,7 @@ function richMediaPageBlock(node: JSONContent): PageBlock | undefined {
   if(!source || typeof(source) !== 'object') return;
   const block = inputPageBlock(source as PageBlock);
   if(
-    block._ !== 'pageBlockAudio' &&
+    !isDocumentRowBlock(block) &&
     block._ !== 'pageBlockPhoto' &&
     block._ !== 'pageBlockVideo' &&
     block._ !== 'pageBlockCollage' &&
@@ -902,6 +905,42 @@ export function determineRichMessageRtl(blocks: PageBlock[]) {
   return blocksDirection(blocks) || false;
 }
 
+// * what `blockDirectionText` leaves out: a table's cells (its title counts), media and map captions,
+// * a quote's caption
+const DIRECTIONLESS_EDITOR_NODES = new Set(['table', 'richMedia', 'richMap', 'blockquoteCaption', 'pullquoteCaption']);
+
+/**
+ * The direction a draft is sent in, read off the editor's document the way `determineRichMessageRtl`
+ * reads it off the blocks: the first block with text decides. Undefined while there is no text.
+ */
+export function editorDocumentRtl(doc: ProseMirrorNode): boolean | undefined {
+  let rtl: boolean;
+  const decide = (text: string) => {
+    if(text.trim()) rtl = checkRTL(text);
+    return false;
+  };
+  // * a block's text as it is sent: the labels of its atoms (a button, a date, a mention) included
+  const textOf = (node: ProseMirrorNode) => richTextDirectionText(inlineContentToRichText(node.toJSON().content));
+
+  doc.descendants((node) => {
+    if(rtl !== undefined || DIRECTIONLESS_EDITOR_NODES.has(node.type.name)) return false;
+    if(node.type.name === 'blockquote' && node.attrs.collapsed) {
+      // * a collapsed quote of paragraphs goes as one text, a line per paragraph (`quotePageBlock`)
+      const lines: string[] = [];
+      let paragraphs = true;
+      node.forEach((child) => {
+        if(child.type.name === 'blockquoteCaption') return;
+        paragraphs &&= child.type.name === 'paragraph';
+        lines.push(textOf(child));
+      });
+      if(paragraphs) return decide(lines.join('\n'));
+    }
+
+    return node.isTextblock ? decide(textOf(node)) : true;
+  });
+  return rtl;
+}
+
 function collectDocumentMediaResources(document: JSONContent) {
   const photos = new Map<string, Photo.photo>();
   const documents = new Map<string, Document.document>();
@@ -1041,6 +1080,14 @@ export function richTextToTiptapInlineContent(
     case 'textAnchor':
       if(text.text._ === 'textEmpty') {
         return [{type: 'inlineRichAnchor', attrs: {name: text.name}}];
+      }
+      // code, a link or a date cannot sit under the link mark: the anchor becomes the marker it is
+      // sent as, where its text starts — the server wraps a paragraph in a marked anchor itself
+      if(!canAnchorTextHoldLink(text, marks.map((mark) => mark.type))) {
+        return [
+          {type: 'inlineRichAnchor', attrs: {name: text.name}},
+          ...richTextToTiptapInlineContent(text.text, marks)
+        ];
       }
       return richTextToTiptapInlineContent(text.text, [...marks, {
         type: 'link',
@@ -1260,7 +1307,8 @@ function collectMediaBlockIds(
       documentIds.add(String(block.video_id));
       break;
     case 'pageBlockAudio':
-      documentIds.add(String(block.audio_id));
+    case 'pageBlockDocument':
+      documentIds.add(String(getDocumentRowBlockId(block)));
       break;
     case 'pageBlockCollage':
     case 'pageBlockSlideshow':
@@ -1270,7 +1318,7 @@ function collectMediaBlockIds(
 }
 
 function richMediaToTiptap(
-  block: PageBlock.pageBlockAudio |
+  block: DocumentRowBlock |
     PageBlock.pageBlockPhoto |
     PageBlock.pageBlockVideo |
     PageBlock.pageBlockCollage |
@@ -1429,6 +1477,7 @@ function pageBlockToTiptapContent(
         richMediaToTiptap(item, message)
       ));
     case 'pageBlockAudio':
+    case 'pageBlockDocument':
     case 'pageBlockPhoto':
     case 'pageBlockVideo':
     case 'pageBlockSlideshow':

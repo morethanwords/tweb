@@ -9,14 +9,16 @@ import ButtonMenuToggle from '@components/buttonMenuToggle';
 import {
   applyInstantViewMediaSize,
   getMaximumHeightMediaSize,
+  getPageMediaBox,
+  getPageMediaSize,
   INSTANT_VIEW_MEDIA_MAX_HEIGHT,
   instantViewStyles
 } from '@components/instantViewFormatting';
-import prepareAlbum from '@components/prepareAlbum';
+import prepareAlbum, {ALBUM_ITEM_SPACING} from '@components/prepareAlbum';
 import ProgressivePreloader from '@components/preloader';
 import {observeResize} from '@components/resizeObserver';
 import SetTransition from '@components/singleTransition';
-import Slideshow from '@components/slideshow';
+import Slideshow, {isPagingSlideshowTarget} from '@components/slideshow';
 import wrapMediaSpoiler, {concealMediaSpoilerWithAnimation, toggleMediaSpoiler} from '@components/wrappers/mediaSpoiler';
 import {CHAT_INPUT_RICH_MEDIA_UPLOAD_UPDATE_EVENT, ChatInputRichMediaUploadUpdateEvent} from '@components/chat/inputEditor/events';
 import {
@@ -26,7 +28,8 @@ import {
 } from '@components/chat/inputEditor/placeholders';
 import type {ChatInputRichMediaUploadItem} from '@components/chat/inputEditor/types';
 import {richTextPlainText} from '@components/chat/inputEditor/richMessage';
-import {getRichMediaPreviewUrls, ungroupRichMediaNode} from '@components/chat/inputEditor/richMedia';
+import {getRichMediaPreviewUrls, richMediaItemBlock, ungroupRichMediaNode} from '@components/chat/inputEditor/richMedia';
+import {getDocumentRowBlockId, isDocumentRowBlock, type DocumentRowBlock} from '@lib/richMessage';
 import {
   getRichMediaPreviewPoster,
   getRichMediaPreviewSideFill,
@@ -34,13 +37,13 @@ import {
   retainRichMediaPreviewUrl
 } from '@components/chat/inputEditor/mediaPreviewUrl';
 import {NULL_PEER_ID} from '@appManagers/constants';
-import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
 import contextMenuController from '@helpers/contextMenuController';
 import classNames from '@helpers/string/classNames';
 import toHHMMSS from '@helpers/string/toHHMMSS';
 import ListenerSetter from '@helpers/listenerSetter';
 import {getMiddleware} from '@helpers/middleware';
 import type {Document, Message, PageBlock, Photo, RichText} from '@layer';
+import type {AudioElement} from '@components/audio';
 import I18n from '@lib/langPack';
 import {
   parsedOpaqueRichBlock,
@@ -52,11 +55,33 @@ import {renderReadonlyRichText} from '@components/chat/inputEditor/extensions/no
 
 const RICH_MEDIA_UPLOAD_HIDE_DURATION = 200;
 
+/**
+ * The message a file or an audio row is drawn for, as the chat draws an outgoing one: while it
+ * uploads, outgoing and naming its upload; a file once uploaded, not sent and so not to be opened,
+ * as the attach popup shows one (no id); an audio once uploaded, playable, keyed by its id.
+ */
+function getRowMessage(document: Document.document, audio: boolean, uploadingFileName?: string): Message.message {
+  const mediaId = Number(document.id) || 0;
+  const playable = audio && !uploadingFileName;
+  return {
+    _: 'message',
+    id: mediaId,
+    mid: playable ? mediaId : 0,
+    peer_id: {_: 'peerUser', user_id: 0},
+    peerId: NULL_PEER_ID,
+    pFlags: playable ? {} : {is_outgoing: true},
+    date: 0,
+    message: '',
+    media: {_: 'messageMediaDocument', document, pFlags: {}},
+    uploadingFileName: uploadingFileName ? [uploadingFileName] : undefined
+  };
+}
+
 function parsedRichMedia(element: HTMLElement) {
   const parsed = parsedOpaqueRichBlock(element);
   const block = parsed && parsed.block as PageBlock | undefined;
   const captionCredit = block && (
-    block._ === 'pageBlockAudio' ||
+    isDocumentRowBlock(block) ||
     block._ === 'pageBlockPhoto' ||
     block._ === 'pageBlockVideo' ||
     block._ === 'pageBlockCollage' ||
@@ -185,6 +210,17 @@ export const ChatRichMedia = Node.create({
       dom.className = 'chat-input-rich-media';
       dom.dataset.richMedia = '';
       if(node.attrs.uploadId) dom.dataset.uploadId = `${node.attrs.uploadId}`;
+      // A press on a slideshow that pages swipes through it. Selected, this node is draggable
+      // (ProseMirror makes a selected node with content so), and the browser turned the swipe into
+      // a drag of the whole media a few pixels in, which took the pointer from the slideshow for
+      // good: it stayed mid-swipe and dead to clicks.
+      let pressOnSlideshow = false;
+      nodeViewListenerSetter.add(dom)('pointerdown', (event) => {
+        pressOnSlideshow = isPagingSlideshowTarget(event.target);
+      }, {capture: true});
+      nodeViewListenerSetter.add(dom)('dragstart', (event) => {
+        if(pressOnSlideshow) event.preventDefault();
+      });
       preview.className = 'chat-input-rich-media-preview';
       preview.contentEditable = 'false';
       mediaCanvas.className = 'chat-input-rich-media-canvas';
@@ -223,7 +259,7 @@ export const ChatRichMedia = Node.create({
       dom.append(preview, caption);
 
       type MediaPageBlock =
-        PageBlock.pageBlockAudio |
+        DocumentRowBlock |
         PageBlock.pageBlockPhoto |
         PageBlock.pageBlockVideo;
 
@@ -246,7 +282,6 @@ export const ChatRichMedia = Node.create({
         mediaSpoiler?: HTMLElement,
         middleware: ReturnType<typeof getMiddleware>,
         moreButton: HTMLElement,
-        pendingAudioDocument?: Document.document,
         releasePreviewUrl?: () => void,
         sourceIndex?: number,
         spoilerGeneration: number,
@@ -278,7 +313,7 @@ export const ChatRichMedia = Node.create({
           return block.items as MediaPageBlock[];
         }
         return (
-          block?._ === 'pageBlockAudio' ||
+          isDocumentRowBlock(block) ||
           block?._ === 'pageBlockPhoto' ||
           block?._ === 'pageBlockVideo'
         ) ? [block] : [];
@@ -468,7 +503,7 @@ export const ChatRichMedia = Node.create({
             return;
           }
           const id = String(
-            item._ === 'pageBlockVideo' ? item.video_id : item.audio_id
+            item._ === 'pageBlockVideo' ? item.video_id : getDocumentRowBlockId(item)
           );
           const document = documentsById.get(id);
           if(document && !seenDocumentIds.has(id)) {
@@ -884,8 +919,16 @@ export const ChatRichMedia = Node.create({
 
       function updateUploadState(
         container: HTMLElement,
-        item: ChatInputRichMediaUploadItem | undefined
+        item: ChatInputRichMediaUploadItem | undefined,
+        row?: boolean
       ) {
+        // a file or an audio shows its upload itself, as a bubble's does: only a failed one gets the
+        // actions here
+        if(row && item?.state !== 'error') {
+          removeUploadState(container);
+          return;
+        }
+
         let rendered = renderedUploadStates.get(container);
         if(rendered && item && rendered.id !== item.id) {
           removeUploadState(container);
@@ -1005,38 +1048,11 @@ export const ChatRichMedia = Node.create({
           record.uploadIndex === undefined ?
             undefined :
             uploadItems[record.uploadIndex];
-        const pendingAudioDocument = record.pendingAudioDocument;
-        if(pendingAudioDocument && uploadItem) {
-          if(Number.isFinite(uploadItem.duration)) {
-            const duration = Math.max(0, Math.floor(uploadItem.duration));
-            pendingAudioDocument.duration = duration;
-            const attribute = pendingAudioDocument.attributes?.find((candidate) => (
-              candidate._ === 'documentAttributeAudio'
-            ));
-            if(attribute?._ === 'documentAttributeAudio') attribute.duration = duration;
-            const time = record.element.querySelector<HTMLElement>('.audio-time');
-            if(time) time.textContent = toHHMMSS(duration);
-          }
-          if(uploadItem.fileName) {
-            pendingAudioDocument.file_name = uploadItem.fileName;
-            const attribute = pendingAudioDocument.attributes?.find((candidate) => (
-              candidate._ === 'documentAttributeFilename'
-            ));
-            if(attribute?._ === 'documentAttributeFilename') {
-              attribute.file_name = uploadItem.fileName;
-            }
-          }
-          if(Number.isFinite(uploadItem.fileSize)) {
-            pendingAudioDocument.size = Math.max(0, uploadItem.fileSize);
-          }
-          if(uploadItem.mimeType) {
-            pendingAudioDocument.mime_type = uploadItem.mimeType as MTMimeType;
-          }
-        }
         updateRenderedVideoTime(record, uploadItem);
         updateUploadState(
           record.element,
-          uploadItem
+          uploadItem,
+          isDocumentRowBlock(record.entry.item)
         );
       }
 
@@ -1052,29 +1068,7 @@ export const ChatRichMedia = Node.create({
         index: number
       ): MediaPageBlock {
         const resourceId = `upload-${node.attrs.uploadId}-${item.id}-${index}` as Long;
-        const caption = {
-          _: 'pageCaption' as const,
-          credit: {_: 'textEmpty' as const},
-          text: {_: 'textEmpty' as const}
-        };
-        if(item.type === 'audio') {
-          return {
-            _: 'pageBlockAudio',
-            audio_id: resourceId,
-            caption
-          };
-        }
-        return item.type === 'video' ? {
-          _: 'pageBlockVideo',
-          pFlags: {},
-          video_id: resourceId,
-          caption
-        } : {
-          _: 'pageBlockPhoto',
-          pFlags: {},
-          photo_id: resourceId,
-          caption
-        };
+        return richMediaItemBlock(item.type, resourceId);
       }
 
       function mediaItemSize(
@@ -1091,31 +1085,12 @@ export const ChatRichMedia = Node.create({
         ) {
           return {w: uploadWidth, h: uploadHeight};
         }
-        if(item?._ === 'pageBlockPhoto') {
-          const photo = (node.attrs.photos as Photo.photo[]).find((candidate) => (
-            String(candidate.id) === String(item.photo_id)
-          ));
-          const size = photo && choosePhotoSize(photo, 480, 480);
-          if(size && 'w' in size && 'h' in size && size.w > 0 && size.h > 0) {
-            return {w: size.w, h: size.h};
-          }
-        } else if(item?._ === 'pageBlockVideo') {
-          const document = (node.attrs.documents as Document.document[]).find((candidate) => (
-            String(candidate.id) === String(item.video_id)
-          ));
-          const sizedDocument = document as Document.document & {w?: number, h?: number};
-          const attribute = document?.attributes?.find((candidate) => (
-            candidate._ === 'documentAttributeVideo'
-          ));
-          const width = sizedDocument?.w || (
-            attribute?._ === 'documentAttributeVideo' ? attribute.w : 0
-          );
-          const height = sizedDocument?.h || (
-            attribute?._ === 'documentAttributeVideo' ? attribute.h : 0
-          );
-          if(width > 0 && height > 0) return {w: width, h: height};
-        }
-        return {w: 3, h: 2};
+        const media = item?._ === 'pageBlockPhoto' ?
+          (node.attrs.photos as Photo.photo[]).find((candidate) => String(candidate.id) === String(item.photo_id)) :
+          item?._ === 'pageBlockVideo' ?
+            (node.attrs.documents as Document.document[]).find((candidate) => String(candidate.id) === String(item.video_id)) :
+            undefined;
+        return getPageMediaSize(media);
       }
 
       function mediaEntryUploadItem(
@@ -1132,14 +1107,6 @@ export const ChatRichMedia = Node.create({
         uploadItems = liveUploadItems
       ) {
         return mediaItemSize(entry.item, mediaEntryUploadItem(entry, uploadItems));
-      }
-
-      function mediaViewport(size: {w: number, h: number}) {
-        const width = 480;
-        return {
-          height: Math.min(INSTANT_VIEW_MEDIA_MAX_HEIGHT, width * size.h / size.w),
-          width
-        };
       }
 
       function slideshowAspectRatio(
@@ -1188,7 +1155,7 @@ export const ChatRichMedia = Node.create({
         onSize?: (size: {w: number, h: number}) => void,
         onVideoDuration?: (duration: number) => void,
         fitted = false
-      ): Document.document | undefined {
+      ) {
         const photos = node.attrs.photos as Photo.photo[];
         const documents = node.attrs.documents as Document.document[];
         const photo = previewBlock?._ === 'pageBlockPhoto' ?
@@ -1197,37 +1164,11 @@ export const ChatRichMedia = Node.create({
         const videoDocument = previewBlock?._ === 'pageBlockVideo' ?
           documents.find((document) => String(document.id) === String(previewBlock.video_id)) :
           undefined;
-        const audioDocument = previewBlock?._ === 'pageBlockAudio' ?
-          documents.find((document) => String(document.id) === String(previewBlock.audio_id)) :
-          undefined;
-        const pendingAudioDocument = (
-          previewBlock?._ === 'pageBlockAudio' &&
-          !audioDocument &&
-          uploadItem
-        ) ? {
-            _: 'document' as const,
-            id: previewBlock.audio_id,
-            access_hash: 0,
-            file_reference: new Uint8Array(),
-            date: 0,
-            dc_id: 0,
-            attributes: [{
-              _: 'documentAttributeAudio' as const,
-              pFlags: {},
-              duration: uploadItem.duration || 0
-            }, {
-              _: 'documentAttributeFilename' as const,
-              file_name: uploadItem.fileName || 'Audio'
-            }],
-            pFlags: {},
-            type: 'audio' as const,
-            file_name: uploadItem.fileName || 'Audio',
-            duration: uploadItem.duration || 0,
-            size: uploadItem.fileSize || 0,
-            mime_type: (uploadItem.mimeType || 'audio/mpeg') as MTMimeType
-          } satisfies Document.document :
-          undefined;
-        const renderedAudioDocument = audioDocument || pendingAudioDocument;
+        // a file or an audio: the document row, drawn as a bubble draws one; while it uploads, from the
+        // local file its upload was prepared with, the upload shown and cancelled by the row itself
+        const rowBlock = isDocumentRowBlock(previewBlock) ? previewBlock : undefined;
+        const uploadingFileName = rowBlock && uploadItem?.document ? uploadItem.uploadingFileName : undefined;
+        const rowDocument = rowBlock && (uploadingFileName ? uploadItem.document : getRowDocument(rowBlock));
 
         if(previewUrl && previewBlock?._ === 'pageBlockPhoto') {
           const preparedSource = getRichMediaPreviewSource(previewUrl);
@@ -1287,7 +1228,7 @@ export const ChatRichMedia = Node.create({
           else container.append(video);
         } else if(photo) {
           const size = mediaItemSize(previewBlock);
-          const viewport = mediaViewport(size);
+          const viewport = getPageMediaBox(size);
           onSize?.(size);
           const middleware = middlewareHelper.get();
           void import('@components/wrappers/photo').then(async({default: wrapPhoto}): Promise<void> => {
@@ -1306,7 +1247,7 @@ export const ChatRichMedia = Node.create({
           }).catch((): void => {});
         } else if(videoDocument) {
           const size = mediaItemSize(previewBlock);
-          const viewport = mediaViewport(size);
+          const viewport = getPageMediaBox(size);
           onSize?.(size);
           const middleware = middlewareHelper.get();
           void import('@components/wrappers/video').then(async({default: wrapVideo}): Promise<void> => {
@@ -1324,50 +1265,22 @@ export const ChatRichMedia = Node.create({
               withoutPreloader: true
             });
           }).catch((): void => {});
-        } else if(renderedAudioDocument) {
+        } else if(rowDocument) {
           const middleware = middlewareHelper.get();
-          const mediaId = Number(renderedAudioDocument.id) || 0;
-          const localAudio = pendingAudioDocument && previewUrl ?
-            document.createElement('audio') :
-            undefined;
-          if(localAudio) {
-            localAudio.preload = 'metadata';
-            localAudio.src = previewUrl;
-            middleware.onDestroy(() => {
-              localAudio.pause();
-              localAudio.removeAttribute('src');
-              localAudio.load();
-            });
-          }
-          const message: Message.message = {
-            _: 'message',
-            id: mediaId,
-            mid: mediaId,
-            peer_id: {_: 'peerUser', user_id: 0},
-            peerId: NULL_PEER_ID,
-            pFlags: {},
-            date: 0,
-            message: '',
-            media: {
-              _: 'messageMediaDocument',
-              document: renderedAudioDocument,
-              pFlags: {}
-            }
-          };
+          const message = getRowMessage(rowDocument, rowBlock._ === 'pageBlockAudio', uploadingFileName);
           void import('@components/wrappers/document').then(async({default: wrapDocument}) => {
+            // the document and its upload come with the message, as a bubble's do: whatever replaces
+            // the message replaces the document the row plays and shows
             const element = await wrapDocument({
               message,
               middleware,
-              autoDownloadSize: pendingAudioDocument ? 0 : 10 * 1024 * 1024,
-              doc: renderedAudioDocument,
-              globalMedia: localAudio,
+              draft: true,
               withTime: false
             });
-            if(middleware()) {
-              container.append(element);
-            }
+            if(middleware()) container.append(element);
           }).catch((): void => {});
-          return pendingAudioDocument;
+        } else if(rowBlock) {
+          // its upload is being prepared again: the row comes with it
         } else {
           const fallback = document.createElement('span');
           fallback.className = 'chat-input-rich-media-fallback';
@@ -1383,7 +1296,7 @@ export const ChatRichMedia = Node.create({
         const grouped = block?._ === 'pageBlockCollage' || block?._ === 'pageBlockSlideshow';
         const slideshow = block?._ === 'pageBlockSlideshow';
         const uploadId = `${node.attrs.uploadId || ''}`;
-        const uploadItems = node.attrs.uploadItems as ChatInputRichMediaUploadItem[] || [];
+        const uploadItems = liveUploadItems;
         const uploadPreviewUrls = node.attrs.uploadPreviewUrls as string[] || [];
         const previewUrls = getRichMediaPreviewUrls(node, items.length);
         const uploadAction = `${node.attrs.uploadAction || ''}`;
@@ -1498,13 +1411,15 @@ export const ChatRichMedia = Node.create({
           if(entry.previewUrl) {
             record.releasePreviewUrl = retainRichMediaPreviewUrl(entry.previewUrl);
           }
+          // a file or an audio is a document row, drawn as the page draws one
+          const row = isDocumentRowBlock(item);
           itemElement.className = classNames(
             'chat-input-rich-media-item',
-            item._ === 'pageBlockAudio' && 'chat-input-rich-media-item-audio',
+            row && 'chat-input-rich-media-item-row',
             layout === 'collage' && instantViewStyles.CollageItem,
-            layout === 'single' && item._ !== 'pageBlockAudio' && instantViewStyles.Media,
-            item._ === 'pageBlockAudio' && instantViewStyles.Padding,
-            item._ === 'pageBlockAudio' && instantViewStyles.Audio
+            layout === 'single' && !row && instantViewStyles.Media,
+            row && instantViewStyles.Padding,
+            row && instantViewStyles.Audio
           );
           visual.className = instantViewStyles.Media;
           itemElement.dataset.index = `${index}`;
@@ -1517,7 +1432,7 @@ export const ChatRichMedia = Node.create({
             (item._ === 'pageBlockPhoto' || item._ === 'pageBlockVideo') &&
               !!item.pFlags.spoiler
           );
-          if(layout !== 'single' && item._ !== 'pageBlockAudio') {
+          if(layout !== 'single' && !row) {
             itemElement.append(visual);
           }
           listenerSetter.add(itemElement)('click', () => {
@@ -1534,14 +1449,14 @@ export const ChatRichMedia = Node.create({
             if(itemIndex !== undefined) setMediaTooltipTarget(itemIndex);
           });
           const target = (
-            layout === 'single' || item._ === 'pageBlockAudio'
+            layout === 'single' || row
           ) ? itemElement : visual;
           const uploadItem = mediaEntryUploadItem(entry, uploadItems);
           const initialSize = mediaEntrySize(entry, uploadItems);
-          if(layout === 'single' && item._ !== 'pageBlockAudio') {
+          if(layout === 'single' && !row) {
             applyInstantViewMediaSize(itemElement, initialSize.w, initialSize.h);
           }
-          record.pendingAudioDocument = renderSingleMedia(
+          renderSingleMedia(
             item,
             target,
             entry.previewUrl,
@@ -1555,7 +1470,7 @@ export const ChatRichMedia = Node.create({
               onSize?.(size);
             },
             (duration) => updateRenderedVideoTime(record, undefined, duration),
-            layout !== 'collage' && item._ !== 'pageBlockAudio'
+            layout !== 'collage' && !row
           );
           itemElement.append(moreButton);
           renderedItems.push(record);
@@ -1621,7 +1536,7 @@ export const ChatRichMedia = Node.create({
               items: sizes,
               maxWidth: layoutWidth,
               minWidth: layoutWidth / 4,
-              spacing: 2,
+              spacing: ALBUM_ITEM_SPACING,
               maxHeight: INSTANT_VIEW_MEDIA_MAX_HEIGHT
             });
             mediaCanvas.style.setProperty('--width', `${result.width}px`);
@@ -1655,7 +1570,7 @@ export const ChatRichMedia = Node.create({
       function mediaItemVisualIdentity(item: MediaPageBlock | undefined) {
         if(item?._ === 'pageBlockPhoto') return `photo:${item.photo_id}`;
         if(item?._ === 'pageBlockVideo') return `video:${item.video_id}`;
-        if(item?._ === 'pageBlockAudio') return `audio:${item.audio_id}`;
+        if(isDocumentRowBlock(item)) return `${item._}:${getDocumentRowBlockId(item)}`;
         return '';
       }
 
@@ -1813,9 +1728,12 @@ export const ChatRichMedia = Node.create({
         first: ChatInputRichMediaUploadItem[],
         second: ChatInputRichMediaUploadItem[]
       ) {
+        // a row prepared again for its upload is drawn anew, from its new local document
         return first.length === second.length && first.every((item, index) => (
           item.id === second[index]?.id &&
-          item.type === second[index]?.type
+          item.type === second[index]?.type &&
+          item.document?.id === second[index]?.document?.id &&
+          item.uploadingFileName === second[index]?.uploadingFileName
         ));
       }
 
@@ -1980,6 +1898,16 @@ export const ChatRichMedia = Node.create({
         preview.setAttribute('aria-label', opaqueRichBlockLabel(block));
       }
 
+      function getRowDocument(rowBlock: DocumentRowBlock) {
+        return (node.attrs.documents as Document.document[]).find((document) => (
+          String(document.id) === String(getDocumentRowBlockId(rowBlock))
+        ));
+      }
+
+      function getDrawnRow(record: RenderedMediaItem) {
+        return record.element.querySelector<HTMLElement>(':scope > .audio, :scope > .document');
+      }
+
       function preserveCompletedUpload(previousNode: typeof node) {
         if(!previousNode.attrs.uploadId || node.attrs.uploadId) return false;
         if(previousNode.attrs.block === node.attrs.block) return false;
@@ -1991,10 +1919,13 @@ export const ChatRichMedia = Node.create({
           grouped ? 'collage' : 'single';
         if(
           layout !== renderedLayout ||
-          items.some((item) => item._ === 'pageBlockAudio') ||
           renderedItems.some((record) => {
             const index = Number(record.element.dataset.index);
-            return !Number.isInteger(index) || items[index]?._ !== record.itemType;
+            if(!Number.isInteger(index) || items[index]?._ !== record.itemType) return true;
+            // a row goes on as drawn, as a bubble's does once sent, unless it was never drawn or the
+            // server's document brings a picture the local one had not
+            const item = items[index];
+            return isDocumentRowBlock(item) && (!getDrawnRow(record) || !!getRowDocument(item)?.thumbs?.length);
           })
         ) return false;
 
@@ -2015,6 +1946,18 @@ export const ChatRichMedia = Node.create({
           record.moreButton.hidden = false;
           updateRenderedVideoTime(record);
           syncRenderedMediaSpoiler(record, items[index]);
+          const item = items[index];
+          if(isDocumentRowBlock(item)) {
+            // the server's document in place of the local one, as a bubble swaps it in once sent
+            const document = getRowDocument(item);
+            const row = getDrawnRow(record);
+            if(row.classList.contains('audio')) {
+              (row as AudioElement).replaceMessage(getRowMessage(document, true));
+            } else {
+              row.dataset.docId = '' + document.id;
+              (row as HTMLElement & {doc: Document.document}).doc = document;
+            }
+          }
         });
         dom.dataset.richMediaLayout = layout;
         syncRenderedMediaMetadata();
@@ -2071,8 +2014,11 @@ export const ChatRichMedia = Node.create({
         (event) => {
           const {detail} = event as ChatInputRichMediaUploadUpdateEvent;
           if(detail.uploadId !== `${node.attrs.uploadId || ''}`) return;
+          const previousItems = liveUploadItems;
           liveUploadItems = detail.items;
-          updateUploadStateOverlays();
+          // a row prepared again for its upload is drawn anew, from its new local document
+          if(!uploadItemsHaveSameShape(previousItems, detail.items)) renderMedia();
+          else updateUploadStateOverlays();
         }
       );
       update(node);
@@ -2082,7 +2028,13 @@ export const ChatRichMedia = Node.create({
         contentDOM,
         update,
         stopEvent: (event) => preview.contains(event.target as globalThis.Node),
-        ignoreMutation: (mutation) => preview.contains(mutation.target),
+        // Only the caption's text is the document's. Re-reading anything else redraws the node, and a
+        // redrawn node starts over from its attrs, losing the live upload state it was drawing.
+        ignoreMutation: (mutation) => (
+          preview.contains(mutation.target) ||
+          credit.contains(mutation.target) ||
+          (mutation.type === 'attributes' && !contentDOM.contains(mutation.target))
+        ),
         destroy: () => {
           destroyed = true;
           ++mediaLayoutGeneration;

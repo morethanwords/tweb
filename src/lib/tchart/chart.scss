@@ -55,7 +55,7 @@
   }
 
   &#{&}__slave {
-    margin-left: -100%;
+    margin-inline-start: -100%;
     visibility: hidden;
 
     .tchart--switcher {
@@ -93,7 +93,7 @@
     position: absolute;
     font-size: 16px;
     color: var(--tchart-text-color);
-    left: 16px;
+    inset-inline-start: 16px;
     top: 0px;
     letter-spacing: var(--tchart-letter-spacing-small);
     font-weight: 700;
@@ -101,7 +101,7 @@
     margin: 0;
     padding: 0;
 
-    transform-origin: 0 -28px;
+    transform-origin: var(--transform-origin-inline-start) -28px;
     transform: none;
     transition: opacity $d-zoom ease, transform $d-zoom ease,
       visibility $d-zoom step-start;
@@ -126,17 +126,17 @@
     position: absolute;
     font-size: 16px;
     color: var(--tchart-primary-color);
-    left: 17px;
+    inset-inline-start: 17px;
     top: 2px;
     letter-spacing: var(--tchart-letter-spacing-small);
     font-weight: 700;
     z-index: 11;
     height: 17px;
     line-height: 15px;
-    padding-left: 25px;
+    padding-inline-start: 25px;
     cursor: pointer;
 
-    transform-origin: 0 35px;
+    transform-origin: var(--transform-origin-inline-start) 35px;
     transform: scale(0.54);
     transition: opacity $d-zoom ease, transform $d-zoom ease,
       visibility $d-zoom step-end;
@@ -166,7 +166,7 @@
 
     &-icon {
       position: absolute;
-      left: 0;
+      inset-inline-start: 0;
       width: 13px;
       height: 13px;
       border-radius: 50%;
@@ -270,14 +270,14 @@
       @media (pointer: fine) {
         &:hover {
           .tchart--tip-arrow {
-            transform: translateX(2px);
+            transform: translateX(calc(2px * var(--reflect)));
           }
         }
       }
 
       &:active {
         .tchart--tip-arrow {
-          transform: translateX(5px);
+          transform: translateX(calc(5px * var(--reflect)));
         }
       }
     }
@@ -412,10 +412,11 @@
       display: inline-block;
     }
 
+    // * a chevron at the inline end that points along the line: `<` in RTL
     &-arrow {
       position: absolute;
       top: 10px;
-      right: 14px;
+      inset-inline-end: 14px;
       width: 6px;
       height: 10px;
       transition: 0.17s transform ease;
@@ -427,19 +428,19 @@
         position: absolute;
         height: 2px;
         width: 7px;
-        right: -1px;
+        inset-inline-end: -1px;
         top: 4px;
-        transform-origin: 100% 50%;
+        transform-origin: var(--transform-origin-inline-end) 50%;
         background: var(--tchart-secondary-color);
         border-radius: 1px 0.5px 0.5px 1px;
       }
 
       &:before {
-        transform: translateY(-0.5px) rotate(-45deg) scaleY(0.8);
+        transform: translateY(-0.5px) rotate(calc(-45deg * var(--reflect))) scaleY(0.8);
       }
 
       &:after {
-        transform: translateY(0.5px) rotate(45deg) scaleY(0.8);
+        transform: translateY(0.5px) rotate(calc(45deg * var(--reflect))) scaleY(0.8);
       }
     }
 
@@ -448,7 +449,7 @@
       animation: tchart_animation_loading 600ms infinite linear;
       position: absolute;
       top: 9px;
-      right: 9px;
+      inset-inline-end: 9px;
       width: 8px;
       height: 8px;
       border-radius: 50%;
@@ -470,20 +471,20 @@
 
       &-per {
         position: absolute;
-        left: 0;
+        inset-inline-start: 0;
         top: 0;
         font-weight: 700;
         letter-spacing: var(--tchart-letter-spacing-small);
         font-size: 13px;
         color: var(--tchart-text-color);
-        text-align: right;
+        text-align: end;
         margin: 0;
       }
 
       &-label {
         position: absolute;
         top: 0;
-        left: 0;
+        inset-inline-start: 0;
         font-size: 13px;
         color: var(--tchart-text-color);
         white-space: nowrap;
@@ -495,8 +496,8 @@
       &-value {
         position: absolute;
         top: 0;
-        right: 0;
-        text-align: right;
+        inset-inline-end: 0;
+        text-align: end;
         font-size: 13px;
         font-weight: 700;
         letter-spacing: var(--tchart-letter-spacing-small);
@@ -505,8 +506,11 @@
     }
   }
 
+  // * physical: JS moves it along the time axis from the left edge, which a right-to-left page
+  // * would otherwise put at the right one (the static position of an `auto` inset)
   &--line {
     position: absolute;
+    left: 0;
     width: 1px;
     z-index: 15;
     pointer-events: none;
@@ -566,7 +570,8 @@
     height: 36px;
     cursor: pointer;
     border-radius: 18px;
-    margin: 0 6px 8px 0;
+    margin-block: 0 8px;
+    margin-inline: 0 6px;
     padding: 0 22px 0 22px;
     box-sizing: border-box;
     background-color: transparent;
@@ -612,7 +617,7 @@
 
       .tchart--switcher-text {
         color: #fff;
-        left: 8px;
+        inset-inline-start: 8px;
       }
     }
 
@@ -620,7 +625,7 @@
       content: "";
       position: absolute;
       top: 5px;
-      left: 6px;
+      inset-inline-start: 6px;
       height: 25px;
       width: 25px;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25' viewBox='0 0 60 60'%3E%3Cpath d='M17.2,33.7L24.2,41.0L40.6,22.2' stroke-linejoin='round' fill='none' stroke='%23ffffff' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E");
@@ -633,9 +638,9 @@
       display: inline-block;
       font-size: 14px;
       line-height: 36px;
-      left: 0;
+      inset-inline-start: 0;
       letter-spacing: var(--tchart-letter-spacing-large);
-      transition: left $d-switcher, color $d-switcher;
+      transition: inset-inline-start $d-switcher, color $d-switcher;
       color: currentcolor;
       font-weight: 500;
     }
@@ -643,7 +648,7 @@
 
   &--switchers__side-legend:not(&--switchers__no-space) {
     position: absolute;
-    right: 0;
+    inset-inline-end: 0;
     top: 0;
     height: 100%;
     margin: 0 !important; //override __no-subchart shift
@@ -660,7 +665,8 @@
     height: 22px;
     border-radius: 0;
     margin: 2px 0;
-    padding: 0 0 0 20px;
+    padding-block: 0;
+    padding-inline: 20px 0;
     box-sizing: border-box;
     background-color: transparent !important;
     box-shadow: none;
@@ -700,7 +706,7 @@
   &--switchers__side-legend &--switcher &--switcher-text,
   &--switchers__side-legend &--switcher__active &--switcher-text {
     color: currentColor;
-    left: 7px;
+    inset-inline-start: 7px;
     line-height: 22px;
     max-width: 140px;
     white-space: nowrap;

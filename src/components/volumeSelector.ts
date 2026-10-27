@@ -27,14 +27,17 @@ export default class VolumeSelector extends RangeSelector {
     vertical?: boolean,
     media?: HTMLMediaElement,
     maxVolume?: number,
-    onVolumeChange?: VolumeSelector['onVolumeChange']
+    onVolumeChange?: VolumeSelector['onVolumeChange'],
+    /** Inside a player's controls, which run left to right in any language */
+    keepLTR?: boolean
   }) {
     super({
       ariaLabel: 'AccDescr.Volume',
       step: 0.01,
       min: 0,
       max: options.maxVolume ?? 1,
-      vertical: options.vertical
+      vertical: options.vertical,
+      keepLTR: options.keepLTR
     }, 1);
 
     safeAssign(this, options);

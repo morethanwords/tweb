@@ -3,6 +3,11 @@
   align-items: center;
 
   gap: 0.75rem;
+
+  // * the combination reads left to right in any language, as the Keyboard Shortcuts tab shows it;
+  // * only as wide as its keys, so it still starts at the row's inline start
+  direction: ltr;
+  width: fit-content;
 }
 
 .KeysContainer {

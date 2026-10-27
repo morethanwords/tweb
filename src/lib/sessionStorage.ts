@@ -4,16 +4,16 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import type {AppInstance} from '@lib/singleInstance';
 import type {UserAuth} from '@appManagers/constants';
 import LocalStorageController from '@lib/localStorage';
-import {AccountSessionData} from '@lib/accounts/types';
+import {StoredAccountSessionData} from '@lib/accounts/types';
 
 
 type StorageValues = {
   state_id: number,
 
-  account1: AccountSessionData,
-  account2: AccountSessionData,
-  account3: AccountSessionData,
-  account4: AccountSessionData,
+  account1: StoredAccountSessionData,
+  account2: StoredAccountSessionData,
+  account3: StoredAccountSessionData,
+  account4: StoredAccountSessionData,
 
   // @deprecated the passcode key is handed over in window.sessionStorage now
   // (@lib/passcode/keyHandoff) — kept only so old, on-disk values can be purged
@@ -32,7 +32,6 @@ type StorageValues = {
   number_of_accounts?: number, // When the storage is encrypted
   previous_account?: number, // only for back button when logging in to another account
   current_account?: number, // 1 if not set
-  should_animate_auth?: number,
   should_animate_main?: number
 }
 

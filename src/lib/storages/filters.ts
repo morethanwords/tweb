@@ -22,6 +22,8 @@ const convertment = [
 
 const PREPENDED_FILTERS = REAL_FOLDERS.size;
 
+const OPTIONAL_FILTER_FIELDS = ['color', 'emoticon'] as const;
+
 const LOCAL_FILTER: DialogFilter.dialogFilter = {
   _: 'dialogFilter',
   pFlags: {},
@@ -41,6 +43,13 @@ export default class FiltersStorage extends AppManager {
   private localFilters: {[filterId: string]: MyDialogFilter};
   private localId: number;
   private reloadedPeerIds: Set<PeerId>;
+  /**
+   * `messages.dialogFilters.tags_enabled`: whether the chat list shows each chat's folders under
+   * it. Kept in the state, since the folders themselves come from there and not from the server;
+   * `undefined` until the server has been asked once
+   */
+  private tagsEnabled: boolean;
+  private tagsEnabledRequested: boolean;
 
   protected after() {
     this.clear(true);
@@ -77,7 +86,13 @@ export default class FiltersStorage extends AppManager {
       this.onUpdateDialogFilters({_: 'updateDialogFilters'});
     });
 
+    // * the folders come from the state, the switch only from the server - it is asked once a session
+    this.rootScope.addEventListener('user_auth', () => {
+      this.requestTagsEnabled();
+    });
+
     return this.appStateManager.getState().then((state) => {
+      this.tagsEnabled = state.filtersTagsEnabled;
       const filtersArr = this.prependFilters(state.filtersArr);
       filtersArr.map((filter) => {
         this.saveDialogFilter(filter, false, true);
@@ -137,6 +152,8 @@ export default class FiltersStorage extends AppManager {
       this.filters = {};
       this.filtersArr = [];
       this.reloadedPeerIds = new Set();
+      this.tagsEnabled = undefined;
+      this.tagsEnabledRequested = false;
 
       this.localFilters = {};
       for(const filterId of REAL_FOLDERS) {
@@ -537,9 +554,59 @@ export default class FiltersStorage extends AppManager {
       return keys.map((filterId) => this.filters[filterId]).sort((a, b) => a.localId - b.localId);
     }
 
-    const messagesDialogFilters = await this.apiManager.invokeApiSingle('messages.getDialogFilters');
+    const messagesDialogFilters = await this.fetchDialogFilters();
     const prepended = this.prependFilters(messagesDialogFilters.filters);
     return prepended.map((filter) => this.saveDialogFilter(filter, overwrite)).filter(Boolean);
+  }
+
+  /** The folders as the server has them - and with them whether their tags are on */
+  private fetchDialogFilters() {
+    return this.apiManager.invokeApiSingle('messages.getDialogFilters').then((dialogFilters) => {
+      this.setTagsEnabled(!!dialogFilters.pFlags?.tags_enabled);
+      return dialogFilters;
+    });
+  }
+
+  /**
+   * The folders come from the state, and are not asked for again on start - so whether their tags
+   * are on, which the server keeps with them, is asked for on its own, once a session (every other
+   * client loads the folders on start): the state's answer may be from before the switch was
+   * thrown on another device, or not be there at all
+   */
+  private requestTagsEnabled() {
+    if(this.tagsEnabledRequested) {
+      return;
+    }
+
+    this.tagsEnabledRequested = true;
+    this.fetchDialogFilters().catch(() => {
+      this.tagsEnabledRequested = false;
+    });
+  }
+
+  private setTagsEnabled(enabled: boolean) {
+    if(this.tagsEnabled === enabled) {
+      return;
+    }
+
+    this.tagsEnabled = enabled;
+    this.appStateManager.pushToState('filtersTagsEnabled', enabled);
+  }
+
+  /**
+   * Shows or hides the folder tags in the chat list, on every device of the account. The switch
+   * is Premium's: the server takes it from a Premium account only, and the tags of an account
+   * without it stay hidden whatever the flag says (see `useFolderTagsShown`)
+   */
+  public async toggleDialogFilterTags(enabled: boolean) {
+    await this.apiManager.invokeApi('messages.toggleDialogFilterTags', {enabled});
+    this.setTagsEnabled(enabled);
+
+    // * the folders are asked for again once the tags are on, as Android does: the colours they
+    // * wear may have come with the switch
+    if(enabled) {
+      this.onUpdateDialogFilters({_: 'updateDialogFilters'});
+    }
   }
 
   public getSuggestedDialogsFilters() {
@@ -569,6 +636,14 @@ export default class FiltersStorage extends AppManager {
 
     const oldFilter = this.filters[filter.id];
     if(oldFilter) {
+      // * a flag the folder no longer has is a field the new one leaves out, and merging would keep
+      // * the old value: a colour taken off would go on tagging the folder's chats
+      for(const key of OPTIONAL_FILTER_FIELDS) {
+        if(!(key in filter)) {
+          delete (oldFilter as DialogFilter.dialogFilter)[key];
+        }
+      }
+
       filter = Object.assign(oldFilter, filter);
     } else {
       this.filters[filter.id] = filter;

@@ -12,7 +12,7 @@
  * treated as a write and blocked.
  */
 
-import type {AppManagers} from '@lib/managers';
+import type {AppManagers, TabManagers} from '@lib/managers';
 import type {ManagerCall} from './mockManagers';
 
 /**
@@ -46,7 +46,7 @@ export const isReadMethod = (manager: string, method: string) =>
 
 export type LiveManagersController = {
   /** Drop-in for `rootScope.managers`, backed by the session's real ones. */
-  managers: AppManagers,
+  managers: AppManagers & TabManagers,
   /** Every call the popups made, newest last. */
   calls: ManagerCall[],
   /** Writes that were held back — what the popup would have done for real. */
@@ -57,7 +57,7 @@ export type LiveManagersController = {
   allowWrites: boolean
 };
 
-export function createLiveManagers(real: AppManagers): LiveManagersController {
+export function createLiveManagers(real: TabManagers): LiveManagersController {
   const calls: ManagerCall[] = [];
   const blocked: ManagerCall[] = [];
 
@@ -89,7 +89,7 @@ export function createLiveManagers(real: AppManagers): LiveManagersController {
   });
 
   const controller: LiveManagersController = {
-    managers: createRootProxy(real) as AppManagers,
+    managers: createRootProxy(real) as AppManagers & TabManagers,
     calls,
     blocked,
     allowWrites: false

@@ -17,6 +17,8 @@ export type MovableState = {
 
 const className = 'movable-element';
 const resizeHandlerClassName = className + '-resize-handler';
+// How close to a window edge still counts as touching it (sub-pixel positions, zoom).
+const EDGE_TOLERANCE = 1;
 
 export type MovableElementOptions = {
   minWidth: MovableElement['minWidth'],
@@ -75,6 +77,7 @@ export default class MovableElement extends EventListenerBase<{
 
   public destroyElements() {
     this.element.classList.remove(className);
+    ['tl', 'tr', 'br', 'bl'].forEach((corner) => this.element.style.removeProperty('--movable-round-' + corner));
     this.destroyResizeHandlers();
   }
 
@@ -262,12 +265,25 @@ export default class MovableElement extends EventListenerBase<{
   }
 
   private setPosition() {
-    this.element.style.top = this.top + 'px';
-    this.element.style.left = this.left + 'px';
-    this.element.style.right = 'auto';
-    this.element.style.bottom = 'auto';
-    this.element.style.width = this.width + 'px';
-    this.element.style.height = this.height + 'px';
+    const {style} = this.element;
+    style.top = this.top + 'px';
+    style.left = this.left + 'px';
+    style.right = 'auto';
+    style.bottom = 'auto';
+    style.width = this.width + 'px';
+    style.height = this.height + 'px';
+
+    // A corner pushed into the window's own corner has nothing left to round
+    // against, so it is squared off: `--movable-round-<corner>` is 0 there and 1
+    // elsewhere, for the element's styles to multiply their radius by.
+    const atTop = this.top <= EDGE_TOLERANCE;
+    const atLeft = this.left <= EDGE_TOLERANCE;
+    const atBottom = this.top + this.height >= windowSize.height - EDGE_TOLERANCE;
+    const atRight = this.left + this.width >= windowSize.width - EDGE_TOLERANCE;
+    style.setProperty('--movable-round-tl', atTop && atLeft ? '0' : '1');
+    style.setProperty('--movable-round-tr', atTop && atRight ? '0' : '1');
+    style.setProperty('--movable-round-br', atBottom && atRight ? '0' : '1');
+    style.setProperty('--movable-round-bl', atBottom && atLeft ? '0' : '1');
 
     this.dispatchEvent('resize', this.state);
   }

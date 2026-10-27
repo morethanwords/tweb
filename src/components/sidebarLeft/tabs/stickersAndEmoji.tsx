@@ -15,13 +15,13 @@ import Row from '@components/rowTsx';
 import Section, {appendSectionContent} from '@components/section';
 import wrapStickerSetThumb from '@components/wrappers/stickerSetThumb';
 import ReactionStickerPreview from '@components/reactionStickerPreview';
-import {AppQuickReactionTab} from '@components/solidJsTabs/tabs';
 import {useAppSettings} from '@stores/appSettings';
 import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {IconTsx} from '@components/iconTsx';
 import {mountSolidComponent, unwrapSolidElement} from '@helpers/solid/wrapSolidComponent';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const StickersAndEmoji: Component = () => {
   const [tab] = useSuperTab();
@@ -59,7 +59,7 @@ const StickersAndEmoji: Component = () => {
         <Section caption="LoopAnimatedStickersInfo">
           <Row
             havePadding
-            clickable={() => tab.slider.createTab(AppQuickReactionTab).open()}
+            clickable={() => tab.slider.createTab(hotReloadGuard.tabs.AppQuickReactionTab).open()}
           >
             <Row.Title>{i18n('DoubleTapSetting')}</Row.Title>
             <ReactionStickerPreview sticker={quickReactionDoc()} />

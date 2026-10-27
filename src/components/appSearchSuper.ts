@@ -1,6 +1,6 @@
 import type {AppMessagesManager, MyInputMessagesFilter, MyMessage, RequestHistoryOptions} from '@appManagers/appMessagesManager';
 import {getOverlayRoot} from '@helpers/appWindow';
-import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG, DialogDom} from '@lib/appDialogsManager';
+import {DIALOG_LIST_ELEMENT_TAG, DialogDom} from '@components/dialogElement';
 import {logger} from '@lib/logger';
 import rootScope from '@lib/rootScope';
 import {createSearchGroup, SearchGroup, SearchGroupType} from '@components/searchGroup';
@@ -12,26 +12,23 @@ import {ScrollableContextValue} from '@components/scrollable2';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
 import I18n, {LangPackKey, i18n, join} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
+import cancelEvent from '@helpers/dom/cancelEvent';
 import {getMiddleware, Middleware, MiddlewareHelper} from '@helpers/middleware';
 import {BotMenuButton, ChannelParticipant, Chat, ChatFull, ChatParticipant, ChatParticipants, Document, Message, MessageMedia, MessagesChats, MessagesFilter, Peer, Photo, StoryItem, Update, User, UserFull, WebPage} from '@layer';
-import SortedUserList from '@components/sortedUserList';
+import SortedUserList, {SortedUserListRank} from '@components/sortedUserList';
 import findUpTag from '@helpers/dom/findUpTag';
-import appSidebarRight from '@components/sidebarRight';
 import mediaSizes from '@helpers/mediaSizes';
-import appImManager from '@lib/appImManager';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import handleTabSwipe from '@helpers/dom/handleTabSwipe';
 import windowSize from '@helpers/windowSize';
 import {formatPhoneNumber} from '@helpers/formatPhoneNumber';
 import {ButtonMenuItemOptions, ButtonMenuSync} from '@components/buttonMenu';
-import showForwardPopup from '@components/popups/forward';
 import showDeleteMessagesPopup from '@components/popups/deleteMessages';
 import {renderSearchWebPageRow} from '@components/searchWebPageRow';
 import htmlToDocumentFragment from '@helpers/dom/htmlToDocumentFragment';
 import {SearchSelection} from '@components/chat/selection';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import {MyDocument} from '@appManagers/appDocsManager';
-import AppMediaViewer from '@components/mediaViewer';
 import lockTouchScroll from '@helpers/dom/lockTouchScroll';
 import copy from '@helpers/object/copy';
 import safeAssign from '@helpers/object/safeAssign';
@@ -39,7 +36,7 @@ import ScrollableRefiller from '@helpers/scrollableRefiller';
 import findAndSplice from '@helpers/array/findAndSplice';
 import {ScrollStartCallbackDimensions} from '@helpers/fastSmoothScroll';
 import setInnerHTML from '@helpers/dom/setInnerHTML';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
 import wrapWebPageDescription from '@components/wrappers/webPageDescription';
 import wrapWebPageTitle from '@components/wrappers/webPageTitle';
@@ -63,20 +60,23 @@ import SwipeHandler from '@components/swipeHandler';
 import wrapDocument from '@components/wrappers/document';
 import wrapPhoto from '@components/wrappers/photo';
 import wrapVideo from '@components/wrappers/video';
-import wrapMediaSpoiler, {hasSensitiveSpoiler, onMediaSpoilerClick} from '@components/wrappers/mediaSpoiler';
+import attachMediaPeekListeners, {getMessageMediaPeekSource} from '@components/mediaPeek';
+import wrapMediaSpoiler, {hasMediaSpoiler, hasSensitiveSpoiler, onMediaSpoilerClick} from '@components/wrappers/mediaSpoiler';
 import filterAsync from '@helpers/array/filterAsync';
 import ChatContextMenu, {getSponsoredMessageButtons} from '@components/chat/contextMenu';
 import getParticipantRank from '@appManagers/utils/chats/getParticipantRank';
-import {NULL_PEER_ID} from '@appManagers/constants';
+import {canEditMemberTag, getMemberTagRole} from '@appManagers/utils/chats/memberTag';
+import hasRights from '@appManagers/utils/chats/hasRights';
+import openEditMemberTag from '@components/memberTag/openEditMemberTag';
+import {FOLDER_ID_ARCHIVE, NULL_PEER_ID} from '@appManagers/constants';
 import createParticipantContextMenu from '@helpers/dom/createParticipantContextMenu';
 import findAndSpliceAll from '@helpers/array/findAndSpliceAll';
 import deferredPromise from '@helpers/cancellablePromise';
 import {children, createEffect, createRoot, For, on} from 'solid-js';
-import {StoriesProfileList} from '@components/stories/profileList';
+import {StoriesProfileList, isStoryReorderTarget} from '@components/stories/profileList';
 import {StoriesContextActions} from '@components/stories/store';
 import Button from '@components/button';
 import anchorCallback from '@helpers/dom/anchorCallback';
-import showPremiumPopup from '@components/popups/premium';
 import {ChatType} from './chat/chatType';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
 import SidebarSlider from '@components/slider';
@@ -112,6 +112,10 @@ import {SearchSuperMediaInputFilter} from '@components/sharedMediaFilters';
 import {getMediaTypeForProfileTab, orderMediaTabsByMain, ProfileTabMediaType} from '@components/sharedMediaProfileTab';
 import {supportsSharedMediaScrollDate} from '@components/sharedMediaScrollDate';
 import createSharedMediaScrollDateBadge from '@components/sharedMediaScrollDateBadge';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import type appSidebarRight from '@components/sidebarRight';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import verifyMenuItem from '@helpers/verifyMenuItem';
 
 // The call log is searched by the Calls tab, never by shared media — and unlike
 // every other filter its constructor is not just its id (it carries `pFlags`),
@@ -186,7 +190,7 @@ class SearchContextMenu {
   private peerId: PeerId;
   private mid: number;
   private isSelected: boolean;
-  private managers: AppManagers;
+  private managers: ReadingManagers;
   private noForwards: boolean;
   private message: MyMessage;
   private selectedMessages: MyMessage[];
@@ -226,14 +230,15 @@ class SearchContextMenu {
       if(!('touches' in e)) e.cancelBubble = true;
 
       const r = async() => {
+        const managers = bindManagersToSession(this.managers);
         this.target = item;
         this.peerId = item.dataset.peerId.toPeerId();
         this.mid = +item.dataset.mid;
         this.isSelected = searchSuper.selection.isMidSelected(this.peerId, this.mid);
-        this.message = await this.managers.appMessagesManager.getMessageByPeer(this.peerId, this.mid);
+        this.message = await managers.appMessagesManager.getMessageByPeer(this.peerId, this.mid);
         this.noForwards = searchSuper.selection.isSelecting ?
           this.searchSuper.selection.selectionForwardBtn.classList.contains('hide') :
-          !(await this.managers.appMessagesManager.canForward(this.message));
+          !(await managers.appMessagesManager.canForward(this.message));
         this.selectedMessages = searchSuper.selection.isSelecting ? await searchSuper.selection.getSelectedMessages() : undefined;
         // this.isSavedDialog = !!(searchSuper.searchContext.peerId === rootScope.myId && searchSuper.searchContext.threadId);
 
@@ -243,7 +248,7 @@ class SearchContextMenu {
           if(this.searchSuper.selection.isSelecting && !button.withSelection) {
             good = false;
           } else {
-            good = button.verify ? !!(await button.verify()) : true;
+            good = await verifyMenuItem(button);
           }
 
           button.element.classList.toggle('hide', !good);
@@ -340,7 +345,7 @@ class SearchContextMenu {
   }
 
   private onGotoClick = () => {
-    appImManager.setInnerPeer({
+    hotReloadGuard.appImManager.setInnerPeer({
       peerId: this.peerId,
       lastMsgId: this.mid,
       threadId: this.searchSuper.mediaTab.type === 'saved' ? this.searchSuper.searchContext.peerId : this.searchSuper.searchContext.threadId
@@ -358,7 +363,7 @@ class SearchContextMenu {
     if(this.searchSuper.selection.isSelecting) {
       simulateClickEvent(this.searchSuper.selection.selectionForwardBtn);
     } else {
-      showForwardPopup({
+      hotReloadGuard.showForwardPopup({
         [this.peerId]: [this.mid]
       });
     }
@@ -462,7 +467,7 @@ export default class AppSearchSuper {
   public scrollStartCallback: (dimensions: ScrollStartCallbackDimensions) => void;
   public scrollOffset: number;
 
-  public managers: AppManagers;
+  public managers: ReadingManagers;
   private loadFirstTimePromise: Promise<void>;
   private mediaFilterChangeId = 0;
   private mediaFilterCommittedInputFilter: SearchSuperMediaInputFilter;
@@ -511,7 +516,7 @@ export default class AppSearchSuper {
       getProgress: (type) => this.getMediaTabProgress(type)
     });
 
-    this.slider ??= appSidebarRight;
+    this.slider ??= hotReloadGuard.appSidebarRight;
 
     this.container = document.createElement('div');
     this.container.classList.add('search-super');
@@ -591,7 +596,7 @@ export default class AppSearchSuper {
           }
         },
         verifyTouchTarget: (e) => {
-          return !findUpClassName(e.target, 'scrollable-x');
+          return !findUpClassName(e.target, 'scrollable-x') && !isStoryReorderTarget(e.target);
         }
       });
     }
@@ -766,8 +771,9 @@ export default class AppSearchSuper {
 
     attachClickEvent(this.tabsContainer, (e) => {
       if(this.selection.isSelecting) {
-        cancelClickOrNextIfNotClick(e);
-        this.selection.toggleByElement(findUpClassName(e.target, 'search-super-item'));
+        const item = findUpClassName(e.target, 'search-super-item');
+        this.selection.cancelElementClick(e, item, cancelClickOrNextIfNotClick);
+        this.selection.toggleByElement(item);
       }
     }, {capture: true, passive: false, listenerSetter: this.listenerSetter});
 
@@ -791,7 +797,7 @@ export default class AppSearchSuper {
       }
 
       const peerId = target.dataset.peerId.toPeerId();
-      const message = await this.managers.appMessagesManager.getMessageByPeer(peerId, mid);
+      const message = await this.getItemMessage(target);
       if(!target.isConnected) {
         return;
       }
@@ -815,7 +821,7 @@ export default class AppSearchSuper {
       const idx = targets.findIndex((item) => item.mid === mid && item.peerId === peerId);
 
       const mediaTab = this.mediaTabs.find((mediaTab) => mediaTab.inputFilter === inputFilter);
-      new AppMediaViewer()
+      new hotReloadGuard.AppMediaViewer()
       .setSearchContext(this.copySearchContext(inputFilter, this.nextRates[mediaTab.type], skipSensitive))
       .openMedia({
         message,
@@ -836,6 +842,17 @@ export default class AppSearchSuper {
       },
       {listenerSetter: this.listenerSetter}
     );
+    mediaTab?.itemsTab && attachMediaPeekListeners({
+      listenTo: mediaTab.itemsTab,
+      listenerSetter: this.listenerSetter,
+      findTarget: (target) => {
+        // * a press while selecting selects
+        if(this.selection?.isSelecting || this.mediaFilterStagingItemsTab) return;
+        const element = findUpClassName(target, 'grid-item');
+        return element && !hasMediaSpoiler(element) ? element : undefined;
+      },
+      getSource: async(element) => getMessageMediaPeekSource(await this.getItemMessage(element))
+    });
     this.tabs.inputMessagesFilterDocument && attachClickEvent(
       this.tabs.inputMessagesFilterDocument,
       onMediaClick.bind(null, 'document-with-thumb', 'media-container', 'inputMessagesFilterDocument'),
@@ -1163,7 +1180,7 @@ export default class AppSearchSuper {
     const middleware = this.middleware.get();
 
     const loadPromises: Promise<any>[] = [];
-    const dialogElement = appDialogsManager.addDialogNew({
+    const dialogElement = hotReloadGuard.appDialogsManager.addDialogNew({
       dontSetActive: true,
       peerId,
       container: searchGroup?.list || false,
@@ -1177,7 +1194,7 @@ export default class AppSearchSuper {
       autonomous: isSaved,
       fromName: !peerId ? getFwdFromName(message.fwd_from) : undefined
     });
-    const setLastMessagePromise = appDialogsManager.setLastMessageN({
+    const setLastMessagePromise = hotReloadGuard.appDialogsManager.setLastMessageN({
       dialog: {
         _: 'dialog',
         peerId
@@ -1196,6 +1213,11 @@ export default class AppSearchSuper {
 
       return {element: dialogElement.container, message};
     });
+  }
+
+  // * the message a `search-super-item` shows
+  private getItemMessage(item: HTMLElement) {
+    return this.managers.appMessagesManager.getMessageByPeer(item.dataset.peerId.toPeerId(), +item.dataset.mid);
   }
 
   private async processPhotoVideoFilter({message, promises, middleware}: ProcessSearchSuperResult) {
@@ -1373,6 +1395,8 @@ export default class AppSearchSuper {
     const a = aFragment.firstElementChild as HTMLAnchorElement;
     const aIsAnchor = a instanceof HTMLAnchorElement;
     if(aIsAnchor) {
+      // * a URL reads left to right in any language
+      a.dir = 'ltr';
       try { // can have 'URIError: URI malformed'
         a.innerText = decodeURIComponent(a.href);
       } catch(err) {
@@ -1554,10 +1578,10 @@ export default class AppSearchSuper {
       if(isSaved) {
         let chatlist = sharedMediaDiv.querySelector<HTMLElement>('.chatlist');
         if(!chatlist) {
-          chatlist = appDialogsManager.createChatList({new: true});
+          chatlist = hotReloadGuard.appDialogsManager.createChatList({new: true});
           container.append(chatlist);
 
-          appDialogsManager.setListClickListener({
+          hotReloadGuard.appDialogsManager.setListClickListener({
             list: chatlist,
             onFound: (el) => {
               if(this.selection.isSelecting) {
@@ -1616,15 +1640,17 @@ export default class AppSearchSuper {
     }
 
     const query = this.searchContext.query;
+    const isArchive = this.searchContext.folderId === FOLDER_ID_ARCHIVE;
     if(query && !this.searchContext.peerId && !this.searchContext.communityId) {
       const addDialogSubtitle = async(dom: DialogDom, peerId: PeerId) => {
-        const peer = await this.managers.appPeersManager.getPeer(peerId);
+        const managers = bindManagersToSession(this.managers);
+        const peer = await managers.appPeersManager.getPeer(peerId);
         if(peerId === rootScope.myId) {
           dom.lastMessageSpan.append(i18n('Presence.YourChat'));
         } else {
-          let username = await this.managers.appPeersManager.getPeerUsername(peerId);
+          let username = await managers.appPeersManager.getPeerUsername(peerId);
           if(!username) {
-            const user = await this.managers.appUsersManager.getUser(peerId);
+            const user = await managers.appUsersManager.getUser(peerId);
             if(user?.phone) {
               username = '+' + formatPhoneNumber(user.phone).formatted;
             }
@@ -1637,8 +1663,16 @@ export default class AppSearchSuper {
           //   dom.titleSpan.innerHTML = dom.titleSpan.innerHTML.replace(regExp, '<i>$1</i>');
           // }
 
+          // * a handle or a phone number reads left to right in any language, and apart from the count
+          let usernameElement: HTMLElement;
+          if(username) {
+            usernameElement = document.createElement('span');
+            usernameElement.dir = 'ltr';
+            usernameElement.textContent = username;
+          }
+
           const toJoin: (Node | string)[] = [
-            username
+            usernameElement
           ];
 
           if(/* showMembersCount &&  */((peer as Chat.channel).participants_count || (peer as any).participants)) {
@@ -1657,7 +1691,7 @@ export default class AppSearchSuper {
 
           renderedPeerIds.add(peerId);
 
-          const {dom} = appDialogsManager.addDialogNew({
+          const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
             peerId: peerId,
             container: group.list,
             avatarSize: 'abitbigger',
@@ -1683,6 +1717,17 @@ export default class AppSearchSuper {
         return arg;
       };
 
+      // * inside the archive only its own chats are found: no contacts, global or sponsored results
+      if(isArchive) {
+        return this.managers.dialogsStorage.searchFolderDialogs(query, FOLDER_ID_ARCHIVE)
+        .then(onLoad)
+        .then((peerIds) => {
+          if(peerIds) {
+            setResults(peerIds, this.searchGroups.contacts, true);
+          }
+        });
+      }
+
       return Promise.all([
         this.managers.appUsersManager.getContactsPeerIds(query, true, undefined, 10)
         .then(onLoad)
@@ -1698,7 +1743,7 @@ export default class AppSearchSuper {
           if(!peers?.length) return;
 
           for(const peer of peers.reverse()) {
-            const {dom} = appDialogsManager.addDialogNew({
+            const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
               peerId: peer.peer,
               container: this.searchGroups.globalContacts.list,
               append: false,
@@ -1724,7 +1769,8 @@ export default class AppSearchSuper {
                 // position menu
                 const rect = chip.getBoundingClientRect();
                 const bodyRect = getOverlayRoot().getBoundingClientRect();
-                element.style.right = `${bodyRect.width - (rect.left + rect.width)}px`;
+                // * `bottom-left` holds the menu by its inline end, the chip's end edge - its left one in RTL
+                element.style.insetInlineEnd = `${I18n.getIsRTL() ? rect.left : bodyRect.width - (rect.left + rect.width)}px`;
                 element.style.top = `${rect.top + rect.height + 8}px`;
               },
               direction: 'bottom-left'
@@ -1769,7 +1815,7 @@ export default class AppSearchSuper {
           }
         })
       ]);
-    } else if(!this.searchContext.peerId && !this.searchContext.communityId && !this.searchContext.minDate) {
+    } else if(!this.searchContext.peerId && !this.searchContext.communityId && !this.searchContext.minDate && !isArchive) {
       const [appState] = useAppState();
       const renderRecentSearch = (setActive = true) => {
         if(!middleware()) {
@@ -1789,7 +1835,7 @@ export default class AppSearchSuper {
             },
             children: (peerId) => {
               const middlewareHelper = createMiddleware();
-              const {dom} = appDialogsManager.addDialogNew({
+              const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
                 peerId: peerId,
                 container: false,
                 meAsSaved: true,
@@ -1848,6 +1894,7 @@ export default class AppSearchSuper {
   }
 
   private async loadMembers({mediaTab}: SearchSuperLoadTypeOptions) {
+    const managers = bindManagersToSession(this.managers);
     const chatId = mediaTab.type === 'members' ? this.searchContext.peerId.toChatId() : undefined;
     const userId = mediaTab.type === 'groups' ? this.searchContext.peerId.toUserId() : undefined;
     const middleware = this.middleware.get();
@@ -1871,7 +1918,7 @@ export default class AppSearchSuper {
         membersList = this.membersList = new SortedUserList({
           lazyLoadQueue: this.lazyLoadQueue,
           rippleEnabled: false,
-          managers: this.managers,
+          managers,
           middleware
         });
         attachClickEvent(membersList.list, (e) => {
@@ -1885,13 +1932,20 @@ export default class AppSearchSuper {
           }
 
           const peerId = li.dataset.peerId.toPeerId();
+          // * a tag I may change opens its editor instead of the chat
+          if(chatId && findUpClassName(e.target, 'member-tag-editable')) {
+            cancelEvent(e);
+            openEditMemberTag(chatId, peerId, membersParticipantMap.get(peerId));
+            return;
+          }
+
           let promise: Promise<any> = Promise.resolve();
-          if(this.slider === appSidebarRight && mediaSizes.isMobile) {
+          if(this.slider === hotReloadGuard.appSidebarRight && mediaSizes.isMobile) {
             promise = (this.slider as typeof appSidebarRight).toggleSidebar(false);
           }
 
           promise.then(() => {
-            appImManager.setInnerPeer({peerId});
+            hotReloadGuard.appImManager.setInnerPeer({peerId});
           });
         });
         mediaTab.itemsTab.append(membersList.list);
@@ -1918,6 +1972,27 @@ export default class AppSearchSuper {
             renderParticipants([participant]);
             this.setCounter(mediaTab.type, this.counters[mediaTab.type] + 1);
           };
+
+          // * the group's say on tags changed (its own rules, my rights as an admin): every row tells
+          // * anew whether its tag opens the editor. Nothing else a chat update brings touches them
+          const getTagRights = () => {
+            const chat = apiManagerProxy.getChat(chatId);
+            return [hasRights(chat, 'edit_rank'), hasRights(chat, 'manage_ranks')].join();
+          };
+          let tagRights = getTagRights();
+          const onChatUpdate = (_chatId: ChatId) => {
+            const rights = chatId === _chatId && getTagRights();
+            if(!rights || rights === tagRights) {
+              return;
+            }
+
+            tagRights = rights;
+            renderParticipants(Array.from(membersParticipantMap.values()));
+          };
+          rootScope.addEventListener('chat_update', onChatUpdate);
+          middleware.onClean(() => {
+            rootScope.removeEventListener('chat_update', onChatUpdate);
+          });
 
           if(apiManagerProxy.getChat(chatId)._ === 'chat') {
             const onChatFullUpdate = async(_chatId: ChatId) => {
@@ -1949,6 +2024,21 @@ export default class AppSearchSuper {
               rootScope.removeEventListener('chat_full_update', onChatFullUpdate);
             });
           } else {
+            // * a supergroup's tag changed: that row redrawn with it
+            const onParticipantRank = ({chatId: _chatId, userId, rank}: {chatId: ChatId, userId: UserId, rank: string}) => {
+              const peerId = userId.toPeerId(false);
+              const participant = membersParticipantMap.get(peerId);
+              if(chatId !== _chatId || !participant) {
+                return;
+              }
+
+              renderParticipants([{...participant, rank: rank || undefined} as ChannelParticipant]);
+            };
+            rootScope.addEventListener('chat_participant_rank', onParticipantRank);
+            middleware.onClean(() => {
+              rootScope.removeEventListener('chat_participant_rank', onParticipantRank);
+            });
+
             const onParticipantUpdate = (update: Update.updateChannelParticipant) => {
               if(chatId !== update.channel_id) {
                 return;
@@ -1972,9 +2062,10 @@ export default class AppSearchSuper {
         }
       }
 
+      const chat = chatId && apiManagerProxy.getChat(chatId);
       const peerIds: {
         peerId: PeerId,
-        rank: ReturnType<typeof getParticipantRank>,
+        rank: SortedUserListRank,
         participant: typeof participants[0]
       }[] = participants.map((participant) => {
         const peerId = userId ? (participant as Chat.chat).id.toPeerId(true) : getParticipantPeerId(participant as ChannelParticipant);
@@ -1982,9 +2073,21 @@ export default class AppSearchSuper {
           return;
         }
 
+        let rank: SortedUserListRank;
+        if(chatId) {
+          const _participant = participant as ChannelParticipant;
+          const role = getMemberTagRole(_participant);
+          const editable = canEditMemberTag(chat, peerId, rootScope.myId, _participant);
+          // * my own row with no tag offers one, as long as I am a plain member (an admin's reads "admin")
+          rank = {rank: getParticipantRank(_participant), role, editable};
+          if(rank.rank === undefined && !(editable && peerId === rootScope.myId && role === 'member')) {
+            rank = undefined;
+          }
+        }
+
         return {
           peerId,
-          rank: getParticipantRank(participant as ChannelParticipant) as any,
+          rank,
           participant
         };
       }).filter(Boolean);
@@ -2020,7 +2123,7 @@ export default class AppSearchSuper {
 
     if(userId) {
       const LOAD_COUNT = !this.membersList ? 50 : 200;
-      promise = this.managers.appUsersManager.getCommonChats(userId, LOAD_COUNT, this.nextRates[mediaTab.type]).then((messagesChats) => {
+      promise = managers.appUsersManager.getCommonChats(userId, LOAD_COUNT, this.nextRates[mediaTab.type]).then((messagesChats) => {
         if(!middleware()) {
           return;
         }
@@ -2040,9 +2143,9 @@ export default class AppSearchSuper {
 
         return renderParticipants(messagesChats.chats);
       });
-    } else if(await this.managers.appChatsManager.isChannel(chatId)) {
+    } else if(await managers.appChatsManager.isChannel(chatId)) {
       const LOAD_COUNT = !this.membersList ? 50 : 200;
-      promise = this.managers.appProfileManager.getChannelParticipants({
+      promise = managers.appProfileManager.getChannelParticipants({
         id: chatId,
         limit: LOAD_COUNT,
         offset: this.nextRates[mediaTab.type]
@@ -2063,7 +2166,7 @@ export default class AppSearchSuper {
         return renderParticipants(participants.participants);
       });
     } else {
-      promise = this.managers.appProfileManager.getChatFull(chatId).then((chatFull) => {
+      promise = managers.appProfileManager.getChatFull(chatId).then((chatFull) => {
         if(!middleware()) {
           return;
         }
@@ -2130,11 +2233,11 @@ export default class AppSearchSuper {
     const middlewareHelper = this.middleware.get().create();
 
     const renderChats = async(chats: Chat[], middleware: Middleware) => {
-      const chatlist = appDialogsManager.createChatList({new: true});
+      const chatlist = hotReloadGuard.appDialogsManager.createChatList({new: true});
 
       const promises = chats.map(async(chat) => {
         const loadPromises: Promise<any>[] = [];
-        const {dom} = appDialogsManager.addDialogNew({
+        const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
           peerId: chat.id.toPeerId(true),
           container: chatlist,
           avatarSize: 'abitbigger',
@@ -2149,7 +2252,7 @@ export default class AppSearchSuper {
         return Promise.all(loadPromises);
       });
 
-      appDialogsManager.setListClickListener({list: chatlist, autonomous: true});
+      hotReloadGuard.appDialogsManager.setListClickListener({list: chatlist, autonomous: true});
 
       await Promise.all(promises);
       return chatlist;
@@ -2160,24 +2263,28 @@ export default class AppSearchSuper {
       wall.classList.add('similar-channels-paywall');
       const btn = Button('btn-primary btn-color-primary', {icon: 'premium_unlock_filled', text: 'UnlockSimilar'});
       btn.classList.add('similar-channels-paywall-button');
-      const onClick = () => showPremiumPopup();
+      const onClick = () => hotReloadGuard.showPremiumPopup();
       const anchor = anchorCallback(onClick);
       attachClickEvent(btn, onClick);
       anchor.classList.add('primary');
-      const subtitle = i18n('SimilarChannels.Unlock', [anchor, limit]);
+      const subtitle = i18n('SimilarChannels.Unlock', [limit, anchor]);
       subtitle.classList.add('similar-channels-paywall-subtitle');
       wall.append(btn, subtitle);
       return wall;
     };
 
-    let paywall: HTMLElement, wasPremium: boolean;
+    // * the rows on screen live until the next list takes their place: a premium toggle leaves them
+    // * there while it loads, and rows torn down before that lose their layout in view
+    let paywall: HTMLElement, wasPremium: boolean, shownRowsHelper: MiddlewareHelper;
     const onPremium = async(isPremium: boolean) => {
       if(wasPremium === isPremium) {
         return;
       }
 
+      wasPremium = isPremium;
       middlewareHelper.clean();
       const middleware = middlewareHelper.get();
+      const rowsHelper = this.middleware.get().create();
 
       const [messagesChats, premiumLimit, isPremiumFeaturesHidden] = await Promise.all([
         this.managers.appChatsManager.getChannelRecommendations(this.searchContext.peerId.toChatId()),
@@ -2185,12 +2292,15 @@ export default class AppSearchSuper {
         apiManagerProxy.isPremiumFeaturesHidden()
       ]);
 
-      const chatlist = await renderChats(messagesChats.chats, middleware);
+      const chatlist = await renderChats(messagesChats.chats, rowsHelper.get());
       if(!middleware()) {
+        rowsHelper.destroy();
         return;
       }
 
       mediaTab.itemsTab.replaceChildren(chatlist);
+      shownRowsHelper?.destroy();
+      shownRowsHelper = rowsHelper;
       this.afterPerforming(1, mediaTab);
       this.loaded[mediaTab.type] = true;
 
@@ -2216,10 +2326,10 @@ export default class AppSearchSuper {
       return this._loadSavedDialogs(side);
     }
 
-    const xd = new AutonomousSavedDialogList({appDialogsManager});
+    const xd = new AutonomousSavedDialogList({appDialogsManager: hotReloadGuard.appDialogsManager});
     xd.scrollable = this.scrollable;
     xd.sortedList = new SortedDialogList({
-      appDialogsManager,
+      appDialogsManager: hotReloadGuard.appDialogsManager,
       managers: this.managers,
       log: this.log,
       requestItemForIdx: xd.requestItemForIdx,
@@ -2233,7 +2343,7 @@ export default class AppSearchSuper {
 
     const list = xd.sortedList.list;
 
-    appDialogsManager.setListClickListener({
+    hotReloadGuard.appDialogsManager.setListClickListener({
       list,
       withContext: true,
       openInner: this.openSavedDialogsInner
@@ -2268,10 +2378,11 @@ export default class AppSearchSuper {
   }
 
   private async renderPeerDialogs(peerIds: PeerId[], group: SearchGroup, middleware: Middleware, type?: 'bots' | 'channels') {
+    const managers = bindManagersToSession(this.managers);
     if(!middleware()) return;
 
     for(const peerId of peerIds) {
-      const {dom} = appDialogsManager.addDialogNew({
+      const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
         peerId,
         container: group.list,
         avatarSize: 'abitbigger',
@@ -2279,8 +2390,8 @@ export default class AppSearchSuper {
           middleware
         }
       });
-      const peer = await this.managers.appPeersManager.getPeer(peerId);
-      const username = await this.managers.appPeersManager.getPeerUsername(peerId);
+      const peer = await managers.appPeersManager.getPeer(peerId);
+      const username = await managers.appPeersManager.getPeerUsername(peerId);
 
       if('participants_count' in peer) {
         dom.lastMessageSpan.append(await getChatMembersString(peerId.toChatId()));
@@ -2295,6 +2406,7 @@ export default class AppSearchSuper {
   }
 
   private async loadChannels({mediaTab, middleware}: SearchSuperLoadTypeOptions) {
+    const managers = bindManagersToSession(this.managers);
     if(this.searchContext.query) {
       const group = createSearchGroup({name: 'Channels', type: 'channels', middleware});
       group.setActive();
@@ -2302,9 +2414,9 @@ export default class AppSearchSuper {
 
       // * the server returns channels only; the check below stays as a guard
       const SEARCH_LIMIT = 200;
-      const {results: globalResults} = await this.managers.appUsersManager.searchContacts(this.searchContext.query, SEARCH_LIMIT, 'broadcasts');
+      const {results: globalResults} = await managers.appUsersManager.searchContacts(this.searchContext.query, SEARCH_LIMIT, 'broadcasts');
       const filteredResultsWithUndefined = await Promise.all(
-        globalResults.map(async(user) => await this.managers.appPeersManager.isBroadcast(user) ? user : undefined)
+        globalResults.map(async(user) => await managers.appPeersManager.isBroadcast(user) ? user : undefined)
       );
       const filteredResults = filteredResultsWithUndefined.filter(Boolean);
 
@@ -2319,8 +2431,8 @@ export default class AppSearchSuper {
       return;
     }
 
-    const dialogs = await this.managers.dialogsStorage.getCachedDialogs();
-    const channelDialogsWithUndefined = await Promise.all(dialogs.map(async(dialog) => await this.managers.appPeersManager.isBroadcast(dialog.peerId) ? dialog : undefined));
+    const dialogs = await managers.dialogsStorage.getCachedDialogs();
+    const channelDialogsWithUndefined = await Promise.all(dialogs.map(async(dialog) => await managers.appPeersManager.isBroadcast(dialog.peerId) ? dialog : undefined));
     const channelDialogs = channelDialogsWithUndefined.filter(Boolean);
 
     if(channelDialogs.length) {
@@ -2334,7 +2446,7 @@ export default class AppSearchSuper {
       this.renderPeerDialogs(channelDialogs.map((dialog) => dialog.peerId), group, middleware);
     }
 
-    const recommendations = await this.managers.appChatsManager.getChannelRecommendations();
+    const recommendations = await managers.appChatsManager.getChannelRecommendations();
 
     if(recommendations.chats.length) {
       const group = createSearchGroup({name: 'SimilarChannels', type: 'channels', middleware});
@@ -2349,6 +2461,7 @@ export default class AppSearchSuper {
   }
 
   private async loadApps({mediaTab, middleware}: SearchSuperLoadTypeOptions) {
+    const managers = bindManagersToSession(this.managers);
     if(this._loadMoreApps) {
       return this._loadMoreApps();
     }
@@ -2357,7 +2470,7 @@ export default class AppSearchSuper {
       (async() => {
         const peerId = el.dataset.peerId.toPeerId();
         const userFull = await this.managers.appProfileManager.getProfile(peerId);
-        appImManager.openWebApp({
+        hotReloadGuard.appImManager.openWebApp({
           botId: peerId.toUserId(),
           url: (userFull.bot_info.menu_button as BotMenuButton.botMenuButton).url,
           buttonText: (userFull.bot_info.menu_button as BotMenuButton.botMenuButton).text,
@@ -2374,9 +2487,9 @@ export default class AppSearchSuper {
 
       // * the server returns bots only; the check below stays as a guard
       const SEARCH_LIMIT = 200;
-      const {results: globalResults} = await this.managers.appUsersManager.searchContacts(this.searchContext.query, SEARCH_LIMIT, 'bots');
+      const {results: globalResults} = await managers.appUsersManager.searchContacts(this.searchContext.query, SEARCH_LIMIT, 'bots');
       const filteredResultsWithUndefined = await Promise.all(
-        globalResults.map(async(user) => await this.managers.appPeersManager.isBot(user) ? user : undefined)
+        globalResults.map(async(user) => await managers.appPeersManager.isBot(user) ? user : undefined)
       );
       const filteredResults = filteredResultsWithUndefined.filter(Boolean);
 
@@ -2391,7 +2504,7 @@ export default class AppSearchSuper {
       return;
     }
 
-    const myTopApps = await rootScope.managers.appUsersManager.getTopPeers('bots_app');
+    const myTopApps = await managers.appUsersManager.getTopPeers('bots_app');
 
     if(myTopApps.length) {
       const group = createSearchGroup({name: 'MiniApps.Apps', type: 'apps', onFound: onClick, middleware});
@@ -2507,6 +2620,7 @@ export default class AppSearchSuper {
   }
 
   private loadType(options: SearchSuperLoadTypeOptions) {
+    const managers = bindManagersToSession(this.managers);
     const {
       mediaTab,
       justLoad,
@@ -2564,7 +2678,8 @@ export default class AppSearchSuper {
         !this.searchContext.query.trim() &&
         !this.searchContext.peerId &&
         !this.searchContext.communityId &&
-        !this.searchContext.minDate
+        !this.searchContext.minDate &&
+        this.searchContext.folderId !== FOLDER_ID_ARCHIVE
       ) {
         this.loaded[type] = true;
         return Promise.resolve();
@@ -2618,7 +2733,7 @@ export default class AppSearchSuper {
         nextRate: this.nextRates[type] ??= 0,
         ...(type === 'saved' ? {inputFilter: undefined, peerId: rootScope.myId, threadId: this.searchContext.peerId} : {})
       };
-      const value = await this.managers.appMessagesManager.getHistory(options);
+      const value = await managers.appMessagesManager.getHistory(options);
 
       let messages = value.messages;
       if(!messages && value.history/*  && mediaTab.type === 'saved' */) {
@@ -2788,7 +2903,6 @@ export default class AppSearchSuper {
       this.setMediaCounters({photos, videos});
     }
 
-    let firstMediaTab: SearchSuperMediaTab;
     let count = 0;
     mediaTabs.forEach((mediaTab) => {
       const counter = counters.find((c) => c.filter._ === mediaTab.inputFilter);
@@ -2800,7 +2914,6 @@ export default class AppSearchSuper {
       this.setCounter(mediaTab.type, counter.count);
 
       if(counter.count) {
-        firstMediaTab ??= mediaTab;
         ++count;
       }
     });
@@ -2841,22 +2954,8 @@ export default class AppSearchSuper {
     this.setCounter('gifts', giftsCount);
 
     if(canViewStories) {
-      firstMediaTab = storiesTab;
-
       const newTitle = i18n(peerId.isUser() ? 'Stories' : 'ProfileStories');
       storiesTab.menuTabName.replaceWith(storiesTab.menuTabName = newTitle);
-    }
-
-    if(canViewMembers) {
-      firstMediaTab = membersTab;
-    }
-
-    if(canViewSavedDialogs) {
-      firstMediaTab = savedDialogsTab;
-    }
-
-    if(showGiftsTab && !firstMediaTab) {
-      firstMediaTab = giftsTab;
     }
 
     if(maybePinnedGifts) {
@@ -2865,10 +2964,8 @@ export default class AppSearchSuper {
 
     const mainMediaTabType = getMediaTypeForProfileTab(profileTabsData.mainTab);
     this.setMainMediaTab(mainMediaTabType);
-    const mainMediaTab = this.mediaTabs.find((mediaTab) => mediaTab.type === mainMediaTabType);
-    if(mainMediaTab && !mainMediaTab.menuTab.classList.contains('hide')) {
-      firstMediaTab = mainMediaTab;
-    }
+    // * open on the first visible tab, the main one leading (tdesktop, Android)
+    const firstMediaTab = this.getFirstVisibleMediaTab();
 
     this.toggleContainerHidden(!firstMediaTab);
     if(firstMediaTab) {
@@ -3239,6 +3336,8 @@ export default class AppSearchSuper {
 
   public destroy() {
     this.cleanup();
+    // * cleaning ends what is loading, the destructors registered on it (a video's source) run only here
+    this.middleware.destroy();
     this.listenerSetter.removeAll();
     this.disposeNav?.();
     this.disposeNav = undefined;
@@ -3255,3 +3354,6 @@ export default class AppSearchSuper {
       undefined;
   }
 }
+
+// a method edited here takes effect on the open shared media and search tabs, without a reload (see @helpers/hotRegistry)
+if(import.meta.hot) import.meta.hot.accept();

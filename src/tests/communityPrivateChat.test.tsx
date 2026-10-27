@@ -78,6 +78,14 @@ vi.mock('@components/popups/indexTsx', () => {
 });
 
 import showCommunityPrivateChat from '@components/popups/communityPrivateChat';
+import * as mocked1 from '@lib/appImManager';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+
+// the code under test reads the top level from the registry, not from the modules mocked above
+registerHotReloadGuard({
+  appImManager: (mocked1 as any).default
+});
+
 
 const channelId = 10 as ChatId;
 const peerId = channelId.toPeerId(true);

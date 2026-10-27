@@ -1,15 +1,15 @@
 import {Photo} from '@layer';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import ListLoader, {ListLoaderOptions} from '@helpers/listLoader';
 
 export default class AvatarListLoader<Item extends {photoId: Photo.photo['id']}> extends ListLoader<Item, any> {
   private peerId: PeerId;
-  private managers: AppManagers;
+  private managers: ReadingManagers;
   // The public (fallback) photo, shown as the LAST item (self profile only).
   private fallbackPhotoId: Photo.photo['id'];
   private fallbackAppended: boolean;
 
-  constructor(options: Omit<ListLoaderOptions<Item, any>, 'loadMore'> & {peerId: PeerId, managers: AppManagers, fallbackPhotoId?: Photo.photo['id']}) {
+  constructor(options: Omit<ListLoaderOptions<Item, any>, 'loadMore'> & {peerId: PeerId, managers: ReadingManagers, fallbackPhotoId?: Photo.photo['id']}) {
     super({
       ...options,
       loadMore: (anchor, older, loadCount) => {

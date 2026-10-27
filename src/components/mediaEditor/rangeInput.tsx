@@ -4,6 +4,7 @@ import clamp from '@helpers/number/clamp';
 import {hexaToHsla} from '@helpers/color';
 import nMap from '@helpers/number/nMap';
 import I18n, {LangPackKey} from '@lib/langPack';
+import onRangeInlineArrowKey from '@helpers/dom/onRangeInlineArrowKey';
 
 export default function RangeInput(props: {
   ref?: (el: HTMLDivElement) => void;
@@ -45,7 +46,8 @@ export default function RangeInput(props: {
     >
       <div class="media-editor__range-input-row">
         <div class="media-editor__range-input-label">{props.label}</div>
-        <div class="media-editor__range-input-value">{props.value}</div>
+        {/* * a signed number: `-20` keeps its minus in front in RTL */}
+        <div class="media-editor__range-input-value" dir="ltr">{props.value}</div>
       </div>
       <div class="media-editor__range-input-wrapper">
         <input
@@ -64,6 +66,7 @@ export default function RangeInput(props: {
             props.onChangeFinish?.(prevValue, props.value);
             prevValue = null;
           }}
+          onKeyDown={onRangeInlineArrowKey}
         />
         <div class="media-editor__range-input-thumb media-editor__range-input-thumb--shadow" />
         <div class="media-editor__range-input-progress media-editor__range-input-progress--shadow" />

@@ -8,12 +8,13 @@ import noop from '@helpers/noop';
 
 import confirmationPopup from '@components/confirmationPopup';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
-import showStarsPopup from '@components/popups/stars';
 
 import showUndoablePaidTooltip, {paidMessagesLangKeys} from '@components/chat/undoablePaidTooltip';
 import createPendingUndoableMessage from '@components/chat/pendingUndoableMessage';
 import type Chat from '@components/chat/chat';
 import {useAppState} from '@stores/appState';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 
 type PassedDownArgs = {
@@ -42,7 +43,8 @@ export type ConfirmedPaymentResult = {
  */
 type PreparedPaymentResult = undefined | typeof PAYMENT_REJECTED | ConfirmedPaymentResult;
 
-export const PAYMENT_REJECTED = Symbol('Payment rejected');
+const PAYMENT_REJECTED_SYMBOL = Symbol('Payment rejected');
+export const PAYMENT_REJECTED: typeof PAYMENT_REJECTED_SYMBOL = PAYMENT_REJECTED_SYMBOL;
 
 
 export default class PaidMessagesInterceptor {
@@ -91,7 +93,7 @@ export default class PaidMessagesInterceptor {
     if(PaidMessagesInterceptor.starsBalance < totalStarsAmount)
     {
       this.pendingUndoableMessage.abort();
-      showStarsPopup({spendPurposePeerId: peerId});
+      hotReloadGuard.showStarsPopup({spendPurposePeerId: peerId});
       return PAYMENT_REJECTED;
     }
 
@@ -142,7 +144,7 @@ export default class PaidMessagesInterceptor {
 
     if(PaidMessagesInterceptor.starsBalance < totalStarsAmount)
     {
-      showStarsPopup({spendPurposePeerId: peerId});
+      hotReloadGuard.showStarsPopup({spendPurposePeerId: peerId});
       return PAYMENT_REJECTED;
     }
 
@@ -205,6 +207,7 @@ export default class PaidMessagesInterceptor {
   }
 
   private triggerUndoableMessages({peerId, messageCount, starsAmount}: PassedDownArgs) {
+    const managers = bindManagersToSession(this.managers);
     this.pendingUndoableMessage.setMessageCount(prev => prev + messageCount);
     this.pendingUndoableMessage.setSendTime(Date.now() + SEND_PAID_WITH_STARS_DELAY);
 
@@ -227,7 +230,7 @@ export default class PaidMessagesInterceptor {
     });
 
     this.pendingUndoableMessage.timeoutId = self.setTimeout(() => {
-      this.managers.appMessagesManager.sendQueuedPaidMessages(peerId);
+      managers.appMessagesManager.sendQueuedPaidMessages(peerId);
       this.pendingUndoableMessage.reset();
     }, SEND_PAID_WITH_STARS_DELAY);
   }

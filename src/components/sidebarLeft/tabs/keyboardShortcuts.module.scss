@@ -5,6 +5,8 @@
   flex-wrap: nowrap;
   flex-shrink: 0;
   white-space: nowrap;
+  // * a combination reads left to right in any language, the way it is written ("Ctrl + B")
+  direction: ltr;
 }
 
 .kbd {

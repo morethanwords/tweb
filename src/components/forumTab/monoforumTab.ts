@@ -1,7 +1,6 @@
 import middlewarePromise from '@helpers/middlewarePromise';
 import namedPromises from '@helpers/namedPromises';
 import {Dialog} from '@layer';
-import appDialogsManager from '@lib/appDialogsManager';
 import {isDialog} from '@appManagers/utils/dialogs/isDialog';
 import {i18n} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
@@ -9,6 +8,8 @@ import {AutonomousMonoforumThreadList} from '@components/autonomousDialogList/mo
 import SortedDialogList from '@components/sortedDialogList';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {ForumTab} from '@components/forumTab/forumTab';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 
 export class MonoforumTab extends ForumTab {
@@ -18,12 +19,12 @@ export class MonoforumTab extends ForumTab {
     super.syncInit();
 
 
-    const autonomousList = new AutonomousMonoforumThreadList({peerId: this.peerId, appDialogsManager});
+    const autonomousList = new AutonomousMonoforumThreadList({peerId: this.peerId, appDialogsManager: hotReloadGuard.appDialogsManager});
     autonomousList.scrollable = this.scrollable;
 
     const sortedList = autonomousList.sortedList = new SortedDialogList({
       itemSize: 72,
-      appDialogsManager,
+      appDialogsManager: hotReloadGuard.appDialogsManager,
       scrollable: this.scrollable,
       managers: rootScope.managers,
       requestItemForIdx: autonomousList.requestItemForIdx,
@@ -38,7 +39,7 @@ export class MonoforumTab extends ForumTab {
 
     this.xd = autonomousList;
 
-    appDialogsManager.setListClickListener({list, onFound: null, withContext: true});
+    hotReloadGuard.appDialogsManager.setListClickListener({list, onFound: null, withContext: true});
     this.scrollable.append(list);
     autonomousList.bindScrollable();
 
@@ -67,7 +68,7 @@ export class MonoforumTab extends ForumTab {
       return;
     }
 
-    appDialogsManager.setLastMessageN({
+    hotReloadGuard.appDialogsManager.setLastMessageN({
       dialog,
       dialogElement,
       setUnread: true
@@ -75,6 +76,7 @@ export class MonoforumTab extends ForumTab {
   }
 
   async asyncInit(): Promise<void> {
+    const managers = bindManagersToSession(this.managers);
     await super.asyncInit();
 
     const middleware = this.middlewareHelper.get();
@@ -90,7 +92,7 @@ export class MonoforumTab extends ForumTab {
           dialog: true,
           wrapOptions: {middleware}
         }),
-        dialogs: this.managers.monoforumDialogsStorage.getDialogs({parentPeerId: peerId, limit: 1})
+        dialogs: managers.monoforumDialogsStorage.getDialogs({parentPeerId: peerId, limit: 1})
       }));
 
       this.title.append(peerTitle);

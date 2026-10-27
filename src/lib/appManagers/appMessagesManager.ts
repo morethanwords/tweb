@@ -193,7 +193,13 @@ export type UploadedRichMessageMedia = {
   document?: Document.document,
   photo?: Photo.photo,
   spoiler?: boolean,
-  type: 'audio' | 'photo' | 'video'
+  type: 'audio' | 'document' | 'photo' | 'video'
+};
+
+/** A rich message's media before the server's: the local file, as a sent message's is until then. */
+export type PreparedRichMessageMedia = {
+  document?: MyDocument,
+  photo?: MyPhoto
 };
 
 export type HistoryStorageKey = `${HistoryStorage['type']}_${PeerId}` | `replies_${PeerId}_${number}` | `search_${PeerId}_${SearchStorageFilterKey}_${number}`;
@@ -424,6 +430,9 @@ export type RequestHistoryOptions = {
   hashtagType?: 'this' | 'my' | 'public',
   chatType?: 'all' | 'users' | 'groups' | 'channels',
   communityId?: ChatId,
+  // * a page may leave out an album its edge cuts, which comes whole with the next page, rather than wait for a second
+  // * request to fill it: for a reader that tells the end by `isEnd` only, not by a page shorter than asked for
+  leaveOutEdgeAlbums?: boolean,
   previewOnly?: boolean,                  // ! FOR INNER USE ONLY
   recursion?: boolean,                  // ! FOR INNER USE ONLY
   historyType?: HistoryType,            // ! FOR INNER USE ONLY
@@ -473,7 +482,9 @@ type ReadHistoryArgs = {
 type MarkDialogUnreadArgs = {
   peerId: PeerId,
   read?: boolean,
-  monoforumThreadId?: PeerId
+  monoforumThreadId?: PeerId,
+  /** how far `read` reads the history; the top message by default */
+  maxId?: number
 };
 
 type FlushHistoryArgs = {
@@ -503,6 +514,7 @@ type DoFlushHistoryArgs = {
 
 type SendContactArgs = {
   peerId: PeerId,
+  threadId?: number,
   monoforumThreadId?: PeerId,
   contactPeerId: PeerId,
   confirmedPaymentResult?: ConfirmedPaymentResult
@@ -570,6 +582,8 @@ type MakeDocumentAndMetaForSendingFileArgs = Pick<SendFileArgs,
 > & {
   mediaTempId: number;
   isDocument: boolean;
+  // a file whatever it holds: no audio branch either (a rich message's file block)
+  forceFile?: boolean;
 };
 
 type EditMessageMediaArgs = {
@@ -687,6 +701,7 @@ export class AppMessagesManager extends AppManager {
   private pendingByMessageId: {[mid: string]: Long} = {};
   private pendingAfterMsgs: {[peerId: PeerId]: PendingAfterMsg} = {};
   public pendingTopMsgs: {[peerId in PeerId | `${PeerId}_${number}`]: number} = {};
+  private fillConversationsPromises: {[folderId: string]: Promise<void>} = {};
   private tempFinalizeCallbacks: {
     [tempId: string]: {
       [callbackName: string]: Partial<{
@@ -768,6 +783,11 @@ export class AppMessagesManager extends AppManager {
   private batchUpdatesDebounced: () => Promise<void>;
 
   private uploadFilePromises: {[fileName: string]: CancellablePromise<any>};
+  // a rich message's media between its preparation and the end of its upload, by `uploadingFileName`
+  private preparedRichMessageMedia: Map<string, {
+    metadata: ReturnType<AppMessagesManager['makeDocumentAndMetaForSendingFile']>,
+    deferred: CancellablePromise<void>
+  }> = new Map();
 
   private tempMids: {[peerId: PeerId]: number} = {};
 
@@ -1040,6 +1060,7 @@ export class AppMessagesManager extends AppManager {
       this.uploadFilePromises = {};
     }
 
+    this.fillConversationsPromises = {};
     this.messagesStorageByPeerId = {};
     this.groupedMessagesStorage = {};
     this.scheduledMessagesStorage = {};
@@ -2057,8 +2078,22 @@ export class AppMessagesManager extends AppManager {
 
     // a bot's keyboard or force-reply comes on ephemeral messages too (layer 229): it becomes the
     // chat's keyboard like any other (desktop adds them through the same `addNewItem`), and a
-    // press answers the bot privately, in reply to this message
-    if(this.mergeReplyKeyboard(this.getHistoryStorage(peerId), storedMessage)) {
+    // press answers the bot privately, in reply to this message. One sent to a topic is that
+    // topic's keyboard as well, and goes there now: loading the topic's history will not bring it
+    const historyStorages = [this.getHistoryStorage(peerId)];
+    const isForum = this.appPeersManager.isForum(peerId);
+    const isBotforum = this.appPeersManager.isBotforum(peerId);
+    const topicId = (isForum || isBotforum) && getMessageThreadId(storedMessage, {isForum, isBotforum});
+    if(topicId) {
+      historyStorages.push(this.getHistoryStorage(peerId, topicId));
+    }
+
+    let replyMarkupChanged = false;
+    for(const historyStorage of historyStorages) {
+      replyMarkupChanged = this.mergeReplyKeyboard(historyStorage, storedMessage) || replyMarkupChanged;
+    }
+
+    if(replyMarkupChanged) {
       this.rootScope.dispatchEvent('history_reply_markup', {peerId});
     }
 
@@ -2111,10 +2146,17 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
-    // the keyboard goes with the ephemeral message that brought it
-    const historyStorage = this.getHistoryStorage(peerId);
-    if(historyStorage.replyMarkup && deletedMids.has(historyStorage.replyMarkup.mid)) {
-      historyStorage.replyMarkup = undefined;
+    // the keyboard goes with the ephemeral message that brought it, from the chat and its topic
+    let replyMarkupChanged = false;
+    const historyStorages = [this.getHistoryStorage(peerId), ...Object.values(this.threadsStorage[peerId] || {})];
+    for(const historyStorage of historyStorages) {
+      if(historyStorage.replyMarkup && deletedMids.has(historyStorage.replyMarkup.mid)) {
+        historyStorage.replyMarkup = undefined;
+        replyMarkupChanged = true;
+      }
+    }
+
+    if(replyMarkupChanged) {
       this.rootScope.dispatchEvent('history_reply_markup', {peerId});
     }
 
@@ -2763,12 +2805,19 @@ export class AppMessagesManager extends AppManager {
     return inputMedia;
   }
 
-  public async uploadRichMessageMedia(options: {
-    peerId: PeerId,
+  /**
+   * A rich message's media before its upload, as a sent message's is: the file at hand, so what
+   * was uploaded is never downloaded back, and the upload registered where a message's is — the
+   * composer draws the media from this and shows its upload as a bubble shows one.
+   */
+  public prepareRichMessageMedia(options: {
     sendFileDetails: SendFileDetails,
-    uploadingFileName?: string
-  }): Promise<UploadedRichMessageMedia> {
-    const {sendFileDetails, peerId} = options;
+    uploadingFileName: string,
+    // a file block: any file, sent as a file (force_file, its name and nothing else of it) — the
+    // way the other clients send one; music stays an audio block all the same
+    asFile?: boolean
+  }): PreparedRichMessageMedia {
+    const {sendFileDetails, uploadingFileName, asFile} = options;
     const {file} = sendFileDetails;
     if(!(file instanceof File) && !(file instanceof Blob)) {
       throw makeError('UNKNOWN', 'RICH_MESSAGE_MEDIA_FILE_REQUIRED');
@@ -2778,8 +2827,11 @@ export class AppMessagesManager extends AppManager {
       mediaTempId: this.mediaTempId++,
       isDocument: false,
       file,
+      objectURLBlob: file,
       entities: [],
-      isMedia: true,
+      isMedia: !asFile,
+      // what the composer made a file block stays one, an audio/wav too
+      forceFile: asFile,
       ...pickKeys(sendFileDetails, [
         'strippedBytes',
         'width',
@@ -2793,47 +2845,152 @@ export class AppMessagesManager extends AppManager {
     if(
       metadata.attachType !== 'audio' &&
       metadata.attachType !== 'photo' &&
-      metadata.attachType !== 'video'
+      metadata.attachType !== 'video' &&
+      !(asFile && metadata.attachType === 'document')
     ) {
       throw makeError('UNKNOWN', 'RICH_MESSAGE_MEDIA_TYPE_UNSUPPORTED');
     }
 
-    const inputMedia = await this.uploadMediaFile({
-      peerId,
-      file,
-      uploadingFileName: options.uploadingFileName || getFileNameForUpload(file),
-      ...pickKeys(sendFileDetails, ['objectURL', 'thumb']),
-      spoiler: metadata.attachType === 'audio' ? undefined : sendFileDetails.spoiler,
-      ...pickKeys(metadata, [
-        'fileType',
-        'apiFileName',
-        'attachType',
-        'attributes',
-        'actionName'
-      ])
-    });
-    const uploaded = await this.apiManager.invokeApi('messages.uploadMedia', {
-      peer: this.appPeersManager.getInputPeerById(peerId),
-      media: inputMedia
-    });
+    this.failRichMessageMedia(uploadingFileName, makeError('UPLOAD_CANCELED'));
+    const deferred = deferredPromise<void>();
+    // settled for whoever asked about it; a rejection nobody asked about is no error
+    deferred.catch(noop);
+    this.uploadFilePromises[uploadingFileName] = deferred;
+    this.preparedRichMessageMedia.set(uploadingFileName, {metadata, deferred});
+    return {document: metadata.document, photo: metadata.photo};
+  }
 
-    if(metadata.attachType === 'photo' && uploaded._ === 'messageMediaPhoto') {
+  /** The composer's cancel of a rich message's media, uploading or only prepared. */
+  public cancelRichMessageMedia(uploadingFileName: string) {
+    this.apiFileManager.cancelDownload(uploadingFileName);
+  }
+
+  /**
+   * A cancel that found no transfer to stop (`apiFileManager.cancelDownload`, which the upload's ring
+   * calls too): a rich message's media only prepared, or past its bytes and still waiting for
+   * `messages.uploadMedia`, is given up here.
+   */
+  public cancelPreparedRichMessageMedia(uploadingFileName: string) {
+    if(!this.preparedRichMessageMedia.has(uploadingFileName)) return false;
+    this.failRichMessageMedia(uploadingFileName, makeError('UPLOAD_CANCELED'));
+    return true;
+  }
+
+  private forgetRichMessageMedia(uploadingFileName: string) {
+    const prepared = this.preparedRichMessageMedia.get(uploadingFileName);
+    if(!prepared) return;
+    this.preparedRichMessageMedia.delete(uploadingFileName);
+    if(this.uploadFilePromises[uploadingFileName] === prepared.deferred) {
+      delete this.uploadFilePromises[uploadingFileName];
+    }
+
+    return prepared;
+  }
+
+  private failRichMessageMedia(uploadingFileName: string, error: ApiError) {
+    const prepared = this.forgetRichMessageMedia(uploadingFileName);
+    if(!prepared) return;
+    prepared.deferred.reject(error);
+    // nothing takes the local file over now
+    const {document, photo} = prepared.metadata;
+    if(document) {
+      this.thumbsStorage.deleteCacheContext(document);
+      this.thumbsStorage.deleteCacheContext(document, 'local-thumb');
+    } else if(photo) {
+      this.thumbsStorage.deleteCacheContext(photo, THUMB_TYPE_FULL);
+    }
+  }
+
+  public async uploadRichMessageMedia(options: {
+    peerId: PeerId,
+    sendFileDetails: SendFileDetails,
+    uploadingFileName?: string,
+    asFile?: boolean
+  }): Promise<UploadedRichMessageMedia> {
+    const {sendFileDetails, peerId, asFile} = options;
+    const file = sendFileDetails.file as File | Blob;
+    const uploadingFileName = options.uploadingFileName ||
+      (file instanceof Blob ? getFileNameForUpload(file) : undefined);
+    if(!this.preparedRichMessageMedia.has(uploadingFileName)) {
+      this.prepareRichMessageMedia({sendFileDetails, uploadingFileName, asFile});
+    }
+
+    const {metadata, deferred} = this.preparedRichMessageMedia.get(uploadingFileName);
+    const isCurrent = () => this.preparedRichMessageMedia.get(uploadingFileName)?.deferred === deferred;
+    // cancelled once its bytes were sent (cancelPreparedRichMessageMedia): nothing completes
+    const assertCurrent = () => {
+      if(!isCurrent()) throw makeError('UPLOAD_CANCELED');
+    };
+    try {
+      const inputMedia = await this.uploadMediaFile({
+        peerId,
+        file,
+        uploadingFileName,
+        ...pickKeys(sendFileDetails, ['objectURL', 'thumb']),
+        spoiler: metadata.attachType === 'photo' || metadata.attachType === 'video' ? sendFileDetails.spoiler : undefined,
+        ...pickKeys(metadata, [
+          'fileType',
+          'apiFileName',
+          'attachType',
+          'attributes',
+          'actionName'
+        ]),
+        // its progress goes where a sent message's does
+        onUploadDeferred: (uploadFileDeferred) => {
+          this.syncSentAndUploadPromises({sentDeferred: deferred, uploadFileDeferred, file});
+        }
+      });
+      assertCurrent();
+      const uploaded = await this.apiManager.invokeApi('messages.uploadMedia', {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        media: inputMedia
+      });
+      assertCurrent();
+      // the server's media takes the local file over, as a sent message's does
+      if(uploaded._ === 'messageMediaPhoto' && uploaded.photo?._ === 'photo' && metadata.photo) {
+        this.updatePhoto(uploaded.photo, '' + metadata.photo.id);
+      } else if(uploaded._ === 'messageMediaDocument' && uploaded.document?._ === 'document' && metadata.document) {
+        this.updateDocument(uploaded.document, '' + metadata.document.id);
+      }
+
+      const result = this.getUploadedRichMessageMedia(metadata.attachType, uploaded, sendFileDetails.spoiler);
+      this.forgetRichMessageMedia(uploadingFileName);
+      deferred.resolve();
+      return result;
+    } catch(error) {
+      if(isCurrent()) this.failRichMessageMedia(uploadingFileName, error as ApiError);
+      throw error;
+    }
+  }
+
+  private getUploadedRichMessageMedia(
+    attachType: string,
+    uploaded: MessageMedia,
+    spoiler?: boolean
+  ): UploadedRichMessageMedia {
+    if(attachType === 'photo' && uploaded._ === 'messageMediaPhoto') {
       return {
         type: 'photo',
         photo: this.appPhotosManager.savePhoto(uploaded.photo),
-        spoiler: sendFileDetails.spoiler || undefined
+        spoiler: spoiler || undefined
       };
     }
-    if(metadata.attachType === 'video' && uploaded._ === 'messageMediaDocument') {
+    if(attachType === 'video' && uploaded._ === 'messageMediaDocument') {
       return {
         type: 'video',
         document: this.appDocsManager.saveDoc(uploaded.document),
-        spoiler: sendFileDetails.spoiler || undefined
+        spoiler: spoiler || undefined
       };
     }
-    if(metadata.attachType === 'audio' && uploaded._ === 'messageMediaDocument') {
+    if(attachType === 'audio' && uploaded._ === 'messageMediaDocument') {
       return {
         type: 'audio',
+        document: this.appDocsManager.saveDoc(uploaded.document)
+      };
+    }
+    if(attachType === 'document' && uploaded._ === 'messageMediaDocument') {
+      return {
+        type: 'document',
         document: this.appDocsManager.saveDoc(uploaded.document)
       };
     }
@@ -3059,7 +3216,12 @@ export class AppMessagesManager extends AppManager {
       }).then(noop);
     }
 
-    if(!richMessage && appConfig.emojies_send_dice?.includes(text.trim())) {
+    // * a custom emoji whose emoticon is a die is sent as itself, as in tdesktop
+    if(
+      !richMessage &&
+      appConfig.emojies_send_dice?.includes(text.trim()) &&
+      !options.entities.some((entity) => entity._ === 'messageEntityCustomEmoji')
+    ) {
       return this.sendOther({
         ...options,
         inputMedia: {
@@ -3778,7 +3940,7 @@ export class AppMessagesManager extends AppManager {
     if(isDocument) { // maybe it's a sticker or gif
       attachType = 'document';
       apiFileName = '';
-    } else if(fileType.indexOf('audio/') === 0 || ['video/ogg'].indexOf(fileType) >= 0) {
+    } else if(!args.forceFile && (fileType.indexOf('audio/') === 0 || ['video/ogg'].indexOf(fileType) >= 0)) {
       attachType = 'audio';
       apiFileName = 'audio.' + (fileType.split('/')[1] === 'ogg' ? 'ogg' : 'mp3');
       actionName = 'sendMessageUploadAudioAction';
@@ -3798,7 +3960,7 @@ export class AppMessagesManager extends AppManager {
       };
 
       attributes.push(attribute);
-    } else if(!args.isMedia) {
+    } else if(!args.isMedia || args.forceFile) {
       attachType = 'document';
       apiFileName = 'document.' + fileType.split('/')[1];
       actionName = 'sendMessageUploadDocumentAction';
@@ -4325,9 +4487,10 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public sendContact({peerId, contactPeerId, monoforumThreadId, confirmedPaymentResult}: SendContactArgs) {
+  public sendContact({peerId, threadId, contactPeerId, monoforumThreadId, confirmedPaymentResult}: SendContactArgs) {
     return this.sendOther({
       peerId,
+      threadId,
       inputMedia: this.appUsersManager.getContactMediaInput(contactPeerId),
       replyToMonoforumPeerId: monoforumThreadId,
       confirmedPaymentResult
@@ -4850,6 +5013,14 @@ export class AppMessagesManager extends AppManager {
           this.pendingTopMsgs[`${peerId}_${options.threadId}`] = messageId;
         }
       }
+    }
+
+    // * whether the user is suspicious is asked once the server has the message: their settings may come
+    // * in the meantime; a scheduled message reaches no one yet and changes nothing
+    if(pending && !options.isScheduled && !options.isWelcome && peerId.isUser() && peerId !== this.appPeersManager.peerId) {
+      this.invokeAfterMessageIsSent(messageId, 'endSuspiciousPeer', async() => {
+        this.appProfileManager.endSuspiciousPeer(peerId);
+      });
     }
 
     if(message.reactions) {
@@ -5481,14 +5652,23 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  public async fillConversations(folderId = GLOBAL_FOLDER_ID): Promise<void> {
-    const middleware = this.middleware.get();
-    while(!this.dialogsStorage.isDialogsLoaded(folderId)) {
-      const result = await this.getTopMessages({limit: 100, folderId});
-      if(!middleware() || !result || result.isEnd) {
-        break;
+  // * a second caller waits for the loading that is already going on instead of paging alongside it.
+  // * One cut short by a state reset (`clear`) is not waited for: the reset starts the map anew, and
+  // * the old loading lets go of its own map only
+  public fillConversations(folderId = GLOBAL_FOLDER_ID): Promise<void> {
+    const key = '' + folderId;
+    const promises = this.fillConversationsPromises;
+    return promises[key] ??= (async() => {
+      const middleware = this.middleware.get();
+      while(!this.dialogsStorage.isDialogsLoaded(folderId)) {
+        const result = await this.getTopMessages({limit: 100, folderId});
+        if(!middleware() || !result || result.isEnd) {
+          break;
+        }
       }
-    }
+    })().finally(() => {
+      delete promises[key];
+    });
   }
 
   /* public async getConversationsAll(query = '', folderId = 0) {
@@ -8506,7 +8686,7 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  public async markDialogUnread({peerId, read, monoforumThreadId}: MarkDialogUnreadArgs) {
+  public async markDialogUnread({peerId, read, monoforumThreadId, maxId}: MarkDialogUnreadArgs) {
     const dialog = monoforumThreadId ?
       this.monoforumDialogsStorage.getDialogByParent(peerId, monoforumThreadId) :
       this.getDialogOnly(peerId);
@@ -8532,7 +8712,7 @@ export class AppMessagesManager extends AppManager {
       const promise = this.readHistory({
         peerId,
         monoforumThreadId,
-        maxId: dialog.top_message,
+        maxId: maxId || dialog.top_message,
         force: true
       });
       if(!dialog.pFlags.unread_mark) {
@@ -8985,19 +9165,9 @@ export class AppMessagesManager extends AppManager {
 
     if(options.isCacheableSearch) { // * don't update messages list if it's a global search
 
-    } else if(!searchStorage.originalInsertSlice) {
-      searchStorage.originalInsertSlice = searchStorage.history.insertSlice.bind(searchStorage.history);
-      searchStorage.history.insertSlice = (...args) => {
-        const slice = searchStorage.originalInsertSlice(...args);
-        if(slice) {
-          args[0].forEach((mid) => {
-            searchStorage.onMidInsertion(mid);
-          });
-        }
-
-        return slice;
-      };
-
+    } else if(!searchStorage.onMidInsertion) {
+      // * the slices a request brings are marked in mergeHistoryResult: overriding history.insertSlice
+      // * does nothing, the mirroring proxy around history keeps the method it first handed out
       searchStorage.filterMessages = (messages) => {
         return filterMessagesByInputFilter({
           inputFilter: options.inputFilter._,
@@ -10437,7 +10607,7 @@ export class AppMessagesManager extends AppManager {
       const chatId = peerId.toChatId();
       this.appProfileManager.modifyCachedFullChat<ChatFull.channelFull>(chatId, (chatFull) => {
         const chat = this.appChatsManager.getChat(chatId) as Chat.channel;
-        if(!(chatFull.slowmode_seconds && !chat.admin_rights)) {
+        if(!(chatFull.slowmode_seconds && !chat.admin_rights) || this.appChatsManager.isRestrictionLiftedByBoosts(chatId)) {
           return false;
         }
         chatFull.slowmode_next_send_date = message.date + chatFull.slowmode_seconds;
@@ -10984,6 +11154,14 @@ export class AppMessagesManager extends AppManager {
 
     if(!message) {
       this.fixDialogUnreadMentionsIfNoMessage({peerId, threadId, force: true});
+      return;
+    }
+
+    // * a channel's posts on screen have their reactions asked for every 10 seconds, and most come back as they
+    // * were: each one dispatched had its reactions rendered anew on the main thread for nothing. The server's
+    // * answer still saves what a reaction of our own only showed (a local update is not saved)
+    if(deepEqual(message.reactions, reactions)) {
+      if(!update.local) this.setDialogToStateIfMessageIsTop(message);
       return;
     }
 
@@ -13405,6 +13583,12 @@ export class AppMessagesManager extends AppManager {
       slice = slicedArray.insertSlice(mids);
       hadSlice = !!slice;
       slice ||= slicedArray.slice;
+
+      // * a search storage keeps track of its messages: an edit or a deletion finds it through them, and
+      // * without the mark an edited message would be inserted a second time
+      if(hadSlice && historyStorage?.onMidInsertion) {
+        mids.forEach(historyStorage.onMidInsertion);
+      }
     }
 
     if(hadSlice) {
@@ -13549,6 +13733,40 @@ export class AppMessagesManager extends AppManager {
       const firstMessage = messages[0] as Message.message;
       const lastMessage = messages[messages.length - 1] as Message.message;
 
+      // * erase unfilled grouped messages if they're last elements in their history slices (`messages` newest first) -
+      // * at an edge the slice does not know to be the history's end, which nothing goes on past
+      const eraseUnfilledGroupedMessages = (bottom: boolean, messages: Message.message[]) => {
+        const messagesSlice = (bottom ? messages : messages.slice().reverse()).slice(0, MESSAGES_ALBUM_MAX_SIZE);
+        const groupedIds = messagesSlice.map((message) => message.grouped_id);
+        const slice = messagesSlice[0] && historyStorage.history.findSlice(messagesSlice[0].mid);
+        if(
+          groupedIds[0] &&
+          groupedIds[0] !== groupedIds[MESSAGES_ALBUM_MAX_SIZE - 1] &&
+          slice &&
+          slice.index === (bottom ? 0 : slice.slice.length - 1) &&
+          !slice.slice.isEnd(bottom ? SliceEnd.Bottom : SliceEnd.Top)
+        ) {
+          messagesSlice.forEach((message) => {
+            if(message.grouped_id === groupedIds[0]) {
+              historyStorage.history.delete(message.mid);
+            }
+          });
+        }
+      };
+
+      const fillBottom = !isBottomEnd && !!firstMessage?.grouped_id;
+      const fillTop = !isTopEnd && !!lastMessage?.grouped_id && lastMessage.grouped_id !== firstMessage?.grouped_id;
+
+      // * the albums at the edges of the page, which may go on past them, are left out of it rather than loaded whole by
+      // * second requests first (`leaveOutEdgeAlbums`): the page waited for those, and so did the first screen of a chat
+      // * opened from the server. They come with the next pages. When one holds the message asked for, or they are all
+      // * of the page, both are loaded whole as before: the request for one takes in part of the other again
+      const edgeGroupedIds = [fillBottom && firstMessage.grouped_id, fillTop && lastMessage.grouped_id].filter(Boolean);
+      const inEdgeAlbums = messages.filter((message) => edgeGroupedIds.includes((message as Message.message).grouped_id));
+      const leaveOut = options.leaveOutEdgeAlbums &&
+        inEdgeAlbums.length < messages.length &&
+        !inEdgeAlbums.some((message) => message.mid === offsetId);
+
       const fillMissingGroupedMessages = async(bottom: boolean) => {
         if(!middleware()) {
           return;
@@ -13569,33 +13787,19 @@ export class AppMessagesManager extends AppManager {
           return;
         }
 
-        // * erase unfilled grouped messages if they're last elements in their history slices
         if(!isEnd[bottom ? 'bottom' : 'top']) {
-          if(!bottom) messages.reverse();
-          const messagesSlice = messages.slice(0, MESSAGES_ALBUM_MAX_SIZE) as Message.message[];
-          const groupedIds = messagesSlice.map((message) => message.grouped_id);
-          const slice = messagesSlice[0] && historyStorage.history.findSlice(messagesSlice[0].mid);
-          if(
-            groupedIds[0] &&
-            groupedIds[0] !== groupedIds[MESSAGES_ALBUM_MAX_SIZE - 1] &&
-            slice &&
-            slice.index === (bottom ? 0 : slice.slice.length - 1)
-          ) {
-            messagesSlice.forEach((message) => {
-              if(message.grouped_id === groupedIds[0]) {
-                historyStorage.history.delete(message.mid);
-              }
-            });
-          }
+          eraseUnfilledGroupedMessages(bottom, messages as Message.message[]);
         }
       };
 
-      if(!isBottomEnd && firstMessage?.grouped_id) {
-        await fillMissingGroupedMessages(true);
+      if(fillBottom) {
+        if(leaveOut) eraseUnfilledGroupedMessages(true, messages as Message.message[]);
+        else await fillMissingGroupedMessages(true);
       }
 
-      if(!isTopEnd && lastMessage?.grouped_id && lastMessage.grouped_id !== firstMessage?.grouped_id) {
-        await fillMissingGroupedMessages(false);
+      if(fillTop) {
+        if(leaveOut) eraseUnfilledGroupedMessages(false, messages as Message.message[]);
+        else await fillMissingGroupedMessages(false);
       }
     }
     // * grouped end

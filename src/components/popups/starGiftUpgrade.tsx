@@ -28,11 +28,13 @@ import {createStarGiftUpgradePricePopup} from '@components/popups/starGiftUpgrad
 import showStarGiftInfoPopup from '@components/popups/starGiftInfo';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {createCurrentTime} from '@helpers/solid/createCurrentTime';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export default async function createStarGiftUpgradePopup(props: {
   gift: MyStarGift,
   descriptionForPeerId?: PeerId
 }) {
+  const managers = bindManagersToSession(rootScope.managers);
   const [
     preview,
     peerTitle
@@ -61,13 +63,14 @@ export default async function createStarGiftUpgradePopup(props: {
   randomize();
 
   async function handleUpgrade(): Promise<boolean> {
+    const managers = bindManagersToSession(rootScope.managers);
     if(props.descriptionForPeerId && canPrepay) {
       const deferred = deferredPromise<boolean>();
       createPaymentPopup({
         inputInvoice: {
           _: 'inputInvoiceStarGiftPrepaidUpgrade',
           hash: props.gift.saved?.prepaid_upgrade_hash,
-          peer: await rootScope.managers.appPeersManager.getInputPeerById(props.descriptionForPeerId)
+          peer: await managers.appPeersManager.getInputPeerById(props.descriptionForPeerId)
         },
         noShowIfStars: true
       }).then((popup) => {
@@ -81,7 +84,7 @@ export default async function createStarGiftUpgradePopup(props: {
     upgradePromise = deferredPromise<boolean>();
 
     if(freeUpgrade) {
-      await rootScope.managers.appGiftsManager.upgradeStarGift(
+      await managers.appGiftsManager.upgradeStarGift(
         props.gift.input,
         keepInfoSignal[0]()
       );
@@ -180,7 +183,7 @@ export default async function createStarGiftUpgradePopup(props: {
     let stickerContainer!: HTMLDivElement;
 
     return (
-      <PopupElement class="popup-star-gift-upgrade" show={show()} old>
+      <PopupElement managers={managers} class="popup-star-gift-upgrade" show={show()} old>
         <PopupElement.Header floating>
           <PopupElement.CloseButton class="popup-star-gift-upgrade-close" />
         </PopupElement.Header>

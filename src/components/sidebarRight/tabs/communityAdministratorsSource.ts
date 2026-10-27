@@ -8,7 +8,6 @@ import createCommunityParticipantsLoader, {
 }
 from '@components/communities/createCommunityParticipantsLoader';
 import showPickUserPopup from '@components/popups/pickUser';
-import {openCommunityUserPermissionsTab} from '@components/solidJsTabs/tabs';
 import type {ChannelParticipant} from '@layer';
 import {createSelectorForTab} from './participantsSelector';
 import type {
@@ -16,6 +15,7 @@ import type {
   AdministratorsSource,
   AdministratorsTab
 } from './administratorsSource';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export default async function createCommunityAdministratorsSource(options: {
   tab: AdministratorsTab,
@@ -65,7 +65,7 @@ export default async function createCommunityAdministratorsSource(options: {
       });
     },
     openPermissions: ({participantId, participant, onUpdated}) => {
-      openCommunityUserPermissionsTab(
+      hotReloadGuard.tabs.openCommunityUserPermissionsTab(
         tab.slider,
         communityId,
         participantId,

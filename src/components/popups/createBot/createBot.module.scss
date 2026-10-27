@@ -13,12 +13,19 @@
   &HiddenPrefix {
     opacity: 0;
     visibility: hidden;
+
+    // * it holds the room of the overlay's '@', which stays on the left: a username reads
+    // * left to right in RTL too
+    :global(.is-rtl) & {
+      order: 1;
+    }
   }
 }
 
 .usernameInput {
   color: transparent !important;
   caret-color: var(--primary-color);
+  direction: ltr;
 }
 
 .usernameOverlay {
@@ -31,6 +38,7 @@
   pointer-events: none;
   white-space: pre;
   color: var(--primary-text-color);
+  direction: ltr;
 }
 
 .usernameOverlayPrefix,

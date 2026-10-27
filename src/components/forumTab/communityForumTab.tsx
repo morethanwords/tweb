@@ -1,13 +1,10 @@
 import {createEffect, createRoot, on} from 'solid-js';
 import {render} from 'solid-js/web';
-import appDialogsManager from '@lib/appDialogsManager';
-import appImManager from '@lib/appImManager';
 import {AppManagers} from '@lib/managers';
-import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {
   AutonomousCommunityDialogList
 } from '@components/autonomousDialogList/communityDialogs';
-import appSidebarLeft from '@components/sidebarLeft';
 import ButtonMenuToggle, {createButtonMenuVisibility} from '@components/buttonMenuToggle';
 import type {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {i18n} from '@lib/langPack';
@@ -19,10 +16,6 @@ import {
   shouldCloseCommunityForum
 } from '@components/forumTab/communityChatsModel';
 import {ForumTab} from '@components/forumTab/forumTab';
-import {
-  AppAddChatToCommunityTab,
-  AppEditCommunityTab
-} from '@components/solidJsTabs/tabs';
 import {
   useCommunity,
   useCommunityDialog,
@@ -56,7 +49,7 @@ export class CommunityForumTab extends ForumTab {
     this.createHeaderAvatar();
 
     this.xd = new AutonomousCommunityDialogList({
-      appDialogsManager,
+      appDialogsManager: hotReloadGuard.appDialogsManager,
       communityId: this.peerId.toChatId(),
       middleware: this.middlewareHelper.get()
     });
@@ -182,19 +175,19 @@ export class CommunityForumTab extends ForumTab {
 
   public openPendingRequests = () => {
     void openCommunityPendingRequests({
-      slider: appSidebarLeft,
+      slider: hotReloadGuard.appSidebarLeft,
       communityId: this.peerId.toChatId()
     });
   };
 
   public openAddChat = () => {
-    appSidebarLeft.createTab(AppAddChatToCommunityTab).open({
+    hotReloadGuard.appSidebarLeft.createTab(hotReloadGuard.tabs.AppAddChatToCommunityTab).open({
       communityId: this.peerId.toChatId()
     });
   };
 
   private openChat = async(peerId: PeerId) => {
-    await appImManager.setPeer({peerId});
+    await hotReloadGuard.appImManager.setPeer({peerId});
   };
 
   public toggleAsOne = async(collapsed: boolean) => {
@@ -233,7 +226,7 @@ export class CommunityForumTab extends ForumTab {
       return;
     }
 
-    appSidebarLeft.createTab(AppEditCommunityTab).open({
+    hotReloadGuard.appSidebarLeft.createTab(hotReloadGuard.tabs.AppEditCommunityTab).open({
       communityId: this.peerId.toChatId()
     });
   };

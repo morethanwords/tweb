@@ -2,6 +2,9 @@ import forEachReverse from '@helpers/array/forEachReverse';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import insertInDescendSortedArray from '@helpers/array/insertInDescendSortedArray';
 import toArray from '@helpers/array/toArray';
+import putInOrder from '@helpers/array/putInOrder';
+import noop from '@helpers/noop';
+import filterUnique from '@helpers/array/filterUnique';
 import assumeType from '@helpers/assumeType';
 import callbackify from '@helpers/callbackify';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
@@ -10,7 +13,7 @@ import deepEqual from '@helpers/object/deepEqual';
 import safeReplaceObject from '@helpers/object/safeReplaceObject';
 import pause from '@helpers/schedulers/pause';
 import tsNow from '@helpers/tsNow';
-import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoryItem, Update, PeerStories, User, Chat, StoryView, MediaArea, StoryAlbum, StoriesStealthMode, InputPrivacyRule} from '@layer';
+import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoryItem, Update, PeerStories, User, Chat, ChatFull, StoryView, StoryReaction, Message, MediaArea, StoryAlbum, StoriesStealthMode, InputPrivacyRule} from '@layer';
 import getPrivacyRulesDetails from '@appManagers/utils/privacy/getPrivacyRulesDetails';
 import getStoryPrivacyType from '@appManagers/utils/stories/privacyType';
 import {StorySettings, StorySettingsSaveResult} from '@appManagers/utils/stories/storySettings';
@@ -18,6 +21,7 @@ import createSerializedQueue, {SerializedQueue} from '@helpers/createSerializedQ
 import {SERVICE_PEER_ID, TEST_NO_STORIES} from '@appManagers/constants';
 import {ReferenceContext} from '@lib/storages/references';
 import {AppManager} from '@appManagers/manager';
+import type {MyTopPeer} from '@appManagers/appUsersManager';
 import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
 import StoriesCacheType from '@appManagers/utils/stories/cacheType';
 import insertStory from '@appManagers/utils/stories/insertStory';
@@ -25,14 +29,45 @@ import insertStory from '@appManagers/utils/stories/insertStory';
 type MyStoryItem = Exclude<StoryItem, StoryItem.storyItemDeleted>;
 
 export type StoriesListType = 'stories' | 'archive';
+export type StoryReplyMode = 'reply' | 'boost' | 'none';
 export type StoriesListPosition = {type: StoriesListType, index: number};
 export type StoriesSegment = {length: number, type: 'unread' | 'close' | 'read'};
 export type StoriesSegments = StoriesSegment[];
+// * a line of the list of who saw or reacted to a story: a view (with its reaction), a repost as a story, a forward
+export type StoryInteraction = {
+  _: 'view',
+  peerId: PeerId,
+  date: number,
+  reaction?: Reaction,
+  blocked?: boolean,
+  blockedMyStoriesFrom?: boolean
+} | {
+  _: 'repost',
+  peerId: PeerId,
+  date: number,
+  story: StoryItem.storyItem
+} | {
+  _: 'forward',
+  peerId: PeerId,
+  date: number,
+  message: Message.message
+};
+export type StoryInteractionsList = {
+  count: number,
+  // * of a user's story only: how many saw it, which the list may hold fewer of
+  viewsCount?: number,
+  items: StoryInteraction[],
+  nextOffset?: string
+};
 type AlbumCacheItem = {
   info: StoryAlbum,
   ids: StoryItem['id'][],
   count: number,
   loadedAll: boolean,
+  /** a write to it was refused and it could not be read again: it is, from the top, when it is next loaded */
+  stale?: boolean,
+  /** changes whenever its list is replaced, so that a page asked for before does not land in the new one */
+  generation?: number
 }
 type StoriesPeerCache = {
   peerId: PeerId,
@@ -53,10 +88,21 @@ type StoriesPeerCache = {
   archiveCount?: number,
   albums: Map<number, AlbumCacheItem>,
   albumsOrder?: number[],
-  albumsHash?: Long
+  albumsHash?: Long,
+  /** a write to the albums was refused and they could not be read again: they are, when they are next asked for */
+  albumsStale?: boolean
 };
 
 type ExpiringItem = {peerId: PeerId, id: number, timestamp: number};
+
+/** One of a peer's lists a write changes (`writeLists`) */
+type WrittenList = {
+  key: string,
+  /** reads the list from the server, giving what puts it in place */
+  reload: () => Promise<() => void>,
+  /** marks the list as not to be trusted, for when it cannot be read again: it is read anew when it is next shown */
+  invalidate: () => void
+};
 
 const TEST_SKIPPED = false;
 const TEST_READ = false;
@@ -69,6 +115,8 @@ export default class AppStoriesManager extends AppManager {
   private changelogPeerId: PeerId;
   private expiring: ExpiringItem[];
   private stealthMode: StoriesStealthMode;
+  /** the writes to the lists of albums and of their stories, one after another (`writeLists`) */
+  private listWrites: Map<string, {queue: Promise<unknown>, pending: number, refused: boolean}>;
 
   protected after() {
     this.clear(true);
@@ -135,6 +183,7 @@ export default class AppStoriesManager extends AppManager {
       archive: []
     };
     this.expiring = [];
+    this.listWrites = new Map();
   };
 
   private onSubscriptionUpdate(peerId: PeerId) {
@@ -335,8 +384,9 @@ export default class AppStoriesManager extends AppManager {
         continue;
       }
 
+      // * the server puts a story added to an album first
       if(allowInsert && index === -1) {
-        album.ids.push(storyItem.id);
+        album.ids.unshift(storyItem.id);
       }
       album.count += 1;
     }
@@ -879,6 +929,23 @@ export default class AppStoriesManager extends AppManager {
     });
   }
 
+  /**
+   * Puts the stories pinned to the top in `ids`' order, the ones left out unpinned, each at an index
+   * of its own. Several of them move at once, so they all leave the list first and go back one by one
+   * into what is still sorted.
+   */
+  private applyPinnedToTop(cache: StoriesPeerCache, ids: StoryItem['id'][]) {
+    const changed = new Set([...cache.pinnedToTop.keys(), ...ids]);
+    cache.pinnedToTop = new Map(ids.map((id, idx) => [id, idx]));
+    changed.forEach((storyId) => indexOfAndSplice(cache.pinnedStories, storyId));
+    changed.forEach((storyId) => {
+      const storyItem = cache.storiesMap.get(storyId);
+      if(storyItem) {
+        this.saveStoryItem(storyItem, cache, StoriesCacheType.Pinned);
+      }
+    });
+  }
+
   public async togglePinnedToTop(peerId: PeerId, storyIds: StoryItem['id'][], pin: boolean) {
     const oldPins = [...this.getPeerStoriesCache(peerId).pinnedToTop.entries()].sort((a, b) => a[1] - b[1]).map(([id]) => id);
     const newPins = pin ? oldPins.concat(storyIds) : oldPins.filter((id) => !storyIds.includes(id));
@@ -896,14 +963,7 @@ export default class AppStoriesManager extends AppManager {
         id: newPins
       },
       processResult: () => {
-        const cache = this.getPeerStoriesCache(peerId);
-        const pinnedToTop = cache.pinnedToTop;
-        storyIds.forEach((storyId) => {
-          const storyItem = this.getStoryByIdCached(peerId, storyId);
-          if(pin) pinnedToTop.set(storyId, pinnedToTop.size);
-          else pinnedToTop.delete(storyId);
-          this.saveStoryItem(storyItem, cache, StoriesCacheType.Pinned);
-        });
+        this.applyPinnedToTop(this.getPeerStoriesCache(peerId), newPins);
       }
     });
   }
@@ -1009,7 +1069,7 @@ export default class AppStoriesManager extends AppManager {
 
   public getAlbums(peerId: PeerId, revalidate = false): MaybePromise<StoryAlbum[]> {
     const cache = this.getPeerStoriesCache(peerId);
-    if(!revalidate && cache.albumsOrder) {
+    if(!revalidate && cache.albumsOrder && !cache.albumsStale) {
       return cache.albumsOrder.map((albumId) => cache.albums.get(albumId).info);
     }
 
@@ -1024,23 +1084,33 @@ export default class AppStoriesManager extends AppManager {
           return cache.albumsOrder.map((albumId) => cache.albums.get(albumId).info);
         }
 
-        cache.albumsOrder = []
-        for(const album of response.albums) {
-          if(album.icon_photo) this.appPhotosManager.savePhoto(album.icon_photo);
-          if(album.icon_video) this.appDocsManager.saveDoc(album.icon_video);
-          cache.albumsOrder.push(album.album_id);
-          cache.albums.set(album.album_id, {
-            info: album,
-            ids: [],
-            count: 0,
-            loadedAll: false
-          });
-        }
-
+        this.saveAlbums(cache, response.albums);
         cache.albumsHash = response.hash;
         return response.albums;
       }
     });
+  }
+
+  /** Takes the albums as the server lists them; what was loaded of an album that stays is kept */
+  private saveAlbums(cache: StoriesPeerCache, albums: StoryAlbum[]) {
+    cache.albumsOrder = albums.map((album) => album.album_id);
+    cache.albumsStale = false;
+    for(const album of albums) {
+      if(album.icon_photo) this.appPhotosManager.savePhoto(album.icon_photo);
+      if(album.icon_video) this.appDocsManager.saveDoc(album.icon_video);
+      const cachedAlbum = cache.albums.get(album.album_id);
+      if(cachedAlbum) {
+        cachedAlbum.info = album;
+      } else {
+        cache.albums.set(album.album_id, {info: album, ids: [], count: 0, loadedAll: false});
+      }
+    }
+
+    for(const albumId of cache.albums.keys()) {
+      if(!cache.albumsOrder.includes(albumId)) {
+        cache.albums.delete(albumId);
+      }
+    }
   }
 
   public getPinnedStories(
@@ -1086,8 +1156,23 @@ export default class AppStoriesManager extends AppManager {
       return result instanceof Promise ? result.then(after) : after();
     }
 
+    // * an album that could not be read again after a refused write is read anew from its top
+    if(cachedAlbum.stale && !offsetId) {
+      cachedAlbum.ids = [];
+      cachedAlbum.loadedAll = false;
+      cachedAlbum.stale = false;
+      cachedAlbum.generation = (cachedAlbum.generation ?? 0) + 1;
+    }
+
     let slice: StoryItem.storyItem[] | undefined;
-    const index = offsetId ? cachedAlbum.ids.findIndex((storyId) => storyId < offsetId) : 0;
+    // * an album keeps the order its owner gave it, not the stories' own: the next page starts right
+    // * after the story it is asked from, by date only once that one has left the album
+    let index = 0;
+    if(offsetId) {
+      index = cachedAlbum.ids.indexOf(offsetId);
+      index = index === -1 ? cachedAlbum.ids.findIndex((storyId) => storyId < offsetId) : index + 1;
+    }
+
     if(index !== -1) {
       const sliced = cachedAlbum.ids.slice(index, index + limit);
       if(sliced.length === limit || cachedAlbum.loadedAll) {
@@ -1099,45 +1184,100 @@ export default class AppStoriesManager extends AppManager {
       return {count: cachedAlbum.count, stories: slice};
     }
 
-    return this.apiManager.invokeApiSingleProcess({
+    // * a page is a place in the album, not what one request brings: the stories after the last of those the asker
+    // * has, where they stand once it has come - the album can be rearranged, added to on top, or loaded further by
+    // * another read meanwhile
+    const had = new Set(index === -1 ? cachedAlbum.ids : cachedAlbum.ids.slice(0, index));
+    const getPageIds = () => {
+      const ids = cachedAlbum.ids;
+      let start = ids.length;
+      while(start && !had.has(ids[start - 1])) {
+        --start;
+      }
+
+      return ids.slice(start, start + limit);
+    };
+    const generation = cachedAlbum.generation;
+    const fetchPage = (offset: number): Promise<{count: number, stories: StoryItem.storyItem[]}> => this.apiManager.invokeApiSingleProcess({
       method: 'stories.getAlbumStories',
       params: {
         peer: this.appPeersManager.getInputPeerById(peerId),
         album_id: albumId,
         limit,
-        offset: cachedAlbum?.ids.length ?? 0
+        offset
       },
+      // * a request is joined only within the list it was asked of: the page asked anew of a replaced list would
+      // * otherwise join the very request that asks for it, which waits on it
+      options: {cacheKey: `${peerId}_${albumId}_${limit}_${offset}_${generation}`},
       processResult: (response) => {
         this.saveStoriesStories(response, cache);
+        // * the list was replaced while the page loaded (read again from the server): the page is asked of it anew
+        if(cachedAlbum.generation !== generation) {
+          return this.getAlbumStories(peerId, albumId, limit, offsetId);
+        }
+
+        const fetched: number[] = [];
         for(const story of response.stories) {
           if(story._ !== 'storyItemDeleted' && !cachedAlbum.ids.includes(story.id)) {
             cachedAlbum.ids.push(story.id);
+            fetched.push(story.id);
           }
         }
         cachedAlbum.count = response.count;
         cachedAlbum.loadedAll = cachedAlbum.ids.length === response.count;
-        return this.getAlbumStories(peerId, albumId, limit, offsetId);
+
+        const ids = getPageIds();
+        const page = {count: cachedAlbum.count, stories: ids.map((storyId) => cache.storiesMap.get(storyId)) as StoryItem.storyItem[]};
+        // * a short page means the end of the album
+        if(ids.length < limit && !cachedAlbum.loadedAll) {
+          // * stories added meanwhile shift the server's pages down, which then repeat what is had. One of nothing
+          // * but those says they shifted by its length at least: the next new one is further on
+          if(!fetched.length && response.stories.length) {
+            return fetchPage(offset + response.stories.length);
+          }
+
+          // * one that repeats a part is filled up
+          if(fetched.length) {
+            return callbackify(
+              this.getAlbumStories(peerId, albumId, limit - ids.length, ids[ids.length - 1]),
+              (more) => ({count: more.count, stories: page.stories.concat(more.stories)})
+            );
+          }
+        }
+
+        return page;
       }
     });
+
+    return fetchPage(cachedAlbum.ids.length);
   }
 
   public async createAlbum(peerId: PeerId, title: string, storyIds?: number[]) {
-    const album = await this.apiManager.invokeApi('stories.createAlbum', {
+    const album = await this.writeAlbums(peerId, () => this.apiManager.invokeApi('stories.createAlbum', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       title,
       stories: storyIds ?? []
-    });
+    }));
 
     const cache = this.getPeerStoriesCache(peerId);
     cache.albums.set(album.album_id, {
       info: album,
-      ids: storyIds?.slice() ?? [],
+      // * each story goes first as it is added, the last one ending up at the top
+      ids: storyIds?.slice().reverse() ?? [],
       count: storyIds?.length ?? 0,
       loadedAll: true
     });
     if(!cache.albumsOrder) cache.albumsOrder = [];
     cache.albumsOrder.push(album.album_id);
     cache.albumsHash = undefined;
+
+    // * the stories it was made with are in it now, as updateAlbum puts them
+    storyIds?.forEach((id) => {
+      const story = this.getStoryByIdCached(peerId, id);
+      if(story?._ === 'storyItem' && !story.albums?.includes(album.album_id)) {
+        (story.albums ??= []).push(album.album_id);
+      }
+    });
 
     this.rootScope.dispatchEvent('story_album_created', {
       peerId,
@@ -1158,8 +1298,6 @@ export default class AppStoriesManager extends AppManager {
     const cache = this.getPeerStoriesCache(peerId);
     const cachedAlbum = cache.albums.get(albumId);
     // snapshot
-    const oldCachedIds = cachedAlbum?.ids.slice();
-    const oldCachedCount = cachedAlbum?.count;
     const oldStoryAlbums = new Map<number, number[] | undefined>();
 
     // optimistically update cache and dispatch
@@ -1190,7 +1328,8 @@ export default class AppStoriesManager extends AppManager {
         for(const id of opts.addStories) {
           const hadId = cachedAlbum.ids.includes(id);
           const hadAlbum = hadId || oldStoryAlbums.get(id)?.includes(albumId);
-          if(!hadId) cachedAlbum.ids.push(id);
+          // * the server puts each one first, the last one ending up at the top
+          if(!hadId) cachedAlbum.ids.unshift(id);
           if(!hadAlbum) ++addedCount;
         }
         cachedAlbum.count += addedCount;
@@ -1221,16 +1360,29 @@ export default class AppStoriesManager extends AppManager {
       albums: this.getCachedAlbumsList(peerId)
     });
 
-    try {
-      const album = await this.apiManager.invokeApi('stories.updateAlbum', {
-        peer: this.appPeersManager.getInputPeerById(peerId),
-        album_id: albumId,
-        title: opts.title,
-        add_stories: opts.addStories,
-        delete_stories: opts.deleteStories
-      });
+    const send = () => this.apiManager.invokeApi('stories.updateAlbum', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      album_id: albumId,
+      title: opts.title,
+      add_stories: opts.addStories,
+      delete_stories: opts.deleteStories
+    });
 
-      if(cachedAlbum) cachedAlbum.info = album;
+    // * a title is the albums' own, the stories the album's list (when it is kept): a refused write has them read again
+    const lists: WrittenList[] = [];
+    if(opts.title) lists.push(this.albumsList(peerId));
+    if(cachedAlbum && (opts.addStories || opts.deleteStories)) lists.push(this.albumList(peerId, albumId));
+
+    try {
+      const album = await this.writeLists(lists, send);
+      if(cachedAlbum) {
+        cachedAlbum.info = album;
+        // * the title as the server keeps it
+        if(opts.title) {
+          this.rootScope.dispatchEvent('story_albums_updated', {peerId, albums: this.getCachedAlbumsList(peerId)});
+        }
+      }
+
       return album;
     } catch(err) {
       // revert caches and dispatch
@@ -1239,10 +1391,6 @@ export default class AppStoriesManager extends AppManager {
         if(s?._ === 'storyItem') s.albums = oldAlbums;
       }
 
-      if(cachedAlbum) {
-        cachedAlbum.ids = oldCachedIds;
-        cachedAlbum.count = oldCachedCount;
-      }
       cache.albumsHash = undefined;
 
       this.rootScope.dispatchEvent('story_album_updated', {
@@ -1255,11 +1403,182 @@ export default class AppStoriesManager extends AppManager {
     }
   }
 
+  /**
+   * The writes to a peer's lists - the albums, or an album's stories: their order, what comes in or goes out -
+   * reach the server one after another, each already shown. A write waits for, and counts in, every list it
+   * changes. A refused one is not guessed back: once the last write of a list has settled, the list is read again
+   * from the server and shown as the server has it, unless a write came while it was read, after which it is read
+   * again.
+   */
+  private writeLists<T>(lists: WrittenList[], send: () => Promise<T>): Promise<T> {
+    const states = lists.map(({key}) => {
+      let list = this.listWrites.get(key);
+      if(!list) {
+        this.listWrites.set(key, list = {queue: Promise.resolve(), pending: 0, refused: false});
+      }
+
+      ++list.pending;
+      return list;
+    });
+
+    const promise = Promise.all(states.map((list) => list.queue)).then(send);
+    lists.forEach(({reload, invalidate}, idx) => {
+      const list = states[idx];
+      list.queue = promise.then(noop, () => {
+        list.refused = true;
+      }).then(async() => {
+        if(--list.pending || !list.refused) {
+          return;
+        }
+
+        let apply: () => void;
+        try {
+          apply = await reload();
+        } catch(err) {
+          // * still to be read: with the list's next write, or when it is shown next
+          invalidate();
+          return;
+        }
+
+        if(!list.pending) {
+          list.refused = false;
+          apply();
+        }
+      });
+    });
+
+    return promise;
+  }
+
+  /** The albums themselves: their order, titles, which there are */
+  private albumsList(peerId: PeerId): WrittenList {
+    const cache = this.getPeerStoriesCache(peerId);
+    return {
+      key: `albums_${peerId}`,
+      reload: () => this.reloadAlbums(peerId),
+      invalidate: () => {
+        cache.albumsStale = true;
+      }
+    };
+  }
+
+  /** An album's stories: their order, which there are */
+  private albumList(peerId: PeerId, albumId: number): WrittenList {
+    const cache = this.getPeerStoriesCache(peerId);
+    return {
+      key: `album_${peerId}_${albumId}`,
+      reload: () => this.reloadAlbumStories(peerId, albumId),
+      invalidate: () => {
+        const cachedAlbum = cache.albums.get(albumId);
+        if(cachedAlbum) cachedAlbum.stale = true;
+      }
+    };
+  }
+
+  private writeAlbums<T>(peerId: PeerId, send: () => Promise<T>) {
+    return this.writeLists([this.albumsList(peerId)], send);
+  }
+
+  private writeAlbum<T>(peerId: PeerId, albumId: number, send: () => Promise<T>) {
+    return this.writeLists([this.albumList(peerId, albumId)], send);
+  }
+
+  private reloadAlbums(peerId: PeerId) {
+    const cache = this.getPeerStoriesCache(peerId);
+    return this.apiManager.invokeApi('stories.getAlbums', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      hash: 0
+    }).then((response) => () => {
+      if(response._ === 'stories.albumsNotModified') {
+        return;
+      }
+
+      this.saveAlbums(cache, response.albums);
+      cache.albumsHash = response.hash;
+      this.rootScope.dispatchEvent('story_albums_updated', {peerId, albums: this.getCachedAlbumsList(peerId)});
+    });
+  }
+
+  /** Reads an album's first stories again, as many as it had loaded, the rest to be loaded anew as they are paged to */
+  private async reloadAlbumStories(peerId: PeerId, albumId: number) {
+    const cache = this.getPeerStoriesCache(peerId);
+    // * as far as it was loaded, a page of the server's at most at a time
+    const loaded = Math.max(30, cache.albums.get(albumId)?.ids.length ?? 0);
+    const stories: StoryItem[] = [];
+    let response: StoriesStories;
+    do {
+      response = await this.apiManager.invokeApi('stories.getAlbumStories', {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        album_id: albumId,
+        offset: stories.length,
+        limit: Math.min(100, loaded - stories.length)
+      });
+      stories.push(...response.stories);
+    } while(response.stories.length && stories.length < loaded && stories.length < response.count);
+
+    return () => {
+      const cachedAlbum = cache.albums.get(albumId);
+      if(!cachedAlbum) {
+        return;
+      }
+
+      this.saveStoriesStories({...response, stories}, cache);
+      cachedAlbum.ids = filterUnique(stories.filter((story) => story._ !== 'storyItemDeleted').map((story) => story.id));
+      cachedAlbum.count = response.count;
+      cachedAlbum.loadedAll = cachedAlbum.ids.length === response.count;
+      cachedAlbum.stale = false;
+      cachedAlbum.generation = (cachedAlbum.generation ?? 0) + 1;
+      cache.albumsHash = undefined;
+      this.rootScope.dispatchEvent('story_album_updated', {peerId, albumId, albums: this.getCachedAlbumsList(peerId)});
+    };
+  }
+
+  /** Gives the albums a new order, as the chips have already been rearranged */
+  public reorderAlbums(peerId: PeerId, order: number[]) {
+    const cache = this.getPeerStoriesCache(peerId);
+    if(!cache.albumsOrder) {
+      return;
+    }
+
+    // * sent as it is now: the list itself may change before the request goes
+    order = putInOrder(cache.albumsOrder, order);
+    cache.albumsOrder = order.slice();
+    cache.albumsHash = undefined;
+    this.rootScope.dispatchEvent('story_albums_updated', {peerId, albums: this.getCachedAlbumsList(peerId)});
+    return this.writeAlbums(peerId, () => this.apiManager.invokeApi('stories.reorderAlbums', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      order
+    }));
+  }
+
+  /**
+   * Gives an album's stories a new order, as its tiles have already been rearranged; the ones it leaves out go
+   * after the others, as the server puts them
+   */
+  public reorderAlbumStories(peerId: PeerId, albumId: number, order: number[]) {
+    const cache = this.getPeerStoriesCache(peerId);
+    const cachedAlbum = cache.albums.get(albumId);
+    if(!cachedAlbum) {
+      return;
+    }
+
+    // * sent as it is now: the list itself may change before the request goes
+    order = putInOrder(cachedAlbum.ids, order);
+    cachedAlbum.ids = order.slice();
+    cache.albumsHash = undefined;
+    this.rootScope.dispatchEvent('story_album_updated', {peerId, albumId, albums: this.getCachedAlbumsList(peerId)});
+    return this.writeAlbum(peerId, albumId, () => this.apiManager.invokeApi('stories.updateAlbum', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      album_id: albumId,
+      order
+    }));
+  }
+
   public async deleteAlbum(peerId: PeerId, albumId: number) {
-    await this.apiManager.invokeApi('stories.deleteAlbum', {
+    await this.writeAlbums(peerId, () => this.apiManager.invokeApi('stories.deleteAlbum', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       album_id: albumId
-    });
+    }));
 
     const cache = this.getPeerStoriesCache(peerId);
     cache.albums.delete(albumId);
@@ -1285,6 +1604,43 @@ export default class AppStoriesManager extends AppManager {
         offset_id: offsetId
       },
       processResult: this.processLoadedStoriesStories.bind(this, cache, false, limit)
+    });
+  }
+
+  /**
+   * Public stories with a hashtag (`#tag` or `$tag`; only one peer's with `peerId`), or posted from a place —
+   * `area` is the location area of a story, as it came. `offset` is the previous page's `nextOffset`, and a
+   * page without one is the last
+   */
+  public searchStories({hashtag, area, peerId, offset, limit}: {
+    hashtag?: string,
+    area?: MediaArea,
+    peerId?: PeerId,
+    offset: string,
+    limit: number
+  }) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'stories.searchPosts',
+      params: {
+        hashtag: hashtag?.replace(/^#/, ''),
+        area,
+        peer: peerId ? this.appPeersManager.getInputPeerById(peerId) : undefined,
+        offset,
+        limit
+      },
+      processResult: (foundStories) => {
+        this.appPeersManager.saveApiPeers(foundStories);
+        const stories: {peerId: PeerId, story: StoryItem.storyItem}[] = [];
+        for(const foundStory of foundStories.stories) {
+          const peerId = this.appPeersManager.getPeerId(foundStory.peer);
+          const story = this.saveStoryItem(foundStory.story, this.getPeerStoriesCache(peerId), undefined, true);
+          if(story?._ === 'storyItem' && story.media) {
+            stories.push({peerId, story});
+          }
+        }
+
+        return {count: foundStories.count, nextOffset: foundStories.next_offset, stories};
+      }
     });
   }
 
@@ -1398,46 +1754,128 @@ export default class AppStoriesManager extends AppManager {
     });
   }
 
-  public getStoryViewsList(
-    peerId: PeerId,
-    id: number,
+  // * who saw one's own story, reacted to it, reposted it as a story of their own or forwarded it to a public
+  // * chat (iOS, Android)
+  public getStoryViewsList(peerId: PeerId, id: number, options: {
     limit: number,
-    offset: string = '',
+    offset?: string,
     q?: string,
-    justContacts?: boolean
-  ) {
+    justContacts?: boolean,
+    reactionsFirst?: boolean
+  }) {
     return this.apiManager.invokeApiSingleProcess({
       method: 'stories.getStoryViewsList',
       params: {
         peer: this.appPeersManager.getInputPeerById(peerId),
         id,
-        limit,
-        offset,
-        q,
-        just_contacts: justContacts
+        limit: options.limit,
+        offset: options.offset || '',
+        q: options.q || undefined,
+        just_contacts: options.justContacts || undefined,
+        reactions_first: options.reactionsFirst || undefined
       },
-      processResult: (storiesStoryViews) => {
+      processResult: (storiesStoryViews): StoryInteractionsList => {
         this.appPeersManager.saveApiPeers(storiesStoryViews);
-
-        storiesStoryViews.views.forEach((storyView) => {
-          (storyView as StoryView.storyViewPublicForward).message = this.appMessagesManager.saveMessage((storyView as StoryView.storyViewPublicForward).message);
-          (storyView as StoryView.storyViewPublicRepost).story = (storyView as StoryView.storyViewPublicRepost).story && this.appStoriesManager.saveStoryItem(
-            (storyView as StoryView.storyViewPublicRepost).story,
-            this.appStoriesManager.getPeerStoriesCache(this.appPeersManager.getPeerId((storyView as StoryView.storyViewPublicRepost).peer_id))
-          );
-        });
-
-        const views = storiesStoryViews.views.filter((storyView) => {
-          return storyView._ === 'storyView';
-        }) as StoryView.storyView[];
-
         return {
           count: storiesStoryViews.count,
-          views: views,
+          viewsCount: storiesStoryViews.views_count,
+          items: storiesStoryViews.views.map((storyView) => {
+            if(storyView._ === 'storyView') {
+              return {
+                _: 'view',
+                peerId: storyView.user_id.toPeerId(false),
+                date: storyView.date,
+                reaction: storyView.reaction,
+                blocked: !!storyView.pFlags.blocked,
+                blockedMyStoriesFrom: !!storyView.pFlags.blocked_my_stories_from
+              };
+            }
+
+            return this.saveStoryInteractionShare(storyView);
+          }).filter((item): item is StoryInteraction => !!item),
           nextOffset: storiesStoryViews.next_offset
         };
       }
     });
+  }
+
+  // * the same for a channel's or a group's story, to those of its admins who edit its stories: who reacted to
+  // * it, reposted or forwarded it (Android, iOS)
+  public getStoryReactionsList(peerId: PeerId, id: number, options: {
+    limit: number,
+    offset?: string,
+    forwardsFirst?: boolean
+  }) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'stories.getStoryReactionsList',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        id,
+        limit: options.limit,
+        offset: options.offset || undefined,
+        forwards_first: options.forwardsFirst || undefined
+      },
+      processResult: (storiesStoryReactions): StoryInteractionsList => {
+        this.appPeersManager.saveApiPeers(storiesStoryReactions);
+        return {
+          count: storiesStoryReactions.count,
+          items: storiesStoryReactions.reactions.map((storyReaction) => {
+            if(storyReaction._ === 'storyReaction') {
+              return {
+                _: 'view',
+                peerId: this.appPeersManager.getPeerId(storyReaction.peer_id),
+                date: storyReaction.date,
+                reaction: storyReaction.reaction
+              };
+            }
+
+            return this.saveStoryInteractionShare(storyReaction);
+          }).filter((item): item is StoryInteraction => !!item),
+          nextOffset: storiesStoryReactions.next_offset
+        };
+      }
+    });
+  }
+
+  private saveStoryInteractionShare(
+    share: StoryView.storyViewPublicRepost | StoryView.storyViewPublicForward | StoryReaction.storyReactionPublicRepost | StoryReaction.storyReactionPublicForward
+  ): StoryInteraction | undefined {
+    if(share._ === 'storyViewPublicForward' || share._ === 'storyReactionPublicForward') {
+      const message = this.appMessagesManager.saveMessage(share.message) as Message.message;
+      if(message?._ !== 'message') {
+        return;
+      }
+
+      return {
+        _: 'forward',
+        peerId: message.peerId,
+        date: message.date,
+        message
+      };
+    }
+
+    const peerId = this.appPeersManager.getPeerId(share.peer_id);
+    const story = this.saveStoryItem(share.story, this.getPeerStoriesCache(peerId));
+    if(story?._ !== 'storyItem') {
+      return;
+    }
+
+    return {
+      _: 'repost',
+      peerId,
+      date: story.date,
+      story
+    };
+  }
+
+  // * the views of one's own stories, and the reactions to a channel's or a group's ones its stories' editors see
+  // * (Android's viewsAllowed)
+  public canViewStoryInteractions(peerId: PeerId) {
+    if(peerId.isUser()) {
+      return peerId === this.appPeersManager.peerId;
+    }
+
+    return this.appChatsManager.hasRights(peerId.toChatId(), 'edit_stories');
   }
 
   public getStoriesViews(peerId: PeerId, ids: number[]) {
@@ -1637,6 +2075,55 @@ export default class AppStoriesManager extends AppManager {
     }
   }
 
+  /**
+   * How a story of the peer is answered, as iOS and Android decide it: a user's privately, a group's in the
+   * group when the member can write there. A member the group's own restrictions hold back has the field locked
+   * until the group is boosted, where boosting lifts them (`boostsNeeded` more); a channel's story, or a member
+   * banned in person, has no field
+   */
+  public async getReplyMode(peerId: PeerId): Promise<{mode: StoryReplyMode, boostsNeeded?: number}> {
+    if(peerId.isUser()) {
+      return {mode: peerId === this.appPeersManager.peerId ? 'none' : 'reply'};
+    }
+
+    const chatId = peerId.toChatId();
+    if(this.appPeersManager.isBroadcast(peerId)) {
+      return {mode: 'none'};
+    }
+
+    // * the boosts the member has given are on the full chat, and the rights below read them from it
+    const chatFull = await this.appProfileManager.getChatFull(chatId) as ChatFull.channelFull;
+    const [canSend, canSendPlain] = await Promise.all([
+      this.appMessagesManager.canSendToPeer(peerId, undefined, 'send_messages'),
+      this.appMessagesManager.canSendToPeer(peerId, undefined, 'send_plain')
+    ]);
+    if(canSend && canSendPlain) {
+      return {mode: 'reply'};
+    }
+
+    // * boosting lifts the group's own restrictions only, and only where they are all that holds the member back:
+    // * boosts can lift them there (not a broadcast group, not a ban in person), they are not enough yet, not a
+    // * restricted peer or a frozen account
+    const chat = this.appChatsManager.getChat(chatId) as Chat.channel;
+    const bannedByDefault = chat?.default_banned_rights?.pFlags;
+    const [isRestricted, appConfig] = await Promise.all([
+      this.appPeersManager.isPeerRestricted(peerId),
+      this.apiManager.getAppConfig()
+    ]);
+    if(
+      !(bannedByDefault?.send_messages || bannedByDefault?.send_plain) ||
+      !this.appChatsManager.canBoostsLiftRestriction(chatId, 'send_messages') ||
+      !this.appChatsManager.canBoostsLiftRestriction(chatId, 'send_plain') ||
+      this.appChatsManager.isRestrictionLiftedByBoosts(chatId, 'send_plain') ||
+      isRestricted ||
+      appConfig.freeze_since_date
+    ) {
+      return {mode: 'none'};
+    }
+
+    return {mode: 'boost', boostsNeeded: Math.max(1, chatFull.boosts_unrestrict - (chatFull.boosts_applied || 0))};
+  }
+
   public hasRightsMany(peerId: PeerId, storyIds: number[], right: 'send' | 'edit' | 'delete' | 'archive' | 'pin') {
     return storyIds.every((storyId) => this.hasRights(peerId, storyId, right));
   }
@@ -1706,7 +2193,9 @@ export default class AppStoriesManager extends AppManager {
       return 'hide';
     }
 
-    const topPeers = await this.appUsersManager.getTopPeers('correspondents');
+    // * the top correspondents may not be had (a flood wait): taken as not being one of them, as a menu
+    // * asking this must open all the same
+    const topPeers = await this.appUsersManager.getTopPeers('correspondents').catch((): MyTopPeer[] => []);
     return topPeers.some((topPeer) => topPeer.id === peerId) ? 'remove' : 'hide';
   }
 

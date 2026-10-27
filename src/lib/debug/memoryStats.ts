@@ -21,16 +21,61 @@ export type ThreadMemoryStats = {
   jsHeapTotal?: number,
   // * whatever that thread knows about its own big holders - entry counts and byte estimates.
   // * Keys ending in `Bytes` are rendered as MB by the report.
+  details?: Record<string, number>,
+  // * the records it broke since it started (see createPeakRecorder)
+  events?: MemoryEvent[]
+};
+
+// * A holder that grew past its own record, with what the thread knew at that very moment - which is
+// * what a periodic sample, minutes later, can no longer tell
+export type MemoryEvent = {
+  t: number,
+  thread?: string, // filled in by the report
+  name: string,
+  value: number,
   details?: Record<string, number>
 };
 
-export function readThreadMemory(thread: string, details?: Record<string, number>): ThreadMemoryStats {
+export function readThreadMemory(
+  thread: string,
+  details?: Record<string, number>,
+  events?: MemoryEvent[]
+): ThreadMemoryStats {
   const memory = (performance as any).memory;
   return {
     thread,
     jsHeap: memory?.usedJSHeapSize,
     jsHeapTotal: memory?.totalJSHeapSize,
-    details
+    details,
+    events
+  };
+}
+
+// * Remembers the moments a value set a new record. Records are counted in geometric steps from
+// * `min`, so a heap climbing from 16 MB to 1 GB leaves about twenty of them, not one per growth;
+// * the last `keep` stay. They are never taken away by a reader: a SharedWorker answers every tab,
+// * and each must see them all. `reset` starts over - after the holder was emptied, climbing back is
+// * news again.
+export function createPeakRecorder(name: string, {min, step = 1.25, keep = 16}: {min: number, step?: number, keep?: number}) {
+  const events: MemoryEvent[] = [];
+  let next = min;
+  return {
+    events,
+    observe(value: number, details?: () => Record<string, number>) {
+      if(value < next) {
+        return;
+      }
+
+      events.push({t: Date.now(), name, value, details: details?.()});
+      if(events.length > keep) {
+        events.shift();
+      }
+
+      next = value * step;
+    },
+    reset() {
+      next = min;
+    }
   };
 }
 

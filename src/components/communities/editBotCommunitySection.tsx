@@ -3,11 +3,10 @@ import CommunityLinkSection
 from '@components/communities/communityLinkSection';
 import confirmationPopup from '@components/confirmationPopup';
 import type {AppEditBotTab} from '@components/solidJsTabs/tabs';
-import {AppAddGroupToCommunityTab} from '@components/solidJsTabs/tabs';
 import {toastNew} from '@components/toast';
 import type {Chat, User} from '@layer';
-import appDialogsManager from '@lib/appDialogsManager';
 import {useUser} from '@stores/peers';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export default function EditBotCommunitySection(props: {
   tab: InstanceType<typeof AppEditBotTab>,
@@ -95,11 +94,11 @@ export default function EditBotCommunitySection(props: {
       addText="Community.AddBot"
       removeText="Community.RemoveBot"
       onAdd={() => {
-        props.tab.slider.createTab(AppAddGroupToCommunityTab)
+        props.tab.slider.createTab(hotReloadGuard.tabs.AppAddGroupToCommunityTab)
         .open({peerId: props.peerId});
       }}
       onOpenCommunity={(communityId) => {
-        void appDialogsManager.toggleForumTabByPeerId(
+        void hotReloadGuard.appDialogsManager.toggleForumTabByPeerId(
           communityId.toPeerId(true),
           true,
           false

@@ -22,16 +22,3 @@ export function fromTelegramSource(source: number) {
 // by. Use `fromTelegramSource` when the value is known to come from a Telegram
 // row, `normalizeSsrc` when keying/looking up a map.
 export const normalizeSsrc = fromTelegramSource;
-
-export function getAmplitude(array: Uint8Array, scale = 3) {
-  if(!array) return 0;
-
-  const {length} = array;
-  let total = 0;
-  for(let i = 0; i < length; ++i) {
-    total += array[i] * array[i];
-  }
-  const rms = Math.sqrt(total / length) / 255;
-
-  return Math.min(1, rms * scale);
-}

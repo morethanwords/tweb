@@ -2,6 +2,35 @@
 
 $inactive-opacity: .4;
 
+// * what a mover is moved by where the browser has registered properties (moverTransform.ts): its
+// * transitions then run on the main thread together with the clip, corners and size it opens and
+// * closes with, instead of on the compositor ahead of them
+@property --media-viewer-mover-transform {
+  syntax: '<transform-list>';
+  inherits: false;
+  initial-value: translateZ(0) scale3d(1, 1, 1);
+}
+
+// * how a mover opens, closes and moves aside, by whichever property moves it
+// * (reduced animations: it only fades, opening and closing where the media stands)
+@mixin mover-transitions($moved) {
+  &.active,
+  &.active.opening {
+    @include animation-level-transition($moved var(--open-duration), border-radius var(--open-duration), opacity var(--open-duration));
+  }
+
+  &.moving {
+    @include animation-level-transition($moved var(--move-duration) ease);
+  }
+}
+
+// * the album strip hidden with the caption: its thumbs stop taking presses, and with the keyboard
+// * layer leave the tab order (albumThumbs.module.scss reads these). Harmless on what hides with it
+@mixin album-thumbs-hidden {
+  --media-viewer-album-thumbs-events: none;
+  --media-viewer-album-thumbs-visibility: hidden;
+}
+
 .media-viewer {
   position: fixed;
   top: 0;
@@ -133,7 +162,8 @@ $inactive-opacity: .4;
     text-overflow: ellipsis;
     z-index: 4;
     // bottom: .75rem;
-    bottom: 0;
+    // * above the album strip when there is one
+    bottom: var(--media-viewer-album-height, 0px);
     left: 0;
     right: 0;
     padding: .5rem .5rem 0;
@@ -145,9 +175,7 @@ $inactive-opacity: .4;
     background-color: transparent;
     user-select: text;
 
-    @include animation-level(2) {
-      transition: transform var(--layer-transition), opacity var(--open-duration) ease-in-out, background-color var(--open-duration) ease-in-out;
-    }
+    @include animation-level-transition(transform var(--layer-transition), opacity var(--open-duration) ease-in-out, background-color var(--open-duration) ease-in-out);
 
     .scrollable {
       padding: .5rem .875rem;
@@ -178,7 +206,7 @@ $inactive-opacity: .4;
       width: 100%;
       transform: translateZ(0);
       text-align: unset;
-      bottom: 1.0625rem;
+      bottom: calc(1.0625rem + var(--media-viewer-album-height, 0px));
       background-color: var(--mv-panel-background-handhelds);
       opacity: 1 !important;
       padding-bottom: .75rem;
@@ -228,10 +256,38 @@ $inactive-opacity: .4;
     }
   }
 
+  // * the album's thumbnails (albumThumbs.tsx), under the caption; on handhelds they float over the media
+  // * with the rest of the chrome, above a video's controls
+  &-album-thumbs {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 4;
+
+    @include respond-to(handhelds) {
+      bottom: 1.0625rem;
+      background-color: var(--mv-panel-background-handhelds);
+      transform: translateZ(0);
+
+      @include animation-level(2) {
+        transition: opacity var(--open-duration) ease-in-out, transform var(--layer-transition) !important;
+      }
+
+      .media-viewer-whole.has-video-controls & {
+        transform: translate3d(0, -45px, 0);
+      }
+
+      .media-viewer-whole.backwards & {
+        visibility: hidden;
+      }
+    }
+  }
+
   &-switcher {
     --offset-top: 7.5rem;
     position: absolute;
-    left: 0;
+    inset-inline-start: 0;
     top: 3.75rem;
     width: 7rem;
     height: calc(100% - var(--offset-top));
@@ -252,9 +308,8 @@ $inactive-opacity: .4;
       display: none !important;
     }
 
-    &-right {
-      left: auto;
-      right: 0;
+    &-next {
+      inset-inline: auto 0;
     }
   }
 
@@ -264,7 +319,7 @@ $inactive-opacity: .4;
     position: absolute;
     color: #fff;
     font-size: 2rem;
-    left: 1rem;
+    inset-inline-start: 1rem;
     top: 50%;
     transform: translateY(-50%);
     opacity: 0;
@@ -275,17 +330,16 @@ $inactive-opacity: .4;
 
     @include respond-to(not-handhelds) {
       font-size: 3rem;
-      left: 2rem;
+      inset-inline-start: 2rem;
     }
   }
 
   &-next-button {
-    left: auto;
-    right: 1rem;
+    inset-inline: auto 1rem;
     transform: translateY(-50%);
 
     @include respond-to(not-handhelds) {
-      right: 2rem;
+      inset-inline: auto 2rem;
     }
   }
 
@@ -375,16 +429,11 @@ $inactive-opacity: .4;
     //   }
     // }
 
-    &.active {
-      transition: transform var(--open-duration), border-radius var(--open-duration), opacity var(--open-duration);
-    }
+    @include mover-transitions(transform);
 
-    &.active.opening {
-      transition: transform var(--open-duration), border-radius var(--open-duration), opacity var(--open-duration);
-    }
-
-    &.moving {
-      transition: transform var(--move-duration) ease;
+    &.is-transform-synced {
+      transform: var(--media-viewer-mover-transform);
+      @include mover-transitions(--media-viewer-mover-transform);
     }
 
     /* &.center {
@@ -451,7 +500,7 @@ $inactive-opacity: .4;
     opacity: 0;
     visibility: hidden;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: opacity var(--open-duration) 0s, visibility 0s var(--open-duration);
     }
   }
@@ -473,7 +522,7 @@ $inactive-opacity: .4;
       color: #fff;
       opacity: $inactive-opacity;
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: opacity var(--open-duration) ease-in-out, color var(--open-duration) ease-in-out, background-color var(--open-duration) ease-in-out;
       }
 
@@ -492,9 +541,7 @@ $inactive-opacity: .4;
       background: var(--mv-panel-background-handhelds);
       transform: translateY(0);
 
-      @include animation-level(2) {
-        transition: opacity var(--open-duration) ease-in-out, transform var(--open-duration) ease-in-out !important;
-      }
+      @include animation-level-transition(opacity var(--open-duration) ease-in-out, transform var(--open-duration) ease-in-out, $important: true);
 
       // Touch has no hover to reveal the chrome, so show it at full opacity (it
       // floats over the media now); the gradient scrim above carries legibility.
@@ -521,7 +568,9 @@ $inactive-opacity: .4;
   }
 
   &-mover.active &-aspecter {
-    transition: width var(--open-duration), height var(--open-duration), transform var(--open-duration), border-radius var(--open-duration);
+    @include animation-level(2) {
+      transition: width var(--open-duration), height var(--open-duration), transform var(--open-duration), border-radius var(--open-duration);
+    }
     //transition: var(--open-duration) all;
   }
 
@@ -561,7 +610,7 @@ $inactive-opacity: .4;
         opacity: 1;
         visibility: visible;
 
-        @include animation-level(2) {
+        @include animation-level(1) {
           transition: opacity var(--open-duration) 0s, visibility 0s 0s;
         }
       }
@@ -586,9 +635,11 @@ $inactive-opacity: .4;
       }
 
       &.hide-caption {
-        .media-viewer-caption {
+        .media-viewer-caption,
+        .media-viewer-album-thumbs {
           opacity: 0 !important;
           pointer-events: none;
+          @include album-thumbs-hidden;
         }
       }
 
@@ -598,24 +649,33 @@ $inactive-opacity: .4;
       // chrome-hidden, set in onClick).
       &.has-video:not(.has-video-controls),
       &.chrome-hidden {
-        .media-viewer-caption {
+        .media-viewer-caption,
+        .media-viewer-album-thumbs {
           opacity: 0 !important;
           pointer-events: none;
+          @include album-thumbs-hidden;
         }
 
         .media-viewer-topbar {
           opacity: 0;
           transform: translateY(-100%);
           pointer-events: none;
+
+          // reduced: it fades out where it stands
+          @include animation-level-below(2) {
+            transform: none;
+          }
         }
       }
     }
 
     &.is-zooming {
       .media-viewer-caption,
+      .media-viewer-album-thumbs,
       .media-viewer-switcher .media-viewer-sibling-button {
         opacity: 0 !important;
         pointer-events: none;
+        @include album-thumbs-hidden;
       }
     }
 
@@ -701,7 +761,7 @@ $inactive-opacity: .4;
   transform: translateX(-50%);
   z-index: 5;
 
-  @include animation-level(2) {
+  @include animation-level(1) {
     transition: opacity var(--open-duration);
   }
   
@@ -734,9 +794,11 @@ $inactive-opacity: .4;
   &.is-visible {
     opacity: 1;
 
-    & ~ .media-viewer-caption {
+    & ~ .media-viewer-caption,
+    & ~ .media-viewer-album-thumbs {
       opacity: 0 !important;
       pointer-events: none;
+      @include album-thumbs-hidden;
     }
 
     & ~ .media-viewer-movers {
@@ -761,13 +823,16 @@ $inactive-opacity: .4;
   transition: opacity var(--open-duration) 0s, visibility 0s var(--open-duration);
 }
 
-// Avatar viewer: "X of Y" / "Public Photo" prefix before the date, separated by
-// a large dot — "2 of 5 • 1 Jan 2024" / "Public Photo • 1 Jan 2024".
+// "X of Y" (or the avatar viewer's "Public Photo") before the date, separated by
+// a large dot — "2 of 5 • 1 Jan 2024" / "Public Photo • 1 Jan 2024" (setDateExtra).
 .media-viewer-date-dot::before {
   content: '•';
   margin: 0 .375rem;
   font-size: 1.15em;
   vertical-align: middle;
+  // larger than the text, it would make the line taller - and the line has it only while there is an
+  // extra, so the title above moved each time one came or went
+  line-height: 0;
 }
 
 .media-viewer-whole.live {
@@ -777,7 +842,7 @@ $inactive-opacity: .4;
   }
 
   .media-viewer-userpic {
-    margin-right: 1.125rem;
+    margin-inline-end: 1.125rem;
     --size: 42px;
   }
 
@@ -877,10 +942,10 @@ $inactive-opacity: .4;
 
 .checkable-button-menu {
   .btn-menu-item {
-    padding-left: 8px;
+    padding-inline-start: 8px;
   }
   .btn-menu-item-icon {
-    margin-right: 12px;
+    margin-inline-end: 12px;
   }
 }
 

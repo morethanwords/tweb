@@ -1,5 +1,5 @@
-import {CancellablePromise} from '@helpers/cancellablePromise';
-import {AccountPasskeys, AccountPassword, Authorization, ChannelParticipant, Chat, ChatAdminRights, ChatParticipant, ConnectedBot, DialogFilter, ExportedChatlistInvite, GlobalPrivacySettings, Passkey, WebAuthorization} from '@layer';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import {AccountPasskeys, AccountPassword, Authorization, ChannelParticipant, Chat, ChatAdminRights, ChatParticipant, ConnectedBot, DialogFilter, ExportedChatlistInvite, GlobalPrivacySettings, MediaArea, Passkey, WebAuthorization} from '@layer';
 import type SidebarSlider from '@components/slider';
 import type {SliderSuperTab} from '@components/slider';
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
@@ -9,9 +9,14 @@ import type {PasscodeActions} from '@lib/passcode/actions';
 import {InstanceOf} from '@types';
 import {SetStoreFunction} from 'solid-js/store';
 import {scaffoldSolidJSTab, scaffoldSolidJSTabEventable} from '@components/solidJsTabs/scaffoldSolidJSTab';
-import {SuperTabProvider} from '@components/solidJsTabs/superTabProvider';
 import rootScope from '@lib/rootScope';
+import {appSettings} from '@stores/appSettings';
 import type {EditProfileTabPayload} from '@components/sidebarLeft/tabs/editProfile';
+import type {BusinessHoursTabPayload} from '@components/sidebarLeft/tabs/businessHours';
+import type {BusinessLocationTabPayload} from '@components/sidebarLeft/tabs/businessLocation';
+import type {TimezoneTabPayload} from '@components/sidebarLeft/tabs/timezone';
+import type {BusinessPeriod} from '@components/sidebarLeft/tabs/businessHoursShared';
+import type {StoriesSearch} from '@components/stories/store';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {ChatInvite, ChatInviteActions, getChatInviteLinksInitArgs} from '@components/sidebarRight/tabs/chatInviteLinkShared';
 import lottieLoader from '@lib/lottie/lottieLoader';
@@ -24,18 +29,58 @@ import type {IsPeerType} from '@appManagers/appPeersManager';
 import type {AppChatFull} from '@appManagers/appProfileManager';
 
 
-export const AppPasscodeLockTab =
+/**
+ * The passcode's screen turns the passcode off and sets a new one without asking for it again, so
+ * every way there — the Privacy and Security row, the settings search, a `tg://settings/privacy/passcode`
+ * link — goes through here, and is asked for the current passcode first while one is set. Resolves with
+ * the passcode's screen once it is open, so a search result or a link can point at its control there, or
+ * with nothing when the check is given up.
+ */
+async function openPasscodeLockTabChecked(slider: SidebarSlider): Promise<SliderSuperTab> {
+  if(!appSettings.passcode?.enabled) {
+    const tab = slider.createTab(AppPasscodeLockTab);
+    await tab.open();
+    return tab;
+  }
+
+  const opened = deferredPromise<SliderSuperTab>();
+  const checkTab = slider.createTab(AppPasscodeEnterPasswordTab);
+  checkTab.middlewareHelper.onDestroy(() => opened.resolve(undefined));
+  await checkTab.open({
+    buttonText: 'PasscodeLock.Next',
+    inputLabel: 'PasscodeLock.EnterYourPasscode',
+    onSubmit: async(passcode, _, {isMyPasscode}) => {
+      const isCorrect = await isMyPasscode(passcode);
+      passcode = '';
+      if(!isCorrect) throw {};
+      // the check was left while the passcode was being verified (Back, an account switch): it opens
+      // nothing after all
+      if(!slider.getHistory().includes(checkTab)) return;
+
+      const tab = slider.createTab(AppPasscodeLockTab);
+      await tab.open();
+      opened.resolve(tab);
+    }
+  });
+  return opened;
+}
+
+export const AppPasscodeLockTab = Object.assign(
   scaffoldSolidJSTab({
     title: 'PasscodeLock.Title',
     getComponentModule: () => import('../sidebarLeft/tabs/passcodeLock/mainTab'),
     onOpenAfterTimeout: async function() {
-      // Remove the previous enter password tab
-      this.slider.sliceTabsUntilTab(
-        SuperTabProvider.allTabs.AppPrivacyAndSecurityTab,
-        this
-      );
+      // the check that let us in is no step to go back to: Back lands where the passcode was opened
+      // from — Privacy and Security, or the settings search
+      const history = this.slider.getHistory();
+      const below = history[history.indexOf(this) - 1];
+      if(below instanceof AppPasscodeEnterPasswordTab) {
+        this.slider.removeTabFromHistory(below);
+      }
     }
-  });
+  }),
+  {openChecked: openPasscodeLockTabChecked}
+);
 
 
 type AppPasscodeEnterPasswordTabPayload = {
@@ -96,6 +141,92 @@ export const AppEditProfileTab =
     getComponentModule: () => import('../sidebarLeft/tabs/editProfile')
   });
 (AppEditProfileTab as any).noSame = true;
+
+
+export function getBusinessHoursInitArgs(): BusinessHoursTabPayload {
+  return {
+    animationData: lottieLoader.loadAnimationFromURLManually('BusinessHours'),
+    userFull: rootScope.managers.appProfileManager.getProfile(rootScope.myId.toUserId()),
+    timezones: rootScope.managers.apiManager.getTimezonesList().then((list) => (
+      list._ === 'help.timezonesList' ? list.timezones : []
+    ))
+  };
+}
+
+export const AppBusinessHoursTab = Object.assign(
+  scaffoldSolidJSTab<BusinessHoursTabPayload>({
+    title: 'BusinessHours',
+    getComponentModule: () => import('../sidebarLeft/tabs/businessHours')
+  }),
+  {getInitArgs: getBusinessHoursInitArgs}
+);
+(AppBusinessHoursTab as any).noSame = true;
+
+
+type AppBusinessHoursDayTabPayload = {
+  /** Already-formatted weekday name — the header text, not a lang key. */
+  dayName: string,
+  periods: BusinessPeriod[],
+  /** Earliest minute this day may open at, given how far the previous day runs. */
+  min: number,
+  /** Latest minute this day may close at, given when the next day opens. */
+  max: number,
+  maxPeriodsCount: number,
+  /** Called once, with the day as saved; an unsaved tab reports nothing. */
+  onSave: (periods: BusinessPeriod[]) => void
+};
+
+export const AppBusinessHoursDayTab =
+  scaffoldSolidJSTab<AppBusinessHoursDayTabPayload>({
+    title: 'BusinessHours',
+    getComponentModule: () => import('../sidebarLeft/tabs/businessHoursDay')
+  });
+(AppBusinessHoursDayTab as any).noSame = true;
+
+
+export const AppTimezoneTab =
+  scaffoldSolidJSTab<TimezoneTabPayload>({
+    title: 'TimezoneTitle',
+    getComponentModule: () => import('../sidebarLeft/tabs/timezone')
+  });
+(AppTimezoneTab as any).noSame = true;
+
+
+export function getBusinessLocationInitArgs(): BusinessLocationTabPayload {
+  return {
+    animationData: lottieLoader.loadAnimationFromURLManually('BusinessLocation'),
+    userFull: rootScope.managers.appProfileManager.getProfile(rootScope.myId.toUserId())
+  };
+}
+
+export const AppBusinessLocationTab = Object.assign(
+  scaffoldSolidJSTab<BusinessLocationTabPayload>({
+    title: 'BusinessLocation',
+    getComponentModule: () => import('../sidebarLeft/tabs/businessLocation')
+  }),
+  {getInitArgs: getBusinessLocationInitArgs}
+);
+(AppBusinessLocationTab as any).noSame = true;
+
+/**
+ * Opens one of the Business editors. Both save through `account.updateBusiness*`, which a
+ * free account is refused, so one gets the Business promo instead of a form that could only
+ * fail on save — the way Android gates them.
+ */
+export async function openBusinessEditorTab(
+  slider: SidebarSlider,
+  Tab: typeof AppBusinessHoursTab | typeof AppBusinessLocationTab
+) {
+  if(!rootScope.premium) {
+    const {showBusinessPopup} = await import('@components/popups/premium');
+    showBusinessPopup({feature: Tab === AppBusinessHoursTab ? 'business_hours' : 'business_location'});
+    return;
+  }
+
+  const tab = slider.createTab(Tab);
+  await tab.open(Tab.getInitArgs() as BusinessHoursTabPayload & BusinessLocationTabPayload);
+  return tab;
+}
 
 
 type AppChatAutomationTabPayload = {
@@ -865,6 +996,14 @@ export const AppMyStoriesTab = Object.assign(
   {getInitArgs: getMyStoriesInitArgs}
 );
 
+// * public stories with a hashtag, or from a place: the title of a place says which of the two it is
+export const AppStoriesSearchTab = scaffoldSolidJSTab<{search: StoriesSearch}>({
+  title: ({search}) => search.area ?
+    ((search.area as MediaArea.mediaAreaVenue).title ? 'SharedPlace' : 'ChatLocation') :
+    'PublicStories',
+  getComponentModule: () => import('../sidebarLeft/tabs/storiesSearch')
+});
+
 
 export const AppArchivedTab =
   scaffoldSolidJSTab({
@@ -900,17 +1039,66 @@ type AppTwoStepVerificationTabPayload = {
   plainPassword?: string
 };
 
-export const AppTwoStepVerificationTab =
+/**
+ * Two-Step Verification's screen works with the cloud password it was handed, so while one is set it is
+ * entered first, and an unconfirmed recovery email is confirmed first — the same from the Privacy and
+ * Security row, the settings search and a `tg://settings/privacy/2sv` link. Resolves with the screen once
+ * the password is accepted, so a result or a link can point at its control there, or with nothing when
+ * the password step is given up; with the email's confirmation when that comes first.
+ */
+async function openTwoStepVerificationTabChecked(slider: SidebarSlider, state: AccountPassword): Promise<SliderSuperTab> {
+  if(state.pFlags.has_password) {
+    const opened = deferredPromise<SliderSuperTab>();
+    let passed = false;
+    const checkTab = slider.createTab(AppTwoStepVerificationEnterPasswordTab);
+    // the step goes away once passed too, while the screen is still loading: only giving it up opens nothing
+    checkTab.middlewareHelper.onDestroy(() => {
+      if(!passed) opened.resolve(undefined);
+    });
+    await checkTab.open({
+      state,
+      onPassed: (screen) => {
+        passed = true;
+        screen.then((tab) => opened.resolve(tab));
+      }
+    });
+    return opened;
+  }
+
+  if(state.email_unconfirmed_pattern) {
+    const tab = slider.createTab(AppTwoStepVerificationEmailConfirmationTab);
+    tab.managers.passwordManager.resendPasswordEmail();
+    // the email screen's own module, and its weight, only for the one case that needs it
+    const {wrapEmailPattern} = await import('@components/emailVerification');
+    await tab.open({
+      state,
+      email: wrapEmailPattern(state.email_unconfirmed_pattern),
+      length: 6,
+      isFirst: true
+    });
+    return tab;
+  }
+
+  const tab = slider.createTab(AppTwoStepVerificationTab);
+  await tab.open({state});
+  return tab;
+}
+
+export const AppTwoStepVerificationTab = Object.assign(
   scaffoldSolidJSTab<AppTwoStepVerificationTabPayload>({
     title: 'TwoStepVerificationTitle',
     getComponentModule: () => import('../sidebarLeft/tabs/2fa/index')
-  });
+  }),
+  {openChecked: openTwoStepVerificationTabChecked}
+);
 
 
 type AppTwoStepVerificationEnterPasswordTabPayload = {
   state: AccountPassword,
   plainPassword?: string,
-  isFirst?: boolean
+  isFirst?: boolean,
+  /** The current password was accepted: Two-Step Verification's screen is opening, and this resolves with it once open. */
+  onPassed?: (screen: Promise<InstanceOf<typeof AppTwoStepVerificationTab>>) => void
 };
 
 export const AppTwoStepVerificationEnterPasswordTab =

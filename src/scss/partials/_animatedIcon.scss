@@ -32,7 +32,7 @@
     transform: rotate(90deg);
   }
 
-  @include animation-level(2) {
+  @include animation-level(1) {
     &,
     &:before,
     &:after {
@@ -75,7 +75,7 @@
     transform: rotate(180deg);
   }
 
-  @include animation-level(2) {
+  @include animation-level(1) {
     &,
     &:before,
     &:after {
@@ -123,7 +123,7 @@
     top: .3125rem;
     opacity: 1;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: transform .25s, opacity .125s 0s;
     }
   }
@@ -163,8 +163,8 @@
     position: absolute;
     height: 1.5rem;
     line-height: 1.5rem;
-    animation: hide-icon .4s forwards ease-in-out;
-    
+    @include animation-level-icon-out();
+
     @include animation-level(0) {
       visibility: hidden;
       animation: none !important;

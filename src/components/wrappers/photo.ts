@@ -7,7 +7,7 @@ import rootScope from '@lib/rootScope';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import ProgressivePreloader from '@components/preloader';
 import blur from '@helpers/blur';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import getMediaThumbIfNeeded from '@helpers/getStrippedThumbIfNeeded';
 import setAttachmentSize from '@helpers/setAttachmentSize';
 import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
@@ -41,7 +41,7 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
   noThumb?: boolean,
   noFadeIn?: boolean,
   blurAfter?: boolean,
-  managers?: AppManagers,
+  managers?: ReadingManagers,
   processUrl?: (url: string) => Promise<string>,
   fadeInElement?: HTMLElement,
   onRender?: () => void,

@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{I as e,m as t}from"./solid-Beq2bZCx.js";var n=t(null),r=t(null);function i(){let t=e(n);if(!t)throw Error(`useHotReloadGuard should not be used outside a <SolidJSHotReloadGuardProvider />`);return t}function a(){let t=e(r)||e(n);if(!t)throw Error(`useLockScreenHotReloadGuard should not be used outside a <LockScreenHotReloadGuardProvider />`);return t}export{a as i,n,i as r,r as t};
+//# sourceMappingURL=hotReloadGuard-CHYXNvhm.js.map

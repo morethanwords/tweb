@@ -12,16 +12,16 @@ const mocks = vi.hoisted(() => ({
   menuProbe: vi.fn(),
   menus: [] as HTMLElement[],
   positionMenu: vi.fn(),
-  scrollables: [] as Array<{destroy: ReturnType<typeof vi.fn>}>,
+  scrollables: [] as Array<{container: HTMLElement, destroy: ReturnType<typeof vi.fn>}>,
   lists: [] as Array<{
+    list: HTMLElement,
     add: ReturnType<typeof vi.fn>,
     delete: ReturnType<typeof vi.fn>,
     destroy: ReturnType<typeof vi.fn>,
     has: ReturnType<typeof vi.fn>,
     update: ReturnType<typeof vi.fn>
   }>,
-  toastNew: vi.fn(),
-  videos: [] as Array<{destroy: ReturnType<typeof vi.fn>}>
+  toastNew: vi.fn()
 }));
 
 vi.mock('@components/groupCall', () => ({
@@ -118,6 +118,8 @@ vi.mock('@components/scrollable', () => ({
       this.container.append(...elements);
     }
 
+    public attachBorderListeners() {}
+
     public checkForTriggers() {}
   }
 }));
@@ -130,20 +132,11 @@ vi.mock('@components/groupCall/participantsList', () => ({
     public delete = vi.fn();
     public has = vi.fn().mockReturnValue(false);
     public update = vi.fn();
+    public blockGlide = vi.fn().mockReturnValue(() => {});
+    public setParticipant = vi.fn();
 
     constructor() {
       mocks.lists.push(this);
-    }
-  }
-}));
-
-vi.mock('@components/groupCall/participantVideos', () => ({
-  default: class GroupCallParticipantsVideoElementMock extends EventTarget {
-    public destroy = vi.fn();
-
-    constructor() {
-      super();
-      mocks.videos.push(this);
     }
   }
 }));
@@ -170,7 +163,12 @@ function makeInstance(getParticipantByPeerId = vi.fn().mockResolvedValue(partici
     id: 20,
     participants: Promise.resolve(new Map()),
     memberWithAccessPeerIds: [] as PeerId[],
+    selfPeerId: 1 as PeerId,
     getParticipantByPeerId,
+    getParticipantRow: getParticipantByPeerId,
+    watchSpeaking: vi.fn(() => () => {}),
+    isSpeaking: vi.fn(() => false),
+    getAudioLevel: vi.fn((): number => undefined),
     isMemberWithAccess: vi.fn().mockReturnValue(false),
     editParticipant: vi.fn()
   });
@@ -211,7 +209,6 @@ afterEach(() => {
   mocks.positionMenu.mockClear();
   mocks.scrollables.length = 0;
   mocks.lists.length = 0;
-  mocks.videos.length = 0;
   mocks.toastNew.mockClear();
   vi.restoreAllMocks();
   document.body.replaceChildren();
@@ -321,23 +318,31 @@ describe('group call participant UI teardown', () => {
     listenerSetter.removeAll();
   });
 
-  it('destroys both scroll surfaces, the rows, video tiles and context menu', () => {
+  it('destroys the scroll surface, the rows and context menu, and hosts the video tiles above the rows', () => {
     const listenerSetter = new ListenerSetter();
     const host = document.createElement('div');
     document.body.append(host);
+    const videoList = document.createElement('div');
     const element = new GroupCallParticipantsElement({
       appendTo: host,
       instance: makeInstance() as any,
       listenerSetter,
-      managers: makeManagers()
+      managers: makeManagers(),
+      videoList
     });
+
+    // the tiles belong to the video grid, which outlives nothing here: only their place is this list's
+    expect(mocks.scrollables[0].container.firstElementChild).toBe(videoList);
+    // the rows, in their section, under the tiles
+    const section = videoList.nextElementSibling as HTMLElement;
+    expect(section.classList.contains('group-call-participants-section')).toBe(true);
+    expect(section.contains(mocks.lists[0].list)).toBe(true);
 
     element.destroy();
     element.destroy();
 
     expect(mocks.scrollables[0].destroy).toHaveBeenCalledTimes(1);
     expect(mocks.lists[0].destroy).toHaveBeenCalledTimes(1);
-    expect(mocks.videos[0].destroy).toHaveBeenCalledTimes(1);
     expect(mocks.menus).toHaveLength(0);
     listenerSetter.removeAll();
   });
@@ -446,7 +451,7 @@ describe('group call participant UI teardown', () => {
     });
     Object.assign(menu as any, {targetPeerId: 1 as PeerId});
 
-    (menu as any).buttons[5].onClick();
+    (menu as any).buttons.find((button: {text: string}) => button.text === 'VoiceChat.RemovePeer').onClick();
     await vi.waitFor(() => {
       expect(consoleError).toHaveBeenCalledWith('remove group call participant failed', error);
     });

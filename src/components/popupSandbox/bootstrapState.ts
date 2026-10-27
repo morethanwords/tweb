@@ -9,8 +9,8 @@
  * snapshot), and the stores are only seeded when nobody has filled them yet.
  *
  * In the standalone case this must also run BEFORE the popup modules are pulled in: several read
- * `appState` while their own module body evaluates (`stores/contentSettings.ts` builds memos inside
- * a module-scope `createRoot`), and a memo that throws on first read stays stale forever. That is
+ * `appState` while their own module body evaluates (memos inside a module-scope `createRoot`), and
+ * a memo that throws on first read stays stale forever. That is
  * why every sandbox module that reaches into the app imports this one first — and why `?popups=1`
  * imports it on its own before the sandbox (`src/index.ts`). Import order alone holds only on the dev
  * server: in a bundle a chunk evaluates every chunk it imports before its own body, so the shared

@@ -9,7 +9,12 @@ import {toastNew} from '@components/toast';
 import {i18n} from '@lib/langPack';
 import ListenerSetter from '@helpers/listenerSetter';
 
-export default function showCreateContactPopup(): void {
+// * `prefill`: a contact someone shared, the way tdesktop opens its AddContactBox from the message
+export default function showCreateContactPopup(prefill?: {
+  firstName?: string,
+  lastName?: string,
+  phone?: string
+}): void {
   function Inner() {
     const context = useContext(PopupContext);
     const middleware = untrack(() => context.middlewareHelper).get();
@@ -82,6 +87,15 @@ export default function showCreateContactPopup(): void {
 
       attachClickEvent(confirmBtn, onConfirm, {listenerSetter});
       context.setBtnConfirmOnEnter(confirmBtn);
+
+      if(prefill) {
+        nameInputField.value = prefill.firstName || '';
+        lastNameInputField.value = prefill.lastName || '';
+        if(prefill.phone) {
+          telInputField.value = prefill.phone;
+          return;
+        }
+      }
 
       managers.appUsersManager.getSelf().then((user) => {
         if(!middleware()) return;

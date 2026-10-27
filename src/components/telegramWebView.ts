@@ -1,9 +1,15 @@
 import EventListenerBase from '@helpers/eventListenerBase';
 import {TelegramWebViewEvent, TelegramWebViewEventMap, TelegramWebViewSendEventMap} from '@types';
+import {hotEffect} from '@helpers/hotModule';
 
 const weakMap: WeakMap<Window, TelegramWebView> = new WeakMap();
-window.addEventListener('message', (e) => {
-  weakMap.get(e.source as Window)?.onMessage(e.origin, e.data);
+hotEffect(import.meta.hot, () => {
+  const onMessage = (e: MessageEvent) => {
+    weakMap.get(e.source as Window)?.onMessage(e.origin, e.data);
+  };
+
+  window.addEventListener('message', onMessage);
+  return () => window.removeEventListener('message', onMessage);
 });
 
 export default class TelegramWebView extends EventListenerBase<{

@@ -13,12 +13,13 @@ import styles from '@components/popups/starGiftWear.module.scss';
 import {AvatarNewTsx} from '@components/avatarNew';
 import FeatureRows from '@components/featureRows';
 import MediaHeader from '@components/mediaHeader';
-import showPremiumPopup from '@components/popups/premium';
 import {getCollectibleName} from '@appManagers/utils/gifts/getCollectibleName';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import classNames from '@helpers/string/classNames';
 import {StickerTsx} from '@components/wrappers/sticker';
 import showBoostPopup from './boost';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export default function showStarGiftWearPopup(options: {
   gift: MyStarGift,
@@ -31,22 +32,23 @@ export default function showStarGiftWearPopup(options: {
   const [show, setShow] = createSignal(true);
 
   const onWear = async() => {
+    const managers = bindManagersToSession(rootScope.managers);
     const promise = peerId === rootScope.myId ?
-      rootScope.managers.appUsersManager.updateEmojiStatus({
+      managers.appUsersManager.updateEmojiStatus({
         _: 'inputEmojiStatusCollectible',
         collectible_id: gift$.raw.id
       }) :
-      rootScope.managers.apiManager.invokeApiSingleProcess({
+      managers.apiManager.invokeApiSingleProcess({
         method: 'channels.updateEmojiStatus',
         params: {
-          channel: await rootScope.managers.appChatsManager.getChannelInput(peerId.toChatId()),
+          channel: await managers.appChatsManager.getChannelInput(peerId.toChatId()),
           emoji_status: {
             _: 'inputEmojiStatusCollectible',
             collectible_id: gift$.raw.id
           }
         }
       }).then((updates) => {
-        rootScope.managers.apiUpdatesManager.processUpdateMessage(updates);
+        managers.apiUpdatesManager.processUpdateMessage(updates);
       });
 
     promise.then(() => {
@@ -143,7 +145,7 @@ export default function showStarGiftWearPopup(options: {
 
 export function openStarGiftWear(gift: MyStarGift, peerId?: PeerId) {
   if(!rootScope.premium) {
-    showPremiumPopup();
+    hotReloadGuard.showPremiumPopup();
     return false;
   }
 

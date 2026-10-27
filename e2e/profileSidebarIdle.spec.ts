@@ -19,8 +19,8 @@ import {expect, Page, test} from '@playwright/test';
  * against an authorized preview and skips rather than reporting a pass it never
  * made:
  *
- *   bash scripts/start-preview.sh --port 9105
- *   PLAYWRIGHT_BASE_URL=http://localhost:9105 pnpm exec playwright test e2e/profileSidebarIdle.spec.ts
+ *   bash scripts/start-preview.sh --detach    # prints the URL, say http://localhost:9001
+ *   PLAYWRIGHT_BASE_URL=http://localhost:9001 pnpm exec playwright test e2e/profileSidebarIdle.spec.ts
  */
 test.describe('the profile sidebar', () => {
   test.skip(!process.env.PLAYWRIGHT_BASE_URL, 'needs an authorized preview (PLAYWRIGHT_BASE_URL)');

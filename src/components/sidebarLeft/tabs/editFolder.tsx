@@ -1,6 +1,5 @@
-import {Component} from 'solid-js';
+import {Component, createSignal, untrack} from 'solid-js';
 import type {MyDialogFilter} from '@lib/storages/filters';
-import appDialogsManager from '@lib/appDialogsManager';
 import {LottieLoader} from '@lib/lottie/lottieLoader';
 import {toastNew} from '@components/toast';
 import InputField from '@components/inputField';
@@ -8,7 +7,6 @@ import ButtonIcon from '@components/buttonIcon';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import {ButtonMenuItemOptions} from '@components/buttonMenu';
 import Button from '@components/button';
-import {AppIncludedChatsTab} from '@components/solidJsTabs/tabs';
 import {i18n, LangPackKey} from '@lib/langPack';
 import LottiePlayer from '@lib/lottie/lottiePlayer';
 import copy from '@helpers/object/copy';
@@ -17,7 +15,7 @@ import filterAsync from '@helpers/array/filterAsync';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import Section, {appendSectionContent} from '@components/section';
 import {unwrapSolidElement} from '@helpers/solid/wrapSolidComponent';
-import {DialogFilter, ExportedChatlistInvite} from '@layer';
+import {DialogFilter, ExportedChatlistInvite, TextWithEntities} from '@layer';
 import rootScope from '@lib/rootScope';
 import {useAppSettings} from '@stores/appSettings';
 import RowTsx from '@components/rowTsx';
@@ -25,7 +23,6 @@ import createContextMenu from '@helpers/dom/createContextMenu';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
-import {AppSharedFolderTab} from '@components/solidJsTabs/tabs';
 import showLimitPopup from '@components/popups/limit';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import Icon from '@components/icon';
@@ -38,6 +35,9 @@ import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type {AppEditFolderTab} from '@components/solidJsTabs/tabs';
 import {mountSolidComponent} from '@helpers/solid/wrapSolidComponent';
+import FolderTagColorSection, {getNewFolderTagColor} from '@components/folderTags/folderTagColorSection';
+import {getFolderTagColor, useFolderTagsShown} from '@stores/folderTags';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 type EditFolderButton = {
   icon: Icon,
@@ -51,7 +51,7 @@ type EditFolderFlags = {[k in 'contacts' | 'non_contacts' | 'groups' | 'broadcas
 const EditFolder: Component = () => {
   const [tab] = useSuperTab<typeof AppEditFolderTab>();
   const promiseCollector = usePromiseCollector();
-  const {HotReloadGuard, lottieLoader} = useHotReloadGuard();
+  const {HotReloadGuard, lottieLoader, showPremiumPopup} = useHotReloadGuard();
   const p = tab.payload;
 
   const flags: EditFolderFlags = {} as any;
@@ -62,6 +62,9 @@ const EditFolder: Component = () => {
   let loadAnimationPromise: ReturnType<LottieLoader['waitForFirstFrame']>;
   let tempId = 0;
   let showMoreClicked: {[key in 'includePeerIds' | 'excludePeerIds']?: boolean} = {};
+  // * what the folder colour section shows: the folder's name, as it is being typed, and its colour
+  const [tagTitle, setTagTitle] = createSignal<TextWithEntities>();
+  const [tagColor, setTagColor] = createSignal<number>();
 
   const editCheckForChange = () => {
     if(type === 'edit') {
@@ -121,7 +124,7 @@ const EditFolder: Component = () => {
       }
 
       const section = key === 'includePeerIds' ? includePeerIds : excludePeerIds;
-      const ul = appDialogsManager.createChatList({ignoreClick: true});
+      const ul = hotReloadGuard.appDialogsManager.createChatList({ignoreClick: true});
 
       // filter peers where we're kicked
       const hasPeer = async(peerId: PeerId) => {
@@ -144,7 +147,7 @@ const EditFolder: Component = () => {
 
         const loadPromises: Promise<any>[] = [];
         const containers = filtered.map((peerId) => {
-          const dialogElement = appDialogsManager.addDialogNew({
+          const dialogElement = hotReloadGuard.appDialogsManager.addDialogNew({
             peerId,
             rippleEnabled: false,
             meAsSaved: true,
@@ -220,6 +223,12 @@ const EditFolder: Component = () => {
       filter = copy(_filter);
     } else {
       filter = _filter;
+    }
+
+    setTagTitle(filter.title);
+    setTagColor(getFolderTagColor(filter));
+
+    if(!firstTime) {
       onEditOpen();
       editCheckForChange();
     }
@@ -237,7 +246,10 @@ const EditFolder: Component = () => {
         exclude_peers: [],
         pinnedPeerIds: [],
         includePeerIds: [],
-        excludePeerIds: []
+        excludePeerIds: [],
+        // * a new folder is tagged from the start while the tags are on, as on Android and iOS -
+        // * otherwise it would be the one folder whose chats say nothing of it
+        ...(untrack(useFolderTagsShown()) ? {color: getNewFolderTagColor()} : {})
       }, true);
       type = 'create';
     } else {
@@ -308,6 +320,7 @@ const EditFolder: Component = () => {
     onInput: () => {
       const {value, entities} = getRichValueWithCaret(nameInputField.controls.inputField.input);
       filter.title = {_: 'textWithEntities', ...trimRichText(value || '', entities || [])};
+      setTagTitle(filter.title);
       editCheckForChange();
     }
   });
@@ -405,6 +418,24 @@ const EditFolder: Component = () => {
   }];
   const excludePeerIds = generateList('folder-list-excluded', 'FilterExclude', excludePeerIdsButtons, flags, 'FilterExcludeInfo');
 
+  const tagColorSection = mountSolidComponent(() => (
+    <FolderTagColorSection
+      title={tagTitle}
+      color={tagColor}
+      onChange={(color) => {
+        if(color === undefined) {
+          delete filter.color;
+        } else {
+          filter.color = color;
+        }
+
+        setTagColor(color);
+        editCheckForChange();
+      }}
+      onLocked={() => showPremiumPopup({feature: 'folder_tags'})}
+    />
+  ), tab.middlewareHelper.get()).element;
+
   const inviteLinks = generateList('folder-list-links', 'InviteLinks', [{
     icon: 'add',
     text: 'SharedFolder.CreateLink',
@@ -417,6 +448,7 @@ const EditFolder: Component = () => {
     inputSection,
     includePeerIds,
     excludePeerIds,
+    tagColorSection,
     inviteLinks
   );
 
@@ -426,11 +458,11 @@ const EditFolder: Component = () => {
   const inviteLinksCreate = inviteLinks.querySelector('.btn') as HTMLElement;
 
   attachClickEvent(includedFlagsContainer.querySelector('.btn') as HTMLElement, () => {
-    tab.slider.createTab(AppIncludedChatsTab).open({filter, type: 'included', onSetFilter: (f) => setFilter(f, false)});
+    tab.slider.createTab(hotReloadGuard.tabs.AppIncludedChatsTab).open({filter, type: 'included', onSetFilter: (f) => setFilter(f, false)});
   }, {listenerSetter: tab.listenerSetter});
 
   attachClickEvent(excludedFlagsContainer.querySelector('.btn') as HTMLElement, () => {
-    tab.slider.createTab(AppIncludedChatsTab).open({filter, type: 'excluded', onSetFilter: (f) => setFilter(f, false)});
+    tab.slider.createTab(hotReloadGuard.tabs.AppIncludedChatsTab).open({filter, type: 'excluded', onSetFilter: (f) => setFilter(f, false)});
   }, {listenerSetter: tab.listenerSetter});
 
   const confirmEditing = (closeAfter?: boolean) => {
@@ -701,7 +733,7 @@ const EditFolder: Component = () => {
 
       const openChatlistInvite = (chatlistInvite?: ExportedChatlistInvite) => {
         const row = invitesMap.get(chatlistInvite?.url);
-        const sharedTab = tab.slider.createTab(AppSharedFolderTab);
+        const sharedTab = tab.slider.createTab(hotReloadGuard.tabs.AppSharedFolderTab);
         sharedTab.eventListener.addEventListener('delete', () => {
           onLinkDeletion(chatlistInvite);
         });

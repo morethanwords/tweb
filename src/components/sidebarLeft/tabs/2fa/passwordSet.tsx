@@ -2,9 +2,9 @@ import {Component, onMount} from 'solid-js';
 import Button from '@components/buttonTsx';
 import Section from '@components/section';
 import wrapStickerEmoji from '@components/wrappers/stickerEmoji';
-import {AppSettingsTab} from '@components/solidJsTabs';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import type {AppTwoStepVerificationSetTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const TwoStepVerificationSet: Component = () => {
   const [tab] = useSuperTab<typeof AppTwoStepVerificationSetTab>();
@@ -20,7 +20,7 @@ const TwoStepVerificationSet: Component = () => {
 
   onMount(() => {
     tab.container.classList.add('two-step-verification', 'two-step-verification-set');
-    tab.slider.sliceTabsUntilTab(AppSettingsTab, tab);
+    tab.slider.sliceTabsUntilTab(hotReloadGuard.tabs.AppSettingsTab, tab);
   });
 
   return (

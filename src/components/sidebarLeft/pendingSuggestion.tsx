@@ -1,4 +1,5 @@
 import Button from '@components/buttonTsx';
+import CrossfadeBlock from '@components/crossfadeBlock';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import RippleElement from '@components/rippleElement';
 import createBirthdaySuggestions from '@components/sidebarLeft/birthdaySuggestions';
@@ -8,17 +9,17 @@ import createNotificationsSuggestion from '@components/sidebarLeft/notifications
 import createPasskeySetupSuggestion from '@components/sidebarLeft/passkeySetupSuggestion';
 import type {PendingSuggestionController} from '@components/sidebarLeft/pendingSuggestionController';
 import styles from '@components/sidebarLeft/pendingSuggestion.module.scss';
+import collapsedPanelStyles from '@components/sidebarLeft/collapsedPanelButton.module.scss';
 import selectPendingSuggestion, {PendingSuggestionType} from '@components/sidebarLeft/selectPendingSuggestion';
 import {toastNew} from '@components/toast';
 import documentFragmentToNodes from '@helpers/dom/documentFragmentToNodes';
-import Animated from '@helpers/solid/animations';
 import classNames from '@helpers/string/classNames';
 import I18n, {i18n} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import useBotConnectionReviews from '@stores/chatAutomation';
 import {useIsSidebarCollapsed} from '@stores/foldersSidebar';
-import {createEffect, createMemo, createSignal, JSX, Show} from 'solid-js';
+import {createEffect, createMemo, createSignal, Show} from 'solid-js';
 import {render} from 'solid-js/web';
 
 function BotConnectionReviewSuggestion() {
@@ -63,7 +64,7 @@ function BotConnectionReviewSuggestion() {
           <RippleElement
             component="button"
             type="button"
-            class={classNames(styles.collapsed, 'hover-danger-effect')}
+            class={classNames(collapsedPanelStyles.button, 'hover-danger-effect')}
             aria-label={I18n.format('ChatAutomation.ConnectionReview.Title', true)}
             onClick={() => setIsSidebarCollapsed(false)}
           >
@@ -116,7 +117,6 @@ export function renderPendingSuggestion(toElement: HTMLElement) {
     };
     createEmailSetupSuggestion();
 
-    const [element, setElement] = createSignal<JSX.Element>();
     const botConnectionReviews = useBotConnectionReviews();
     const suggestionConstructor = createMemo(() => {
       if(botConnectionReviews().length) {
@@ -135,24 +135,14 @@ export function renderPendingSuggestion(toElement: HTMLElement) {
     });
 
     createEffect(() => {
-      const constructor = suggestionConstructor();
-      const element = constructor ? (<div class={styles.suggestionContainer}>{constructor()}</div>) : undefined;
-      setElement(element);
+      document.body.classList.toggle('has-pending-suggestion', !!suggestionConstructor());
     });
 
-    createEffect(() => {
-      document.body.classList.toggle('has-pending-suggestion', !!element());
-    });
-
+    // * one suggestion taking another's place crossfades in it
     return (
-      <Animated
-        type="grow-height"
-        appear
-        mode="add-remove"
-        noItemClass
-      >
-        {element()}
-      </Animated>
+      <CrossfadeBlock value={suggestionConstructor()} class={styles.suggestionContainer}>
+        {(constructor) => constructor()}
+      </CrossfadeBlock>
     );
   }, toElement);
 }

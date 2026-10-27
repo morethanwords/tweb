@@ -1,6 +1,6 @@
 import createContextMenu from '@helpers/dom/createContextMenu';
 import ListenerSetter from '@helpers/listenerSetter';
-import {findDialogListElement} from '@lib/appDialogsManager';
+import {findDialogListElement} from '@components/dialogElement';
 import type ContactsSelection from '@components/contactsSelection';
 
 /**

@@ -1,0 +1,64 @@
+@use "../shared" as *;
+
+// A text link's plate (helpers/dom/linkPress.ts). Its own box is left as it is — padding there would
+// re-wrap a balanced caption under the finger — and the plate, mounted while anything draws on it and
+// gone after, is laid over it and cut to a plate around each of its lines.
+.has-link-plate {
+  position: relative;
+  // the plates' rounding, which the plate inherits (as Safari makes every `.c-ripple` do)
+  border-radius: $link-plate-radius;
+}
+
+.link-plate {
+  // in the link's own colour, unless the place it is in names another (a service message)
+  --ripple-color: var(--link-plate-color, #{$link-plate-color});
+  // the plates: this much past each line of the link, as round as the link says (both read from
+  // here by linkPress.ts)
+  padding: .0625em $link-plate-bleed;
+  border-radius: inherit;
+  box-sizing: border-box;
+  inset: auto;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  user-select: none;
+
+  // under the press's waves: half their tint while a menu opened from the link is open, all of it
+  // for a press no ripple shows (animations off)
+  &:before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-color: var(--ripple-color);
+    opacity: 0;
+
+    // going as quick as linkPress.ts lets the plate go (FADE_OUT_DURATION)
+    @include animation-level(1) {
+      transition: opacity .15s;
+    }
+  }
+
+  &.is-lit:before {
+    opacity: .5;
+
+    @include animation-level(1) {
+      transition-duration: .2s;
+    }
+  }
+
+  &.is-pressed:before {
+    opacity: 1;
+  }
+}
+
+// the wave in the plate's colour, whatever the link sits in (`.primary`, a poll and others colour
+// every `.c-ripple__circle` inside them)
+.c-ripple.link-plate > .c-ripple__circle {
+  background-color: var(--ripple-color);
+}
+
+// a text link under the mouse is underlined, as links are on the web; a name (PeerTitle `link`) is
+// drawn as a name
+.is-link-hovered:not(.peer-title) {
+  text-decoration: underline;
+}

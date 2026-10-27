@@ -3,13 +3,12 @@ import rootScope, {BroadcastEvents} from '@lib/rootScope';
 import AppSearchSuper, {isCounterDrivenMediaTab, SearchSuperMediaCounters, SearchSuperMediaTab, SearchSuperMediaType, SearchSuperType} from '@components/appSearchSuper';
 import {getSharedMediaFilters, getSharedMediaInputFilter, SearchSuperMediaInputFilter} from '@components/sharedMediaFilters';
 import TransitionSlider from '@components/transition';
-import {AppEditBotTab, AppEditChatTab, AppEditContactTab, AppEditTopicTab} from '@components/solidJsTabs/tabs';
 import Button from '@components/button';
 import ButtonIcon from '@components/buttonIcon';
 import I18n, {LangPackKey, i18n} from '@lib/langPack';
 import ButtonCorner from '@components/buttonCorner';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
-import {renderPeerProfile} from '@components/peerProfile';
+import {getPeerProfileTitleKey, renderPeerProfile} from '@components/peerProfile';
 import {Message} from '@layer';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
 import liteMode from '@helpers/liteMode';
@@ -35,6 +34,8 @@ import {
   getMediaTypeForProfileTab,
   getProfileTabForMediaType
 } from '@components/sharedMediaProfileTab';
+import type {AppEditBotTab, AppEditChatTab, AppEditContactTab, AppEditTopicTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 type SharedMediaHistoryStorage = Partial<{
   [type in SearchSuperType]: {mid: number, peerId: PeerId}[]
@@ -104,19 +105,12 @@ const SharedMedia: Component = () => {
       })
     });
 
-    const titleKey = ((): LangPackKey => {
-      if((isForum || isBotforum) && threadId) {
-        return 'Profile.Info.Topic';
-      } else if(isBot) {
-        return 'Profile.Info.Bot';
-      } else if(isBroadcast) {
-        return 'Profile.Info.Channel';
-      } else if(usePeerId.isUser()) {
-        return 'Profile.Info.User';
-      } else {
-        return 'Profile.Info.Group';
-      }
-    })();
+    const titleKey = getPeerProfileTitleKey({
+      isTopic: (isForum || isBotforum) && !!threadId,
+      isBot,
+      isBroadcast,
+      isUser: usePeerId.isUser()
+    });
 
     return () => {
       titleI18n.compareAndUpdate({
@@ -178,9 +172,11 @@ const SharedMedia: Component = () => {
           tab.scrollable.append(renderPeerProfile({
             peerId: tab.peerId,
             threadId: tab.threadId,
-            isDialog: true,
+            isDialog: tab.isDialog,
             scrollable: tab.scrollable,
             setCollapsedOn: tab.container,
+            slider: tab.slider,
+            openChatStack: tab.openChatStack,
             searchSuperContainer: tab.searchSuper.container,
             onPinnedGiftsChange: (gifts) => {
               tab.searchSuper.setPinnedGifts(gifts);
@@ -562,9 +558,9 @@ const SharedMedia: Component = () => {
   const c: [SearchSuperMediaTab['type'], LangPackKey][] = [
     ['savedDialogs', 'SavedDialogsTabCount'],
     ['stories', 'StoriesCount'],
+    ['gifts', 'StarGiftsCount'],
     ['members', 'Members'],
     ['media', 'MediaFiles'],
-    ['gifts', 'StarGiftsCount'],
     ['saved', 'SavedMessagesCount'],
     ['files', 'Files'],
     ['links', 'Links'],
@@ -600,7 +596,6 @@ const SharedMedia: Component = () => {
   const HEADER_HEIGHT = 56;
   const ADDITIONAL_OFFSET = 16;
   const OFFSET = HEADER_HEIGHT + ADDITIONAL_OFFSET;
-  const BODY_PADDING = 16;
   const cb = tab.scrollable.onAdditionalScroll;
   tab.scrollable.onAdditionalScroll = () => {
     cb?.();
@@ -608,8 +603,9 @@ const SharedMedia: Component = () => {
     const rect = (isSingle ? tab.searchSuper.container : tab.searchSuper.nav).getBoundingClientRect();
     if(!rect.width) return;
 
-    const top = rect.top - 1;
-    const isSharedMedia = top <= (OFFSET + BODY_PADDING);
+    // * from the tab's own top: the sidebar stands at the page's padding, the profile popup lower
+    const top = rect.top - tab.container.getBoundingClientRect().top - 1;
+    const isSharedMedia = top <= OFFSET;
     setIsSharedMedia(isSharedMedia);
     tab.searchSuper.updateScrollDateBadge(isSharedMedia);
   };
@@ -676,24 +672,24 @@ const SharedMedia: Component = () => {
     let editTab: InstanceType<typeof AppEditChatTab> | InstanceType<typeof AppEditContactTab> | InstanceType<typeof AppEditTopicTab> | InstanceType<typeof AppEditBotTab>;
     const {peerId, threadId} = tab;
     if(threadId && await tab.managers.appPeersManager.isForum(peerId)) {
-      editTab = tab.slider.createTab(AppEditTopicTab)
+      editTab = tab.slider.createTab(hotReloadGuard.tabs.AppEditTopicTab)
     } else if(peerId.isAnyChat()) {
-      editTab = tab.slider.createTab(AppEditChatTab);
+      editTab = tab.slider.createTab(hotReloadGuard.tabs.AppEditChatTab);
     } else if(await tab.managers.appUsersManager.isBot(peerId)) {
-      editTab = tab.slider.createTab(AppEditBotTab);
+      editTab = tab.slider.createTab(hotReloadGuard.tabs.AppEditBotTab);
     } else {
-      editTab = tab.slider.createTab(AppEditContactTab);
+      editTab = tab.slider.createTab(hotReloadGuard.tabs.AppEditContactTab);
     }
 
     if(!editTab) {
       return;
     }
 
-    if(editTab instanceof AppEditTopicTab) {
+    if(editTab instanceof hotReloadGuard.tabs.AppEditTopicTab) {
       editTab.open({peerId, threadId: tab.threadId});
-    } else if(editTab instanceof AppEditBotTab) {
+    } else if(editTab instanceof hotReloadGuard.tabs.AppEditBotTab) {
       editTab.open(peerId);
-    } else if(editTab instanceof AppEditContactTab) {
+    } else if(editTab instanceof hotReloadGuard.tabs.AppEditContactTab) {
       editTab.open(peerId);
     } else {
       // all four edit tabs are scaffolds now; their structural types don't
@@ -730,15 +726,15 @@ const SharedMedia: Component = () => {
       name: 'Stories',
       type: 'stories'
     }, {
+      name: 'SharedMedia.Gifts',
+      type: 'gifts'
+    }, {
       name: 'PeerMedia.Members',
       type: 'members'
     }, {
       inputFilter: 'inputMessagesFilterPhotoVideo',
       name: 'SharedMediaTab2',
       type: 'media'
-    }, {
-      name: 'SharedMedia.Gifts',
-      type: 'gifts'
     }, {
       inputFilter: 'inputMessagesFilterEmpty',
       name: 'SharedMedia.Saved',

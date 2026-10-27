@@ -1,3 +1,5 @@
+@use "../shared" as *;
+
 // * Jolly Cobra's transition
 
 .transition {
@@ -104,14 +106,14 @@
     position: relative;
 
     > .from {
-      transform-origin: left center;
+      transform-origin: var(--transform-origin-left-center);
       transform: translateX(0);
       opacity: 1;
     }
 
     > .to {
-      transform-origin: left center;
-      transform: translateX(1.5rem);
+      transform-origin: var(--transform-origin-left-center);
+      transform: translateX(calc(1.5rem * var(--reflect)));
       opacity: 0;
     }
 
@@ -133,7 +135,7 @@
     }
 
     > .to {
-      transform: translateX(-1.5rem);
+      transform: translateX(calc(-1.5rem * var(--reflect)));
       opacity: 0;
     }
 
@@ -161,6 +163,24 @@
   } */
 }
 
+// * Reduced animations: TransitionSlider crossfades the screens of every type
+// * instead of sliding, pushing or zooming them (`fade` in its selectTab), so the
+// * movement the types lay on `.from` / `.to` gives way here
+.animating-fade {
+  > .from,
+  > .to {
+    transform: none !important;
+  }
+
+  > .from {
+    animation: fade-out-opacity .15s ease forwards !important;
+  }
+
+  > .to {
+    animation: fade-in-opacity .15s ease forwards !important;
+  }
+}
+
 .fade-enter-active,
 .fade-exit-active {
   transition: opacity 0.1s ease-out;
@@ -186,29 +206,52 @@
 }
 
 .t-move {
-  transition: transform 0.2s ease-out;
+  @include animation-level(2) {
+    transition: transform 0.2s ease-out;
+  }
 }
 
 .t-move-std {
   // Do not change easing function here, some places need synced easings for animations to not be jerky
-  transition: transform 0.2s;
+  @include animation-level(2) {
+    transition: transform 0.2s;
+  }
 }
 
+// * a zoom fades in place below full animations - something has to transition
+// * all the same, its end is what lets a leaving element go
 .t-zoom-enter-active,
 .t-zoom-exit-active,
 .t-var-zoom-enter-active,
 .t-var-zoom-exit-active {
   transition: transform 0.12s ease-out;
+
+  @include animation-level-below(2) {
+    transition: opacity 0.12s ease-out;
+  }
 }
 
 .t-zoom-enter,
 .t-zoom-exit-to {
-  transform: scale(0);
+  @include animation-level(2) {
+    transform: scale(0);
+  }
 }
 
 .t-var-zoom-enter,
 .t-var-zoom-exit-to {
-  --t-zoom-scale: 0;
+  @include animation-level(2) {
+    --t-zoom-scale: 0;
+  }
+}
+
+.t-zoom-enter,
+.t-zoom-exit-to,
+.t-var-zoom-enter,
+.t-var-zoom-exit-to {
+  @include animation-level-below(2) {
+    opacity: 0;
+  }
 }
 
 /*
@@ -246,7 +289,7 @@
  */
 @keyframes slide-fade-in-move {
   0% {
-    transform: translateX(1.5rem);
+    transform: translateX(calc(1.5rem * var(--reflect)));
   }
   100% {
     transform: translateX(0);
@@ -258,7 +301,7 @@
     transform: translateX(0);
   }
   100% {
-    transform: translateX(-1.5rem);
+    transform: translateX(calc(-1.5rem * var(--reflect)));
   }
 }
 
@@ -267,13 +310,13 @@
     transform: translateX(0);
   }
   100% {
-    transform: translateX(1.5rem);
+    transform: translateX(calc(1.5rem * var(--reflect)));
   }
 }
 
 @keyframes slide-fade-out-backwards-move {
   0% {
-    transform: translateX(-1.5rem);
+    transform: translateX(calc(-1.5rem * var(--reflect)));
   }
   100% {
     transform: translateX(0);
@@ -301,3 +344,30 @@
     opacity: 1;
   }
 } */
+
+// * `crossfadeContent`: what the element held fades out laid over its own box - its content box,
+// * through the padding it inherits - while the new content takes its flow. `:where()` leaves
+// * a position of the element's own in place: any position but `static` holds the overlay
+:where(.is-crossfading) {
+  position: relative;
+}
+
+.crossfade-leaving {
+  position: absolute;
+  inset: 0;
+  padding: inherit;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+// * `CrossfadeBlock`: the content leaving and the one coming share a cell, one over the other
+.crossfade-block {
+  display: grid;
+
+  &-item {
+    grid-area: 1 / 1;
+    min-width: 0;
+  }
+}

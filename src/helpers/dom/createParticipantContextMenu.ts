@@ -3,13 +3,15 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import {ChannelParticipant, Chat, ChatParticipant} from '@layer';
 import SidebarSlider from '@components/slider';
 import rootScope from '@lib/rootScope';
-import appImManager from '@lib/appImManager';
 import canEditAdmin from '@appManagers/utils/chats/canEditAdmin';
-import {openUserPermissionsTab} from '@components/solidJsTabs/tabs';
 import {Middleware} from '@helpers/middleware';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {handleMissingInvitees} from '@components/addChatUsers';
 import {isParticipantAdmin, isParticipantCreator} from '@lib/appManagers/utils/chats/isParticipantAdmin';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {canEditMemberTag} from '@appManagers/utils/chats/memberTag';
+import openEditMemberTag from '@components/memberTag/openEditMemberTag';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 type Participant = ChannelParticipant | ChatParticipant;
 
@@ -53,7 +55,7 @@ export default function createParticipantContextMenu(options: {
     canManageAdmins: boolean;
 
   const openPermissions = (isAdmin?: boolean) => {
-    openUserPermissionsTab(slider, chatId, participant, isAdmin);
+    hotReloadGuard.tabs.openUserPermissionsTab(slider, chatId, participant, isAdmin);
   };
 
   function getButtons(): ButtonMenuItemOptionsVerifiable[] {
@@ -61,8 +63,19 @@ export default function createParticipantContextMenu(options: {
       icon: 'message',
       text: 'SendMessage',
       onClick: () => {
-        appImManager.setInnerPeer({peerId: participantPeerId});
+        hotReloadGuard.appImManager.setInnerPeer({peerId: participantPeerId});
       }
+    }, {
+      // * "Add tag" / "Edit tag" on my own row, "Add member tag" / "Edit member tag" on another's
+      icon: (participant as ChannelParticipant.channelParticipant)?.rank ? 'edit' : 'tag_add',
+      text: participantPeerId === rootScope.myId ?
+        ((participant as ChannelParticipant.channelParticipant)?.rank ? 'MemberTag.EditMine' : 'MemberTag.AddMine') :
+        ((participant as ChannelParticipant.channelParticipant)?.rank ? 'MemberTag.EditMember' : 'MemberTag.AddMember'),
+      onClick: () => openEditMemberTag(chatId, participantPeerId, participant),
+      // * a restricted member is still one; whoever has left the group has no tag to set
+      verify: () => !bannedParticipantAdapter &&
+        !(participant?._ === 'channelParticipantBanned' && participant.pFlags.left) &&
+        canEditMemberTag(chat, participantPeerId, rootScope.myId, participant)
     }, {
       icon: 'adduser',
       text: isBroadcast ? 'AddToChannel' : 'AddToGroup',
@@ -161,6 +174,7 @@ export default function createParticipantContextMenu(options: {
     middleware,
     findElement: (e) => target = findUpClassName(e.target, 'chatlist-chat'),
     onOpen: async() => {
+      const managers = bindManagersToSession(rootScope.managers);
       participantPeerId = target.dataset.peerId.toPeerId();
       participant = participants.get(participantPeerId);
       if(bannedParticipantAdapter) {
@@ -169,10 +183,10 @@ export default function createParticipantContextMenu(options: {
         canManageAdmins = false;
       } else {
         [chat, isBroadcast, canChangePermissions, canManageAdmins] = await Promise.all([
-          rootScope.managers.appChatsManager.getChat(chatId) as Promise<typeof chat>,
-          rootScope.managers.appChatsManager.isBroadcast(chatId),
-          rootScope.managers.appChatsManager.hasRights(chatId, 'change_permissions'),
-          rootScope.managers.appChatsManager.hasRights(chatId, 'change_permissions')
+          managers.appChatsManager.getChat(chatId) as Promise<typeof chat>,
+          managers.appChatsManager.isBroadcast(chatId),
+          managers.appChatsManager.hasRights(chatId, 'change_permissions'),
+          managers.appChatsManager.hasRights(chatId, 'change_permissions')
         ]);
       }
 

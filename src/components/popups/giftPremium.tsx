@@ -12,10 +12,12 @@ import rootScope from '@lib/rootScope';
 import {createSignal} from 'solid-js';
 import Section from '@components/section';
 import MediaHeader from '@components/mediaHeader';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const className = 'popup-gift-premium';
 
 export default async function showGiftPremiumPopup(peerId: PeerId, giftOptions: PremiumGiftCodeOption[]) {
+  const managers = bindManagersToSession(rootScope.managers);
   const peerTitle = await wrapPeerTitle({peerId});
   const [show, setShow] = createSignal(true);
 
@@ -43,7 +45,7 @@ export default async function showGiftPremiumPopup(peerId: PeerId, giftOptions: 
     };
 
     return (
-      <PopupElement class={className} closable show={show()}>
+      <PopupElement managers={managers} class={className} closable show={show()}>
         <PopupElement.Header floating>
           <PopupElement.CloseButton />
         </PopupElement.Header>

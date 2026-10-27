@@ -14,7 +14,7 @@ import ListenerSetter from '@helpers/listenerSetter';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import {IS_MOBILE_SAFARI} from '@environment/userAgent';
-import {DIALOG_LIST_ELEMENT_TAG} from '@lib/appDialogsManager';
+import {DIALOG_LIST_ELEMENT_TAG} from '@components/dialogElement';
 import {MiddlewareHelper, getMiddleware} from '@helpers/middleware';
 import ButtonIcon from '@components/buttonIcon';
 import pause from '@helpers/schedulers/pause';

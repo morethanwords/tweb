@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+var e=new Set;function t(t){var r;let i=n(t),a=(r=t.data).effects??(r.effects={token:i,hot:t,cleanups:[]});return e.add(a),a.hot=t,a.token!==i&&(a.cleanups.splice(0).forEach(e=>e()),a.token=i),t.prune?.(()=>{a.cleanups.splice(0).forEach(e=>e()),e.delete(a)}),a.cleanups}function n(e){let{hmrClient:t,ownerPath:n}=e;return t?.ctxToListenersMap?.get(n)??e}function r(e,n){let r=e?.data?t(e):void 0,i=n();r?.push(i)}function i(e,t,n,i){r(e,()=>(t.addEventListener(n,i),()=>t.removeEventListener(n,i)))}export{i as n,r as t};
+//# sourceMappingURL=hotModule-B-IlHV9s.js.map

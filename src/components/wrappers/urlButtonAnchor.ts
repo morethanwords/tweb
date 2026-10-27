@@ -23,10 +23,14 @@ export function createUrlButtonAnchor(url: string) {
   return anchor;
 }
 
+const copiedAttributes = new WeakMap<HTMLElement, string[]>();
+
+/** Wears the link's attributes; a button that changed its link drops what the old one had and the new has not. */
 export function copyUrlButtonAnchor(anchor: HTMLAnchorElement, element: HTMLElement) {
-  anchor.getAttributeNames().forEach((name) => {
-    if(name !== 'class') {
-      element.setAttribute(name, anchor.getAttribute(name));
-    }
+  const names = anchor.getAttributeNames().filter((name) => name !== 'class');
+  copiedAttributes.get(element)?.forEach((name) => {
+    if(!names.includes(name)) element.removeAttribute(name);
   });
+  names.forEach((name) => element.setAttribute(name, anchor.getAttribute(name)));
+  copiedAttributes.set(element, names);
 }

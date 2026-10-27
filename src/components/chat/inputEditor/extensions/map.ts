@@ -1,5 +1,5 @@
 import {Node, mergeAttributes} from '@tiptap/core';
-import GeoPin from '@components/geoPin';
+import {createGeoPin} from '@components/geoPin';
 import {applyInstantViewMediaSize, instantViewStyles} from '@components/instantViewFormatting';
 import {
   chatInputPlaceholderAttributes,
@@ -217,7 +217,7 @@ export const ChatRichMap = Node.create({
         preview.href = makeGoogleMapsUrl(geo);
         const image = document.createElement('div');
         image.className = instantViewStyles.Media;
-        preview.append(image, GeoPin());
+        preview.append(image, createGeoPin());
 
         const middleware = mapMiddleware.get();
         const location = getWebFileLocation(

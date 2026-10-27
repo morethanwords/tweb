@@ -4,6 +4,13 @@ import ListenerSetter from '@helpers/listenerSetter';
 import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
 import safeAssign from '@helpers/object/safeAssign';
 
+/**
+ * Whether a panel is draggable here at all (not with touch). A popup's class attribute belongs to
+ * Solid, which drops the `movable-element` class MovableElement adds the next time it renders it —
+ * so a popup hosting a panel lists that class itself when this holds.
+ */
+export const IS_MOVABLE_PANEL = !IS_TOUCH_SUPPORTED;
+
 export default class MovablePanel {
   #movable: MovableElement;
   private listenerSetter: ListenerSetter;
@@ -19,11 +26,11 @@ export default class MovablePanel {
   }) {
     safeAssign(this, options);
 
-    this.toggleMovable(!IS_TOUCH_SUPPORTED);
+    this.toggleMovable(IS_MOVABLE_PANEL);
 
     this.listenerSetter.add(mediaSizes)('changeScreen', (from, to) => {
       if(to === ScreenSize.mobile || from === ScreenSize.mobile) {
-        this.toggleMovable(!IS_TOUCH_SUPPORTED);
+        this.toggleMovable(IS_MOVABLE_PANEL);
       }
     });
   }

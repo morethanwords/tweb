@@ -1,5 +1,6 @@
 import copy from '@helpers/object/copy';
 import {Message} from '@layer';
+import {hasRichMessageSpoilers} from '@lib/richMessage';
 
 /**
  * Legacy-shell fields that must remain compatible while a Solid message body is updated in place.
@@ -67,5 +68,6 @@ function getBigEmojiShellSignature(message: Message.message) {
 }
 
 export function hasMessageTextSpoilers(message: Message.message) {
-  return !!(message.totalEntities || message.entities)?.some((entity) => entity._ === 'messageEntitySpoiler');
+  return !!(message.totalEntities || message.entities)?.some((entity) => entity._ === 'messageEntitySpoiler') ||
+    hasRichMessageSpoilers(message.rich_message);
 }

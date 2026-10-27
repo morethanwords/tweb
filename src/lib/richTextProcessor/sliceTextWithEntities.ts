@@ -33,6 +33,14 @@ const ZERO_LENGTH: ReadonlySet<MessageEntity['_']> = new Set([
 
 export const isAtomicTextEntity = (entity: MessageEntity) => ATOMIC.has(entity._);
 
+export type SliceTextWithEntitiesOptions = {
+  /**
+   * An atomic entity a boundary cuts stays, over its part inside the range — what a copied
+   * selection keeps: the part of a code block still is code, the part of a link still links.
+   */
+  keepCut?: boolean
+};
+
 /**
  * Entity-aware slice for offsets that are already known grapheme boundaries.
  * Prefer `sliceTextWithEntities` for arbitrary offsets.
@@ -41,7 +49,8 @@ export function sliceTextWithEntitiesAtGraphemeBoundaries(
   text: string,
   entities: MessageEntity[],
   from: number,
-  to: number
+  to: number,
+  options?: SliceTextWithEntitiesOptions
 ): {text: string, entities: MessageEntity[], from: number, to: number} {
   const start = Math.max(0, Math.min(from, text.length));
   let end = Math.max(0, Math.min(to, text.length));
@@ -65,7 +74,7 @@ export function sliceTextWithEntitiesAtGraphemeBoundaries(
     if(eEnd <= start || eStart >= end) continue;
 
     const fullyInside = eStart >= start && eEnd <= end;
-    if(!fullyInside && ATOMIC.has(e._)) continue;
+    if(!fullyInside && ATOMIC.has(e._) && !options?.keepCut) continue;
 
     const newStart = Math.max(eStart, start);
     const newEnd = Math.min(eEnd, end);
@@ -80,14 +89,16 @@ export function sliceTextWithEntitiesAtGraphemeBoundaries(
  * integrity. Boundaries are snapped inward to the nearest grapheme cluster so
  * surrogate pairs and emoji sequences are never split. Entities are clipped
  * to the resulting range; atomic entities (mentions, links, custom emoji,
- * etc.) are dropped if a boundary falls inside them. Returns the sliced text,
- * the adjusted entities, and the actual `from`/`to` used after snapping.
+ * etc.) are dropped if a boundary falls inside them, unless `keepCut`. Returns
+ * the sliced text, the adjusted entities, and the actual `from`/`to` used after
+ * snapping.
  */
 export function sliceTextWithEntities(
   text: string,
   entities: MessageEntity[],
   from: number,
-  to: number
+  to: number,
+  options?: SliceTextWithEntitiesOptions
 ): {text: string, entities: MessageEntity[], from: number, to: number} {
   from = Math.max(0, Math.min(from, text.length));
   to = Math.max(0, Math.min(to, text.length));
@@ -98,5 +109,5 @@ export function sliceTextWithEntities(
   let end = snapGraphemeOffsetDown(boundaries, to);
   if(end < start) end = start;
 
-  return sliceTextWithEntitiesAtGraphemeBoundaries(text, entities, start, end);
+  return sliceTextWithEntitiesAtGraphemeBoundaries(text, entities, start, end, options);
 }

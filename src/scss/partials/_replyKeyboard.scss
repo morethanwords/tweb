@@ -3,7 +3,7 @@
 .reply-keyboard {
   background: var(--surface-color);
   position: absolute !important;
-	right: 0;
+	inset-inline-end: 0;
 	bottom: calc(100% + .625rem);
 	width: 26.25rem !important;
   max-width: 100%;
@@ -12,10 +12,10 @@
 	box-shadow: 0px 5px 10px 5px rgba(16, 35, 47, .14);
 	z-index: 3;
 	border-radius: $border-radius-medium;
-	transition: transform var(--esg-transition), opacity var(--esg-transition);
+	@include animation-level-transition(transform var(--esg-transition), opacity var(--esg-transition));
 	transform: scale(0);
 	opacity: 0;
-	transform-origin: bottom right;
+	transform-origin: var(--transform-origin-inline-end) bottom;
   padding: 0 !important;
   display: flex !important;
   flex-direction: column;
@@ -26,9 +26,6 @@
 		transform: scale(1);
 	}
 
-	body.animation-level-0 & {
-		transition: none;
-	}
 
   &-row {
     display: flex;
@@ -50,13 +47,13 @@
     font-size: .9375rem;
     position: relative;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: color .15s, background-color .15s;
     }
 
     &:not(.reply-markup-button-bg) {
       .custom-emoji-canvas {
-        @include animation-level(2) {
+        @include animation-level(1) {
           transition: filter .15s;
         }
       }
@@ -72,7 +69,7 @@
     }
 
     & + & {
-      margin-left: .3125rem;
+      margin-inline-start: .3125rem;
     }
 
     &.reply-markup-button-bg {

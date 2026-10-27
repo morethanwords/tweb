@@ -2,8 +2,10 @@ import {i18n} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import confirmationPopup from '@components/confirmationPopup';
 import {toastNew} from '@components/toast';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export default async function showConvertToGigagroupPopup(chatId: ChatId) {
+  const managers = bindManagersToSession(rootScope.managers);
   const features = document.createElement('ul');
   features.classList.add('popup-description-features');
   (['BroadcastGroupConvertFeature1', 'BroadcastGroupConvertFeature2', 'BroadcastGroupConvertFeature3'] as const).forEach((key) => {
@@ -32,7 +34,7 @@ export default async function showConvertToGigagroupPopup(chatId: ChatId) {
     return;
   }
 
-  const config = await rootScope.managers.apiManager.getConfig();
-  await rootScope.managers.appChatsManager.convertToGigagroup(chatId);
+  const config = await managers.apiManager.getConfig();
+  await managers.appChatsManager.convertToGigagroup(chatId);
   toastNew({langPackKey: 'BroadcastGroupConvertDone', langPackArguments: [config.megagroup_size_max]});
 }

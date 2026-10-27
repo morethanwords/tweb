@@ -3,13 +3,13 @@ import PrivacySection from '@components/privacySection';
 import {LangPackKey, i18n} from '@lib/langPack';
 import Button from '@components/buttonTsx';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
-import showPremiumPopup from '@components/popups/premium';
 import Row from '@components/rowTsx';
 import Section from '@components/section';
 import PrivacyType from '@appManagers/utils/privacy/privacyType';
 import usePremium from '@stores/premium';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import type {AppPrivacyLastSeenTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const PrivacyLastSeen: Component = () => {
   const [tab] = useSuperTab<typeof AppPrivacyLastSeenTab>();
@@ -79,7 +79,7 @@ const PrivacyLastSeen: Component = () => {
         <Button
           primaryTransparent
           text={isPremium() ? 'PrivacyLastSeenPremiumForPremium' : 'PrivacyLastSeenPremium'}
-          onClick={() => showPremiumPopup()}
+          onClick={() => hotReloadGuard.showPremiumPopup()}
         />
       </Section>
     </>

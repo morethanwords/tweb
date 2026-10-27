@@ -67,7 +67,9 @@ function setup(mode: 'legacy' | 'selection' | 'create' = 'legacy') {
     replaceDocumentRange: vi.fn(),
     replaceDocumentRangeWithRichMessage: vi.fn(),
     getSelectedRichMessage: (): undefined => undefined,
-    getRichMessage: (): undefined => undefined
+    getRichMessage: (): undefined => undefined,
+    getSelectedRichValue: () => ({value: 'Ori', entities: [] as MessageEntity[]}),
+    getMode: () => 'rich'
   } as unknown as ChatInputEditor;
   if(editor) disposers.push(registerChatInputEditor(input, editor));
   const send = vi.fn(async(): Promise<false | {messageCount: number}> => ({messageCount: 1}));

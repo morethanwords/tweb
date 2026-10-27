@@ -25,6 +25,13 @@
     visibility: visible;
     transition: opacity .2s ease, visibility 0s linear 0s;
   }
+
+  // * for a reply to a story: as high as the stories viewer (z-index 4, stories/viewer.module.scss) and
+  // * popups — mounted after the viewer, it stands over it, and a popup opened later (discarding the
+  // * recording) stands over it in turn
+  &--over-stories {
+    z-index: 4;
+  }
 }
 
 .video-recording-circle {

@@ -8,9 +8,11 @@
   transition: opacity var(--transition-standard-in);
 }
 
+// * the app zooms away from the sign-in screens of another account and back from them; reduced animations
+// * fade it where it stands
 .main-screen {
   &-enter {
-    transition: 0.2s;
+    @include animation-level-transition(opacity .2s, transform .2s);
     transform: scale(1.75);
     opacity: 0;
   }
@@ -21,7 +23,7 @@
   }
 
   &-exit {
-    transition: 0.2s, transform 0.2s ease-in;
+    @include animation-level-transition(opacity .2s, transform .2s ease-in);
     transform: scale(1);
     opacity: 1;
   }
@@ -29,6 +31,13 @@
   &-exiting {
     transform: scale(1.75);
     opacity: 0;
+  }
+
+  &-enter,
+  &-exiting {
+    @include animation-level-below(2) {
+      transform: none;
+    }
   }
 }
 
@@ -42,10 +51,16 @@
   &-exiting {
     opacity: 0;
     transform: translateY(18px) scale(1.01);
+
+    // * reduced: the chats of the account switched from fade where they stand
+    @include animation-level-below(2) {
+      transform: none;
+    }
   }
 }
 
-.page-chats {
+// * the fields on a tab's edit screen, in a sidebar or in a popup's slider
+.sidebar-slider {
   .input-wrapper {
     width: 100%;
     max-width: 100%;

@@ -6,7 +6,8 @@
   align-items: center;
   gap: 4px;
 
-  padding: 3px 8px 2px 9px;
+  padding-block: 3px 2px;
+  padding-inline: 9px 8px;
   border-radius: 5px;
 
   font-size: 14px;
@@ -25,7 +26,7 @@
 .Border {
   position: absolute;
   top: 0;
-  left: 0;
+  inset-inline-start: 0;
   width: 3px;
   height: 100%;
 

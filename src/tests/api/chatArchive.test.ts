@@ -324,10 +324,12 @@ describeOrSkip('tg chat archive', () => {
     const target = await resolve(parsePeerSpec(PEER));
     const [selfUser] = await invoke('users.getUsers', {id: [{_: 'inputUserSelf'}]});
     const selfRef = {key: 'user' + selfUser.id, name: selfUser._ === 'user' ? userName(selfUser) : 'me'};
+    const {flattenRichMessageContent} = await import('@lib/richMessage');
     const ctx: ArchiveContext = {
       peers: new Map([[selfRef.key, selfRef]]),
       chat: {key: target.key, name: target.title, username: target.username},
-      self: selfRef
+      self: selfRef,
+      flattenRichMessage: (richMessage) => flattenRichMessageContent(richMessage)
     };
     ctx.peers.set(target.key, ctx.chat);
 

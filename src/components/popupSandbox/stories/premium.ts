@@ -53,6 +53,14 @@ defineStories('Premium & Stars', [
     }
   },
   {
+    id: 'premium/business',
+    title: 'Telegram Business',
+    open: async(ctx) => {
+      const {showBusinessPopup} = await import('@components/popups/premium');
+      showBusinessPopup();
+    }
+  },
+  {
     id: 'giftPremium',
     fixtureOnly: true,
     title: 'Gift Premium',
@@ -96,3 +104,7 @@ defineStories('Premium & Stars', [
     }
   }
 ]);
+
+// The sandbox reloads on an edit anyway (watchForEdits). Accepting here keeps an edit of a popup this story imports
+// from climbing through the story to the app's root once the sandbox has been opened on the dev server.
+if(import.meta.hot) import.meta.hot.accept();

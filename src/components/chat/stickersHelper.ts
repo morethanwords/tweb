@@ -8,9 +8,10 @@ import rootScope from '@lib/rootScope';
 import SuperStickerRenderer from '@components/emoticonsDropdown/tabs/SuperStickerRenderer';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import Scrollable from '@components/scrollable';
-import attachStickerViewerListeners from '@components/stickerViewer';
+import attachMediaPeekListeners from '@components/mediaPeek';
 import AutocompleteHelper from '@components/chat/autocompleteHelper';
 import AutocompleteHelperController from '@components/chat/autocompleteHelperController';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export default class StickersHelper extends AutocompleteHelper {
   private scrollable: Scrollable;
@@ -57,10 +58,11 @@ export default class StickersHelper extends AutocompleteHelper {
   }
 
   public checkEmoticon(emoticon: string) {
+    const managers = bindManagersToSession(this.managers);
     const middleware = this.getMiddleware();
 
     preloadAnimatedEmojiSticker(emoticon);
-    this.managers.appStickersManager.getStickersByEmoticon({
+    managers.appStickersManager.getStickersByEmoticon({
       emoticon,
       includeOurStickers: true,
       includeServerStickers: this.chat.appSettings.stickers.suggest === 'all'
@@ -83,7 +85,7 @@ export default class StickersHelper extends AutocompleteHelper {
         const superStickerRenderer = new SuperStickerRenderer({
           regularLazyLoadQueue: lazyLoadQueue,
           group: this.chat.animationGroup,
-          managers: this.managers
+          managers
         });
 
         ready = new Promise<void>((resolve) => {
@@ -115,7 +117,7 @@ export default class StickersHelper extends AutocompleteHelper {
           mediaSizes.addEventListener('changeScreen', this.onChangeScreen);
 
           this.listenerSetter = new ListenerSetter();
-          attachStickerViewerListeners({listenTo: this.container, listenerSetter: this.listenerSetter});
+          attachMediaPeekListeners({listenTo: this.container, listenerSetter: this.listenerSetter});
         }
 
         this.onChangeScreen();

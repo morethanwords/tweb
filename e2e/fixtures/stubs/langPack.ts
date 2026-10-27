@@ -20,7 +20,9 @@ const I18n = {
   format: (key: string, plain?: boolean, args?: FormatterArguments) => (
     plain ? formatted(key, args) : i18n(key, args)
   ),
-  getIsRTL: () => false
+  getIsRTL: () => false,
+  // a formatted date in a drawn message
+  getDateTimeFormat: (options?: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en', options)
 };
 
 export default I18n;

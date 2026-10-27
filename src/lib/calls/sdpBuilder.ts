@@ -10,7 +10,7 @@ import LocalConferenceDescription, {ConferenceEntry} from '@lib/calls/localConfe
 import StringFromLineBuilder from '@lib/calls/stringFromLineBuilder';
 import {CallSignalingData, GroupCallConnectionTransport, PayloadType, RtpHdrexts, UpdateGroupCallConnectionData} from '@lib/calls/types';
 import {fromTelegramSource} from '@lib/calls/utils';
-import {getSdpDirection, getSdpPort, SdpSection} from '@lib/calls/p2P/sdpCommon';
+import {getSdpDirection, getSdpPort, isP2pRtpExtensionShared, SdpSection} from '@lib/calls/p2P/sdpCommon';
 import {isSdpSafeSetup} from '@lib/calls/helpers/sdpSafety';
 import {logger} from '@lib/logger';
 
@@ -285,7 +285,7 @@ export class SDPBuilder extends StringFromLineBuilder {
     const {
       setup, mids, isAnswer, entries,
       audioPayloadTypes, audioExtensions, videoPayloadTypes, videoExtensions,
-      sectionOrder, bundleMids, shouldKeepRemoteReceiveSection
+      sectionOrder, bundleMids, shouldKeepRemoteReceiveSection, getEstablishedRemoteSources
     } = options;
 
     // Defence in depth for every SDPBuilder caller. InitialSetup originates in
@@ -332,7 +332,9 @@ export class SDPBuilder extends StringFromLineBuilder {
     const addPayloadType = (payloadType: PayloadType) => {
       const channels = payloadType.channels ? `/${payloadType.channels}` : '';
       add(`a=rtpmap:${payloadType.id} ${payloadType.name}/${payloadType.clockrate}${channels}`);
-      if(payloadType.parameters) {
+      // Native peers send `"parameters": {}` for codecs without any (VP8, red,
+      // ulpfec): no fmtp line for those rather than an empty one.
+      if(payloadType.parameters && Object.keys(payloadType.parameters).length) {
         const parameters = Object.keys(payloadType.parameters).map((key) => {
           return `${key}=${(payloadType.parameters as Record<string, string | number>)[key]}`;
         }).join(';');
@@ -368,7 +370,8 @@ export class SDPBuilder extends StringFromLineBuilder {
       if(entry.isVideo) {
         add('a=rtcp-rsize');
       }
-      extensions.forEach(({id, uri}) => {
+      // A peer that still lists MID/RID extensions must not get them back.
+      extensions.filter(({uri}) => isP2pRtpExtensionShared(uri)).forEach(({id, uri}) => {
         add(`a=extmap:${id} ${uri}`);
       });
       addTransport(entry.mid);
@@ -376,8 +379,15 @@ export class SDPBuilder extends StringFromLineBuilder {
         add('a=inactive');
         return;
       }
-      add(`a=${direction || entry.direction || (isAnswer ? 'recvonly' : 'sendonly')}`);
+      const remoteSources = isAnswer ? getEstablishedRemoteSources?.(entry.mid) : undefined;
+      let mediaDirection = direction || entry.direction || (isAnswer ? 'recvonly' : 'sendonly');
+      if(remoteSources?.length) {
+        if(mediaDirection === 'recvonly') mediaDirection = 'sendrecv';
+        else if(mediaDirection === 'inactive') mediaDirection = 'sendonly';
+      }
+      add(`a=${mediaDirection}`);
       if(isAnswer || direction === 'recvonly') {
+        remoteSources?.forEach(add);
         return;
       }
 
@@ -554,7 +564,13 @@ export type P2PSdpOptions = {
   sectionOrder?: SdpSection[],
   bundleMids?: string[],
   // a state-dependent decision the p2pCall engine supplies (it reads live tracks)
-  shouldKeepRemoteReceiveSection: (section: SdpSection) => boolean
+  shouldKeepRemoteReceiveSection: (section: SdpSection) => boolean,
+  // Answers only: the peer's sources already flowing on a mid (the `a=ssrc*`
+  // lines of the remote description in force). An answer lists just the
+  // contents the peer accepted from our offer, never its own outgoing ones —
+  // those were announced by its earlier offers and must survive our
+  // renegotiation, or the receiver loses their SSRCs and drops their media.
+  getEstablishedRemoteSources?: (mid: string) => string[] | undefined
 };
 
 function hasBundleOnly(section: SdpSection) {

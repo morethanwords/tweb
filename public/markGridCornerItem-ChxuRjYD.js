@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+var e=[`is-corner-tl`,`is-corner-tr`,`is-corner-bl`,`is-corner-br`];function t(t,n,r=3){if(!n)return;n.classList.remove(...e);let i=Array.prototype.indexOf.call(t.children,n);if(i<0)return;let a=Math.floor((t.children.length-1)/r),o=Math.floor(i/r),s=i%r;o===0&&s===0&&n.classList.add(`is-corner-tl`),o===0&&s===r-1&&n.classList.add(`is-corner-tr`),o===a&&s===0&&n.classList.add(`is-corner-bl`),o===a&&s===r-1&&n.classList.add(`is-corner-br`)}export{t as n,e as t};
+//# sourceMappingURL=markGridCornerItem-ChxuRjYD.js.map

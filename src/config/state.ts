@@ -134,7 +134,9 @@ export type StateSettings = {
     storySound: boolean,
     noForwards: boolean,
     sidebarResize: boolean,
-    guestBotPrivacy: number // how many times the guest-bot hint has been shown (capped at 2, like iOS)
+    guestBotPrivacy: number, // how many times the guest-bot hint has been shown (capped at 2, like iOS)
+    storyReactions: boolean, // * "long tap for more reactions" on a story's heart, once ever (iOS, Android)
+    storyStealthReply: boolean // * the warning that a reply or reaction shows you in Stealth Mode, once ever (iOS)
   },
   playbackParams: ReturnType<AppMediaPlaybackController['getPlaybackParams']>,
   translations: {
@@ -184,10 +186,10 @@ export type StateSettings = {
     microphoneId: string,
     cameraId: string,
     micVolume: number,
-    // Whether to apply the browser's `noiseSuppression` constraint when
-    // requesting a microphone stream. Skipped if the browser doesn't
-    // advertise support (`IS_NOISE_SUPPRESSION_SUPPORTED`). Default true
-    // matches tdesktop / the legacy behavior before this flag existed.
+    // The call settings' "Noise suppression" switch: RNNoise on the
+    // microphone where the browser can run it (calls/noiseSuppression),
+    // otherwise the browser's own `noiseSuppression` constraint. On by
+    // default, as the browser's suppression was before the switch existed.
     noiseSuppression: boolean
   },
   // What the composer's recording button captures when the input is empty.
@@ -207,6 +209,11 @@ export type StateSettings = {
     nightMode?: boolean,
     selectedThemeId: string
   },
+  stories: {
+    // other people's story videos play in their original quality, not the lower one the server keeps
+    // beside it — Premium only, as on iOS and Android (Android's default: on)
+    highQuality: boolean
+  }
 };
 
 // (1 - use swatch, 2 - use picker color), (color from swatch), (color from picker)
@@ -232,6 +239,8 @@ export type State = {
   }>,
   // filters?: FiltersStorage['filters'], // ! DEPRECATED
   filtersArr?: FiltersStorage['filtersArr'],
+  // * `messages.dialogFilters.tags_enabled` - undefined until the server has been asked
+  filtersTagsEnabled?: boolean,
   maxSeenMsgId: number,
   stateCreatedTime: number,
   recentEmoji: string[],
@@ -249,6 +258,8 @@ export type State = {
   version: typeof STATE_VERSION,
   build: typeof BUILD,
   authState: AuthState,
+  /** Who it is kept for: Web A signs other users in and out of the same slot (see loadState) */
+  userId?: UserId,
   /** Key: `getPinnedMessagesKey(peerId, threadId)` — thread-scoped in a forum topic. */
   hiddenPinnedMessages: {[peerIdOrThreadKey: string]: number},
   hideChatJoinRequests: {[peerId: PeerId]: number},
@@ -525,6 +536,7 @@ export const SETTINGS_INIT: StateSettings = {
   liteMode: {
     all: false,
     animations: false,
+    motion: false,
     blur: false,
     chat: false,
     chat_background: false,
@@ -565,7 +577,9 @@ export const SETTINGS_INIT: StateSettings = {
     storySound: false,
     noForwards: false,
     sidebarResize: false,
-    guestBotPrivacy: 0
+    guestBotPrivacy: 0,
+    storyReactions: false,
+    storyStealthReply: false
   },
   translations: {
     peers: {},
@@ -602,6 +616,9 @@ export const SETTINGS_INIT: StateSettings = {
   contactsSortMode: 'online',
   qrCode: {
     selectedThemeId: ''
+  },
+  stories: {
+    highQuality: true
   }
 };
 
@@ -628,6 +645,7 @@ export const STATE_INIT: State = {
   authState: {
     _: IS_MOBILE ? 'authStateSignIn' : 'authStateSignQr'
   },
+  userId: undefined,
   hiddenPinnedMessages: {},
   hideChatJoinRequests: {},
   botConnectionReviews: [],

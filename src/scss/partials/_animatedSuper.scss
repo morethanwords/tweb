@@ -1,9 +1,16 @@
+@use "../shared" as *;
+
 .animated-super {
   &-row {
     --translateY: 100%;
     position: absolute;
     inset: 0;
     transition: transform var(--pm-transition), opacity var(--pm-transition);
+
+    // reduced: the rows crossfade where they stand
+    @include animation-level-below(2) {
+      transform: none !important;
+    }
 
     body.animation-level-0 & {
       transition: none;
@@ -23,14 +30,29 @@
   }
 }
 
+// * the counter `setRollingText` rolls a badge's count in: a line box of its own, whose baseline
+// * cannot shift the characters, and clipped to the inside of the pill - its padding on the sides,
+// * round - so that they roll within it, not past its edges nor over a border the badge wears.
+// * Clipped rather than `overflow: hidden`, which would move the baseline of an inline box
+.is-rolling > .animated-counter {
+  vertical-align: top;
+  clip-path: inset(0 calc(var(--padding, 0px) * -1) round 999px);
+}
+
 .animated-counter {
   display: inline-flex;
+  // * one box per digit: in a right-to-left line a flex row would put them in reverse
+  direction: ltr;
 
   &-dynamic-width {
     width: 100vw;
-    max-width: var(--width);
+    // * as wide as its text until it is measured, not as the viewport
+    max-width: var(--width, max-content);
     // overflow: hidden;
-    transition: max-width var(--pm-transition);
+
+    @include animation-level(1) {
+      transition: max-width var(--pm-transition);
+    }
   }
 
   &-decimal {

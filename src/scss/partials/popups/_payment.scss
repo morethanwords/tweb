@@ -34,6 +34,17 @@
     flex-direction: column;
     gap: 0.5rem;
   }
+
+  // * `keepInputLeftToRight`, the star gift price: digits with no letter among them order left to right,
+  // * while the field keeps its direction (its paddings, the side its icons are on) — and in a
+  // * right-to-left layout the text stays on the label's side rather than following the digits
+  &-ltr-input {
+    unicode-bidi: plaintext;
+
+    :where(.is-rtl) & {
+      text-align: right;
+    }
+  }
 }
 
 .payment-verification {
@@ -43,7 +54,7 @@
   border: none;
   flex: 1 1 auto;
 
-  @include animation-level(2) {
+  @include animation-level(1) {
     transition: opacity var(--transition-standard-in);
   }
 }
@@ -71,7 +82,7 @@
       height: 6.25rem;
       flex: 0 0 auto;
       border-radius: $border-radius-medium;
-      margin-right: 1rem;
+      margin-inline-end: 1rem;
       // background-color: var(--secondary-color);
 
       .media-photo {
@@ -156,12 +167,12 @@
       line-height: 2.5rem;
       margin-top: .5rem;
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: color .1s ease-in-out, background-color .1s ease-in-out;
       }
 
       &:not(:last-child) {
-        margin-right: .5rem;
+        margin-inline-end: .5rem;
       }
 
       &:not(.active) {

@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{a as e}from"./langPack-1UiOluhK.js";function t(t,n=`auto`){if(t===0)return e(`FileSize.B`,[0]);let r=n===`auto`,i=1024,a=[`FileSize.B`,`FileSize.KB`,`FileSize.MB`,`FileSize.GB`,`FileSize.TB`,`FileSize.PB`],o=Math.min(Math.floor(Math.log(t)/Math.log(i)),a.length-1),s=n===`auto`?Math.max(0,o-1):n,c=Math.max(0,s),l=(t/i**o).toFixed(c);return e(a[o],[r?l:parseFloat(l)])}export{t};
+//# sourceMappingURL=formatBytes-8Uig51hp.js.map

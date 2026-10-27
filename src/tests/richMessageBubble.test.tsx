@@ -48,6 +48,7 @@ vi.mock('@lib/solidjs/hotReloadGuard', () => ({
 }));
 
 vi.mock('@lib/richMessage', () => ({
+  isRichMessageFullWidth: (blocks: Page.page['blocks']) => blocks.some((block) => block._ === 'pageBlockTable'),
   isRichMessagePart: (richMessage: RichMessage) => !!richMessage.pFlags.part,
   richMessageToPage: (richMessage: RichMessage): Page.page => ({
     _: 'page',
@@ -324,5 +325,33 @@ describe('RichMessageBubble Read More lifecycle', () => {
     dispose();
     host.remove();
     restoreIntersectionObserver();
+  });
+});
+
+describe('RichMessageBubble width', () => {
+  test('is as wide as a message gets while the page has a block that takes the whole width', async() => {
+    const value = richMessage(false);
+    const [current, setCurrent] = createSignal(page(value));
+    const host = document.createElement('div');
+    document.body.append(host);
+    const dispose = render(() => (
+      <RichMessageBubble message={message()} richMessage={value} page={current} phase="final" />
+    ), host);
+    const wrapper = host.firstElementChild as HTMLElement;
+    const isFull = () => [...wrapper.classList].some((name) => /RichMessageWrapperFull/.test(name));
+
+    expect(isFull()).toBe(false);
+
+    // a bot edits the message in place: a board comes in, and the width follows it
+    setCurrent({...page(value), blocks: [...value.blocks, {_: 'pageBlockTable', pFlags: {}, title: {_: 'textEmpty'}, rows: []}]});
+    await Promise.resolve();
+    expect(isFull()).toBe(true);
+
+    setCurrent(page(value));
+    await Promise.resolve();
+    expect(isFull()).toBe(false);
+
+    dispose();
+    host.remove();
   });
 });

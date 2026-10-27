@@ -4,20 +4,19 @@ import handleTabSwipe from '@helpers/dom/handleTabSwipe';
 import liteMode from '@helpers/liteMode';
 import safeAssign from '@helpers/object/safeAssign';
 import pause from '@helpers/schedulers/pause';
-import appDialogsManager from '@lib/appDialogsManager';
 import {AppManagers} from '@lib/managers';
 import {logger} from '@lib/logger';
 import {AutonomousDialogListBase} from '@components/autonomousDialogList/base';
 import type {DialogsSelectionBase} from '@components/dialogsSelectionBase';
 import ButtonIcon from '@components/buttonIcon';
 import Icon from '@components/icon';
-import appSidebarLeft from '@components/sidebarLeft';
 import {MAX_SIDEBAR_WIDTH} from '@helpers/updateColumnWidths';
 import SetTransition from '@components/singleTransition';
 import {SliderSuperTabEventable} from '@components/sliderTab';
 import {Register} from '@components/forumTab/register';
 import rootScope from '@lib/rootScope';
 import {isDialog} from '@lib/appManagers/utils/dialogs/isDialog';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 
 export class ForumTab extends SliderSuperTabEventable {
@@ -57,7 +56,7 @@ export class ForumTab extends SliderSuperTabEventable {
 
   protected _close = () => {
     if(!this.slider) {
-      appDialogsManager.toggleForumTab(undefined, this);
+      hotReloadGuard.appDialogsManager.toggleForumTab(undefined, this);
     } else {
       this.close();
     }
@@ -76,9 +75,9 @@ export class ForumTab extends SliderSuperTabEventable {
   }
 
   protected async onSearchClick() {
-    appSidebarLeft.closeEverythingInside();
+    hotReloadGuard.appSidebarLeft.closeEverythingInside();
     if(liteMode.isAvailable('animations')) await pause(400);
-    appSidebarLeft.initSearch().openWithPeerId(this.peerId);
+    hotReloadGuard.appSidebarLeft.initSearch().openWithPeerId(this.peerId);
   }
 
   public init(options: {
@@ -144,10 +143,10 @@ export class ForumTab extends SliderSuperTabEventable {
     const isFloating = !this.slider;
 
     return (): DOMRectEditable => {
-      const sidebarRect = appSidebarLeft.rect;
+      const sidebarRect = hotReloadGuard.appSidebarLeft.rect;
       const paddingY = 56;
       const paddingX = isFloating ? 80 : 0;
-      const isCollapsed = appSidebarLeft.isCollapsed();
+      const isCollapsed = hotReloadGuard.appSidebarLeft.isCollapsed();
       const originalWidth = isCollapsed ? MAX_SIDEBAR_WIDTH : sidebarRect.width;
       const width = isFloating ? originalWidth - paddingX : originalWidth;
 

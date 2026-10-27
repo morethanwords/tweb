@@ -25,9 +25,14 @@ const babel = require('@babel/core');
 const ROOT = path.join(__dirname, '..', '..');
 const SRC = path.join(ROOT, 'src');
 const TABS_FILE = path.join(SRC, 'components/solidJsTabs/tabs.ts');
+const OPENERS_FILE = path.join(SRC, 'lib/settingsSearch/openers.ts');
 const LINKS_FILE = path.join(SRC, 'scripts/in/settings-links.csv');
 const OUT_FILE = path.join(SRC, 'lib/settingsSearch/generated.ts');
 const ROOT_TAB = 'AppSettingsTab';
+
+// Every file the index is built from — this script, the link table and each source it parses — so a
+// watcher knows when to build it again.
+const INPUTS = new Set([__filename, LINKS_FILE]);
 
 // Files a settings tab may pull rows from. Anything outside is a shared widget.
 const HELPER_ROOTS = [
@@ -81,8 +86,7 @@ const LINK_OVERRIDES = {
   'profile-photo': 'AppEditProfileTab',
   'privacy/forwards': 'AppPrivacyForwardMessagesTab',
   'privacy/voice': 'AppPrivacyVoicesTab',
-  'privacy/messages': 'AppPrivacyMessagesTab',
-  'privacy/passcode/change': 'AppPasscodeLockTab'
+  'privacy/messages': 'AppPrivacyMessagesTab'
 };
 
 /**
@@ -130,12 +134,15 @@ const I18N_CALLEES = new Set(['i18n', '_i18n', 'i18n_']);
 // parsing helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-const parseFile = (file) => babel.parseSync(fs.readFileSync(file, 'utf8'), {
-  filename: file,
-  parserOpts: {plugins: ['jsx', ['typescript', {isTSX: true}], 'decorators-legacy'], sourceType: 'module'},
-  configFile: false,
-  babelrc: false
-});
+const parseFile = (file) => {
+  INPUTS.add(file);
+  return babel.parseSync(fs.readFileSync(file, 'utf8'), {
+    filename: file,
+    parserOpts: {plugins: ['jsx', ['typescript', {isTSX: true}], 'decorators-legacy'], sourceType: 'module'},
+    configFile: false,
+    babelrc: false
+  });
+};
 
 const walkNode = (node, visit) => {
   if(!node || typeof node !== 'object') return;
@@ -145,6 +152,18 @@ const walkNode = (node, visit) => {
     const value = node[key];
     if(Array.isArray(value)) value.forEach((v) => walkNode(v, visit));
     else if(value && typeof value.type === 'string') walkNode(value, visit);
+  }
+};
+
+/**
+ * A tab constructor in code: the imported name, or the same tab read off the registry (`hotReloadGuard.tabs.X`),
+ * which is how code below the app's top level reaches the tabs.
+ */
+const tabNameOf = (node, knownTabs) => {
+  if(node?.type === 'Identifier') return knownTabs.has(node.name) ? node.name : undefined;
+  if(node?.type === 'MemberExpression' && !node.computed && node.property.type === 'Identifier' &&
+    node.object.type === 'MemberExpression' && node.object.property.name === 'tabs' && knownTabs.has(node.property.name)) {
+    return node.property.name;
   }
 };
 
@@ -466,6 +485,11 @@ const analyzeFile = (file, knownTabs) => {
   };
 
   babel.traverse(ast, {
+    // in the order the file uses them: an import lists names in whatever order it was written
+    ImportDeclaration(p) {
+      p.skip();
+    },
+
     Identifier(p) {
       if(knownTabs.has(p.node.name)) referenced.add(p.node.name);
     },
@@ -478,7 +502,10 @@ const analyzeFile = (file, knownTabs) => {
       // `sliceTabsUntilTab(AppSettingsTab)` walks back up the stack and `getTab`
       // only looks one up — neither opens anything.
       if(calleeName === 'sliceTabsUntilTab' || calleeName === 'closeTabsUntilTab' || calleeName === 'getTab') {
-        for(const a of p.node.arguments) if(a.type === 'Identifier') backRefs.add(a.name);
+        for(const a of p.node.arguments) {
+          const name = tabNameOf(a, knownTabs);
+          if(name) backRefs.add(name);
+        }
         return;
       }
 
@@ -759,8 +786,37 @@ const parseCsv = (text) => {
 const LINK_PATH_SKIP = new Set(['chat list', 'chat lis', 'hamburger', 'settings', 'three dots', 'pencil']);
 const normalizeText = (text) => text.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
+/**
+ * `NON_NAVIGABLE_SECTIONS` of openers.ts — the wizard steps the search drops at runtime, everything
+ * under them with them. A link resolved into one would be dropped too, so it stays on the screen
+ * that opens the step (`privacy/passcode/change` on the passcode's screen, not its entry step).
+ */
+const collectNonNavigable = () => {
+  const ids = new Set();
+  babel.traverse(parseFile(OPENERS_FILE), {
+    VariableDeclarator(p) {
+      if(p.node.id.name !== 'NON_NAVIGABLE_SECTIONS') return;
+      walkNode(p.node.init, (n) => {
+        if(n.type === 'StringLiteral') ids.add(n.value);
+      });
+    }
+  });
+  return ids;
+};
+
 const collectLinks = ({sections, entries}) => {
   if(!fs.existsSync(LINKS_FILE)) return [];
+
+  const nonNavigable = collectNonNavigable();
+  const parentOf = new Map(sections.map((section) => [section.id, section.parentId]));
+  const isReachable = (sectionId) => {
+    for(let current = sectionId; current; current = parentOf.get(current)) {
+      if(nonNavigable.has(current)) return false;
+    }
+    return true;
+  };
+  sections = sections.filter((section) => isReachable(section.id));
+  entries = entries.filter((entry) => isReachable(entry.sectionId));
 
   // English text -> the keys that render it
   const byText = new Map();
@@ -911,7 +967,7 @@ const generate = () => {
     fs.mkdirSync(path.dirname(OUT_FILE), {recursive: true});
     fs.writeFileSync(OUT_FILE, content, 'utf8');
   }
-  return {...data, changed: previous !== content};
+  return {...data, changed: previous !== content, inputs: [...INPUTS]};
 };
 
 module.exports = {generate, build, emit, OUT_FILE, PROCESSOR_PATHS};

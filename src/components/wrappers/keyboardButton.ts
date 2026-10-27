@@ -17,7 +17,7 @@ import ReplyMarkupLayout from '@components/chat/bubbleParts/replyMarkupLayout';
 import classNames from '@helpers/string/classNames';
 import showCreateBotPopup from '@components/popups/createBot';
 import confirmationPopup from '@components/confirmationPopup';
-import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {wrapFormattedDuration} from './wrapDuration';
 import formatDuration from '@helpers/formatDuration';
 import {
@@ -29,6 +29,7 @@ import {
   getButtonTypeIcon
 } from '@components/wrappers/buttonTypes';
 import {copyUrlButtonAnchor, createUrlButtonAnchor} from '@components/wrappers/urlButtonAnchor';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export type AnyKeyboardButton = KeyboardButton | KeyboardInlineButton;
 
@@ -49,13 +50,9 @@ export type ButtonTypeHandler = Omit<KeyboardButtonHandler, 'text' | 'bg'> & {
   unavailable?: boolean
 };
 
-async function openUserProfile(peerId: PeerId) {
-  const [{default: appImManager}, {default: appSidebarRight}] = await Promise.all([
-    import('@lib/appImManager'),
-    import('@components/sidebarRight')
-  ]);
-  appImManager.setInnerPeer({peerId});
-  appSidebarRight.toggleSidebar(true);
+function openUserProfile(peerId: PeerId) {
+  hotReloadGuard.appImManager.setInnerPeer({peerId});
+  hotReloadGuard.appSidebarRight.toggleSidebar(true);
 }
 
 /**
@@ -110,11 +107,12 @@ function getButtonTypeHandler({
     case 'inlineButtonTypeSwitchInline': {
       result.classNames.push('is-switch-inline');
       result.onClick = (e) => {
+        const managers = bindManagersToSession(rootScope.managers);
         cancelEvent(e);
 
         let promise: Promise<PeerId>;
         if(type.pFlags.same_peer) promise = Promise.resolve(peerId);
-        else promise = rootScope.managers.appInlineBotsManager.checkSwitchReturn(botId).then((peerId) => {
+        else promise = managers.appInlineBotsManager.checkSwitchReturn(botId).then((peerId) => {
           if(peerId) {
             return peerId;
           }
@@ -138,7 +136,7 @@ function getButtonTypeHandler({
         promise.then(async(chosenPeerId) => {
           const threadId = peerId === chosenPeerId ? chat.threadId : undefined;
           await chat.appImManager.setInnerPeer({peerId: chosenPeerId, threadId});
-          rootScope.managers.appInlineBotsManager.switchInlineQuery(chosenPeerId, threadId, botId, type.query);
+          managers.appInlineBotsManager.switchInlineQuery(chosenPeerId, threadId, botId, type.query);
         });
       };
       break;
@@ -201,7 +199,7 @@ function getButtonTypeHandler({
       result.classNames.push('is-request-phone');
 
       result.onClick = () => {
-        chat.appImManager.requestPhone(peerId);
+        chat.appImManager.requestPhone({peerId, threadId: chat.threadId});
       };
       break;
     }
@@ -270,6 +268,7 @@ function getButtonTypeHandler({
 
     case 'buttonTypeRequestPeer': {
       result.onClick = async() => {
+        const managers = bindManagersToSession(rootScope.managers);
         const peerType = type.peer_type;
 
         if(peerType._ === 'requestPeerTypeCreateBot') {
@@ -279,7 +278,7 @@ function getButtonTypeHandler({
             suggestedUsername: peerType.suggested_username,
             onCreate: async({name, username}) => {
               try {
-                const createBotResult = await rootScope.managers.appBotsManager.createManagedBot({
+                const createBotResult = await managers.appBotsManager.createManagedBot({
                   managerId: peerId,
                   botName: name,
                   username: username
@@ -303,7 +302,7 @@ function getButtonTypeHandler({
 
                 const user = createBotResult.user;
 
-                await rootScope.managers.appMessagesManager.sendBotRequestedPeer(
+                await managers.appMessagesManager.sendBotRequestedPeer(
                   peerId,
                   type.button_id,
                   [user.id.toPeerId()],
@@ -327,7 +326,7 @@ function getButtonTypeHandler({
           return;
         }
 
-        rootScope.managers.appMessagesManager.sendBotRequestedPeer(
+        managers.appMessagesManager.sendBotRequestedPeer(
           peerId,
           type.button_id,
           requestedPeerIds,
@@ -369,13 +368,16 @@ function getButtonTypeHandler({
       if(!message) {
         // a keyboard an ephemeral message brought answers its bot privately: the press replies
         // to that message, which makes the send an ephemeral reply (desktop replies to the
-        // keyboard's message in groups for the same reason)
+        // keyboard's message in groups for the same reason). The text goes where the keyboard
+        // was shown: in a topic that is the topic — without it a group's General gets it, and a
+        // bot's private chat with topics opens a new one for it
         const replyToEphemeral = isEphemeralMessageId(messageMid) ? {replyToMsgId: messageMid} : undefined;
         result.onClick = () => {
           rootScope.managers.appMessagesManager.sendText({
             ...chat.input?.getEphemeralSendingSnapshot(),
             ...replyToEphemeral,
             peerId,
+            threadId: chat.threadId,
             text: label
           });
         };

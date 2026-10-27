@@ -4,5 +4,6 @@ export type MyMediaTrackSupportedConstraints = MediaTrackSupportedConstraints & 
 };
 
 export default function constraintSupported(constraint: keyof MyMediaTrackSupportedConstraints) {
-  return (!!navigator?.mediaDevices?.getSupportedConstraints() as any as MyMediaTrackSupportedConstraints)[constraint];
+  const supported = navigator?.mediaDevices?.getSupportedConstraints() as MyMediaTrackSupportedConstraints;
+  return !!supported?.[constraint];
 }

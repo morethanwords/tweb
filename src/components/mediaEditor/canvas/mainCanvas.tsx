@@ -9,6 +9,7 @@ import VideoControls from '@components/mediaEditor/canvas/videoControls';
 import {useMediaEditorContext} from '@components/mediaEditor/context';
 import {observeResize} from '@components/resizeObserver';
 import Modes from '@config/modes';
+import keepLeftToRight from '@helpers/dom/keepLeftToRight';
 import {onCleanup, onMount, Show} from 'solid-js';
 
 
@@ -39,7 +40,15 @@ export default function MainCanvas() {
   });
 
   return (
-    <div ref={container} class="media-editor__main-canvas">
+    <div
+      ref={(el) => {
+        container = el;
+        // * what is drawn is never mirrored, and nothing laid over it either: a text layer's alignment,
+        // * the rotation wheel's scale and the video's timeline run left to right in an RTL layout too
+        keepLeftToRight(el);
+      }}
+      class="media-editor__main-canvas"
+    >
       <Show when={editorState.canvasSize}>
         <ImageCanvas />
         <Show when={editorState.isReady}>

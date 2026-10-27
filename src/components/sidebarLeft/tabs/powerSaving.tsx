@@ -1,13 +1,15 @@
-import {onMount} from 'solid-js';
+import {createEffect, on, onMount} from 'solid-js';
 import type {StateSettings} from '@config/state';
 import flatten from '@helpers/array/flatten';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
-import {LiteModeKey} from '@helpers/liteMode';
+import liteMode, {LiteModeKey} from '@helpers/liteMode';
 import pause from '@helpers/schedulers/pause';
 import CheckboxFields, {CheckboxFieldsField} from '@components/checkboxFields';
 import Section from '@components/section';
 import {toastNew} from '@components/toast';
 import {useAppSettings} from '@stores/appSettings';
+import useReducedMotion from '@stores/reducedMotion';
+import {i18n, LangPackKey} from '@lib/langPack';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 
 type PowerSavingCheckboxFieldsField = CheckboxFieldsField & {
@@ -34,8 +36,13 @@ const PowerSaving = () => {
       ['effects', ['effects_reactions', 'effects_premiumstickers', 'effects_emoji']],
       ['chat', ['chat_background', 'chat_spoilers']],
       'animations',
+      'motion',
       'blur'
     ];
+
+    const motionInfoKey = (): LangPackKey => liteMode.isMotionHeldBySystem() ?
+      'LiteMode.Key.motion.HeldBySystem' :
+      'LiteMode.Key.motion.Info';
 
     const wrap = (key: typeof keys[0]): PowerSavingCheckboxFieldsField[] => {
       const isArray = Array.isArray(key);
@@ -45,6 +52,7 @@ const PowerSaving = () => {
       return [{
         key: mainKey,
         text: mainKey === 'all' ? 'LiteMode.EnableText' : `LiteMode.Key.${mainKey}.Title`,
+        description: mainKey === 'motion' ? motionInfoKey() : undefined,
         checked: mainKey === 'all' ? value : !value,
         nested: nested,
         name: 'power-saving-' + mainKey
@@ -74,12 +82,19 @@ const PowerSaving = () => {
       }
     }, {listenerSetter: tab.listenerSetter});
 
-    const onAllChange = (disable: boolean) => {
+    const animationsField = fields.find((field) => field.key === 'animations');
+    const motionField = fields.find((field) => field.key === 'motion');
+    // * motion is a part of the interface animations, and the system's reduce motion holds it off
+    // * by itself: held, the row is off and takes no input, while the setting under it is kept
+    const isMotionHeld = () => !animationsField.checkboxField.checked || liteMode.isMotionHeldBySystem();
+
+    const updateDisability = (values: StateSettings['liteMode']) => {
       fields.forEach((field) => {
         if(field.key === 'all') {
           return;
         }
 
+        const disable = values.all || (field === motionField && isMotionHeld());
         if(field.nested) {
           checkboxFields.setNestedCounter(field, disable ? 0 : undefined);
         }
@@ -87,28 +102,36 @@ const PowerSaving = () => {
         field.checkboxField.input.classList.toggle('is-fake-disabled', disable);
         field.row.toggleDisability(disable);
       });
+
+      const motionHeld = isMotionHeld();
+      motionField.checkboxField.input.disabled = motionHeld;
+      motionField.checkboxField.setValueSilently(!motionHeld && !values.motion);
     };
 
     tab.listenerSetter.add(formEl)('change', async() => {
-      const liteMode: StateSettings['liteMode'] = {} as any;
+      const values: StateSettings['liteMode'] = {} as any;
       fields.forEach((field) => {
         const checked = field.checkboxField.checked;
-        liteMode[field.key] = field.key === 'all' ? checked : !checked;
+        values[field.key] = field.key === 'all' ? checked : (
+          field === motionField && field.checkboxField.input.disabled ? appSettings.liteMode.motion : !checked
+        );
       });
 
-      const wasAll = appSettings.liteMode.all;
-      if(wasAll !== liteMode.all) {
-        onAllChange(!wasAll);
-
-        if(liteMode.all) {
-          await pause(200);
-        }
+      updateDisability(values);
+      if(values.all && !appSettings.liteMode.all) {
+        await pause(200);
       }
 
-      setAppSettings('liteMode', liteMode);
+      setAppSettings('liteMode', values);
     });
 
-    onAllChange(appSettings.liteMode.all);
+    updateDisability(appSettings.liteMode);
+
+    // * the system's reduce motion can change while the tab is open
+    createEffect(on(useReducedMotion(), () => {
+      motionField.row.container.querySelector('.row-subtitle')?.replaceChildren(i18n(motionInfoKey()));
+      updateDisability(appSettings.liteMode);
+    }, {defer: true}));
   });
 
   return (

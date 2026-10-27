@@ -24,10 +24,10 @@ import toHHMMSS from '@helpers/string/toHHMMSS';
 import {Message, PhotoSize, VideoSize} from '@layer';
 import {MyDocument} from '@appManagers/appDocsManager';
 import appDownloadManager from '@lib/appDownloadManager';
-import appImManager from '@lib/appImManager';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import {NULL_PEER_ID} from '@appManagers/constants';
 import apiManagerProxy from '@lib/apiManagerProxy';
+import getDocumentURL from '@appManagers/utils/docs/getDocumentURL';
 import rootScope from '@lib/rootScope';
 import {ThumbCache} from '@lib/storages/thumbs';
 import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
@@ -45,12 +45,14 @@ import debounce from '@helpers/schedulers/debounce';
 import {isFullScreen} from '@helpers/dom/fullScreen';
 import overlayCounter from '@helpers/overlayCounter';
 import {ChatAutoDownloadSettings} from '@hooks/useAutoDownloadSettings';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {hotListen} from '@helpers/hotModule';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 export const USE_VIDEO_OBSERVER = false;
 
 const roundVideoProgressRingResizers = new Set<() => void>();
-mediaSizes.addEventListener('changeScreen', (from, to) => {
+hotListen(import.meta.hot, mediaSizes, 'changeScreen', (from: ScreenSize, to: ScreenSize) => {
   if(to === ScreenSize.mobile || from === ScreenSize.mobile) {
     roundVideoProgressRingResizers.forEach((resize) => resize());
   }
@@ -60,7 +62,7 @@ mediaSizes.addEventListener('changeScreen', (from, to) => {
 
 let turnedObserverOn = false;
 
-export default async function wrapVideo({doc, altDoc, container, message, boxWidth, boxHeight, fillBox, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, noPreview, withoutPreloader, loadPromises, noPlayButton, photoSize, videoSize, searchContext, autoDownload, managers = rootScope.managers, noAutoplayAttribute, ignoreStreaming, canAutoplay, useBlur, observer, setShowControlsOn, uploadingFileName, onGlobalMedia, onLoad, withPreview}: {
+export default async function wrapVideo({doc, altDoc, container, message, boxWidth, boxHeight, fillBox, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, noPreview, withoutPreloader, loadPromises, noPlayButton, photoSize, videoSize, searchContext, autoDownload, managers = rootScope.managers, noAutoplayAttribute, ignoreStreaming, canAutoplay, useBlur, observer, setShowControlsOn, uploadingFileName, onGlobalMedia, onLoad, withPreview, hlsStreaming, streamablePreloader}: {
   doc: MyDocument,
   altDoc?: MyDocument,
   container?: HTMLElement,
@@ -84,7 +86,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   photoSize?: PhotoSize,
   videoSize?: Extract<VideoSize, VideoSize.videoSize>,
   searchContext?: MediaSearchContext,
-  managers?: AppManagers,
+  managers?: ReadingManagers,
   noAutoplayAttribute?: boolean,
   ignoreStreaming?: boolean,
   canAutoplay?: boolean,
@@ -93,7 +95,11 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   setShowControlsOn?: HTMLElement,
   uploadingFileName?: string,
   onGlobalMedia?: (media: HTMLMediaElement) => void,
-  onLoad?: () => void
+  onLoad?: () => void,
+  // * stream its quality ladder over HLS instead of the one file, as the media viewer does
+  hlsStreaming?: boolean,
+  // * a stream shows the media viewer's loader (the ring with a square), not the chat's spinner
+  streamablePreloader?: boolean
 }) {
   const supportsStreaming = doc.supportsStreaming && !ignoreStreaming;
   if(!supportsStreaming && altDoc && !onlyPreview && !IS_H265_SUPPORTED) {
@@ -267,7 +273,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
       }) as HTMLVideoElement;
       onGlobalMedia?.(globalVideo);
       const clear = () => {
-        (appImManager.chat.setPeerPromise || Promise.resolve()).finally(() => {
+        (hotReloadGuard.appImManager.chat.setPeerPromise || Promise.resolve()).finally(() => {
           if(isInDOM(globalVideo)) {
             return;
           }
@@ -527,6 +533,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   } else if(supportsStreaming && !withoutPreloader) {
     preloader = new ProgressivePreloader({
       cancelable: false,
+      streamable: streamablePreloader,
       attachMethod: 'prepend'
     });
   }
@@ -580,6 +587,146 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   if(!noAutoplayAttribute && !suppressAutoplayWhileUploading) {
     video.autoplay = true;
   }
+
+  // * before `load`, which calls this once the video has loaded: a video from the cache loads while
+  // * the thumb is still awaited below, and found it not yet made
+  const attachSoundObserver = willObserveSound ? () => {
+    video.mini = true;
+    video.pause();
+    const onIntersection: IntersectionCallback = (entry) => {
+      if(!entry.isIntersecting) {
+        destroyPlayer();
+      }
+    };
+
+    container.classList.add('media-video-container', 'media-video-mini');
+    observer.observe(video, onIntersection);
+
+    const destroyPlayer = () => {
+      debouncedDestroy.clearTimeout();
+      if(
+        !videoPlayer ||
+        !middleware() ||
+        isFullScreen() ||
+        videoPlayer.inPip
+      ) {
+        return;
+      }
+
+      videoPlayer.unmount();
+      videoPlayer.cleanup();
+      videoPlayer = undefined;
+      setShowControlsOn.classList.remove('show-controls');
+    };
+
+    const debouncedDestroy = debounce(destroyPlayer, 1000, false, true);
+
+    let videoPlayer: VideoPlayer, releasePromise: CancellablePromise<void>/* , changedVolume = false */;
+    container.onMiniVideoMouseMove = (e: MouseEvent) => {
+      if(videoPlayer) {
+        return;
+      }
+
+      const toggleReleasePromise = (active: boolean) => {
+        if(active) releasePromise = deferredPromise();
+        else releasePromise?.resolve();
+      };
+
+      const onLock = (active: boolean) => {
+        if(ignoreNextEvents && ignoreNextEvents--) {
+          return;
+        }
+
+        const animationItem = animationIntersector.getAnimations(video)[0];
+        animationIntersector.toggleItemLock(animationItem, active);
+        toggleReleasePromise(active);
+      };
+
+      let ignoreNextEvents = 0;
+      videoPlayer = new VideoPlayer({
+        video,
+        container,
+        duration: video.duration,
+        streamable: true,
+        listenKeyboardEvents: 'fullscreen',
+        useGlobalVolume: 'no-init',
+        // shouldEnableSoundOnClick: () => !changedVolume,
+        onVolumeChange: (type) => {
+          const noVolume = !video.volume || video.muted;
+          let newValue: boolean;
+          if(noVolume) {
+            newValue = turnedObserverOn = false;
+          } else if(type === 'click') {
+            newValue = turnedObserverOn = true;
+          }
+
+          if(newValue !== turnedObserverOn && newValue !== undefined) {
+            appMediaPlaybackController.dispatchEvent('toggleVideoAutoplaySound', newValue);
+          }
+
+          // changedVolume = true;
+        },
+        onFullScreen: (active) => {
+          onLock(active);
+          overlayCounter.isDarkOverlayActive = active;
+        },
+        onFullScreenToPip: () => {
+          ignoreNextEvents = 2;
+        },
+        onPip: onLock/* ,
+        onPipClose: () => {
+          if(!setShowControlsOn.classList.contains('show-controls')) {
+            debouncedDestroy();
+          }
+        } */
+      });
+
+      videoPlayer.volumeSelector.setVolume({muted: !turnedObserverOn, volume: video.volume});
+
+      videoPlayer.addEventListener('toggleControls', (show) => {
+        setShowControlsOn.classList.toggle('show-controls', show);
+        if(show) {
+          debouncedDestroy.clearTimeout();
+        } else {
+          debouncedDestroy();
+        }
+      });
+    };
+
+    // * mute video when other media is playing
+    const onAutoplaySound = (enabled: boolean) => {
+      if(videoPlayer) {
+        return;
+      }
+
+      appMediaPlaybackController.applySharedVolume(video);
+    };
+
+    const onPlaybackMediaParams = (params: ReturnType<AppMediaPlaybackController['getPlaybackParams']>) => {
+      if(videoPlayer) {
+        return;
+      }
+
+      appMediaPlaybackController.applySharedVolume(video);
+      video.muted = turnedObserverOn ? params.muted : true;
+      video.playbackRate = params.playbackRate;
+    };
+
+    appMediaPlaybackController.addEventListener('toggleVideoAutoplaySound', onAutoplaySound);
+    appMediaPlaybackController.addEventListener('playbackParams', onPlaybackMediaParams);
+
+    middleware.onClean(() => {
+      observer.unobserve(video, onIntersection);
+      delete container.onMiniVideoMouseMove;
+      appMediaPlaybackController.removeEventListener('toggleVideoAutoplaySound', onAutoplaySound);
+      appMediaPlaybackController.removeEventListener('playbackParams', onPlaybackMediaParams);
+    });
+
+    originalMiddleware.onClean(async() => {
+      await releasePromise;
+      myMiddlewareHelper.destroy();
+    });
+  } : undefined;
 
   let loadPhotoThumbFunc = noAutoDownload && photoRes?.preloader?.loadFunc;
   const load = async() => {
@@ -695,7 +842,8 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
         video.append(...sources);
         video.load();
       } else {
-        renderImageFromUrl(video, cacheContext.url);
+        // * an `hls/` source is played by hls.js, see createVideo
+        renderImageFromUrl(video, hlsStreaming && supportsStreaming ? getDocumentURL(doc, {supportsHlsStreaming: true}) : cacheContext.url);
       }
     }, noop);
 
@@ -727,145 +875,6 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   if(video) {
     res.video = video;
   }
-
-  const attachSoundObserver = willObserveSound ? () => {
-    video.mini = true;
-    video.pause();
-    const onIntersection: IntersectionCallback = (entry) => {
-      if(!entry.isIntersecting) {
-        destroyPlayer();
-      }
-    };
-
-    container.classList.add('media-video-container', 'media-video-mini');
-    observer.observe(video, onIntersection);
-
-    const destroyPlayer = () => {
-      debouncedDestroy.clearTimeout();
-      if(
-        !videoPlayer ||
-        !middleware() ||
-        isFullScreen() ||
-        videoPlayer.inPip
-      ) {
-        return;
-      }
-
-      videoPlayer.unmount();
-      videoPlayer.cleanup();
-      videoPlayer = undefined;
-      setShowControlsOn.classList.remove('show-controls');
-    };
-
-    const debouncedDestroy = debounce(destroyPlayer, 1000, false, true);
-
-    let videoPlayer: VideoPlayer, releasePromise: CancellablePromise<void>/* , changedVolume = false */;
-    container.onMiniVideoMouseMove = (e: MouseEvent) => {
-      if(videoPlayer) {
-        return;
-      }
-
-      const toggleReleasePromise = (active: boolean) => {
-        if(active) releasePromise = deferredPromise();
-        else releasePromise?.resolve();
-      };
-
-      const onLock = (active: boolean) => {
-        if(ignoreNextEvents && ignoreNextEvents--) {
-          return;
-        }
-
-        const animationItem = animationIntersector.getAnimations(video)[0];
-        animationIntersector.toggleItemLock(animationItem, active);
-        toggleReleasePromise(active);
-      };
-
-      let ignoreNextEvents = 0;
-      videoPlayer = new VideoPlayer({
-        video,
-        container,
-        duration: video.duration,
-        streamable: true,
-        listenKeyboardEvents: 'fullscreen',
-        useGlobalVolume: 'no-init',
-        // shouldEnableSoundOnClick: () => !changedVolume,
-        onVolumeChange: (type) => {
-          const noVolume = !video.volume || video.muted;
-          let newValue: boolean;
-          if(noVolume) {
-            newValue = turnedObserverOn = false;
-          } else if(type === 'click') {
-            newValue = turnedObserverOn = true;
-          }
-
-          if(newValue !== turnedObserverOn && newValue !== undefined) {
-            appMediaPlaybackController.dispatchEvent('toggleVideoAutoplaySound', newValue);
-          }
-
-          // changedVolume = true;
-        },
-        onFullScreen: (active) => {
-          onLock(active);
-          overlayCounter.isDarkOverlayActive = active;
-        },
-        onFullScreenToPip: () => {
-          ignoreNextEvents = 2;
-        },
-        onPip: onLock/* ,
-        onPipClose: () => {
-          if(!setShowControlsOn.classList.contains('show-controls')) {
-            debouncedDestroy();
-          }
-        } */
-      });
-
-      videoPlayer.volumeSelector.setVolume({muted: !turnedObserverOn, volume: video.volume});
-
-      videoPlayer.addEventListener('toggleControls', (show) => {
-        setShowControlsOn.classList.toggle('show-controls', show);
-        if(show) {
-          debouncedDestroy.clearTimeout();
-        } else {
-          debouncedDestroy();
-        }
-      });
-    };
-
-    // * mute video when other media is playing
-    const onAutoplaySound = (enabled: boolean) => {
-      if(videoPlayer) {
-        return;
-      }
-
-      video.muted = appMediaPlaybackController.muted;
-      video.volume = Math.min(appMediaPlaybackController.volume, 1);
-    };
-
-    const onPlaybackMediaParams = (params: ReturnType<AppMediaPlaybackController['getPlaybackParams']>) => {
-      if(videoPlayer) {
-        return;
-      }
-
-      video.muted = turnedObserverOn ? params.muted : true;
-      video.playbackRate = params.playbackRate;
-      video.volume = Math.min(params.volume, 1);
-    };
-
-    appMediaPlaybackController.addEventListener('toggleVideoAutoplaySound', onAutoplaySound);
-    appMediaPlaybackController.addEventListener('playbackParams', onPlaybackMediaParams);
-
-    middleware.onClean(() => {
-      observer.unobserve(video, onIntersection);
-      delete container.onMiniVideoMouseMove;
-      appMediaPlaybackController.removeEventListener('toggleVideoAutoplaySound', onAutoplaySound);
-      appMediaPlaybackController.removeEventListener('playbackParams', onPlaybackMediaParams);
-    });
-
-    originalMiddleware.onClean(async() => {
-      await releasePromise;
-      myMiddlewareHelper.destroy();
-    });
-  } : undefined;
 
   return res;
 }

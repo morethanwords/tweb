@@ -5,6 +5,8 @@ import {createImageAndURLFromBlob} from '@helpers/createImageAndURLFromBlob';
 import {getAppWindow} from '@helpers/appWindow';
 import {createObjectURL, revokeObjectURL} from '@helpers/objectUrl';
 import rootScope from '@lib/rootScope';
+import {hotReloadGuardReady} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 
 type OnFinishArgs = {
@@ -29,6 +31,11 @@ type GetFileAndOpenEditorArgs = {
   shouldOpenEditor?: (file: File) => boolean | Promise<boolean>;
   onSkipEditor?: (file: File) => void;
   onFinish: (args: OnFinishArgs) => void;
+  /**
+   * Whether what asked for the editor is still there: the file is picked, decoded and the editor loaded
+   * in the meantime, and an editor asked for by a screen that has gone is not opened over what is there now.
+   */
+  isAlive?: () => boolean;
 };
 
 export async function getFileAndOpenEditor({
@@ -39,8 +46,11 @@ export async function getFileAndOpenEditor({
   canImageResultInGIF = false,
   acceptMediaTypes = ['photo'],
   shouldOpenEditor,
-  onSkipEditor
+  onSkipEditor,
+  isAlive
 }: GetFileAndOpenEditorArgs) {
+  // * the editor opens for the account the file was asked on, and not at all once the tab is on another
+  const managers = bindManagersToSession(rootScope.managers);
   const input = createHiddenFileInput(acceptMediaTypes);
   document.body.append(input);
 
@@ -68,10 +78,16 @@ export async function getFileAndOpenEditor({
 
   let openMediaEditorFromMediaRaw: typeof import('@components/mediaEditor')['openMediaEditorFromMediaRaw'];
   try {
-    ({openMediaEditorFromMediaRaw} = await import('@components/mediaEditor'));
+    // the editor mounts the app's top level, which nothing has loaded yet when the sign-up screen opens it
+    [{openMediaEditorFromMediaRaw}] = await Promise.all([import('@components/mediaEditor'), hotReloadGuardReady()]);
   } catch(error) {
     revokeObjectURL(mediaSrc);
     throw error;
+  }
+
+  if(isAlive && !isAlive()) {
+    revokeObjectURL(mediaSrc);
+    return;
   }
 
   openMediaEditorFromMediaRaw({
@@ -80,7 +96,7 @@ export async function getFileAndOpenEditor({
     canFinishWithoutChanges: true,
     canImageResultInGIF,
     getMediaBlob: async() => file,
-    managers: rootScope.managers,
+    managers,
     mediaSrc,
     mediaType: isVideo ? 'video' : 'image',
     // Editing an avatar with a video → avatar-video mode (≤10s trim, forced mute,

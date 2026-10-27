@@ -1,4 +1,9 @@
-export default function GeoPin() {
+/**
+ * The pin as a plain element, for DOM built by hand. Called directly, a component is not one in
+ * development: once Solid has rendered it, the hot-reload proxy hands back an accessor instead of
+ * the element, and a hand-built parent would append that function as text.
+ */
+export function createGeoPin() {
   return (
     <svg class="geo-pin" xmlns="http://www.w3.org/2000/svg" width="21.333" height="37.218" viewBox="0 0 20 34.892">
       <g transform="translate(-965.773 -331.784) scale(1.18559)">
@@ -7,4 +12,8 @@ export default function GeoPin() {
       </g>
     </svg>
   ) as SVGSVGElement;
+}
+
+export default function GeoPin() {
+  return createGeoPin();
 }

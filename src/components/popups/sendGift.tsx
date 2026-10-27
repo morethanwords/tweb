@@ -8,7 +8,8 @@ import MediaHeader from '@components/mediaHeader';
 import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import {Accessor, createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Setter, Show} from 'solid-js';
 import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
-import showStarsPopup, {StarsBalance, StarsStar} from '@components/popups/stars';
+import showStarsPopup from '@components/popups/stars';
+import {StarsBalance, StarsStar} from '@components/stars/starsAmount';
 import LottieAnimation from '@components/lottieAnimation';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import classNames from '@helpers/string/classNames';
@@ -57,7 +58,6 @@ import {inputStarGiftEquals} from '@appManagers/utils/gifts/inputStarGiftEquals'
 import getStarGiftSendPolicy, {DisallowedGifts} from '@appManagers/utils/gifts/getStarGiftSendPolicy';
 import {updateStarGift} from '@appManagers/utils/gifts/updateStarGift';
 import {ChipTab, ChipTabs} from '@components/chipTabs';
-import showPremiumPopup from '@components/popups/premium';
 import tsNow from '@helpers/tsNow';
 import confirmationPopup from '@components/confirmationPopup';
 import {toastNew} from '@components/toast';
@@ -70,6 +70,9 @@ import Modes from '@config/modes';
 
 import styles from '@components/popups/sendGift.module.scss';
 import Animated from '@helpers/solid/animations';
+import smoothScrollBehavior from '@helpers/dom/smoothScrollBehavior';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 type GiftOption = MyStarGift | MyPremiumGiftOption;
 
@@ -156,7 +159,7 @@ function GiftOptionsPage(props: {
                     class={styles.premiumOptionBadge}
                     textClass={styles.premiumOptionBadgeText}
                   >
-                      -{Math.round(option.discountPercent)}%
+                      <span dir="ltr">-{Math.round(option.discountPercent)}%</span>
                   </StarGiftBadge>
                 )}
 
@@ -182,7 +185,7 @@ function GiftOptionsPage(props: {
     setCategory(it as CategoryName);
 
     fastRaf(() => {
-      container.scrollTo({top: categoriesContainer.offsetTop - 56, behavior: wasPinned ? 'instant' : 'smooth'});
+      container.scrollTo({top: categoriesContainer.offsetTop - 56, behavior: wasPinned ? 'instant' : smoothScrollBehavior()});
     });
   }
 
@@ -219,7 +222,7 @@ function GiftOptionsPage(props: {
     }
 
     if(gift.pFlags.require_premium && !rootScope.premium) {
-      showPremiumPopup();
+      hotReloadGuard.showPremiumPopup();
       return;
     }
 
@@ -792,7 +795,8 @@ function StarGiftLimitedProgress(props: {
       <div class={styles.limitedProgressBar}>
         <div class={styles.limitedProgressProgress} style={{width: `${100 * props.gift.availability_remains / props.gift.availability_total}%`}} />
         <div class={styles.limitedProgressText} style={{
-          'background-image': `linear-gradient(90deg, #fff ${progress}%, var(--secondary-text-color) ${progress}%)`
+          // * the fill grows from the inline start, and the text over it turns white with it
+          'background-image': `linear-gradient(calc(90deg * var(--reflect)), #fff ${progress}%, var(--secondary-text-color) ${progress}%)`
         }}>
           {left}
           {i18n('StarGiftLimitedSold2', [props.gift.availability_total - props.gift.availability_remains])}
@@ -837,10 +841,11 @@ function ChosenGiftPage(props: {
   }));
 
   async function handleSubmit() {
+    const managers = bindManagersToSession(rootScope.managers);
     setSending(true);
     let invoice: InputInvoice;
     if(props.chosenGift.type === 'stargift') {
-      const peer = await rootScope.managers.appPeersManager.getInputPeerById(props.peerId)
+      const peer = await managers.appPeersManager.getInputPeerById(props.peerId)
       invoice = {
         _: 'inputInvoiceStarGift',
         pFlags: {
@@ -853,7 +858,7 @@ function ChosenGiftPage(props: {
       };
     } else {
       const payWithStars$ = payWithStars();
-      const inputUser = await rootScope.managers.appUsersManager.getUserInput(props.peerId.toUserId());
+      const inputUser = await managers.appUsersManager.getUserInput(props.peerId.toUserId());
       if(payWithStars$) {
         invoice = {
           _: 'inputInvoicePremiumGiftStars',
@@ -1103,6 +1108,7 @@ export default async function showSendGiftPopup(options: {
     filter?: StarGiftAttribute;
   };
 }) {
+  const managers = bindManagersToSession(rootScope.managers);
   const {peerId, birthday, resaleParams} = options;
   const [show, setShow] = createSignal(true);
   let containerEl!: HTMLDivElement;
@@ -1166,6 +1172,7 @@ export default async function showSendGiftPopup(options: {
 
   createPopup(() => (
     <PopupElement
+      managers={managers}
       class={styles.popup}
       closable
       show={show()}

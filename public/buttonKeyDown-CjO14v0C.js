@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{m as e}from"./userAgent-BxgZpe58.js";function t(t,n,r){e.a11y&&t.includes(n.key)&&!n.repeat&&!n.defaultPrevented&&!n.isComposing&&n.target===r&&!r.matches(`button, input, select, textarea, a[href], [disabled], [aria-disabled="true"]`)&&(n.preventDefault(),r.click())}function n(e,n=e.currentTarget){t([`Enter`,` `],e,n)}function r(e,n=e.currentTarget){t([`Enter`],e,n)}export{r as n,n as t};
+//# sourceMappingURL=buttonKeyDown-CjO14v0C.js.map

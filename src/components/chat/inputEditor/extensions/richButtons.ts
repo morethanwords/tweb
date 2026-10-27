@@ -4,7 +4,9 @@ import type {Schema} from '@tiptap/pm/model';
 import type {NodeView} from '@tiptap/pm/view';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import type {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
-import {getPageButtonClasses, getPageButtonRowClasses, instantViewStyles} from '@components/instantViewFormatting';
+import {getPageButtonClasses, getPageButtonIcon, getPageButtonRowClasses, instantViewStyles} from '@components/instantViewFormatting';
+import Icon from '@components/icon';
+import ripple from '@components/ripple';
 import type {ChatInputButtonRowAlign, ChatInputRichButton} from '@components/chat/inputEditor/types';
 import {
   BUTTON_ROW_NODE_NAME,
@@ -15,11 +17,16 @@ import {
   isRichButtonAction,
   richButtonAttributes,
   richButtonFromAttributes,
+  richButtonInlineType,
   richButtonLabelText
 } from '@components/chat/inputEditor/richButtonModel';
 import ListenerSetter from '@helpers/listenerSetter';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import classNames from '@helpers/string/classNames';
+import {getMiddleware} from '@helpers/middleware';
+import wrapRichText from '@lib/richTextProcessor/wrapRichText';
+import wrapTelegramRichText from '@lib/richTextProcessor/wrapTelegramRichText';
+import {inlineContentToRichText} from '@components/chat/inputEditor/richMessage';
 
 /**
  * Layer 229's buttons, as a user puts them into a rich message: one inside the text (`richButton`,
@@ -59,21 +66,66 @@ function createRichButtonElement() {
   element.type = 'button';
   element.contentEditable = 'false';
   element.setAttribute('aria-haspopup', 'dialog');
+  // a press ripples as on the sent button; the drawing below keeps the ripple's element and classes
+  ripple(element);
   return element;
 }
 
 const CHIP_EVENTS = new Set(['click', 'mousedown', 'keydown', 'keypress', 'keyup']);
 
+// what a chip's label lives by: a relative date keeps itself current until the label is redrawn
+const labelMiddlewares = new WeakMap<HTMLElement, ReturnType<typeof getMiddleware>>();
+
+function destroyRichButtonLabel(element: Element) {
+  labelMiddlewares.get(element as HTMLElement)?.destroy();
+  labelMiddlewares.delete(element as HTMLElement);
+}
+
+/**
+ * The label as the message will show it — the same text, and a date in the format it was given
+ * (`wrapRichText`, as a message's text is drawn). The rest of its formatting stays off the chip.
+ */
+function renderRichButtonLabel(element: HTMLElement, label: RichButtonAttributes['label']) {
+  destroyRichButtonLabel(element);
+  const {text, entities} = wrapTelegramRichText(inlineContentToRichText(label));
+  // an empty chip still stands a line tall
+  if(!text) return document.createTextNode('\u00a0');
+
+  const middlewareHelper = getMiddleware();
+  labelMiddlewares.set(element, middlewareHelper);
+  return wrapRichText(text, {
+    entities: entities.filter((entity) => entity._ === 'messageEntityFormattedDate'),
+    middleware: middlewareHelper.get()
+  });
+}
+
 /** Draws a button the way the message will, minus what it does: here a click edits it. */
 function renderRichButton(element: HTMLElement, attrs: RichButtonAttributes, inline: boolean) {
-  const {action, color, link, url, copyText} = attrs;
+  const {action, color, url, copyText} = attrs;
+  // a button of a row wears its type's corner icon, as the message draws it
+  const icon = !inline && getPageButtonIcon(richButtonInlineType(richButtonFromAttributes(attrs)));
   element.className = classNames(
     'chat-input-rich-button',
-    ...getPageButtonClasses(color, link),
+    'rp',
+    'rp-overflow',
+    ...getPageButtonClasses(color, inlineContentToRichText(attrs.label)),
     inline && instantViewStyles.PageButtonInline,
+    icon && icon.buttonClass,
     action === 'disabled' && 'chat-input-rich-button-disabled'
   );
-  element.textContent = richButtonLabelText(attrs.label) || ' ';
+  const label = renderRichButtonLabel(element, attrs.label);
+  const rippleElement = element.querySelector(':scope > .c-ripple');
+  if(inline) {
+    element.replaceChildren(label);
+  } else {
+    // the label is cut with an ellipsis, as a page's is
+    const labelElement = document.createElement('span');
+    labelElement.className = instantViewStyles.PageButtonLabel;
+    labelElement.append(label);
+    element.replaceChildren(labelElement);
+    if(icon) element.append(Icon(icon.icon, ...icon.iconClasses));
+  }
+  if(rippleElement) element.prepend(rippleElement);
   // desktop shows where a link button leads on hover; a copy button shows what it copies
   element.title = action === 'url' ? url : action === 'copy' ? copyText : '';
 }
@@ -117,7 +169,8 @@ function createRichButtonView({editor, getPos, node: initialNode}: NodeViewRende
       return true;
     },
     stopEvent: (event) => CHIP_EVENTS.has(event.type),
-    ignoreMutation: () => true
+    ignoreMutation: () => true,
+    destroy: () => destroyRichButtonLabel(dom)
   };
 }
 
@@ -179,6 +232,8 @@ function createButtonRowView({editor, getPos, node: initialNode}: NodeViewRender
   const menu = ButtonMenuToggle({
     listenerSetter,
     direction: 'bottom-left',
+    // kept inside the window, as the media menu is
+    floatingDirection: 'bottom-end',
     buttonOptions: {noRipple: true, ariaLabel: 'Chat.Input.Editor.Toolbar.More'},
     buttons: [{
       icon: 'add',
@@ -205,6 +260,7 @@ function createButtonRowView({editor, getPos, node: initialNode}: NodeViewRender
     const align = getButtonRowAlign(node.attrs.align);
     dom.className = classNames(instantViewStyles.Padding, 'chat-input-button-row');
     buttonsElement.className = classNames(...getPageButtonRowClasses(align || undefined), 'chat-input-button-row-buttons');
+    Array.from(buttonsElement.children).forEach(destroyRichButtonLabel);
     buttonsElement.replaceChildren(...(node.attrs.buttons as RichButtonAttributes[]).map((attrs, index) => {
       const element = createRichButtonElement();
       renderRichButton(element, attrs, false);
@@ -227,7 +283,10 @@ function createButtonRowView({editor, getPos, node: initialNode}: NodeViewRender
     },
     stopEvent: (event) => event.target !== dom && CHIP_EVENTS.has(event.type),
     ignoreMutation: () => true,
-    destroy: () => listenerSetter.removeAll()
+    destroy: () => {
+      listenerSetter.removeAll();
+      Array.from(buttonsElement.children).forEach(destroyRichButtonLabel);
+    }
   };
 }
 

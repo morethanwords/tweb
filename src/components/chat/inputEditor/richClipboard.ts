@@ -1,5 +1,12 @@
 import {Extension} from '@tiptap/core';
+import {DOMParser as ProseMirrorDOMParser, DOMSerializer, Fragment, type Node as ProseMirrorNode, type ResolvedPos, type Schema} from '@tiptap/pm/model';
 import {Plugin} from '@tiptap/pm/state';
+import {isInTable} from '@tiptap/pm/tables';
+import type {EditorView} from '@tiptap/pm/view';
+import {effectiveOrderedListItemValue, listItemMarkers} from '@components/chat/inputEditor/orderedList';
+import {entitiesFittingSchema, telegramTextToTiptap} from '@components/chat/inputEditor/model';
+import {getCopiedTextWithEntities} from '@helpers/prepareTextWithEntitiesForCopying';
+import instantViewStyles from '@components/instantViewStyles';
 
 function directListItems(list: HTMLOListElement | HTMLUListElement) {
   return Array.from(list.children).filter(
@@ -97,6 +104,659 @@ export function normalizeChatInputRichClipboardHTML(
   .forEach(normalizeChecklist);
   return template.innerHTML;
 }
+
+const LIST_NODE_NAMES = new Set(['bulletList', 'orderedList', 'taskList']);
+
+/**
+ * A list's lines as its plain text writes them (`tiptapToTelegram`): an item's first line behind
+ * its marker, indented by depth, and the item's other lines after it.
+ */
+function listAsLines(list: ProseMirrorNode, depth: number, serializer: DOMSerializer, ownerDocument: Document) {
+  const lines: HTMLParagraphElement[] = [];
+  const markers = listItemMarkers(list);
+  list.forEach((item, _offset, index) => {
+    let prefix = '  '.repeat(depth) + markers[index];
+    const addLines = (node: ProseMirrorNode) => {
+      if(LIST_NODE_NAMES.has(node.type.name)) {
+        lines.push(...listAsLines(node, depth + 1, serializer, ownerDocument));
+      } else if(node.isTextblock) {
+        const line = ownerDocument.createElement('p');
+        if(prefix) {
+          // the parser collapses leading spaces anywhere but in preformatted text
+          const marker = ownerDocument.createElement('span');
+          marker.style.whiteSpace = 'pre';
+          marker.textContent = prefix;
+          line.append(marker);
+          prefix = '';
+        }
+        line.append(serializer.serializeFragment(node.content, {document: ownerDocument}));
+        lines.push(line);
+      } else {
+        node.forEach(addLines);
+      }
+    };
+    item.forEach(addLines);
+  });
+  return lines;
+}
+
+/**
+ * A field without lists parses a pasted one into its bare lines. Its markers are part of what the
+ * reader sees, so the lines keep them. The list is read by the composer's own rules — a task list,
+ * a reversed or lettered one, checkboxes, the composer's clipboard — and written as it is sent.
+ */
+function pastedListsAsText(html: string, richSchema: Schema, ownerDocument: Document) {
+  const template = ownerDocument.createElement('template');
+  template.innerHTML = html;
+  const lists = template.content.querySelectorAll<HTMLOListElement | HTMLUListElement>('ol, ul');
+  if(!lists.length) return html;
+
+  lists.forEach(normalizeChecklist);
+  const parser = ProseMirrorDOMParser.fromSchema(richSchema);
+  const serializer = DOMSerializer.fromSchema(richSchema);
+  lists.forEach((list) => {
+    // an inner list goes with its outer one
+    if(list.parentElement?.closest('ol, ul')) return;
+    const wrapper = ownerDocument.createElement('div');
+    list.replaceWith(wrapper);
+    wrapper.append(list);
+    const lines: HTMLParagraphElement[] = [];
+    parser.parse(wrapper).forEach((node) => {
+      if(LIST_NODE_NAMES.has(node.type.name)) lines.push(...listAsLines(node, 0, serializer, ownerDocument));
+    });
+    wrapper.replaceWith(...lines);
+  });
+  return template.innerHTML;
+}
+
+export const ChatPlainListPaste = Extension.create<{richSchema: () => Schema}>({
+  name: 'chatPlainListPaste',
+
+  addOptions() {
+    return {richSchema: undefined};
+  },
+
+  addProseMirrorPlugins() {
+    const {richSchema} = this.options;
+    return [new Plugin({
+      props: {
+        transformPastedHTML: (html, view) => view.state.schema.nodes.listItem ?
+          html :
+          pastedListsAsText(html, richSchema(), view.dom.ownerDocument)
+      }
+    })];
+  }
+});
+
+// whitespace HTML collapses, and only that: a no-break space is text
+const COLLAPSIBLE_SPACE = /^[\t\n\f\r ]*$/;
+
+// what a copy may hold beside its content: whitespace, comments, metadata, the browser's line break
+// for a selection that ended past a line
+function isClipboardFiller(node: Node) {
+  return node.nodeType === node.COMMENT_NODE ||
+    (node.nodeType === node.TEXT_NODE && COLLAPSIBLE_SPACE.test(node.textContent)) ||
+    (node.nodeType === node.ELEMENT_NODE && (node as Element).matches('meta, style, link, br.Apple-interchange-newline'));
+}
+
+function previousContent(node: Node) {
+  let previous = node.previousSibling;
+  while(previous && isClipboardFiller(previous)) previous = previous.previousSibling;
+  return previous;
+}
+
+function lastContent(parent: Node) {
+  const last = parent.lastChild;
+  return last && isClipboardFiller(last) ? previousContent(last) : last;
+}
+
+// the blocks a browser copies the element of when a selection ends at their start, and the elements
+// that copy can hold
+const EDGE_BLOCKS = 'ol, ul, li, blockquote, table, details';
+const EDGE_BLOCK_PARTS = new Set([
+  'OL', 'UL', 'LI', 'BLOCKQUOTE', 'DETAILS', 'SUMMARY', 'P', 'DIV',
+  'TABLE', 'CAPTION', 'COLGROUP', 'COL', 'THEAD', 'TBODY', 'TFOOT', 'TR', 'TH', 'TD'
+]);
+
+// attributes that lay out or style an element and no more; any other (a checklist item's
+// `data-checkbox`) may be what the field reads out of it
+const LAYOUT_ATTRIBUTES = new Set([
+  'class', 'style', 'dir', 'lang', 'id', 'role', 'start', 'reversed', 'type', 'value',
+  'colspan', 'rowspan', 'align', 'valign', 'width', 'height'
+]);
+
+/**
+ * Whether an element is such a block with nothing in it: no text, nothing but its own parts, which
+ * say nothing but how they look — a checkbox, an image, a line break, a checklist item's attributes
+ * and anything else unknown keep it.
+ */
+function isEmptyEdgeBlock(element: Element) {
+  return element.matches(EDGE_BLOCKS) &&
+    COLLAPSIBLE_SPACE.test(element.textContent) &&
+    [element, ...Array.from(element.querySelectorAll('*'))].every((part) => (
+      EDGE_BLOCK_PARTS.has(part.tagName) &&
+      Array.from(part.attributes).every(({name}) => LAYOUT_ATTRIBUTES.has(name) || name.startsWith('aria-'))
+    ));
+}
+
+/**
+ * A selection that ends where a list, a quote or a table begins takes that block's element along,
+ * empty: `<p>text</p><ol></ol>`, `<li></li>` after an item, `<table>` with an empty cell. Pasted, it
+ * would be an empty block after the text — a bullet with nothing next to it. So such a block at the
+ * end of what is pasted, or at the end of the block there (an item of a list, a list in an item),
+ * is left out, as long as something comes before it. Never inside a table: there it is a cell of
+ * the grid. The field's own copy leaves it out as it is copied (`copiedSelection`).
+ */
+function removeTrailingEmptyBlock(root: DocumentFragment) {
+  for(let last = lastContent(root); last && last.nodeType === last.ELEMENT_NODE; last = lastContent(last)) {
+    const element = last as Element;
+    if(isEmptyEdgeBlock(element)) {
+      let before: Node;
+      for(let node: Node = element; node !== root && !before; node = node.parentNode) {
+        before = previousContent(node);
+      }
+
+      if(!before) return false;
+      // a reversed list counts down from its number of items: one fewer, the rest keep their numbers
+      const list = element.parentElement;
+      if(element.tagName === 'LI' && list?.tagName === 'OL' && list.hasAttribute('reversed') && !list.hasAttribute('start')) {
+        list.setAttribute('start', '' + directListItems(list as HTMLOListElement).length);
+      }
+
+      element.remove();
+      return true;
+    }
+
+    if(element.tagName === 'TABLE') return false;
+  }
+
+  return false;
+}
+
+type AtomText = (element: Element) => string | undefined;
+
+/**
+ * What an element with nothing in it is as text, when it is something the field holds (a custom
+ * emoji, a formula, an anchor): what the field's schema reads out of it, written as its plain text
+ * writes it (`leafText`: an emoji's character, nothing for an anchor). Undefined for an empty wrapper
+ * of formatting, which is nothing.
+ */
+function atomReader(schema: Schema, ownerDocument: Document): AtomText {
+  const parser = ProseMirrorDOMParser.fromSchema(schema);
+  return (element) => {
+    if(element.tagName === 'BR' || element.hasChildNodes()) return;
+    const container = ownerDocument.createElement('div');
+    container.append(element.cloneNode(true));
+    const {content} = parser.parseSlice(container);
+    if(!content.size) return;
+    return content.textBetween(0, content.size, '', (leaf) => leaf.type.spec.leafText?.(leaf) ?? '');
+  };
+}
+
+function isBlankParagraph(paragraph: Element, atomText: AtomText) {
+  return !paragraph.textContent.trim() &&
+    !Array.from(paragraph.querySelectorAll('*')).some((element) => atomText(element) !== undefined);
+}
+
+function nextParagraph(paragraph: Element) {
+  let next = paragraph.nextSibling;
+  while(next && next.nodeType !== next.ELEMENT_NODE && !next.textContent.trim()) {
+    next = next.nextSibling;
+  }
+
+  return (next as Element)?.tagName === 'P' ? next as HTMLParagraphElement : undefined;
+}
+
+// the parents ProseMirror keeps a pasted block's last <br> in (prosemirror-view's `inlineParents`);
+// anywhere else it drops that one
+const BREAK_KEEPING_PARENTS = /^(a|abbr|acronym|b|cite|code|del|em|i|ins|kbd|label|output|q|ruby|s|samp|span|strong|sub|sup|time|u|tt|var)$/i;
+
+function isDroppedBreak(br: Node) {
+  return !br.nextSibling && br.parentNode && !BREAK_KEEPING_PARENTS.test(br.parentNode.nodeName);
+}
+
+/**
+ * Whether a paragraph breaks its line at its start, before any of its text — `atEnd`: at its end,
+ * after all of it — with a `<br>` the paste keeps.
+ */
+function breaksAtEdge(paragraph: Element, atEnd: boolean, atomText: AtomText) {
+  const nodes: Node[] = [];
+  const walker = paragraph.ownerDocument.createTreeWalker(paragraph, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+  while(walker.nextNode()) nodes.push(walker.currentNode);
+  if(atEnd) nodes.reverse();
+
+  for(const node of nodes) {
+    if(node.nodeName === 'BR') {
+      if(!isDroppedBreak(node)) return true;
+    } else if(node.nodeType === node.TEXT_NODE ? node.textContent.trim() : atomText(node as Element) !== undefined) {
+      return false;
+    }
+  }
+
+  return false;
+}
+
+type PlainWord = {word: string, paragraph: number, lineStart: boolean};
+
+// the words of a plain text, each with the number of the paragraph it is in (lines with a blank one
+// between them are paragraphs) and whether it starts its line
+function plainTextWords(text: string) {
+  const words: PlainWord[] = [];
+  let paragraph = 0, blank = false;
+  for(const line of text.split(/\r\n?|\n/)) {
+    const lineWords = line.split(/\s+/).filter(Boolean);
+    if(!lineWords.length) {
+      blank = true;
+      continue;
+    }
+
+    if(blank && words.length) ++paragraph;
+    blank = false;
+    lineWords.forEach((word, index) => words.push({word, paragraph, lineStart: !index}));
+  }
+
+  return words;
+}
+
+const BLOCK_ELEMENTS = 'address, article, aside, blockquote, dd, details, div, dl, dt, figcaption, figure, footer, ' +
+  'h1, h2, h3, h4, h5, h6, header, li, main, nav, ol, p, pre, section, summary, table, td, th, tr, ul';
+
+/**
+ * The words of the fragment in their order, each with the paragraph it is in and whether it is the
+ * first of a list's item: a block's text read whole, so that formatting splitting a word does not
+ * split it, an inline atom as its text, a `<br>` and HTML's collapsible whitespace between words.
+ */
+function fragmentWords(root: DocumentFragment, atomText: AtomText) {
+  const words: {word: string, paragraph: Element, itemStart: boolean}[] = [];
+  let text = '', block: Element, paragraph: Element, item: Element, lastItem: Element;
+  const flush = () => {
+    text.split(/\s+/).filter(Boolean).forEach((word) => {
+      words.push({word, paragraph, itemStart: !!item && item !== lastItem});
+      lastItem = item;
+    });
+    text = '';
+  };
+
+  const walker = root.ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+  while(walker.nextNode()) {
+    const node = walker.currentNode;
+    const parent = node.parentElement;
+    const piece = node.nodeType === node.TEXT_NODE ? node.textContent :
+      node.nodeName === 'BR' ? ' ' :
+      atomText(node as Element);
+    if(!piece || parent?.closest('head, noscript, object, script, style, title')) continue;
+    const nodeBlock = parent?.closest(BLOCK_ELEMENTS);
+    if(nodeBlock !== block) {
+      flush();
+      block = nodeBlock;
+      paragraph = parent?.closest('p');
+      item = parent?.closest('li');
+    }
+
+    text += piece;
+  }
+
+  flush();
+  return words;
+}
+
+/**
+ * Where each paragraph's words are among the plain text's: every word of the fragment is found
+ * there in its order — a heading's before a paragraph's too, so that the same words are not taken
+ * for the paragraph's — passing over what the plain text has besides (a list's markers, an emoji),
+ * and a paragraph spans its words. One with a word not found, or with none, is left out.
+ */
+// what a plain text writes before a list's item: a bullet, a number or a letter with its dot
+const LIST_MARKER = /^(?:[-*+•◦▪‣·–]|\(?[\da-z]{1,6}[.)])$/i;
+
+function paragraphsInText(root: DocumentFragment, plain: PlainWord[], atomText: AtomText) {
+  // where each word is among the plain text's, and how far that list is used up
+  const positions = new Map<string, {indexes: number[], next: number}>();
+  plain.forEach(({word}, index) => {
+    const entry = positions.get(word);
+    if(entry) entry.indexes.push(index);
+    else positions.set(word, {indexes: [index], next: 0});
+  });
+
+  const found = new Map<Element, {first: number, last: number}>();
+  const missing = new Set<Element>();
+  let cursor = 0;
+  for(const {word, paragraph, itemStart} of fragmentWords(root, atomText)) {
+    // an item's marker before the line it starts is no word of the item, though it may read the same
+    const marker = plain[cursor];
+    if(itemStart && marker?.lineStart && LIST_MARKER.test(marker.word) && plain[cursor + 1]?.word === word) ++cursor;
+    const entry = positions.get(word);
+    while(entry && entry.next < entry.indexes.length && entry.indexes[entry.next] < cursor) ++entry.next;
+    const index = entry?.indexes[entry.next];
+    if(index === undefined) {
+      if(paragraph) missing.add(paragraph);
+      continue;
+    }
+
+    cursor = index + 1;
+    if(!paragraph) continue;
+    const span = found.get(paragraph);
+    if(span) span.last = index;
+    else found.set(paragraph, {first: index, last: index});
+  }
+
+  missing.forEach((paragraph) => found.delete(paragraph));
+  return found;
+}
+
+/**
+ * Paragraphs from a page or another app are kept apart there, while here a paragraph is a line and
+ * two in a row touch (instantView.module.scss, `.RichMessage`): two pasted ones read as one. So an
+ * empty line goes between two that the plain text beside them keeps apart — a blank line between,
+ * as a browser writes any `<p>`s, and as pasting that text shows them — the way the field did before
+ * (`getRichElementValue`). Two the plain text has as lines (a document with no spacing) stay so;
+ * where a paragraph is not found in it, any blank line there decides, and without a plain text they
+ * go apart. Not where a `<br>` breaks the line between them already, or for a message's own lines
+ * copied out of its bubble.
+ */
+function keepPastedParagraphsApart(root: DocumentFragment, text: string | undefined, view: EditorView) {
+  const ownerDocument = view.dom.ownerDocument;
+  const atomText = atomReader(view.state.schema, ownerDocument);
+  const paragraphs = Array.from(root.querySelectorAll('p')).filter((paragraph) => !isBlankParagraph(paragraph, atomText));
+  if(paragraphs.length < 2) return false;
+  const plain = text ? plainTextWords(text) : [];
+  if(plain.length && !plain[plain.length - 1].paragraph) return false;
+
+  const found = plain.length ? paragraphsInText(root, plain, atomText) : undefined;
+  const apartInText = (paragraph: Element, next: Element) => {
+    const [before, after] = [found.get(paragraph), found.get(next)];
+    return !before || !after || plain[after.first].paragraph > plain[before.last].paragraph;
+  };
+
+  let changed = false;
+  paragraphs.forEach((paragraph) => {
+    const next = nextParagraph(paragraph);
+    if(
+      !next ||
+      paragraph.classList.contains(instantViewStyles.Paragraph) ||
+      isBlankParagraph(next, atomText) ||
+      breaksAtEdge(paragraph, true, atomText) ||
+      breaksAtEdge(next, false, atomText) ||
+      (found && !apartInText(paragraph, next))
+    ) return;
+
+    paragraph.after(ownerDocument.createElement('p'));
+    changed = true;
+  });
+  return changed;
+}
+
+/** Keep only the clipboard's fragment, with the ancestry its formatting and block structure need. */
+function keepClipboardFragment(root: DocumentFragment, inTable: boolean, schema: Schema) {
+  const ownerDocument = root.ownerDocument;
+  const walker = ownerDocument.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
+  let start: Node;
+  while(walker.nextNode()) {
+    const comment = walker.currentNode;
+    if(!start && comment.nodeValue.trim() === 'StartFragment') {
+      start = comment;
+    } else if(start && comment.nodeValue.trim() === 'EndFragment') {
+      // Match ProseMirror's table-part context before CSS or another paste transform reads it.
+      let tableParts: HTMLElement;
+      const first = Array.from(root.children).find((element) => !isClipboardFiller(element));
+      if(first?.matches('tr, td, th, thead, tbody, tfoot, caption, colgroup, col')) {
+        const table = ownerDocument.createElement('table');
+        let container: HTMLElement = table;
+        const cell = first.matches('td, th');
+        if(cell || first.tagName === 'TR') container = container.appendChild(ownerDocument.createElement('tbody'));
+        if(cell) container = container.appendChild(ownerDocument.createElement('tr'));
+        else if(first.tagName === 'COL') container = container.appendChild(ownerDocument.createElement('colgroup'));
+        container.append(root);
+        root.append(table);
+        tableParts = container;
+      }
+
+      const styles = Array.from(root.querySelectorAll('style'));
+      if(styles.length) {
+        // Match ProseMirror's stylesheet handling while selectors still have their source context.
+        const styleDocument = ownerDocument.implementation.createHTMLDocument('');
+        styleDocument.body.append(root);
+        for(const sheet of Array.from(styleDocument.styleSheets)) {
+          for(const rule of Array.from(sheet.cssRules)) {
+            if(rule.type !== CSSRule.STYLE_RULE) continue;
+            const styleRule = rule as CSSStyleRule;
+            styleDocument.body.querySelectorAll<HTMLElement>(styleRule.selectorText).forEach((element) => {
+              element.style.cssText += styleRule.style.cssText;
+            });
+          }
+        }
+
+        while(styleDocument.body.firstChild) root.append(styleDocument.body.firstChild);
+        styles.forEach((style) => style.remove());
+      }
+
+      // A grid pasted into a table stays rows or cells, so the table plugin can replace that grid.
+      if(inTable && tableParts) {
+        const rules = ProseMirrorDOMParser.fromSchema(schema).rules;
+        const properties = new Set<string>();
+        for(const rule of rules) {
+          if('style' in rule && rule.mark) properties.add(rule.style.split('=')[0]);
+        }
+
+        const inherited = new Map<string, string>();
+        for(let parent = tableParts; parent; parent = parent.parentElement) {
+          for(const property of properties) {
+            const value = parent.style.getPropertyValue(property);
+            if(value && !inherited.has(property)) inherited.set(property, value);
+          }
+        }
+
+        for(const [property, value] of inherited) {
+          if(!rules.some((rule) => {
+            if(!('style' in rule) || !rule.mark) return false;
+            const equals = rule.style.indexOf('=');
+            return (equals === -1 ? rule.style : rule.style.slice(0, equals)) === property &&
+              (equals === -1 || rule.style.slice(equals + 1) === value) &&
+              (!rule.getAttrs || rule.getAttrs(value) !== false);
+          })) continue;
+          for(const child of Array.from(tableParts.children) as HTMLElement[]) {
+            if(!child.style.getPropertyValue(property)) child.style.setProperty(property, value);
+          }
+        }
+
+        root.replaceChildren(...Array.from(tableParts.childNodes));
+      }
+
+      const range = ownerDocument.createRange();
+      range.setStartAfter(start);
+      range.setEndBefore(comment);
+      // Source and cloned lists stay in document order, including lists the range only partly takes.
+      const listStarts = Array.from(root.querySelectorAll('ol'))
+      .filter((list) => range.intersectsNode(list))
+      .map((list) => {
+        const items = directListItems(list);
+        const first = items.findIndex((item) => range.intersectsNode(item));
+        if(first === -1) return;
+        return {
+          start: first > 0 ? effectiveOrderedListItemValue({
+            attrs: {start: list.hasAttribute('start') ? list.start : undefined, reversed: list.reversed},
+            childCount: items.length,
+            child: (index) => ({attrs: {value: items[index].hasAttribute('value') ? items[index].value : undefined}})
+          }, first) : undefined,
+          implicitReversedCount: list.reversed && (!list.hasAttribute('start') ||
+            list.getAttribute('data-list-start-explicit') === 'false') ? items.length : undefined
+        };
+      });
+      let content: Node = range.cloneContents();
+      for(let context = range.commonAncestorContainer; context !== root; context = context.parentNode) {
+        const wrapper = context.cloneNode(false);
+        wrapper.appendChild(content);
+        content = wrapper;
+      }
+
+      root.replaceChildren(content);
+      root.querySelectorAll('ol').forEach((list, index) => {
+        const source = listStarts[index];
+        let start = source?.start;
+        if(start === undefined && source?.implicitReversedCount !== undefined &&
+          directListItems(list).length !== source.implicitReversedCount) start = source.implicitReversedCount;
+        if(start !== undefined) {
+          list.setAttribute('start', '' + start);
+          if(list.hasAttribute('data-list-start-explicit')) list.setAttribute('data-list-start-explicit', 'true');
+        }
+      });
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/** A native copy can carry a source document with unselected text and no fragment boundaries. */
+function clipboardHasSourceContext(root: DocumentFragment, text: string) {
+  const selected = plainTextWords(text).map(({word}) => word).join(' ');
+  const content = fragmentWords(root, () => undefined).map(({word}) => word).join(' ');
+  return !!selected && content !== selected && content.includes(selected);
+}
+
+/**
+ * How the blocks of what is pasted from elsewhere become the field's lines: a block the copy only
+ * reached the start of is left out, and paragraphs stay as far apart as they were. Not the field's
+ * own copy (`data-pm-slice`), which is the field's lines already. Listed after `ChatPlainListPaste`,
+ * so it reads the HTML first (Tiptap asks the plugins in reverse), before a list there is written
+ * out as paragraphs.
+ */
+export const ChatPastedBlocks = Extension.create({
+  name: 'chatPastedBlocks',
+
+  addProseMirrorPlugins() {
+    // the plain text of the paste or drop under way: ProseMirror reads the HTML within its event,
+    // and hands only the HTML on
+    let text: string;
+    let isPaste = false;
+    const readText = (_view: EditorView, event: ClipboardEvent | DragEvent) => {
+      isPaste = event.type === 'paste';
+      text = ((event as ClipboardEvent).clipboardData || (event as DragEvent).dataTransfer)?.getData('text/plain');
+      queueMicrotask(() => text = undefined);
+      return false;
+    };
+
+    return [new Plugin({
+      props: {
+        handleDOMEvents: {paste: readText, drop: readText},
+        transformPastedHTML: (html, view) => {
+          // Native HTML clipboards can include the source document around the copied fragment.
+          // Keep only the fragment before any paste plugin interprets its blocks or metadata.
+          const template = view.dom.ownerDocument.createElement('template');
+          template.innerHTML = html;
+          const root = template.content;
+          const clipped = html.includes('StartFragment') && keepClipboardFragment(root, isInTable(view.state), view.state.schema);
+          if(isPaste && !clipped && text && /<html[\s>]/i.test(html) && clipboardHasSourceContext(root, text)) {
+            // Replace contradictory HTML within the normal paste pipeline, so every event hook
+            // (including Markdown paste-rule bookkeeping) still observes the native event.
+            let plain = text;
+            view.someProp('transformPastedText', (transform) => {plain = transform(plain, true, view);});
+            const {$from} = view.state.selection;
+            const slice = view.someProp('clipboardTextParser', (parse) => parse(plain, $from, true, view)) ||
+              parseClipboardTextLines(plain, $from, view);
+            root.replaceChildren(DOMSerializer.fromSchema(view.state.schema).serializeFragment(slice.content, {
+              document: view.dom.ownerDocument
+            }));
+            root.firstElementChild?.setAttribute('data-pm-slice', `${slice.openStart} ${slice.openEnd} []`);
+            return template.innerHTML;
+          }
+          if(root.querySelector('[data-pm-slice]')) return clipped ? template.innerHTML : html;
+          const removed = removeTrailingEmptyBlock(root);
+          const spaced = keepPastedParagraphsApart(root, text, view);
+          return clipped || removed || spaced ? template.innerHTML : html;
+        }
+      }
+    })];
+  }
+});
+
+/**
+ * A message copied out of a chat (its menu's Copy, a profile note, a translation) carries its text
+ * and entities beside the HTML, and becomes what this field would show it as when editing it: a
+ * quote, a code block with its language, a date with its format, which that HTML cannot hold. It is
+ * handed on as the field's own markup, marked the way ProseMirror marks its own clipboard (with
+ * the slice's open depths), so the parse keeps the whitespace as it is, a line's trailing spaces
+ * too. Not through `serializeForClipboard`: the field's copy hooks look at its own selection.
+ * Only a paragraph's edge is open, to join the line the copy is pasted into: a quote or a code
+ * block at an edge stays whole, rather than becoming that line's plain text or taking in its rest.
+ * Into a quote's text, a copied quote is its paragraphs: quotes do not nest, and the rest of the
+ * copy stays in the quote it lands in too. Not into its author line, the quote's last: what follows
+ * a line there goes after the quote, and a copied quote stays one.
+ */
+function pastedMessageAsFieldHTML(html: string, view: EditorView) {
+  const {schema} = view.state;
+  const ownerDocument = view.dom.ownerDocument;
+  const template = ownerDocument.createElement('template');
+  template.innerHTML = html;
+  const copied = getCopiedTextWithEntities(template.content);
+  if(!copied) return html;
+
+  try {
+    const doc = schema.nodeFromJSON(telegramTextToTiptap(copied.text, entitiesFittingSchema(copied.entities, schema)));
+    const {$from} = view.state.selection;
+    const intoQuote = $from.parent.type !== schema.nodes.blockquoteCaption &&
+      Array.from({length: $from.depth}, (_, depth) => $from.node(depth + 1))
+      .some((node) => node.type === schema.nodes.blockquote);
+    const nodes: ProseMirrorNode[] = [];
+    doc.forEach((node) => {
+      if(intoQuote && node.type === schema.nodes.blockquote) node.forEach((child) => nodes.push(child));
+      else nodes.push(node);
+    });
+    const content = Fragment.fromArray(nodes);
+    const isOpen = (node: ProseMirrorNode) => node.type === schema.nodes.paragraph ? 1 : 0;
+    const fragment = DOMSerializer.fromSchema(schema).serializeFragment(content, {document: ownerDocument});
+    (fragment.firstChild as Element).setAttribute('data-pm-slice', `${isOpen(content.firstChild)} ${isOpen(content.lastChild)} []`);
+    copied.element.replaceWith(fragment);
+  } catch(err) {
+    return html;
+  }
+
+  return template.innerHTML;
+}
+
+export const ChatCopiedMessagePaste = Extension.create({
+  name: 'chatCopiedMessagePaste',
+
+  addProseMirrorPlugins() {
+    return [new Plugin({
+      props: {
+        transformPastedHTML: pastedMessageAsFieldHTML
+      }
+    })];
+  }
+});
+
+/**
+ * ProseMirror's own reader of pasted plain text, without its folding of a run of line breaks into
+ * one: every line stays a line, a blank one an empty paragraph — as typing it makes one, and as a
+ * message is spaced out.
+ */
+function parseClipboardTextLines(text: string, $context: ResolvedPos, view: EditorView) {
+  const {schema} = view.state;
+  const ownerDocument = view.dom.ownerDocument;
+  const serializer = DOMSerializer.fromSchema(schema);
+  const marks = $context.marks();
+  const dom = ownerDocument.createElement('div');
+  text.split(/\r\n?|\n/).forEach((line) => {
+    const paragraph = dom.appendChild(ownerDocument.createElement('p'));
+    if(line) paragraph.append(serializer.serializeNode(schema.text(line, marks), {document: ownerDocument}));
+  });
+  const parser = view.someProp('clipboardParser') || view.someProp('domParser') || ProseMirrorDOMParser.fromSchema(schema);
+  return parser.parseSlice(dom, {preserveWhitespace: true, context: $context});
+}
+
+/** Listed before `ChatTableClipboard`, so its plugin reads only what is not a table. */
+export const ChatTextPaste = Extension.create({
+  name: 'chatTextPaste',
+
+  addProseMirrorPlugins() {
+    return [new Plugin({
+      props: {
+        clipboardTextParser: (text, $context, _plain, view) => parseClipboardTextLines(text, $context, view)
+      }
+    })];
+  }
+});
 
 export function createChatInputRichClipboardPlugin(ownerDocument: Document = document) {
   return new Plugin({

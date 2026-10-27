@@ -22,7 +22,7 @@ import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import {isMessage, linkColor} from '@components/chat/utils';
 import {MinimalBubbleMessageContent} from '@components/chat/bubbleParts/minimalBubbleMessageContent';
 import {Reply} from '@components/chat/bubbleParts/adminLogsResolver/reply';
-import {CopyTextResult, createMessageCopyText, createMessageWithPreviousCopyText, createMultiLineCopyText, createPreviousValueCopyText, createSimpleServiceCopyText, createTwoPeerCopyText, extractAdminChanges, extractBanChanges, extractDefaultRightsChanges, formatDurationAsText, getDateTextForCopy, getMessageTextForCopy} from '@components/chat/bubbleParts/adminLogsResolver/copyTextHelpers';
+import {CopyTextResult, createMessageCopyText, createMessageWithPreviousCopyText, createMultiLineCopyText, createPreviousValueCopyText, createSimpleServiceCopyText, createTwoPeerCopyText, extractAdminChanges, extractBanChanges, extractDefaultRightsChanges, formatDurationAsText, getDateTextForCopy} from '@components/chat/bubbleParts/adminLogsResolver/copyTextHelpers';
 
 
 type RenderArgs = {

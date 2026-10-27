@@ -1,8 +1,5 @@
-import type {
-  ChatInputEditorSelection,
-  ChatInputRichMessage
-} from '@components/chat/inputEditor/types';
-import type {Document, PageBlock, Photo} from '@layer';
+import type {ChatInputEditorSelection} from '@components/chat/inputEditor/types';
+import type {Document, Photo} from '@layer';
 
 type RichMediaItemActionBase = {
   activeIndex: number,
@@ -83,42 +80,11 @@ export function dragEventHasFiles(event: DragEvent) {
   return types.contains ? types.contains('Files') : types.indexOf('Files') >= 0;
 }
 
+// Any file goes into the expanded editor: a photo or a video as media, music as an audio, the rest —
+// and whatever is attached as a file — as a file block.
 export function shouldInsertRichMediaFiles<T>(
   files: T[],
-  target: ChatInputEditorSelection | undefined,
-  attachType: 'media' | 'document' | undefined,
-  isRichMedia: (file: T) => boolean
+  target: ChatInputEditorSelection | undefined
 ) {
-  return !!(
-    target &&
-    attachType !== 'document' &&
-    files.length &&
-    files.every(isRichMedia)
-  );
-}
-
-const EMBEDDED_RICH_MEDIA_BLOCKS = new Set([
-  'inputPageBlockMap',
-  'pageBlockAudio',
-  'pageBlockCollage',
-  'pageBlockMap',
-  'pageBlockPhoto',
-  'pageBlockSlideshow',
-  'pageBlockVideo'
-]);
-
-export function canFallbackRichMessageToPlain(
-  richMessage: ChatInputRichMessage
-) {
-  const hasMedia = (block: PageBlock): boolean => {
-    if(EMBEDDED_RICH_MEDIA_BLOCKS.has(block._)) return true;
-    if(block._ === 'pageBlockDetails' || block._ === 'pageBlockBlockquoteBlocks') {
-      return block.blocks.some(hasMedia);
-    }
-    if(block._ === 'pageBlockList' || block._ === 'pageBlockOrderedList') {
-      return block.items.some(item => 'blocks' in item && item.blocks.some(hasMedia));
-    }
-    return false;
-  };
-  return !richMessage.input.blocks.some(hasMedia);
+  return !!(target && files.length);
 }

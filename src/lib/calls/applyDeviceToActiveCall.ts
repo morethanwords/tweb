@@ -48,6 +48,17 @@ export default function applyDeviceToActiveCall(kind: CallDeviceKind, deviceId: 
   }
 }
 
+/**
+ * Captures the active call's microphone again, through the same transaction
+ * as a device change, if the call sends `track`. False when that did not
+ * happen: no call sends the track (yet), a microphone change is under way —
+ * one the user picked is never overtaken — or a newer change superseded this.
+ */
+export async function recaptureCallMicrophone(track: MediaStreamTrack): Promise<boolean> {
+  if(deviceChanges.microphone.pending || getActiveCallInstance()?.getInputAudioTrack() !== track) return false;
+  return changeCallDevice('microphone', appSettings.callDevices?.microphoneId || '');
+}
+
 // Persist a device selection optimistically while making the live call swap a
 // real transaction. The module-level generation covers every picker surface,
 // so a late failure from Settings cannot roll back a newer in-call selection.

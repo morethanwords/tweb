@@ -64,7 +64,9 @@ export interface MTAppConfig {
   reactions_in_chat_max?:                    number;
   default_emoji_statuses_stickerset_id?:     string;
   premium_promo_order?:                      PremiumPromoFeatureType[];
+  business_promo_order?:                     PremiumPromoFeatureType[];
   premium_bot_username?:                     string;
+  premium_invoice_slug?:                     string;
   premium_playmarket_direct_currency_list?:  string[];
   forum_upgrade_participants_min?:           number;
   whitelisted_domains?:                      string[];
@@ -92,6 +94,7 @@ export interface MTAppConfig {
   stories_stealth_cooldown_period?:          number;
   stories_stealth_future_period?:            number;
   stories_stealth_past_period?:              number;
+  story_viewers_expire_period?:              number;
   giveaway_add_peers_max?:                   number;
   giveaway_boosts_per_premium?:              number;
   giveaway_countries_max?:                   number;

@@ -2,9 +2,11 @@ import App from '@config/app';
 import ctx from '@environment/ctx';
 import longFromBytes from '@helpers/long/longFromBytes';
 import tsNow from '@helpers/tsNow';
-import {AccountAuthorizations, Authorization, EmailVerification, EmailVerifyPurpose, InputCheckPasswordSRP, InputPasskeyCredential, Update} from '@layer';
+import readBlobAsDataURL from '@helpers/blob/readBlobAsDataURL';
+import {AccountAuthorizations, Authorization, EmailVerification, EmailVerifyPurpose, InputCheckPasswordSRP, InputPasskeyCredential, Update, User, UserProfilePhoto} from '@layer';
 import {DcId, TrueDcId} from '@types';
 import AccountController from '@lib/accounts/accountController';
+import type {SessionUserFields} from '@lib/accounts/types';
 import {AppManager} from '@appManagers/manager';
 import {
   DEFAULT_AUTHORIZATION_AUTOCONFIRM_PERIOD,
@@ -88,6 +90,9 @@ export default class AppAccountManager extends AppManager {
   private authorizationAutoconfirmPeriod = DEFAULT_AUTHORIZATION_AUTOCONFIRM_PERIOD;
   private authorizationAutoconfirmPeriodVersion = 0;
   private authorizationExpirationTimeout: number;
+  // * who the account's slot says it is: the fields last written there, and the photo of its avatar
+  private sessionUserFields: SessionUserFields;
+  private sessionAvatarPhotoId: string;
 
   protected after() {
     const pendingUpdates: Update.updateNewAuthorization[] = [];
@@ -107,6 +112,16 @@ export default class AppAccountManager extends AppManager {
     this.rootScope.addEventListener('app_config', (appConfig) => {
       ++this.authorizationAutoconfirmPeriodVersion;
       this.setAuthorizationAutoconfirmPeriod(appConfig.authorization_autoconfirm_period, loaded);
+    });
+
+    // * Web A lists the accounts of the browser in its menu from their slots, K's accounts among them:
+    // * who the account is goes into its slot, and again whenever that changes (the sign-in itself
+    // * writes it once the slot holds the account, see ApiManager.setUserAuth)
+    this.rootScope.addEventListener('managers_ready', () => this.saveSessionUser(), {once: true});
+    this.rootScope.addEventListener('user_update', (userId) => {
+      if(userId === this.appUsersManager.getSelf()?.id) {
+        this.saveSessionUser();
+      }
     });
 
     // `user_auth` also fires on every start of an already signed-in account
@@ -293,6 +308,70 @@ export default class AppAccountManager extends AppManager {
     .sort((a, b) => b.date - a.date);
   }
 
+  /**
+   * Writes who the account is to its slot, the way Web A does it for its own accounts
+   */
+  public saveSessionUser() {
+    const user = this.appUsersManager.getSelf() as User.user;
+    if(!user) {
+      return;
+    }
+
+    const accountNumber = this.getAccountNumber();
+    const peerId = user.id.toPeerId(false);
+    const fields = AccountController.getSessionUserFields(user);
+    // * at first what the slot says is taken for the current: what is known here at the start may be older
+    // * than what Web A has written there since
+    const onlyMissing = !this.sessionUserFields;
+    if(onlyMissing || !AccountController.isSameSessionUserFields(fields, this.sessionUserFields)) {
+      this.sessionUserFields = fields;
+      AccountController.update(accountNumber, (data) => {
+        // * the slot is another account's by now, or nobody's
+        return data.userId === peerId ? AccountController.getSessionUserFieldsChanges(fields, data, onlyMissing) : undefined;
+      });
+    }
+
+    const photo = user.photo as UserProfilePhoto.userProfilePhoto;
+    const photoId = photo ? '' + photo.photo_id : '';
+    if(photoId !== this.sessionAvatarPhotoId) {
+      const onlyIfMissing = this.sessionAvatarPhotoId === undefined;
+      this.sessionAvatarPhotoId = photoId;
+      this.saveSessionAvatar(peerId, photo, onlyIfMissing);
+    }
+  }
+
+  private async saveSessionAvatar(peerId: PeerId, photo: UserProfilePhoto.userProfilePhoto, onlyIfMissing: boolean) {
+    const accountNumber = this.getAccountNumber();
+    const photoId = this.sessionAvatarPhotoId;
+    if(onlyIfMissing && (await AccountController.get(accountNumber)).avatarUri) {
+      return;
+    }
+
+    let avatarUri: string;
+    if(photo) {
+      try {
+        const blob = await this.appAvatarsManager.downloadAvatar(peerId, photo, 'photo_small');
+        avatarUri = await readBlobAsDataURL(blob);
+      } catch(err) {
+        // * tried again with the next change of the user
+        if(this.sessionAvatarPhotoId === photoId) {
+          this.sessionAvatarPhotoId = undefined;
+        }
+
+        return;
+      }
+    }
+
+    // * another photo came meanwhile, and its avatar is on its way
+    if(this.sessionAvatarPhotoId !== photoId) {
+      return;
+    }
+
+    AccountController.update(accountNumber, (data) => {
+      return data.userId === peerId && data.avatarUri !== avatarUri ? {avatarUri} : undefined;
+    });
+  }
+
   public getUnconfirmedAuthorizations() {
     if(this.isCurrentAuthorizationFresh()) return [];
 
@@ -330,9 +409,9 @@ export default class AppAccountManager extends AppManager {
         from_dc_id: fromDcId,
         from_auth_key_id: longFromBytes(fromAuthKey.id)
       } : {})
-    }, {ignoreErrors: true}).then((authorization) => {
+    }, {ignoreErrors: true}).then(async(authorization) => {
       if(authorization._ === 'auth.authorization') {
-        this.apiManager.setUser(authorization.user);
+        await this.apiManager.setUser(authorization.user);
       }
 
       return authorization;

@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+var e=new WeakMap,t=new ResizeObserver(t=>{for(let n of t)e.get(n.target)?.forEach(e=>{try{e(n)}catch(e){console.error(`ResizeObserver callback error:`,e)}})});function n(n,i){let a=e.get(n)??[];return a.push(i),e.set(n,a),a.length===1&&t.observe(n),()=>{r(n,i)}}function r(n,r){let i=e.get(n);if(i){if(r){let e=i.indexOf(r);e>-1&&i.splice(e,1)}else i.splice(0,i.length);i.length===0&&(e.delete(n),t.unobserve(n))}}export{r as n,n as t};
+//# sourceMappingURL=resizeObserver-D_NZ4JVJ.js.map

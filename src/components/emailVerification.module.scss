@@ -55,7 +55,21 @@
   .footer {
     margin-top: 1.5rem;
   }
+}
 
+// A settings tab: the field and the button share a section, spaced by its input wrapper.
+.onTab {
+  align-items: stretch;
+
+  .input,
+  .footer {
+    margin-top: 0;
+  }
+}
+
+// a card and a tab take the design system's button radius instead of the popup's pill
+.onCard,
+.onTab {
   .button {
     border-radius: $button-border-radius;
   }

@@ -1,6 +1,6 @@
-import {GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS} from '@lib/calls/constants';
 import StreamManager from '@lib/calls/streamManager';
 import getAudioConstraints from '@lib/calls/helpers/getAudioConstraints';
+import getCallStream from '@lib/calls/helpers/getCallStream';
 import getStream from '@lib/calls/helpers/getStream';
 import getVideoConstraints from '@lib/calls/helpers/getVideoConstraints';
 import {logger} from '@lib/logger';
@@ -21,10 +21,10 @@ export default async function createMainStreamManager(muted?: boolean, joinVideo
     video: joinVideo && getVideoConstraints()
   };
 
-  const streamManager = new StreamManager(GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS) as MainStreamManager;
+  const streamManager = new StreamManager() as MainStreamManager;
 
   try {
-    const stream = await getStream(constraints, muted);
+    const stream = await getCallStream(constraints, muted);
     streamManager.addStream(stream, 'input');
     return streamManager;
   } catch(err) {
@@ -41,7 +41,7 @@ export default async function createMainStreamManager(muted?: boolean, joinVideo
   // independently after that failure so migration can continue audio-only (or
   // video-only) and surface the error for the device that actually failed.
   const [audioResult, videoResult] = await Promise.allSettled([
-    getStream({audio: constraints.audio}, muted),
+    getCallStream({audio: constraints.audio}, muted),
     getStream({video: constraints.video})
   ]);
 

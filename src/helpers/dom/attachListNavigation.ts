@@ -3,6 +3,7 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
 import findUpClassName from '@helpers/dom/findUpClassName';
+import getInlineArrowKeys from '@helpers/dom/getInlineArrowKeys';
 import isKeyboardControl from '@helpers/dom/isKeyboardControl';
 import Modes from '@config/modes';
 
@@ -105,14 +106,15 @@ export default function attachListNavigation({
     return nextTarget;
   };
 
+  // * a row runs from the inline start: in RTL ArrowLeft moves on to the next item
   let handleArrowKey: (currentTarget: Element, key: ArrowKey) => Element;
   if(type === 'xy') { // flex-direction: row; flex-wrap: wrap;
     handleArrowKey = (currentTarget, key) => {
       if(key === 'ArrowUp' || key === 'ArrowDown') return getNextTargetY(currentTarget, key === 'ArrowDown');
-      else return getNextTargetX(currentTarget, key === 'ArrowRight');
+      else return getNextTargetX(currentTarget, key === getInlineArrowKeys().next);
     };
   } else { // flex-direction: row | column;
-    handleArrowKey = (currentTarget, key) => getNextTargetX(currentTarget, key === 'ArrowRight' || key === 'ArrowDown');
+    handleArrowKey = (currentTarget, key) => getNextTargetX(currentTarget, key === getInlineArrowKeys().next || key === 'ArrowDown');
   }
 
   let onKeyDown = (e: KeyboardEvent) => {

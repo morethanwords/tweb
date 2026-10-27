@@ -1,4 +1,4 @@
-import {Component, createSignal, JSX, onMount, Show, Signal} from 'solid-js';
+import {Component, createEffect, createSignal, JSX, onMount, Show, Signal, untrack} from 'solid-js';
 import type {MyDialogFilter} from '@lib/storages/filters';
 import type {DialogFilter, DialogFilterSuggested} from '@layer';
 import {LottieLoader} from '@lib/lottie/lottieLoader';
@@ -28,11 +28,17 @@ import {IconTsx} from '@components/iconTsx';
 import {mountSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import type {Middleware} from '@helpers/middleware';
 import ListenerSetter from '@helpers/listenerSetter';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
+import {FolderTagColorDot} from '@components/folderTags/folderTag';
+import {getFolderTagColor, useFolderTagsShown} from '@stores/folderTags';
+import usePremiumFeaturesHidden from '@stores/premiumFeaturesHidden';
 
 type FolderRow = {
   container: HTMLElement,
   title: Signal<JSX.Element>,
   subtitle: Signal<JSX.Element>,
+  /** the colour of the folder's tag - shown while the tags are */
+  color: Signal<number>,
   buttonRight?: HTMLElement,
   middleware: Middleware,
   listenerSetter: ListenerSetter,
@@ -42,8 +48,10 @@ type FolderRow = {
 const ChatFolders: Component = () => {
   const [tab] = useSuperTab<typeof AppChatFoldersTab>();
   const promiseCollector = usePromiseCollector();
-  const {AppEditFolderTab, appSidebarLeft, lottieLoader, appImManager} = useHotReloadGuard();
+  const {AppEditFolderTab, appSidebarLeft, lottieLoader, appImManager, showPremiumPopup, usePremium} = useHotReloadGuard();
   const p = tab.payload;
+  const isPremium = usePremium();
+  const tagsShown = useFolderTagsShown();
 
   const filtersRendered: {[filterId: number]: FolderRow} = {};
   const suggestedRows = new Set<FolderRow>();
@@ -110,6 +118,7 @@ const ChatFolders: Component = () => {
           undefined
       );
       const subtitle = createSignal<JSX.Element>(description || (d.length ? join(d) : undefined));
+      const color = createSignal(isSuggested ? undefined : getFolderTagColor(filter));
       let buttonRight: HTMLElement;
       const mounted = mountSolidComponent(() => (
         <Row
@@ -131,6 +140,9 @@ const ChatFolders: Component = () => {
           </Show>
           <Show when={!isSuggested}>
             <IconTsx icon="menu" class="row-sortable-icon" />
+          </Show>
+          <Show when={tagsShown() && color[0]() !== undefined}>
+            <FolderTagColorDot class="chat-folder-color" color={color[0]()} />
           </Show>
         </Row>
       ), tab.middlewareHelper.get());
@@ -156,6 +168,7 @@ const ChatFolders: Component = () => {
         container: rowContainer,
         title,
         subtitle,
+        color,
         buttonRight,
         middleware: mounted.middleware,
         listenerSetter,
@@ -180,6 +193,7 @@ const ChatFolders: Component = () => {
       }
 
       row.subtitle[1](d.length ? join(d) : undefined);
+      row.color[1](getFolderTagColor(filter));
     }
 
     const div = row.container;
@@ -267,6 +281,24 @@ const ChatFolders: Component = () => {
 
   const name = 'theme';
   const stateKey = joinDeepPath('settings', 'tabsInSidebar');
+
+  // * the folder tags are Premium's: without it the switch is locked, and offers Premium instead
+  const premiumFeaturesHidden = usePremiumFeaturesHidden();
+
+  const tagsChecked = createSignal(untrack(tagsShown));
+  createEffect(() => tagsChecked[1](tagsShown()));
+
+  const onTagsToggle = (checked: boolean) => {
+    if(!isPremium()) {
+      tagsChecked[1](false);
+      showPremiumPopup({feature: 'folder_tags'});
+      return;
+    }
+
+    tab.managers.filtersStorage.toggleDialogFilterTags(checked).catch(() => {
+      tagsChecked[1](untrack(tagsShown));
+    });
+  };
 
   onMount(() => {
     tab.container.classList.add('chat-folders-container');
@@ -400,6 +432,21 @@ const ChatFolders: Component = () => {
         classList={{hide: suggestedHidden()}}
         contentProps={{ref: (el) => suggestedContent = el}}
       />
+      <Show when={!premiumFeaturesHidden()}>
+        <Section caption={isPremium() ? 'FolderShowTagsInfo' : 'FolderShowTagsInfoPremium'}>
+          <Row>
+            <Row.CheckboxFieldToggle>
+              <CheckboxFieldTsx
+                toggle
+                signal={tagsChecked}
+                lockIcon={isPremium() ? undefined : 'premium_lock'}
+                onChange={onTagsToggle}
+              />
+            </Row.CheckboxFieldToggle>
+            <Row.Title>{i18n('FolderShowTags')}</Row.Title>
+          </Row>
+        </Section>
+      </Show>
       <Section name="FiltersView">
         <form>
           <Row>

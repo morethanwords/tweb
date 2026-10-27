@@ -88,8 +88,9 @@ export default function RangeStepsSelector<T = any>(props: {
                   'is-chosen': index() === currentIndex
                 }}
                 style={{
-                  left: isLast ? undefined : left,
-                  right: isLast ? '0' : undefined
+                  // * from the inline start, as the track fills from there
+                  'inset-inline-start': isLast ? undefined : left,
+                  'inset-inline-end': isLast ? '0' : undefined
                 }}
               >
                 <div class="range-setting-selector-option-text">{step[0]}</div>

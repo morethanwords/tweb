@@ -1,15 +1,37 @@
 import {getHexColorFromTelegramColor, hexToRgb, hexaToHsla} from '@helpers/color';
 import clamp from '@helpers/number/clamp';
+import crc32 from '@helpers/number/crc32';
 import themeController from '@helpers/themeController';
 import {Chat, HelpPeerColorOption, HelpPeerColorSet, PeerColor, User} from '@layer';
+import {DialogColors} from '@appManagers/utils/peers/dialogColors';
 
-const DialogColorsFg: Array<string[]> = [['#CC5049'], ['#D67722'], ['#955CDB'], ['#40A920'], ['#309EBA'], ['#368AD1'], ['#C7508B']],
-  DialogColors = ['red', 'orange', 'violet', 'green', 'cyan', 'blue', 'pink'] as const;
+const DialogColorsFg: Array<string[]> = [['#CC5049'], ['#D67722'], ['#955CDB'], ['#40A920'], ['#309EBA'], ['#368AD1'], ['#C7508B']];
 
 const _DialogColorsFg = DialogColorsFg;
 
 export function getPeerColorIndexById(peerId: UserId | ChatId) {
   return Math.abs(+peerId) % 7;
+}
+
+// * Someone known only by a name — a shared contact who is not on Telegram — is coloured by a fake
+// * user id made from that name, tdesktop's Data::FakePeerIdForJustName: crc32 of the UTF-16 name
+// * over 0xFE << 32. So both clients paint such a contact the same colour.
+export function getFakeUserIdForJustName(name: string): UserId {
+  let base = 777;
+  if(name) {
+    const utf16 = new Uint16Array(name.length);
+    for(let i = 0; i < name.length; ++i) {
+      utf16[i] = name.charCodeAt(i);
+    }
+
+    base = Math.abs(crc32(new Uint8Array(utf16.buffer)) | 0);
+  }
+
+  return 0xFE * 2 ** 32 + base;
+}
+
+export function getPeerAvatarColorById(peerId: UserId | ChatId) {
+  return DialogColors[getPeerColorIndexById(peerId)];
 }
 
 export function getPeerAvatarColorByPeer(peer: Chat | User) {
@@ -22,7 +44,7 @@ export function getPeerAvatarColorByPeer(peer: Chat | User) {
   if(!color) {
     const fgColor = DialogColorsFg[idx];
     if(!fgColor) {
-      return DialogColors[getPeerColorIndexById(peer.id)];
+      return getPeerAvatarColorById(peer.id);
     }
 
     const hsla = hexaToHsla(fgColor[0]);

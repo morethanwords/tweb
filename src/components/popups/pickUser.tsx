@@ -285,6 +285,7 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
       },
       renderResultsFunc: async(threadIds, append) => {
         const middleware = fs.middlewareHelperLoader.get();
+        const rowsMiddleware = fs.getRowsMiddleware();
         if(firstRender) {
           firstRender = false;
 
@@ -294,7 +295,7 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
         }
 
         const promises = threadIds.map((threadId) => {
-          return wrapTopicRow({peerId, threadId, middleware});
+          return wrapTopicRow({peerId, threadId, middleware: rowsMiddleware});
         });
         const elements = await Promise.all(promises);
         if(!middleware()) {
@@ -670,7 +671,8 @@ export async function showPickUser2Popup<T extends boolean = false>({
   limitCallback,
   titleLangKey,
   placeholder,
-  exceptSelf
+  exceptSelf,
+  excludePeerIds
 }: {
   peerType?: SelectSearchPeerType[],
   filterPeerTypeBy: AppSelectPeers['filterPeerTypeBy'],
@@ -680,7 +682,8 @@ export async function showPickUser2Popup<T extends boolean = false>({
   limit?: number,
   limitCallback?: () => void,
   titleLangKey?: LangPackKey,
-  exceptSelf?: boolean
+  exceptSelf?: boolean,
+  excludePeerIds?: PopupPickUserOptions['excludePeerIds']
 }) {
   return new Promise<T extends false ? PeerId : PeerId[]>((resolve, reject) => {
     let resolved = false;
@@ -705,6 +708,7 @@ export async function showPickUser2Popup<T extends boolean = false>({
       chatRightsActions,
       titleLangKey,
       exceptSelf,
+      excludePeerIds,
       onClose: () => {
         if(!resolved) {
           reject();

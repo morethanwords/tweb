@@ -4,6 +4,7 @@ import rootScope from '@lib/rootScope';
 import useDynamicCachedValue from '@helpers/solid/useDynamicCachedValue';
 import {onCleanup} from 'solid-js';
 import {PEER_FULL_TTL} from '@appManagers/constants';
+import {hotListen} from '@helpers/hotModule';
 
 export type PeerFull = ChatFull | UserFull;
 
@@ -23,7 +24,13 @@ const requestFullPeer = (peerId: PeerId, overwrite?: boolean) => {
   });
 };
 
-rootScope.addEventListener('peer_full_update', requestFullPeer);
+hotListen(import.meta.hot, rootScope, 'peer_full_update', requestFullPeer);
+
+// * the same peer is another peer full for another account (rights, bio, pinned message)
+hotListen(import.meta.hot, rootScope, 'account_switched', () => {
+  expirations.clear();
+  setState(reconcile({}));
+});
 
 function _useFullPeer(peerId: PeerId) {
   const fullPeer = () => state[peerId];

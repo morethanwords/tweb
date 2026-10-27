@@ -119,11 +119,13 @@ TopbarPlate.Content = (props: {
 
 TopbarPlate.Title = (props: {
   class?: string,
+  /** `auto` for a title that comes from elsewhere (a track's name): it truncates at its own end */
+  dir?: 'auto',
   children: JSX.Element
 }) => {
   const modifier = useModifier();
   return (
-    <div class={classNames(baseCls('title'), modCls(modifier, 'title'), props.class)}>
+    <div dir={props.dir} class={classNames(baseCls('title'), modCls(modifier, 'title'), props.class)}>
       {props.children}
     </div>
   );

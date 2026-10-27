@@ -1,0 +1,31 @@
+.popup {
+  --popup-width: 22.5rem;
+  // no taller than the window: the body scrolls instead
+  --popup-max-height: 100%;
+}
+
+// the choices are the buttons as a message draws them, rows of them included: a block, so the
+// rows' margins collapse as they do in a message — over the section's surface, where the default
+// tint keeps its contrast
+.styles {
+  --iv-scale: 1;
+  --page-button-row-spacing: .5rem;
+  --page-button-backdrop: var(--surface-color);
+  // collapses with the outer rows' margins to nothing: the section's own padding is the edge
+  margin-block: calc(-1 * var(--page-button-row-spacing));
+}
+
+// the chosen style keeps its frame while the click that chose it holds the focus — the global
+// `button:focus` drops outlines and outranks a lone class. A focus from the keyboard with the a11y
+// layer on shows the layer's ring instead, which the frame would otherwise cover up.
+.styleActive,
+.styleActive:focus:not(:focus-visible),
+:global(:root:not(.a11y)) .styleActive:focus {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+// what the chosen action needs: the link, the text to copy
+.result {
+  margin-top: .5rem;
+}

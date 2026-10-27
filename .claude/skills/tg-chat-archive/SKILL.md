@@ -87,11 +87,14 @@ Workflow:
    its stored record — and its done mark — unless its edit timestamp
    (`editTs`, hidden edits included) moved; then the new content replaces the
    old one and the mark stays, reading as stale (`✔?`). Views, reactions and
-   `pinned` are refreshed either way.
+   `pinned` are refreshed either way. A record stored empty (no text, media or
+   service line) takes the fresh content too — the archiver learned to read
+   that kind of message since — and its mark stays fresh.
 6. **`--full`** rereads the whole history (down to `since`, if set): catches edits of old messages and
    marks messages deleted on the server with `"deleted": true` (kept, never
    dropped — it is an archive). Only a run that reaches the start of the chat
-   marks deletions.
+   marks deletions. Run it once after the archiver learns a new kind of
+   message, so the old empty records of that kind fill in.
 
 A run ends with `[tg-archive] done: …` (or `dry run — nothing written`); if
 that line is missing the script exits 1 and prints the path of the full vitest
@@ -181,7 +184,8 @@ its latest edit. Service events read `#id HH:MM · Alice added Bob`.
 
 Message fields in `messages.jsonl`: `id`, `ts` (unix), `date` (ISO UTC),
 `from` `{key, name, username}`, `out`, `text` (text links kept as
-`[label](url)`), `media` (a one-line description — media files themselves are
+`[label](url)`; a rich message's blocks flattened to lines — list items as
+`- `, table cells tab-separated, its photos and files not described), `media` (a one-line description — media files themselves are
 NOT downloaded), `service`, `replyTo`, `replyToPeer`, `quote`, `topicId`,
 `topicTitle`, `fwdFrom`, `viaBot`, `editDate` (shown edits), `editTs` (raw
 edit_date, hidden edits too — what a sync compares), `groupedId` (album),

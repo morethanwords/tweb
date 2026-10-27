@@ -9,6 +9,7 @@ import {usePopupContext} from '@components/popups/indexTsx';
 import Scrollable, {ScrollableContextValue} from '@components/scrollable2';
 import Space from '@components/space';
 import debounce from '@helpers/schedulers/debounce';
+import classNames from '@helpers/string/classNames';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {useObserveResize} from '@hooks/useObserveResize';
@@ -216,7 +217,6 @@ export const AiEditorPopupBodyContent = () => {
                   onContextElement: sendButton,
                   middleware: createMiddleware().get(),
                   canSendWhenOnline,
-                  onRef: (element) => sendButton.parentElement.append(element),
                   withEffects,
                   effect,
                   onEffect: setEffect
@@ -238,7 +238,7 @@ export const AiEditorPopupBodyContent = () => {
                   aria-label={I18n.format('Send', true)}
                   onClick={handleSendClick}
                 >
-                  <IconTsx class={styles.sendButtonIcon} icon='logo' />
+                  <IconTsx class={classNames(styles.sendButtonIcon, 'icon-mirror')} icon='logo' />
                 </Button>
                 <Show when={!isScheduled}>
                   <SelectedEffect effect={effect} />

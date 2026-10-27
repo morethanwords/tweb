@@ -1,4 +1,5 @@
 import Modes from '@config/modes';
+import getInlineArrowKeys from '@helpers/dom/getInlineArrowKeys';
 
 export function getEnabledMenuItems(menu: HTMLElement) {
   return Array.from(menu.querySelectorAll<HTMLElement>('.btn-menu-item'))
@@ -35,10 +36,11 @@ export function handleMenuKeyDown(event: KeyboardEvent, menu = event.currentTarg
   }
 
   const radio = current as HTMLInputElement;
-  if(radio.type === 'radio' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+  const inlineKeys = getInlineArrowKeys();
+  if(radio.type === 'radio' && (event.key === inlineKeys.previous || event.key === inlineKeys.next)) {
     const group = items.filter((item) => (item as HTMLInputElement).type === 'radio' &&
       (item as HTMLInputElement).name === radio.name);
-    const next = group[(group.indexOf(current) + (event.key === 'ArrowRight' ? 1 : group.length - 1)) % group.length];
+    const next = group[(group.indexOf(current) + (event.key === inlineKeys.next ? 1 : group.length - 1)) % group.length];
     event.preventDefault();
     next.focus();
     activate(next);

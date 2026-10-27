@@ -30,6 +30,7 @@ import {truncateTextWithEntities} from '@lib/richTextProcessor/truncateTextWithE
 import getCommunityServiceMessageKey, {
   getCommunityServiceTitle
 } from '@components/wrappers/getCommunityServiceMessageKey';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 async function wrapLinkToMessage(options: WrapMessageForReplyOptions) {
   const wrapped = await wrapMessageForReply(options);
@@ -207,10 +208,11 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
     let icon: HTMLElement | undefined;
     let args: Array<FormatterArgument | Promise<FormatterArgument>>;
 
-    const managers = rootScope.managers;
+    const managers = bindManagersToSession(rootScope.managers);
 
     const getNameDivHTML = (peerId: PeerId, plain: boolean) => {
-      return plain ? getPeerTitle({peerId, plainText: plain}) : wrapPeerTitle({peerId});
+      // a name in a service message opens its peer on click (onBubblesClick): a link to it
+      return plain ? getPeerTitle({peerId, plainText: plain}) : wrapPeerTitle({peerId, link: !noLinks});
     };
 
     const wrapTruncatedText = (text: string, entities: MessageEntity[] | undefined, maxLength: number) => {

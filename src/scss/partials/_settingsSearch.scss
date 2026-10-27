@@ -44,6 +44,10 @@
 .is-settings-highlighted {
   --settings-highlight-color: rgba(var(--primary-color-rgb), .16);
   animation: settings-highlight 1.6s ease-in-out;
+
+  @include animation-level(0) {
+    animation: none;
+  }
 }
 
 // inside a menu the flash is the item's own hover, so it reads as "this one"
@@ -52,12 +56,6 @@
 
   &.danger {
     --settings-highlight-color: var(--light-danger-color);
-  }
-}
-
-@include animation-level(0) {
-  .is-settings-highlighted {
-    animation: none;
   }
 }
 

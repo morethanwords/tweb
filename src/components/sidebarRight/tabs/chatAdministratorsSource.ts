@@ -3,7 +3,6 @@ import createParticipantContextMenu
 from '@helpers/dom/createParticipantContextMenu';
 import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
 import showPickUserPopup from '@components/popups/pickUser';
-import {openUserPermissionsTab} from '@components/solidJsTabs/tabs';
 import hasRights from '@appManagers/utils/chats/hasRights';
 import {isParticipantAdmin} from '@appManagers/utils/chats/isParticipantAdmin';
 import type {Chat, ChatFull} from '@layer';
@@ -14,6 +13,7 @@ import type {
   AdministratorsSource,
   AdministratorsTab
 } from './administratorsSource';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export default async function createChatAdministratorsSource(options: {
   tab: AdministratorsTab,
@@ -69,7 +69,7 @@ export default async function createChatAdministratorsSource(options: {
     },
     openPermissions: ({participant}) => {
       if(participant) {
-        openUserPermissionsTab(tab.slider, chatId, participant, true);
+        hotReloadGuard.tabs.openUserPermissionsTab(tab.slider, chatId, participant, true);
       }
     },
     attachSelectorBehavior: (selector) => {

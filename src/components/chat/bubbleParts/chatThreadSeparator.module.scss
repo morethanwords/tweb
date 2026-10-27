@@ -13,8 +13,8 @@ $round-border-radius: 100px;
   gap: 0.125rem;
 
   font-size: var(--messages-service-text-size);
-  padding: .28125rem .625rem;
-  padding-right: 0.25rem;
+  padding-block: .28125rem;
+  padding-inline: .625rem .25rem;
   line-height: calc(var(--messages-service-text-size) + 5px);
   border-radius: $round-border-radius;
 
@@ -61,7 +61,8 @@ $round-border-radius: 100px;
 .ArrowIcon {
   font-size: 1.15rem;
   line-height: 1.15rem;
-  transform: rotate(-90deg);
+  // * the down chevron turned to point along the line, to its end
+  transform: rotate(calc(-90deg * var(--reflect)));
   opacity: 0.75;
 }
 

@@ -24,7 +24,7 @@
     content: " ";
     top: 50%;
     bottom: 0;
-    right: 21px;
+    inset-inline-end: 21px;
     cursor: pointer;
     
     height: 0;
@@ -59,9 +59,7 @@
     margin-top: calc((var(--height) - 1.5rem) / 2); // * Center of first line
     white-space: nowrap;
 
-    @include animation-level(2) {
-      transition: .2s transform, .2s padding, .1s opacity, font-weight 0s .1s;
-    }
+    @include animation-level-transition(.2s transform, .2s padding, .1s opacity, font-weight 0s .1s);
   }
 
   &-error-label {
@@ -80,14 +78,14 @@
     pointer-events: none;
     z-index: 1;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: opacity .2s;
     }
   }
 
   &-icon {
     position: absolute;
-    right: 1rem;
+    inset-inline-end: 1rem;
     z-index: 1;
     top: 50%;
     transform: translateY(-50%);
@@ -211,7 +209,8 @@
     &:disabled ~ .input-field-error-label,
     &.force-focus ~ label,
     &.force-focus ~ .input-field-error-label {
-      transform: translate(calc(-.1875rem + (1rem - var(--padding-horizontal))), calc(var(--height) / -2 + .0625rem)) scale(.75);
+      // * floats up toward the inline start
+      transform: translate(calc((-.1875rem + (1rem - var(--padding-horizontal))) * var(--reflect)), calc(var(--height) / -2 + .0625rem)) scale(.75);
       padding: 0 .3125rem;
       opacity: 1;
     }
@@ -242,9 +241,10 @@
     z-index: 1;
     @include text-overflow(true);
 
+    @include animation-level-transition(opacity var(--input-placeholder-transition) .01s, transform var(--input-placeholder-transition) .01s);
+
     @include animation-level(2) {
       transform: translateX(calc(1rem * var(--reflect)));
-      transition: opacity var(--input-placeholder-transition) .01s, transform var(--input-placeholder-transition) .01s;
     }
 
     &.is-empty {
@@ -310,11 +310,11 @@
   padding: 0;
 
   &.error {
-    body.animation-level-0 & {
+    @include animation-level-below(2) {
       color: var(--danger-color) !important;
     }
 
-    body:not(.animation-level-0) & {
+    @include animation-level(2) {
       animation: input-shake .2s ease-in-out forwards;
     }
   }
@@ -345,7 +345,7 @@
 
     &[type="password"] {
       font-size: 2.25rem;
-      padding-left: calc(.875rem - var(--border-width));
+      padding-inline-start: calc(.875rem - var(--border-width));
       line-height: 1;
       padding-top: 0;
       padding-bottom: 0;
@@ -369,7 +369,7 @@
   
   .toggle-visible {
     position: absolute;
-    right: .375rem;
+    inset-inline-end: .375rem;
     z-index: 2;
     font-size: 1.5rem;
     color: $placeholder-color;

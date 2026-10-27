@@ -1,6 +1,6 @@
 # Keep the whole Tiptap release aligned with the audited editor version.
 overrides:
-  '@tiptap/core': &tiptapVersion 3.28.0
+  '@tiptap/core': &tiptapVersion 3.31.3
   '@tiptap/extension-blockquote': *tiptapVersion
   '@tiptap/extension-bold': *tiptapVersion
   '@tiptap/extension-bullet-list': *tiptapVersion

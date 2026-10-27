@@ -2,7 +2,6 @@ import middlewarePromise from '@helpers/middlewarePromise';
 import namedPromises from '@helpers/namedPromises';
 import asyncThrottle from '@helpers/schedulers/asyncThrottle';
 import {Chat, Dialog} from '@layer';
-import appDialogsManager from '@lib/appDialogsManager';
 import {isDialog} from '@appManagers/utils/dialogs/isDialog';
 import {i18n} from '@lib/langPack';
 import apiManagerProxy from '@lib/apiManagerProxy';
@@ -11,6 +10,8 @@ import {AutonomousBotforumTopicList} from '@components/autonomousDialogList/botf
 import SortedDialogList from '@components/sortedDialogList';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {ForumTab} from '@components/forumTab/forumTab';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 
 export class BotforumTab extends ForumTab {
@@ -25,13 +26,13 @@ export class BotforumTab extends ForumTab {
 
     this.container.classList.add('topic-dialogs-override');
 
-    const autonomousList = new AutonomousBotforumTopicList({peerId: this.peerId, appDialogsManager});
+    const autonomousList = new AutonomousBotforumTopicList({peerId: this.peerId, appDialogsManager: hotReloadGuard.appDialogsManager});
     autonomousList.scrollable = this.scrollable;
 
     const sortedList = autonomousList.sortedList = new SortedDialogList({
       itemSize: 64,
       noAvatar: true,
-      appDialogsManager,
+      appDialogsManager: hotReloadGuard.appDialogsManager,
       scrollable: this.scrollable,
       managers: rootScope.managers,
       requestItemForIdx: autonomousList.requestItemForIdx,
@@ -47,7 +48,7 @@ export class BotforumTab extends ForumTab {
 
     this.xd = autonomousList;
 
-    appDialogsManager.setListClickListener({list, onFound: null, withContext: true});
+    hotReloadGuard.appDialogsManager.setListClickListener({list, onFound: null, withContext: true});
     this.scrollable.append(list);
 
 
@@ -66,7 +67,7 @@ export class BotforumTab extends ForumTab {
 
       const user = apiManagerProxy.getUser(userId);
       if(user?._ === 'user' && !user?.pFlags?.bot_forum_view) {
-        appDialogsManager.toggleForumTab(undefined, this);
+        hotReloadGuard.appDialogsManager.toggleForumTab(undefined, this);
       }
     });
 
@@ -98,7 +99,7 @@ export class BotforumTab extends ForumTab {
       return;
     }
 
-    appDialogsManager.setLastMessageN({
+    hotReloadGuard.appDialogsManager.setLastMessageN({
       dialog,
       dialogElement,
       setUnread: true
@@ -106,6 +107,7 @@ export class BotforumTab extends ForumTab {
   }
 
   async asyncInit(): Promise<void> {
+    const managers = bindManagersToSession(this.managers);
     await super.asyncInit();
 
     const middleware = this.middlewareHelper.get();
@@ -121,7 +123,7 @@ export class BotforumTab extends ForumTab {
           dialog: true,
           wrapOptions: {middleware}
         }),
-        dialogs: this.managers.dialogsStorage.getDialogs({
+        dialogs: managers.dialogsStorage.getDialogs({
           filterId: this.peerId,
           limit: 1
         })

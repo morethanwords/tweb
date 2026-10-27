@@ -7,6 +7,7 @@ import {IS_SAFARI} from '@environment/userAgent';
 import ServiceMessagePort from '@lib/serviceWorker/serviceMessagePort';
 import {getLogEntries, setLogBufferEnabled} from '@lib/debug/logsBuffer';
 import listenMessagePort from '@helpers/listenMessagePort';
+import {deleteClientAccount, setClientAccount} from '@lib/serviceWorker/clientAccounts';
 import {getWindowClients} from '@helpers/context';
 import {MessageSendPort} from '@lib/superMessagePort';
 import handleDownload from '@lib/serviceWorker/download';
@@ -140,6 +141,10 @@ serviceMessagePort.addMultipleEventsListeners({
 
   toggleStreamInUse,
 
+  tabAccount: (accountNumber, source) => {
+    setClientAccount((source as any as WindowClient).id, accountNumber);
+  },
+
   toggleCacheStorage: (enabled) => {
     CacheStorageController.temporarilyToggle(enabled);
   },
@@ -227,6 +232,7 @@ listenMessagePort(serviceMessagePort, undefined, (source) => {
   }
 
   connectedWindows.delete(source.id);
+  deleteClientAccount(source.id);
   log('window disconnected, left', connectedWindows.size);
   if(!connectedWindows.size) {
     log.warn('no windows left');

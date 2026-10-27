@@ -1,5 +1,6 @@
 import {openEditor, settleNativeSelection as settleSelection} from './fixtures/chatInputEditorTest';
-import {expect, test, type Page} from '@playwright/test';
+import {expect, type Page} from '@playwright/test';
+import {test} from './workerContext';
 import type {JSONContent} from '@tiptap/core';
 import type {
   ChatInputEditorBrowserHarness
@@ -505,4 +506,59 @@ test('ArrowDown does not skip an empty media caption after a divider', async({pa
   selection = await page.evaluate(() => window.chatInputEditorHarness.selection());
   expect(selection.path).toContain('richMedia');
   expect(selection.text).toBe('');
+});
+
+// The first formula of a page shows its source until Temml loads. Typeset into a block formula, it
+// used to knock a node selection on it, or on an uneditable block beside it, out into the place after
+// it in WebKit.
+async function holdTemml(page: Page) {
+  let release: () => void;
+  const held = new Promise<void>((resolve) => release = resolve);
+  await page.route(/temml\.min\.js/, async(route) => {
+    await held;
+    await route.continue();
+  });
+  return async() => {
+    release();
+    await expect(page.locator('[data-block-math] math')).toHaveCount(1);
+    await settleSelection(page);
+  };
+}
+
+const selected = (page: Page) => page.evaluate(() => window.chatInputEditorHarness.selection());
+
+test('a block formula stays selected when its first typesetting lands after the caret entered it', async({page}) => {
+  const typeset = await holdTemml(page);
+  await setDocument(page, [
+    {type: 'paragraph', content: [{type: 'text', text: 'Before'}]},
+    {type: 'blockMath', attrs: {source: 'x^2'}}
+  ]);
+  await settleSelection(page);
+  expect(await page.evaluate(() => (
+    window.chatInputEditorHarness.setCaretInNode('paragraph', 0, 'end')
+  ))).toBe(true);
+  await settleSelection(page);
+  await page.keyboard.press('ArrowRight');
+  await settleSelection(page);
+  expect(await selected(page)).toMatchObject({type: 'node', nodeType: 'blockMath'});
+
+  await typeset();
+  expect(await selected(page)).toMatchObject({type: 'node', nodeType: 'blockMath'});
+});
+
+for(const [neighbour, attrs] of [
+  ['richDivider', undefined],
+  ['opaqueRichBlock', {block: {_: 'pageBlockUnsupported'}}]
+] as const) test(`a selected ${neighbour} stays selected when the block formula after it is first typeset`, async({page}) => {
+  const typeset = await holdTemml(page);
+  await setDocument(page, [{type: neighbour, attrs}, {type: 'blockMath', attrs: {source: 'x^2'}}]);
+  await settleSelection(page);
+  expect(await page.evaluate((type) => window.chatInputEditorHarness.setNodeSelection(type), neighbour)).toBe(true);
+  await settleSelection(page);
+
+  await typeset();
+  expect(await selected(page)).toMatchObject({type: 'node', nodeType: neighbour});
+  await page.keyboard.press('ArrowRight');
+  await settleSelection(page);
+  expect(await selected(page)).toMatchObject({type: 'node', nodeType: 'blockMath'});
 });

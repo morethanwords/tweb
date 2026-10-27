@@ -1,7 +1,11 @@
+@use "../scss/mixins" as *;
+
 .outer {
   &.hasTransition {
     // Do not change easing function here, some places need synced easings for animations to not be jerky
-    transition: height 0.2s;
+    @include animation-level-global(1) {
+      transition: height 0.2s;
+    }
   }
 
   &.overflowHidden {

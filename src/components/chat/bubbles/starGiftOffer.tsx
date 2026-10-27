@@ -24,6 +24,7 @@ import wrapPeerTitle from '@components/wrappers/peerTitle';
 import rootScope from '@lib/rootScope';
 import {transferStarGiftConfirmationPopup} from '@components/popups/transferStarGift';
 import showStarGiftInfoPopup from '../../popups/starGiftInfo';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 function wrapExpiresIn(duration: number) {
   const formatted = formatDuration(duration, 2);
@@ -109,6 +110,7 @@ export function StarGiftOfferReplyMarkup(props: {
   chat: Chat
 }) {
   const onRejectClick = async() => {
+    const managers = bindManagersToSession(rootScope.managers);
     await confirmationPopup({
       titleLangKey: 'StarGiftOffer.RejectOfferTitle',
       descriptionLangKey: 'StarGiftOffer.RejectOfferText',
@@ -119,7 +121,7 @@ export function StarGiftOfferReplyMarkup(props: {
       }
     });
 
-    await rootScope.managers.appGiftsManager.resolveGiftOffer(props.message.id, 'reject');
+    await managers.appGiftsManager.resolveGiftOffer(props.message.id, 'reject');
   };
   const onAcceptClick = () => {
     transferStarGiftConfirmationPopup({

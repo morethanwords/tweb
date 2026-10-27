@@ -5,7 +5,7 @@ import Button from '@components/buttonTsx';
 import CodeInputFieldCompat from '@components/codeInputField';
 import Icon from '@components/icon';
 import InputField, {InputState} from '@components/inputField';
-import TrackingMonkey from '@components/monkeys/tracking';
+import TrackingMonkey, {preloadTrackingMonkey} from '@components/monkeys/tracking';
 import {wrapEmailPattern} from '@components/emailVerification';
 import simpleConfirmation from '@components/popups/simpleConfirmation';
 import MediaHeader from '@components/mediaHeader';
@@ -22,6 +22,7 @@ import {fastRaf} from '@helpers/schedulers';
 import toHHMMSS from '@helpers/string/toHHMMSS';
 import tsNow from '@helpers/tsNow';
 import {AuthSentCodeType, AuthSignIn} from '@layer';
+import {getFloodWaitTime} from '@appManagers/utils/getFloodWaitTime';
 import I18n, {LangPackKey, i18n} from '@lib/langPack';
 import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
 import lottieLoader from '@lib/lottie/lottieLoader';
@@ -48,10 +49,23 @@ import {
   withPhoneNumber
 } from '@/pages/sentCode';
 import styles from '@/pages/authFlow.module.scss';
+import whenDetached from '@helpers/dom/whenDetached';
+
+// * the card's chunk is fetched as soon as the flow heads here, a card's exit animation before this
+// * one mounts: start the sticker's own fetch with it, or it arrives after the card has opened
+preloadTrackingMonkey().catch(() => {});
 
 if(import.meta.hot) import.meta.hot.accept();
 
 type Spec = Extract<CardSpec, {name: 'authCode'}>;
+
+/** A phone number inside a sentence: it reads left to right in any language. */
+function wrapLeftToRight(text: string) {
+  const span = document.createElement('span');
+  span.dir = 'ltr';
+  span.textContent = text;
+  return span;
+}
 
 /**
  * Card variant of `pageAuthCode` — every code the server can ask for, except the
@@ -80,7 +94,7 @@ type Spec = Extract<CardSpec, {name: 'authCode'}>;
  * would flash the card.
  */
 export default function AuthCodeCard(props: {spec: Spec}) {
-  const {managers, navigate, toIm} = useAuthFlow();
+  const {managers, navigate, toIm, isLeaving} = useAuthFlow();
 
   /* ---------- state ---------- */
 
@@ -104,12 +118,18 @@ export default function AuthCodeCard(props: {spec: Spec}) {
   let resetEmailTimer: number | undefined;
   let resendTimer: number | undefined;
   let resending = false;
+  // * an answer that comes after the card has gone - dropped, once the sign-in over the app was closed -
+  // * is not taken for a failure: no toast or popup over what is there now, no countdown started again
+  let gone = false;
+  const isGone = () => gone || isLeaving();
 
   /* ---------- header pieces (mutated imperatively in applySentCode) ---------- */
 
   // without `?a11y=1` the number stays an h4, which is what gives it the global heading size
   const phoneEl = document.createElement(Modes.a11y ? 'span' : 'h4');
   phoneEl.classList.add(styles.phone);
+  // a phone number reads left to right in any language
+  phoneEl.dir = 'ltr';
 
   const editButton = document.createElement('span');
   editButton.classList.add(styles.phoneEdit);
@@ -243,7 +263,7 @@ export default function AuthCodeCard(props: {spec: Spec}) {
           });
           break;
       }
-    }).catch((err) => {
+    }).catch((err: ApiError) => {
       let good = false;
       switch(err.type) {
         case 'SESSION_PASSWORD_NEEDED':
@@ -257,9 +277,15 @@ export default function AuthCodeCard(props: {spec: Spec}) {
         case 'PHONE_CODE_INVALID':
           showError(invalidCodeLangKey());
           break;
-        default:
-          markError(err.type);
+        default: {
+          const floodWait = getFloodWaitTime(err);
+          if(floodWait.hasWaitTime) {
+            markError(i18n('Login.Code.TooManyAttempts', [wrapFormattedDuration(formatDuration(floodWait.waitTime))]));
+          } else {
+            markError(err.type);
+          }
           break;
+        }
       }
 
       setSubmitting(false);
@@ -402,6 +428,10 @@ export default function AuthCodeCard(props: {spec: Spec}) {
       });
     }).catch((err: ApiError) => {
       resending = false;
+      if(isGone()) {
+        return;
+      }
+
       console.error('auth.resendCode error:', err);
       toastNew({langPackKey: 'Error.AnError'});
       updateResend();
@@ -432,6 +462,10 @@ export default function AuthCodeCard(props: {spec: Spec}) {
         toastNew({langPackKey: 'Error.AnError'});
       }
     }).catch((err: ApiError) => {
+      if(isGone()) {
+        return;
+      }
+
       if(err.type.includes('TASK_ALREADY_EXISTS')) {
         simpleConfirmation({
           titleLangKey: 'Login.ResetEmail.NeedPremium',
@@ -519,17 +553,18 @@ export default function AuthCodeCard(props: {spec: Spec}) {
         break;
       case 'auth.sentCodeTypeMissedCall':
         key = 'Login.Code.SentMissedCall';
-        args = [type.prefix];
+        args = [wrapLeftToRight(type.prefix)];
         break;
       case 'auth.sentCodeTypeSmsWord':
       case 'auth.sentCodeTypeSmsPhrase': {
         const isWord = type._ === 'auth.sentCodeTypeSmsWord';
+        const phone = wrapLeftToRight(sentCode.phone_number);
         if(type.beginning) {
           key = isWord ? 'Login.Code.SentSmsWordBeginning' : 'Login.Code.SentSmsPhraseBeginning';
-          args = [sentCode.phone_number, type.beginning];
+          args = [phone, type.beginning];
         } else {
           key = isWord ? 'Login.Code.SentSmsWord' : 'Login.Code.SentSmsPhrase';
-          args = [sentCode.phone_number];
+          args = [phone];
         }
         break;
       }
@@ -572,12 +607,21 @@ export default function AuthCodeCard(props: {spec: Spec}) {
   });
 
   onCleanup(() => {
+    gone = true;
     cancelFocus?.();
     if(resetEmailTimer) clearTimeout(resetEmailTimer);
     stopResendTimer();
-    monkey?.remove();
-    player?.remove();
     disposeInput();
+
+    // * the card outlives this scope: <Transition mode="outin"> keeps it for its exit animation, and
+    // * an offscreen lottie canvas blanks the moment its player is destroyed - the sticker would go
+    // * while the card is still fading. It is let go once the card has left
+    const leaving = monkey, leavingPlayer = player;
+    monkey = player = undefined;
+    whenDetached(stickerHost.closest<HTMLElement>('.' + styles.card), () => {
+      leaving?.remove();
+      leavingPlayer?.remove();
+    });
   });
 
   return (

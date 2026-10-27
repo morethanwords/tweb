@@ -10,12 +10,12 @@ import Button from '@components/buttonTsx';
 import {putPreloader} from '@components/putPreloader';
 import PasswordMonkey from '@components/monkeys/password';
 import PasswordInputField from '@components/passwordInputField';
-import {AppTwoStepVerificationReEnterPasswordTab, AppTwoStepVerificationTab} from '@components/solidJsTabs/tabs';
 import Section from '@components/section';
 import {ForgotPasswordLink} from '@components/sidebarLeft/tabs/2fa/forgotPasswordLink';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import type {AppTwoStepVerificationEnterPasswordTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const TwoStepVerificationEnterPassword: Component = () => {
   const [tab] = useSuperTab<typeof AppTwoStepVerificationEnterPasswordTab>();
@@ -90,10 +90,15 @@ const TwoStepVerificationEnterPassword: Component = () => {
         if(auth._ === 'auth.authorization') {
           clearInterval(getStateInterval);
           if(monkey) monkey.remove();
-          tab.slider.createTab(AppTwoStepVerificationTab).open({
+          // the step was left while the password was being checked: it opens nothing after all
+          if(!tab.slider.getHistory().includes(tab)) return;
+
+          const screen = tab.slider.createTab(hotReloadGuard.tabs.AppTwoStepVerificationTab);
+          const opening = screen.open({
             state,
             plainPassword
           });
+          tab.payload.onPassed?.(opening.then(() => screen));
           tab.slider.removeTabFromHistory(tab);
         }
       }, (err) => {
@@ -124,7 +129,7 @@ const TwoStepVerificationEnterPassword: Component = () => {
 
       if(!verifyInput()) return;
 
-      tab.slider.createTab(AppTwoStepVerificationReEnterPasswordTab).open({
+      tab.slider.createTab(hotReloadGuard.tabs.AppTwoStepVerificationReEnterPasswordTab).open({
         state,
         newPassword: passwordInputField.value,
         plainPassword

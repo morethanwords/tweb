@@ -16,12 +16,12 @@ import {IconTsx} from '@components/iconTsx';
 import formatDuration from '@helpers/formatDuration';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import rootScope from '@lib/rootScope';
-import appSidebarRight from '@components/sidebarRight';
 import {StackedAvatarsTsx} from '@components/stackedAvatars';
 import {wrapAdaptiveCustomEmoji} from '@components/wrappers/customEmojiSimple';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 import Modes from '@config/modes';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export function UnknownUserBubble(props: {
   peerId: PeerId,
@@ -96,7 +96,7 @@ export function UnknownUserBubble(props: {
                 tabindex={Modes.a11y ? 0 : undefined}
                 aria-label={I18n.format('UnknownUserSharedGroups', true)}
                 onClick={() => {
-                  appSidebarRight.toggleSidebar(true);
+                  hotReloadGuard.appSidebarRight.toggleSidebar(true);
                 }}
                 onKeyDown={buttonKeyDown}
               >

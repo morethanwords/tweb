@@ -1,4 +1,5 @@
 import type LazyLoadQueue from '@components/lazyLoadQueue';
+import type {ActiveAccountNumber} from '@lib/accounts/types';
 import {getMiddleware, Middleware, MiddlewareHelper} from '@helpers/middleware';
 import {avatarNew} from '@components/avatarNew';
 import {createEffect, on, onCleanup} from 'solid-js';
@@ -11,21 +12,30 @@ export default class StackedAvatars {
   public container: HTMLElement;
   private lazyLoadQueue: LazyLoadQueue;
   private avatarSize: number;
+  private accountNumber: ActiveAccountNumber;
   private middlewareHelper: MiddlewareHelper;
+  private peerIdByContainer: WeakMap<HTMLElement, PeerId> = new WeakMap();
 
   constructor(options: {
     lazyLoadQueue?: StackedAvatars['lazyLoadQueue'],
     avatarSize: StackedAvatars['avatarSize'],
-    middleware: Middleware
+    middleware: Middleware,
+    // * whose peers they are, when the tab may show another account meanwhile (a call's)
+    accountNumber?: ActiveAccountNumber
   }) {
     this.lazyLoadQueue = options.lazyLoadQueue;
     this.avatarSize = options.avatarSize;
+    this.accountNumber = options.accountNumber;
     this.middlewareHelper = options.middleware.create();
 
     this.container = document.createElement('div');
     this.container.classList.add(CLASS_NAME);
 
     this.container.style.setProperty('--avatar-size', options.avatarSize + 'px');
+  }
+
+  public setAccountNumber(accountNumber: ActiveAccountNumber) {
+    this.accountNumber = accountNumber;
   }
 
   /**
@@ -42,6 +52,14 @@ export default class StackedAvatars {
 
     peerIds.forEach((peerId, idx) => {
       let avatarContainer = children[idx] as HTMLElement;
+      // * the same person in the same place keeps the avatar: it follows the photo by itself, and a new one put the
+      // * thumbnail through loading again for every refresh of the list (a channel post's comments refresh on open)
+      if(avatarContainer && this.peerIdByContainer.get(avatarContainer) === peerId) {
+        avatarContainer.classList.toggle('is-first', idx === 0);
+        avatarContainer.classList.toggle('is-last', idx === peerIds.length - 1);
+        return;
+      }
+
       if(!avatarContainer) {
         avatarContainer = document.createElement('div');
         avatarContainer.classList.add(AVATAR_CONTAINER_CLASS_NAME);
@@ -55,12 +73,14 @@ export default class StackedAvatars {
         size: this.avatarSize,
         isDialog: false,
         lazyLoadQueue: this.lazyLoadQueue,
-        peerId
+        peerId,
+        accountNumber: this.accountNumber
       });
       avatarElem.node.classList.add(AVATAR_CLASS_NAME);
       loadPromises?.push(avatarElem.readyThumbPromise);
 
       avatarContainer.replaceChildren(avatarElem.node);
+      this.peerIdByContainer.set(avatarContainer, peerId);
 
       if(!avatarContainer.parentNode) {
         this.container.append(avatarContainer);
@@ -84,6 +104,7 @@ export function StackedAvatarsTsx(props: {
   peerIds: PeerId[],
   avatarSize: number,
   lazyLoadQueue?: StackedAvatars['lazyLoadQueue'],
+  accountNumber?: ActiveAccountNumber
 }) {
   const middleware = getMiddleware()
   const stackedAvatars = new StackedAvatars({
@@ -94,7 +115,8 @@ export function StackedAvatarsTsx(props: {
 
   onCleanup(() => middleware.destroy());
 
-  createEffect(on(() => props.peerIds, (peerIds) => {
+  createEffect(on(() => [props.peerIds, props.accountNumber] as const, ([peerIds, accountNumber]) => {
+    stackedAvatars.setAccountNumber(accountNumber);
     stackedAvatars.render(peerIds);
   }));
 

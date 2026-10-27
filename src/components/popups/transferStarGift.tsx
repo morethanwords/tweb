@@ -32,6 +32,7 @@ import {doubleRaf} from '@helpers/schedulers';
 import {useAppConfig} from '@stores/appState';
 import bigInt from 'big-integer';
 import {STARS_CURRENCY, TON_CURRENCY} from '@appManagers/constants';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export function transferStarGiftConfirmationPopup(options: {
   gift: MyStarGift,
@@ -256,10 +257,11 @@ export default function transferStarGift(gift: MyStarGift, toPeerId?: PeerId): P
       gift,
       recipient: peerId,
       handleSubmit: async() => {
-        const inputPeer = await rootScope.managers.appPeersManager.getInputPeerById(peerId);
+        const managers = bindManagersToSession(rootScope.managers);
+        const inputPeer = await managers.appPeersManager.getInputPeerById(peerId);
 
         if(Number(saved?.transfer_stars ?? '0') === 0) {
-          await rootScope.managers.appGiftsManager.transferStarGift(gift.input, peerId, gift.ownerId);
+          await managers.appGiftsManager.transferStarGift(gift.input, peerId, gift.ownerId);
           deferred.resolve(true)
         } else {
           const popup = await createPaymentPopup({

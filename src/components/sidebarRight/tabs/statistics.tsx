@@ -25,18 +25,17 @@ import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
 import {wrapStoryMedia} from '@components/stories/preview';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpClassName from '@helpers/dom/findUpClassName';
-import appDialogsManager from '@lib/appDialogsManager';
 import Button from '@components/buttonTsx';
 import themeController from '@helpers/themeController';
 import assumeType from '@helpers/assumeType';
 import getChatMembersString from '@components/wrappers/getChatMembersString';
 import createContextMenu from '@helpers/dom/createContextMenu';
-import appImManager from '@lib/appImManager';
-import {createStoriesViewerWithPeer} from '@components/stories/viewer';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {avatarNew} from '@components/avatarNew';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const CHANNEL_GRAPHS_TITLES: {[key in keyof PickByType<StatsBroadcastStats, StatsGraph>]: LangPackKey} = {
   growth_graph: 'GrowthChartTitle',
@@ -184,10 +183,11 @@ const StatisticsOverviewItem = ({
     const n = (value.part / value.total * 100).toFixed(2);
     v = `${n}%`;
 
+    // * an approximate or signed number reads left to right in any language
     if(describePercentage) {
       v = (
         <>
-          {`≈${value.part} `}
+          <span dir="ltr">{`≈${value.part}`}</span>{' '}
           <span class="statistics-overview-item-value-description">
             {v}
           </span>
@@ -198,7 +198,7 @@ const StatisticsOverviewItem = ({
     v = formatNumber(value.current, 1);
 
     if(value.approximate) {
-      v = '≈' + v;
+      v = (<span dir="ltr">{'≈' + v}</span>);
     }
 
     if(!value.current && !value.previous && !includeZeroValue) {
@@ -216,6 +216,7 @@ const StatisticsOverviewItem = ({
           {v}{' '}
           <span
             class={classNames('statistics-overview-item-value-description', diff > 0 ? 'green' : 'red')}
+            dir="ltr"
           >
             {str}
           </span>
@@ -520,7 +521,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
 
           topPeers = topPeers.slice();
 
-          const chatlist = appDialogsManager.createChatList();
+          const chatlist = hotReloadGuard.appDialogsManager.createChatList();
           chatlist.append(...topPeers.splice(0, 10).map(({container}) => container));
           const [moreButton, setMoreButton] = createSignal<JSX.Element>(!!topPeers.length && MoreButton({
             count: topPeers.length,
@@ -539,12 +540,12 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
         {!!publicForwards().count && <Section name="PublicSharesCount" nameArgs={[publicForwards().count]}>
           <div
             ref={(el) => {
-              appDialogsManager.setListClickListener({
+              hotReloadGuard.appDialogsManager.setListClickListener({
                 list: el,
                 onFound: (target) => {
                   const storyId = target.dataset.storyId;
                   if(storyId) {
-                    createStoriesViewerWithPeer({
+                    hotReloadGuard.createStoriesViewerWithPeer({
                       target: () => target.querySelector('.avatar'),
                       peerId: target.dataset.peerId.toPeerId(),
                       id: +target.dataset.storyId
@@ -605,7 +606,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
           icon: 'message',
           text: 'Message.Context.Goto',
           onClick: () => {
-            appImManager.setInnerPeer({
+            hotReloadGuard.appImManager.setInnerPeer({
               peerId: this.chatId.toPeerId(true),
               lastMsgId: (counters as PostInteractionCounters.postInteractionCountersMessage).msg_id
             });
@@ -615,7 +616,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
           icon: 'stories',
           text: 'ViewStory',
           onClick: () => {
-            createStoriesViewerWithPeer({
+            hotReloadGuard.createStoriesViewerWithPeer({
               peerId: this.chatId.toPeerId(true),
               id: (counters as PostInteractionCounters.postInteractionCountersStory).story_id
             });
@@ -768,7 +769,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
   private renderPeer = async(peer: StatsGroupTopPoster | StatsGroupTopAdmin | StatsGroupTopInviter | Message.message) => {
     const peerId = peer._ === 'message' ? peer.peerId : peer.user_id.toPeerId(false);
     const loadPromises: Promise<any>[] = [];
-    const {dom} = appDialogsManager.addDialogNew({
+    const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
       peerId: peerId,
       container: false,
       rippleEnabled: true,
@@ -841,13 +842,14 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
   };
 
   private async loadStats() {
+    const managers = bindManagersToSession(this.managers);
     const peerId = this.peerId;
-    const manager = this.managers.appStatisticsManager;
+    const manager = managers.appStatisticsManager;
     const loadLimit = 100;
     const func = this.isPoll ? manager.getPollStats : (this.isBroadcast ? manager.getBroadcastStats : (this.isMegagroup ? manager.getMegagroupStats : (this.isStory ? manager.getStoryStats : manager.getMessageStats)));
-    const postPromise = this.isMessage ? this.managers.appMessagesManager.reloadMessage(peerId, this.mid) : undefined;
+    const postPromise = this.isMessage ? managers.appMessagesManager.reloadMessage(peerId, this.mid) : undefined;
     const postPublicForwardsPromise = this.isMessage ? manager.getMessagePublicForwards({peerId, mid: this.mid, limit: loadLimit}) : undefined;
-    const storyPromise = this.isStory ? this.managers.appStoriesManager.getStoryById(peerId, this.storyId) : undefined;
+    const storyPromise = this.isStory ? managers.appStoriesManager.getStoryById(peerId, this.storyId) : undefined;
     const storyPublicForwardsPromise = this.isStory ? manager.getStoryPublicForwards({peerId, id: this.storyId, limit: loadLimit}) : undefined;
     const statsPromise = func({
       peerId,
@@ -867,7 +869,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       });
     };
     const pollStatsPromise = this.isMessage ?
-      this.managers.appMessagesManager.getMessageByPeer(peerId, this.mid).then((message) => {
+      managers.appMessagesManager.getMessageByPeer(peerId, this.mid).then((message) => {
         return loadPollStats(message) || postPromise.then(loadPollStats);
       }).catch((): undefined => undefined) :
       undefined;
@@ -923,7 +925,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     recentPosts.forEach((postInteractionCounters) => {
       let promise: PromiseLike<any>;
       if(postInteractionCounters._ === 'postInteractionCountersMessage') {
-        promise = this.managers.appMessagesManager.reloadMessage(peerId, postInteractionCounters.msg_id)
+        promise = managers.appMessagesManager.reloadMessage(peerId, postInteractionCounters.msg_id)
         .then((message) => {
           if(!message) {
             indexOfAndSplice(recentPosts, postInteractionCounters);
@@ -933,7 +935,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
           this.messages.set(message.mid, message as Message.message);
         });
       } else {
-        promise = this.managers.appStoriesManager.getStoryById(peerId, postInteractionCounters.story_id)
+        promise = managers.appStoriesManager.getStoryById(peerId, postInteractionCounters.story_id)
         .then((storyItem) => {
           if(!storyItem) {
             indexOfAndSplice(recentPosts, postInteractionCounters);
@@ -1063,6 +1065,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
   }
 
   public async init(chatIdOrPeerId: ChatId | PeerId, mid?: number, storyId?: number, mode?: 'poll') {
+    const managers = bindManagersToSession(this.managers);
     this.container.classList.add('statistics-container');
 
     this.isPoll = mode === 'poll';
@@ -1080,8 +1083,8 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     } else if(!this.isPoll && storyId) {
       this.isStory = true;
     } else if(!this.isPoll) {
-      this.isBroadcast = await this.managers.appChatsManager.isBroadcast(this.chatId);
-      this.isMegagroup = await this.managers.appChatsManager.isMegagroup(this.chatId);
+      this.isBroadcast = await managers.appChatsManager.isBroadcast(this.chatId);
+      this.isMegagroup = await managers.appChatsManager.isMegagroup(this.chatId);
     }
 
     this.setTitle(this.isPoll ? 'PollStats.Title' : (this.isBroadcast ? 'Statistics' : (this.isMegagroup ? 'GroupStats.Title' : (this.isStory ? 'StoryStatistics' : 'PostStatistics'))));

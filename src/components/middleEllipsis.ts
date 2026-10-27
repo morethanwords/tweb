@@ -3,6 +3,7 @@ import getTextWidth from '@helpers/canvas/getTextWidth';
 import mediaSizes from '@helpers/mediaSizes';
 import clamp from '@helpers/number/clamp';
 import {fastRaf} from '@helpers/schedulers';
+import {hotEffect} from '@helpers/hotModule';
 
 // Thanks to https://stackoverflow.com/a/49349813
 
@@ -17,6 +18,7 @@ import {fastRaf} from '@helpers/schedulers';
  *   <div data-middle-ellipsis="-3">A Javascript solution to middle ellipsis</div>
  */
 const ellipsis = '…';
+const TAG_NAME = 'middle-ellipsis-element';
 const map: Map<HTMLElement, {
   text: string,
   textLength: number,
@@ -48,13 +50,18 @@ function testQueueElements() {
   testQueue.clear();
 }
 
-window.addEventListener('resize', () => {
-  for(const [key] of map) {
-    testQueue.add(key);
-  }
+hotEffect(import.meta.hot, () => {
+  const onResize = () => {
+    for(const [key] of map) {
+      testQueue.add(key);
+    }
 
-  setTestQueue();
-}, {capture: true, passive: true});
+    setTestQueue();
+  };
+
+  window.addEventListener('resize', onResize, {capture: true, passive: true});
+  return () => window.removeEventListener('resize', onResize, {capture: true});
+});
 
 function getElementWidth(element: HTMLElement) {
   const getSize = (element as any).getSize;
@@ -68,6 +75,16 @@ function getElementWidth(element: HTMLElement) {
     // @ts-ignore
     const size: MediaSize = mediaSize[type];
     return size.width;
+  }
+
+  // an inline one is only as wide as its text, so it would always find itself too narrow: what it
+  // may take is the room its line leaves it after whatever precedes it
+  const line = element.parentElement;
+  if(line && getComputedStyle(element).display === 'inline') {
+    const preceding = document.createRange();
+    preceding.setStart(line, 0);
+    preceding.setEndBefore(element);
+    return line.getBoundingClientRect().width - preceding.getBoundingClientRect().width;
   }
 
   return element.getBoundingClientRect().width;
@@ -142,6 +159,11 @@ function testElement(element: HTMLElement) {
 }
 
 export class MiddleEllipsisElement extends HTMLElement {
+  public static create() {
+    // the registered class: after a hot update this module's class is a copy, which the element registry does not know
+    return new (customElements.get(TAG_NAME) as typeof MiddleEllipsisElement)();
+  }
+
   connectedCallback() {
     // console.log('[MEE]: connectedCallback before', map.has(this), testQueue.has(this), map.size, this.textContent, map);
 
@@ -164,4 +186,9 @@ export class MiddleEllipsisElement extends HTMLElement {
   }
 }
 
-customElements.define('middle-ellipsis-element', MiddleEllipsisElement);
+if(!customElements.get(TAG_NAME)) {
+  customElements.define(TAG_NAME, MiddleEllipsisElement);
+}
+
+// a method edited here takes effect on the elements on screen, without a reload (see @helpers/hotRegistry)
+if(import.meta.hot) import.meta.hot.accept();

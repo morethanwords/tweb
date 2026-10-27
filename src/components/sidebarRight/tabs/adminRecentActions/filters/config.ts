@@ -54,7 +54,12 @@ export function getFilterGroupsConfig({isBroadcast}: GetFilterGroupsConfigArgs):
         {
           pFlag: 'demote',
           i18nKey: 'AdminRecentActionsFilters.RemovedAdminRights'
-        }
+        },
+        // * tags are a group's only
+        ...(isBroadcast ? [] : [{
+          pFlag: 'edit_rank',
+          i18nKey: 'AdminRecentActionsFilters.TagChanges'
+        } as FilterGroupConfigItem['items'][number]])
       ]
     },
 

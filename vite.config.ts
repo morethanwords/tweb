@@ -9,11 +9,14 @@ import autoprefixer from 'autoprefixer';
 import {resolve} from 'path';
 import {existsSync, copyFileSync, readFileSync, realpathSync} from 'fs';
 import {createHash} from 'crypto';
-import {ServerOptions} from 'vite';
+import {Plugin, ServerOptions} from 'vite';
 import {watchLangFile} from './watch-lang.js';
 import {watchScssTypes} from './scss-types.js';
+import {vitestWorkers} from './scripts/testQueue';
 import devChecks from './scripts/dev-checks.mjs';
 import settingsSearchPlugin from './scripts/settings-search-plugin.mjs';
+import watchTransformCache from './scripts/watch-transform-cache.mjs';
+import hotReloadPlugin from './scripts/hot-reload-plugin.mjs';
 import path from 'path';
 
 const rootDir = resolve(__dirname);
@@ -46,11 +49,16 @@ if(isDEV) {
     copyFileSync(path.join(rootDir, '.env.local.example'), ENV_LOCAL_FILE_PATH);
   }
 
-  watchLangFile();
-  // the dev server is what runs while the SCSS is being edited, so it is what keeps the generated
-  // `*.module.d.scss.ts` in step — otherwise the editor (and `typecheck:watch`) reports a class
-  // that was just renamed as missing until someone remembers to regenerate.
-  watchScssTypes();
+  // A Playwright suite's server (TWEB_E2E) only serves the tree: the lang watcher would hash the
+  // strings on every start and, after a lang.ts edit, run format-lang and rewrite files under the
+  // run, and nobody edits SCSS through it.
+  if(!process.env.TWEB_E2E) {
+    watchLangFile();
+    // the dev server is what runs while the SCSS is being edited, so it is what keeps the generated
+    // `*.module.d.scss.ts` in step — otherwise the editor (and `typecheck:watch`) reports a class
+    // that was just renamed as missing until someone remembers to regenerate.
+    watchScssTypes();
+  }
 }
 
 const handlebarsPlugin = handlebars({
@@ -176,6 +184,70 @@ if(USE_OWN_SOLID) {
   console.log('using original solid');
 }
 
+// V8 compiles a function the first time it runs, so the first opening of a chat, a sidebar tab or
+// a popup compiled its code in the middle of its animation — after every page load, since the code
+// cache holds only what ran at startup. This comment makes Chrome 136+ compile every function of a
+// chunk off the main thread while the chunk streams in (other browsers ignore it), for ~20 MB more
+// of JS heap. V8 reads it only above the first line of code, and vite:build-import-analysis puts
+// `__vite__mapDeps` in front of a chunk in its generateBundle, so it goes on after that — not as
+// output.banner / postBanner. Workers have their own build and stay without it.
+function compileHintsPlugin(): Plugin {
+  const hint = '//# allFunctionsCalledOnLoad\n';
+  return {
+    name: 'compile-hints',
+    apply: 'build',
+    // the hint goes on after the file names are hashed, and the service worker serves a cached
+    // file by its name without asking the server: a chunk must change its name with the hint
+    augmentChunkHash: () => hint,
+    generateBundle: {
+      order: 'post',
+      handler(_options, bundle) {
+        for(const chunk of Object.values(bundle)) {
+          if(chunk.type !== 'chunk') continue;
+          chunk.code = hint + chunk.code;
+          // the code moved one line down, and so does every mapping
+          const mapAsset = bundle[chunk.fileName + '.map'];
+          if(mapAsset?.type === 'asset') {
+            const map = JSON.parse(String(mapAsset.source));
+            map.mappings = ';' + map.mappings;
+            mapAsset.source = JSON.stringify(map);
+          }
+        }
+      }
+    }
+  };
+}
+
+// Vite's preload helper waits for a lazy chunk's CSS with listeners it leaves on the <link> for good,
+// and makes them inside `__vitePreload`, so their closures hold its scope: the `() => import(...)`
+// it was called with, and through that whatever the caller's scope held — the first popup, tab or
+// menu to load each stylesheet stayed in memory with its whole DOM (~4k nodes in a short session).
+// The wait moves into a function of its own, whose listeners hold only the link and its URL.
+function preloadHelperCssWaitPlugin(): Plugin {
+  const waitRe = /new Promise\(\(res, rej\) => \{\s*link\.addEventListener\("load", res\);\s*link\.addEventListener\("error", \(\) => rej\([^;]*?\)\);\s*\}\)/;
+  return {
+    name: 'preload-helper-css-wait',
+    apply: 'build',
+    transform(code, id) {
+      if(!id.includes('vite/preload-helper')) return;
+      if(!waitRe.test(code)) {
+        throw new Error('preload-helper-css-wait: the CSS wait in Vite\'s preload helper changed, update the plugin');
+      }
+
+      return {
+        code: code.replace(waitRe, '__waitForPreloadedCss(link, dep)') + `
+function __waitForPreloadedCss(link, dep) {
+  return new Promise((res, rej) => {
+    link.addEventListener("load", res);
+    link.addEventListener("error", () => rej(new Error(\`Unable to preload CSS for \${dep}\`)));
+  });
+}`,
+        map: null
+      };
+    }
+  };
+}
+
 export default defineConfig({
   plugins: [
     // devtools({
@@ -183,9 +255,13 @@ export default defineConfig({
     //   autoname: true // e.g. enable autoname
     // }),
     process.env.VITEST || process.env.TWEB_PREVIEW ? undefined : devChecks(rootDir),
-    process.env.VITEST ? undefined : settingsSearchPlugin(rootDir),
+    process.env.VITEST ? undefined : settingsSearchPlugin(),
+    watchTransformCache(),
+    hotReloadPlugin(),
     solidPlugin(),
     handlebarsPlugin as any,
+    compileHintsPlugin(),
+    preloadHelperCssWaitPlugin(),
     USE_SELF_SIGNED_CERTS ? basicSsl(BASIC_SSL_CONFIG) : undefined,
     // Only emit the bundle treemap (stats.html) when explicitly analyzing (ANALYZE=1):
     // it adds build time and writes a ~1.3MB file that otherwise gets globbed into the
@@ -219,7 +295,10 @@ export default defineConfig({
       // a `**/e2e/**` glob also swallowed src/lib/calls/e2e/tests/, silently
       // dropping the whole TdE2E suite (blockchain, call, crypto, keys, …) from
       // `pnpm test`.
-      'e2e/**'
+      'e2e/**',
+      // scratch: a test file parked there is no part of the suite, and one
+      // that no longer resolves fails `pnpm test --run` and with it the build
+      'tmp/**'
     ],
     // coverage: {
     //   provider: 'v8',
@@ -237,6 +316,8 @@ export default defineConfig({
     // otherwise, solid would be loaded twice:
     // deps: {registerNodeLoader: true},
     pool: 'forks',
+    // a full run waits for its turn in the machine-wide queue of heavy test runs (scripts/test-queue.sh)
+    maxWorkers: vitestWorkers(),
     globals: true,
     setupFiles: ['./src/tests/setup.ts']
   },

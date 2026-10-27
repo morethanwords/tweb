@@ -3,10 +3,11 @@ import blur from '@helpers/blur';
 import type {Document, WallPaper} from '@layer';
 
 import type AppDownloadManagerInstance from '@lib/appDownloadManager';
-import type {AppManagers} from '@lib/managers';
+import type {ReadingManagers} from '@lib/managers';
 import CacheStorageController from '@lib/files/cacheStorage';
 import StaticUtilityClass from '@lib/staticUtilityClass';
 import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
+import type {ActiveAccountNumber} from '@lib/accounts/types';
 import {
   addSharedObjectURLUpdateListener,
   createSharedObjectURL,
@@ -27,7 +28,7 @@ namespace ChatBackgroundStore {
     canDownload?: boolean;
     blur?: boolean;
 
-    managers?: AppManagers;
+    managers?: ReadingManagers;
     appDownloadManager?: typeof AppDownloadManagerInstance;
   };
 
@@ -69,9 +70,20 @@ class ChatBackgroundStore extends StaticUtilityClass {
    * Last-known wallpaper list, kept synchronously readable so the Chat Wallpaper picker can build
    * its grid (skeleton tiles) in the very first frame of the tab-open slide instead of waiting on
    * the async `getWallPapers` round-trip. Warmed by `preloadWallPapers` (General Settings) and
-   * refreshed by the picker on every open.
+   * refreshed by the picker on every open. Read through `getCachedWallPapers`: the list is the account's
+   * own (its uploaded wallpapers among them), and the tab may have switched to another since.
    */
-  public static cachedWallPapers: WallPaper[];
+  private static cachedWallPapers: WallPaper[];
+  private static cachedWallPapersAccount: ActiveAccountNumber;
+
+  public static getCachedWallPapers() {
+    return this.cachedWallPapersAccount === getCurrentAccount() ? this.cachedWallPapers : undefined;
+  }
+
+  public static setCachedWallPapers(wallPapers: WallPaper[]) {
+    this.cachedWallPapers = wallPapers;
+    this.cachedWallPapersAccount = getCurrentAccount();
+  }
 
   public static getWallPaperStorageUrl(slug: string, blur?: boolean) {
     return `backgrounds/${slug}${blur ? '?blur' : ''}`;
@@ -204,7 +216,7 @@ class ChatBackgroundStore extends StaticUtilityClass {
    * out of this tab's resolved-download cache; a shared URL is created only when a tile is used.
    */
   public static async preloadWallPapers(
-    managers: AppManagers,
+    managers: ReadingManagers,
     appDownloadManager: typeof AppDownloadManagerInstance
   ) {
     let wallPapers: WallPaper[];
@@ -215,7 +227,7 @@ class ChatBackgroundStore extends StaticUtilityClass {
     }
 
     // Keep the synchronous list cache warm so the picker can render its grid without an async wait.
-    this.cachedWallPapers = wallPapers;
+    this.setCachedWallPapers(wallPapers);
 
     for(const wallPaper of wallPapers) {
       const {slug, document} = wallPaper as WallPaper.wallPaper;

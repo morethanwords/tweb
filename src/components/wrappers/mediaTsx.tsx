@@ -1,11 +1,13 @@
-import {Ref, Show, createResource, splitProps} from 'solid-js';
+import {JSX, Ref, Show, createResource, splitProps} from 'solid-js';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {Middleware} from '@helpers/middleware';
 
 export type MediaComponentProps = {
   class?: string,
   ref?: Ref<HTMLDivElement>,
-  onClick?: (e: MouseEvent) => void
+  onClick?: (e: MouseEvent) => void,
+  // what stands in the media's place until it is there
+  fallback?: JSX.Element
 };
 
 export function MediaTsx<T, R>(props: T & {
@@ -13,7 +15,7 @@ export function MediaTsx<T, R>(props: T & {
   loader: (options: T & {middleware: Middleware, container: HTMLElement}) => Promise<R>;
   itemKey: keyof T;
 } & MediaComponentProps) {
-  const [local, others] = splitProps(props, ['class', 'ref', 'onResult', 'loader', 'itemKey', 'onClick']);
+  const [local, others] = splitProps(props, ['class', 'ref', 'onResult', 'loader', 'itemKey', 'onClick', 'fallback']);
   let ref: HTMLDivElement;
   const ret = (
     <div
@@ -44,7 +46,7 @@ export function MediaTsx<T, R>(props: T & {
   });
 
   return (
-    <Show when={result.latest}>
+    <Show when={result.latest} fallback={local.fallback}>
       {ret}
     </Show>
   );

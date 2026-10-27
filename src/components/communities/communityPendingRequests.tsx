@@ -25,12 +25,10 @@ import {
   useCommunity,
   useCommunityPeerLinkRequests
 } from '@stores/communities';
-import {
-  AppCommunityPendingRequestsTab,
-  AppEditCommunityTab
-} from '@components/solidJsTabs/tabs';
 import styles from '@components/communities/communityManagement.module.scss';
 import useCommunityTabGuard from '@components/communities/useCommunityTabGuard';
+import type {AppCommunityPendingRequestsTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export default function CommunityPendingRequests() {
   const [tab] = useSuperTab<typeof AppCommunityPendingRequestsTab>();
@@ -184,13 +182,13 @@ export default function CommunityPendingRequests() {
   });
 
   const openSettings = () => {
-    const existingTab = tab.slider.getTab(AppEditCommunityTab);
+    const existingTab = tab.slider.getTab(hotReloadGuard.tabs.AppEditCommunityTab);
     if(existingTab?.payload.communityId === communityId) {
       void tab.slider.closeTabsUntilTab(existingTab);
       return;
     }
 
-    void tab.slider.createTab(AppEditCommunityTab).open({communityId});
+    void tab.slider.createTab(hotReloadGuard.tabs.AppEditCommunityTab).open({communityId});
   };
   const caption = (): HTMLElement => {
     if(!onlyAdminsCanAdd()) {

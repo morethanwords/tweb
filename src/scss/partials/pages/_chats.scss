@@ -37,18 +37,15 @@
     }
   }
 
-  .avatar-edit {
-    width: 120px;
-    height: 120px;
-    margin: 1rem auto 2rem;
-    flex: 0 0 auto;
-  }
-
   // Gated on :not(.has-auth-pages) so the boot-time flip of
   // body.is-left-column-shown (applied by appDialogsManager.start() before
   // bootstrapIm removes has-auth-pages) doesn't animate the column in
   // from its handheld off-screen state. After auth/boot the transition
   // engages for genuine tab transitions.
+  body.animation-level-1:not(.has-auth-pages) & .main-column {
+    transition: opacity var(--tabs-transition);
+  }
+
   body.animation-level-2:not(.has-auth-pages) & .main-column {
     transition: transform var(--tabs-transition), opacity var(--tabs-transition);
   }

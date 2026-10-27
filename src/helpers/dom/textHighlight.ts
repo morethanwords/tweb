@@ -82,7 +82,7 @@ export interface TextHighlight {
 
 export type TextSpan = [start: number, end: number];
 
-type TextSegment = {
+export type TextSegment = {
   node: Node,
   start: number,
   end: number,
@@ -126,8 +126,16 @@ const DEFAULT_SKIP = `.tgico, .${OVERLAY_CLASS}`;
 const WORD_CHARACTER = '\\p{L}\\p{N}\\p{M}';
 const WORD_START = `(?<![${WORD_CHARACTER}])`;
 
-/** collects the visible text of `root` together with the DOM positions it came from */
-export function extractText(root: HTMLElement, skip = DEFAULT_SKIP) {
+/** what `extractText` passes by: icons, and `skip` on top of them */
+export function getTextSkip(skip?: string) {
+  return skip ? `${DEFAULT_SKIP}, ${skip}` : DEFAULT_SKIP;
+}
+
+/**
+ * collects the visible text of `root` together with the DOM positions it came from; `sourceText`
+ * reads an element drawn otherwise than the text it stands for (a date in local time) as that text
+ */
+export function extractText(root: HTMLElement, skip = DEFAULT_SKIP, {sourceText}: {sourceText?: boolean} = {}) {
   const segments: TextSegment[] = [];
   let text = '';
 
@@ -157,7 +165,9 @@ export function extractText(root: HTMLElement, skip = DEFAULT_SKIP) {
 
     // * emoji images and custom emoji carry their text as `alt` / `data-sticker-emoji`
     // * (same convention as `getRichElementValue`)
-    const alt = element.dataset.stickerEmoji || (element as HTMLImageElement).alt;
+    const alt = (sourceText && element.dataset.originalText) ||
+      element.dataset.stickerEmoji ||
+      (element as HTMLImageElement).alt;
     if(alt) {
       push(element, alt, true);
       return;
@@ -304,7 +314,7 @@ export function findSpans(text: string, match: TextHighlightMatch): TextSpan[] {
 
 /** turns text spans into DOM ranges over the container's text */
 export function computeRanges(container: HTMLElement, match: TextHighlightMatch, skip?: string) {
-  const {text, segments} = extractText(container, skip ? `${DEFAULT_SKIP}, ${skip}` : DEFAULT_SKIP);
+  const {text, segments} = extractText(container, getTextSkip(skip));
   const ranges: Range[] = [];
   if(!segments.length) {
     return ranges;
@@ -409,7 +419,7 @@ export function computeLineBoxes(ranges: Range[], origin: DOMRect, lineHeight: n
 
 /** a range over all the searchable text of the container (skipped subtrees excluded at the ends) */
 export function computeFullRange(container: HTMLElement, skip?: string) {
-  const {segments} = extractText(container, skip ? `${DEFAULT_SKIP}, ${skip}` : DEFAULT_SKIP);
+  const {segments} = extractText(container, getTextSkip(skip));
   if(!segments.length) {
     return;
   }
@@ -607,6 +617,16 @@ class TextHighlighter implements TextHighlight {
     const boxes = this.computeLineBoxes(this.ranges);
     if(this.introPending) {
       this.introPending = false;
+      // * reduced animations: the match fades in where it is, without narrowing onto it
+      if(!liteMode.isAvailable('motion')) {
+        this.fadeOverlayIn(boxes.map((box) => this.createLineBox(box)));
+        this.introTimeout = window.setTimeout(() => {
+          this.introTimeout = undefined;
+          this.overlay.classList.remove(OVERLAY_INTRO_CLASS);
+        }, NARROW_APPEAR);
+        return;
+      }
+
       const fullRange = boxes.length && computeFullRange(container, skip);
       const full = fullRange ? this.computeLineBoxes([fullRange]) : [];
       if(full.length) {
@@ -642,13 +662,7 @@ class TextHighlighter implements TextHighlight {
   private narrowIn(full: TextLineBox[], targets: TextLineBox[]) {
     const {overlay} = this;
     const elements = full.map((box) => this.createLineBox(box));
-    // * the transparent start state is committed while nothing transitions yet — otherwise the
-    // * jump to it would itself animate and the fade-in would reverse from ~1
-    overlay.classList.add(OVERLAY_APPEARING_CLASS);
-    overlay.replaceChildren(...elements);
-    void overlay.offsetWidth;
-    overlay.classList.add(OVERLAY_INTRO_CLASS);
-    overlay.classList.remove(OVERLAY_APPEARING_CLASS);
+    this.fadeOverlayIn(elements);
 
     this.introTimeout = window.setTimeout(() => {
       const {ends, extra} = computeNarrowing(full, targets);
@@ -674,6 +688,18 @@ class TextHighlighter implements TextHighlight {
         this.paintLineBoxes(targets);
       }, NARROW_DURATION);
     }, NARROW_APPEAR + NARROW_HOLD);
+  }
+
+  /** puts `elements` into the overlay and fades it in */
+  private fadeOverlayIn(elements: HTMLElement[]) {
+    const {overlay} = this;
+    // * the transparent start state is committed while nothing transitions yet — otherwise the
+    // * jump to it would itself animate and the fade-in would reverse from ~1
+    overlay.classList.add(OVERLAY_APPEARING_CLASS);
+    overlay.replaceChildren(...elements);
+    void overlay.offsetWidth;
+    overlay.classList.add(OVERLAY_INTRO_CLASS);
+    overlay.classList.remove(OVERLAY_APPEARING_CLASS);
   }
 
   private clearIntro() {

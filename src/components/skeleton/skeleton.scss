@@ -29,15 +29,22 @@
     inset: 0;
 
     background: linear-gradient(90deg, transparent 0%, var(--gradient-color) 50%, transparent 100%);
+    // * a glint is decoration: it goes with the full animation level
     animation: skeleton-animation 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
+
+    body:not(.animation-level-2) & {
+      animation: none;
+      display: none;
+    }
   }
 }
 
+// * the glint sweeps along the line, so in RTL from the right, slanted the mirrored way
 @keyframes skeleton-animation {
   0% {
-    transform: translateX(-125%) skewX(-45deg);
+    transform: translateX(calc(-125% * var(--reflect))) skewX(calc(-45deg * var(--reflect)));
   }
   40%, 100% {
-    transform: translateX(125%) skewX(-45deg);
+    transform: translateX(calc(125% * var(--reflect))) skewX(calc(-45deg * var(--reflect)));
   }
 }

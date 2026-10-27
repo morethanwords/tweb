@@ -5,11 +5,14 @@ import {getAppWindow, onAppWindowChange} from '@helpers/appWindow';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 import Modes from '@config/modes';
 
-let lastMouseDownElement: HTMLElement;
+// * weakly: a strong reference kept the last pressed element - and the whole detached tree it was
+// * removed with, a closed chat's bubbles - alive until the next press anywhere
+let lastMouseDownElement: WeakRef<HTMLElement>;
 const onGlobalMouseDown = (e: MouseEvent) => {
-  lastMouseDownElement = e.target as HTMLElement;
+  const target = e.target as HTMLElement;
+  lastMouseDownElement = target ? new WeakRef(target) : undefined;
   // if((lastMouseDownElement as any)?.cancelMouseDown) {
-  if(lastMouseDownElement?.closest('[cancel-mouse-down]')) {
+  if(target?.closest('[cancel-mouse-down]')) {
     e.preventDefault();
   }
 };
@@ -36,7 +39,7 @@ export function hasMouseMovedSinceDown(e: Event) {
     return false;
   }
 
-  if(e.isTrusted && e.type === 'click' && e.target !== lastMouseDownElement) {
+  if(e.isTrusted && e.type === 'click' && e.target !== lastMouseDownElement?.deref()) {
     return true;
   }
 }

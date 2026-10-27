@@ -1,19 +1,27 @@
 import {Chat, ChatAdminRights, ChatBannedRights} from '@layer';
 import {ChatRights} from '@appManagers/appChatsManager';
 
+// * what a member sends: the rights a group's restrictions take away, and the member's boosts can give back
+export const isSendRight = (action: ChatRights) => action === 'embed_links' || action.startsWith('send_');
+
+const NO_BANS: ChatBannedRights = {_: 'chatBannedRights', pFlags: {}, until_date: 0};
+
 /**
  * Check the user's ability to do an action in chat
  * @param id
  * @param action creator can still send messages to left channel. so this function shows server rights. see canSendToPeer for local rights in messages manager.
  * @param rights do not provide this parameter when checking rights for self
  * @param isThread
+ * @param defaultBansLifted the member's own boosts set the group's restrictions of what is sent aside — never the
+ * member's own ban, nor anything else that says no (appChatsManager.isRestrictionLiftedByBoosts)
  * @returns
  */
 export default function hasRights(
   chat: Exclude<Chat, Chat.chatEmpty>,
   action: ChatRights,
   rights?: ChatAdminRights | ChatBannedRights,
-  isThread?: boolean
+  isThread?: boolean,
+  defaultBansLifted?: boolean
 ) {
   if(!chat) return false;
 
@@ -38,7 +46,8 @@ export default function hasRights(
   // const bannedRights = (chat as Chat.channel).banned_rights || chat.default_banned_rights;
 
   if(!rights) {
-    rights = chat.admin_rights || (chat as Chat.channel).banned_rights || chat.default_banned_rights;
+    const defaultBans = defaultBansLifted && isSendRight(action) ? NO_BANS : chat.default_banned_rights;
+    rights = chat.admin_rights || (chat as Chat.channel).banned_rights || defaultBans;
 
     if(!rights) {
       return false;
@@ -165,6 +174,23 @@ export default function hasRights(
 
     case 'just_admin': {
       return isAdmin;
+    }
+
+    // * member tags live in groups only
+    // * own tag: any admin can set theirs, a member unless the group (or a restriction) forbids it
+    case 'edit_rank':
+    // * someone else's tag
+    case 'manage_ranks': {
+      if(chat._ === 'community' || (chat as Chat.channel).pFlags.broadcast) {
+        return false;
+      }
+
+      if(action === 'manage_ranks') {
+        return isAdmin && !!myFlags[action];
+      }
+
+      // * one member's restrictions do not lift the group's own ban, the two add up (desktop)
+      return isAdmin || (!myFlags[action] && !(chat as Chat.channel).default_banned_rights?.pFlags[action]);
     }
 
     // case 'view_statistics': {

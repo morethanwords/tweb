@@ -4,7 +4,7 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import shake from '@helpers/dom/shake';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import {Chat, DialogFilter, User} from '@layer';
-import type {DialogElement} from '@lib/appDialogsManager';
+import type {DialogElement} from '@components/dialogElement';
 import hasRights from '@appManagers/utils/chats/hasRights';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import getPeerId from '@appManagers/utils/peers/getPeerId';

@@ -245,7 +245,7 @@ export class AiTonesManager extends AppManager {
         return {
           ok: true,
           data: {
-            resultText: flattenRichMessageSummary(resultRichMessage, 0),
+            resultText: flattenRichMessageSummary(resultRichMessage),
             resultRichMessage
           }
         };

@@ -24,7 +24,7 @@ const adminRightToI18n: Record<keyof ChatAdminRights.chatAdminRights['pFlags'], 
   add_admins: () => 'EditAdminAddAdmins',
   anonymous: () => 'EditAdminSendAnonymously',
   manage_topics: () => 'ManageTopicsPermission',
-  manage_ranks: () => 'AdminRights.Other',
+  manage_ranks: () => 'EditAdminManageRanks',
 
   invite_users: ({isBroadcast}) =>
     isBroadcast ?

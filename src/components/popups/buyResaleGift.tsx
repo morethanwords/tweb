@@ -12,7 +12,8 @@ import {STARS_CURRENCY, TON_CURRENCY} from '@appManagers/constants';
 import {StarGift, TextWithEntities} from '@layer';
 import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
 import {FloatingStarsBalance} from '@components/popups/floatingStarsBalance';
-import {createPaymentPopup} from '@components/popups/payment';
+import {createPaymentPopup, type PopupPaymentResult} from '@components/popups/payment';
+import {toastNew} from '@components/toast';
 import {StarGiftTransferPreview} from '@components/stargifts/transferPreview';
 import {ChipTab, ChipTabs} from '@components/chipTabs';
 import {InputFieldTsx} from '@components/inputFieldTsx';
@@ -46,7 +47,19 @@ export default function showBuyResaleGiftPopup(options: {
     const [anonymous, setAnonymous] = createSignal(isSelf);
     const [textWithEntities, setTextWithEntities] = createSignal<TextWithEntities>();
 
-    const onBuy = async() => {
+    // the button waits for the purchase's outcome, so a second press cannot start another one
+    const onBuy = async(): Promise<false> => {
+      try {
+        await buy();
+      } catch(err) {
+        console.error('buy resale gift', err);
+        toastNew({langPackKey: 'Error.AnError'});
+      }
+
+      return false;
+    };
+
+    const buy = async() => {
       const popup = await createPaymentPopup({
         inputInvoice: {
           _: 'inputInvoiceStarGiftResale',
@@ -65,11 +78,10 @@ export default function showBuyResaleGiftPopup(options: {
           {amount: myGift.resellPriceStars, currency: STARS_CURRENCY}
       });
 
-      popup.addEventListener('finish', (result) => {
-        if(result === 'paid' || result === 'pending') {
-          finish(true);
-        }
-      });
+      const result = await new Promise<PopupPaymentResult>((resolve) => popup.addEventListener('finish', resolve));
+      if(result === 'paid' || result === 'pending') {
+        finish(true);
+      }
     };
 
     return (
@@ -161,10 +173,7 @@ export default function showBuyResaleGiftPopup(options: {
                 paymentsWrapCurrencyAmount(myGift.resellPriceTon, TON_CURRENCY) :
                 paymentsWrapCurrencyAmount(myGift.resellPriceStars, STARS_CURRENCY)
             ]}
-            callback={() => {
-              onBuy();
-              return false;
-            }}
+            callback={onBuy}
           />
           <PopupElement.Button langKey="Cancel" callback={() => finish(false)} />
         </PopupElement.Buttons>

@@ -40,10 +40,12 @@
       }
 
       &.animating {
-        transition: transform var(--transition-standard-in);
+        @include animation-level(2) {
+          transition: transform var(--transition-standard-in);
 
-        &.backwards {
-          transition: transform var(--transition-standard-out);
+          &.backwards {
+            transition: transform var(--transition-standard-out);
+          }
         }
       }
     }

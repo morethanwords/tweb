@@ -13,8 +13,14 @@ import type {
   ChatInputRichMedia,
   ChatInputRichMessage
 } from '@components/chat/inputEditor/types';
-import type {Document, Photo, RichMessage} from '@layer';
+import type {Document, MessageEntity, Photo, RichMessage} from '@layer';
 import MarkupTooltip from '@components/chat/markupTooltip';
+import prepareTextWithEntitiesForCopying from '@helpers/prepareTextWithEntitiesForCopying';
+import wrapMessageEntities from '@lib/richTextProcessor/wrapMessageEntities';
+import wrapRichText from '@lib/richTextProcessor/wrapRichText';
+import {copyTextToClipboard} from '@helpers/clipboard';
+import {getMiddleware} from '@helpers/middleware';
+import {setMessageTextSource} from '@components/chat/messageTextCopy';
 import '@/materialize.scss';
 import '@/scss/style.scss';
 import './chatInputEditor.scss';
@@ -55,6 +61,18 @@ export type ChatInputEditorBrowserHarness = {
   beginManagedUpload(action?: 'add' | 'replace'): string | undefined,
   completeManagedUpload(id: string): boolean,
   clipboard(): {html: string, text: string},
+  /** What a message's Copy puts on the clipboard */
+  messageClipboard(...args: Parameters<typeof prepareTextWithEntitiesForCopying>): {html: string, text: string},
+  /** Puts it on the system clipboard as the app's Copy does */
+  copyToClipboard(clipboard: {html: string, text: string}): Promise<void>,
+  /**
+   * Draws a message's text as a bubble does (#message-text), the time after it; `reply` is the HTML
+   * of a reply before it, `shown` what is drawn in place of the text (a translation)
+   */
+  drawMessage(
+    message: {text: string, entities: MessageEntity[]},
+    options?: {reply?: string, shown?: {text: string, entities: MessageEntity[]}}
+  ): void,
   deleteBackward(): boolean,
   destroy(): void,
   enableMarkupTooltip(): void,
@@ -86,20 +104,23 @@ export type ChatInputEditorBrowserHarness = {
   redo(): boolean,
   toggleList(type: 'bulletList' | 'orderedList' | 'taskList'): boolean,
   pasteHTML(html: string): boolean,
-  setCaret(position: number): boolean,
-  setCaretInNode(type: string, occurrence?: number, offset?: number | 'end'): boolean,
-  setCaretInTextblock(index: number, edge?: 'end' | 'start' | number): boolean,
+  /** A paste as the browser delivers it, the editor reading the clipboard's types itself */
+  pasteClipboard(clipboard: {html?: string, text?: string}): boolean,
+  value(): ReturnType<ChatInputEditor['getRichValue']>,
+  setCaret(position: number): boolean | Promise<boolean>,
+  setCaretInNode(type: string, occurrence?: number, offset?: number | 'end'): boolean | Promise<boolean>,
+  setCaretInTextblock(index: number, edge?: 'end' | 'start' | number): boolean | Promise<boolean>,
   setDirection(direction: 'ltr' | 'rtl'): void,
   setEditable(editable: boolean): void,
   setExpanded(expanded: boolean): void,
-  setCaretInTrailingPlaceholder(): boolean,
+  setCaretInTrailingPlaceholder(): boolean | Promise<boolean>,
   setNodeAttributes(
     type: string,
     occurrence: number,
     attributes: Record<string, unknown>
   ): boolean,
-  setNodeSelection(type: string, occurrence?: number): boolean,
-  setTextSelection(from: number, to: number, backward?: boolean): boolean,
+  setNodeSelection(type: string, occurrence?: number): boolean | Promise<boolean>,
+  setTextSelection(from: number, to: number, backward?: boolean): boolean | Promise<boolean>,
   setDocument(document: JSONContent): boolean,
   textRanges(): TextRangeDescriptor[],
   textblocks(): TextblockDescriptor[]
@@ -156,10 +177,32 @@ function matchingNode(
   return match;
 }
 
+// On the editor's first focus ProseMirror puts its own selection back into the DOM 20 ms later if the
+// DOM's differs from the last one it read (a browser may have put the caret at the start). A key
+// pressed inside that window has its native move undone before the editor hears of it, as WebKit
+// sends `selectionchange` later than that: the first arrow of a test went nowhere. Nobody presses a key
+// that soon after focusing; a test does. So a call that focuses the editor for the first time
+// resolves only once that check has run.
+const PROSEMIRROR_FIRST_FOCUS_CHECK = 20;
+function afterFirstFocus<T>(wasFocused: boolean, result: T): T | Promise<T> {
+  if(wasFocused) return result;
+  return new Promise((resolve) => {
+    // set after ProseMirror's own timer, so it fires after it
+    const settle = () => setTimeout(() => resolve(result), PROSEMIRROR_FIRST_FOCUS_CHECK);
+    // Tiptap's focus command focuses in the next frame
+    if(tiptap.view.hasFocus()) settle();
+    else requestAnimationFrame(settle);
+  });
+}
+
 function setCaret(position: number) {
+  const wasFocused = tiptap.view.hasFocus();
   chatEditor.restoreSelection({from: position, to: position}, false);
   tiptap.view.focus();
-  return tiptap.state.selection.from === position && tiptap.state.selection.empty;
+  return afterFirstFocus(
+    wasFocused,
+    tiptap.state.selection.from === position && tiptap.state.selection.empty
+  );
 }
 
 function insertTestPhoto(previewUrl: string) {
@@ -286,6 +329,40 @@ window.chatInputEditorHarness = {
     const result = tiptap.view.serializeForClipboard(tiptap.state.selection.content());
     return {html: result.dom.innerHTML, text: result.text};
   },
+  // what the chat's Copy hands over: a message's entities and those its text has by itself (totalEntities)
+  messageClipboard: (messages, meta) => prepareTextWithEntitiesForCopying(
+    (Array.isArray(messages) ? messages : [messages]).map(({text, entities}) => {
+      const wrapped = wrapMessageEntities(text, entities);
+      return {text: wrapped.message, entities: wrapped.totalEntities};
+    }),
+    meta
+  ),
+  copyToClipboard: ({html, text}) => copyTextToClipboard(text, html, {rethrow: true}),
+  drawMessage: ({text, entities}, {reply, shown} = {}) => {
+    const wrapped = wrapMessageEntities(text, entities);
+    const drawn = shown ? wrapMessageEntities(shown.text, shown.entities) : wrapped;
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    const message = document.createElement('div');
+    message.className = 'message spoilers-container';
+    const body = document.createElement('div');
+    body.id = 'message-text';
+    // what the bubble's message body draws (solidMessageBody.tsx)
+    setMessageTextSource(body, () => ({text: wrapped.message, entities: wrapped.totalEntities}));
+    body.append(wrapRichText(drawn.message, {entities: drawn.totalEntities, middleware: getMiddleware().get()}));
+    const time = document.createElement('span');
+    time.className = 'time';
+    time.textContent = '10:27';
+    message.append(body, time);
+    if(reply) {
+      const replyElement = document.createElement('div');
+      replyElement.className = 'reply';
+      replyElement.innerHTML = reply;
+      message.prepend(replyElement);
+    }
+    bubble.append(message);
+    document.body.append(bubble);
+  },
   beginManagedUpload: (action) => {
     const id = `fixture-upload-${++nextManagedUploadId}`;
     const inserted = chatEditor.beginRichMediaUpload({
@@ -331,6 +408,17 @@ window.chatInputEditorHarness = {
   toggleList: (type) => type === 'bulletList' ? chatEditor.toggleBulletList() :
     type === 'orderedList' ? chatEditor.toggleOrderedList() : chatEditor.toggleTaskList(),
   pasteHTML: (html) => tiptap.view.pasteHTML(html),
+  pasteClipboard: ({html = '', text = ''}) => {
+    const event = new Event('paste', {bubbles: true, cancelable: true});
+    Object.defineProperty(event, 'clipboardData', {
+      value: {
+        getData: (type: string) => type === 'text/html' ? html : type === 'text/plain' || type === 'Text' ? text : ''
+      }
+    });
+    input.dispatchEvent(event);
+    return event.defaultPrevented;
+  },
+  value: () => chatEditor.getRichValue(true),
   revision: () => chatEditor.captureSelection().revision,
   roundTripSelection: (remount) => {
     if(remount) {
@@ -481,16 +569,23 @@ window.chatInputEditorHarness = {
   setNodeSelection: (type, occurrence = 0) => {
     const match = matchingNode(type, occurrence);
     if(!match || !NodeSelection.isSelectable(match.node)) return false;
+    const wasFocused = tiptap.view.hasFocus();
     tiptap.view.dispatch(tiptap.state.tr.setSelection(
       NodeSelection.create(tiptap.state.doc, match.position)
     ));
     tiptap.view.focus();
-    return tiptap.state.selection instanceof NodeSelection &&
-      tiptap.state.selection.from === match.position;
+    return afterFirstFocus(
+      wasFocused,
+      tiptap.state.selection instanceof NodeSelection && tiptap.state.selection.from === match.position
+    );
   },
   setTextSelection: (from, to, backward) => {
+    const wasFocused = tiptap.view.hasFocus();
     chatEditor.restoreSelection({from, to, ...(backward ? {backward: true as const} : {})});
-    return tiptap.state.selection.from === from && tiptap.state.selection.to === to;
+    return afterFirstFocus(
+      wasFocused,
+      tiptap.state.selection.from === from && tiptap.state.selection.to === to
+    );
   },
   textRanges: textRangeDescriptors,
   textblocks: textblockDescriptors

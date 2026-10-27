@@ -12,11 +12,11 @@ import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {handleTabKeyDown} from '@helpers/dom/tabList';
 import Modes from '@config/modes';
 import filterAsync from '../helpers/array/filterAsync';
+import verifyMenuItem from '@helpers/verifyMenuItem';
 
 interface ChipTabsContextValue {
   value: string,
   onClick: (event: MouseEvent, value: string) => void
-  updateCurrent: () => void
 }
 
 const ChipTabsContext = createContext<ChipTabsContextValue>(null);
@@ -27,7 +27,6 @@ export function ChipTab(props: {
   value: string
 }) {
   const ctx = useContext(ChipTabsContext);
-  onCleanup(() => fastRaf(ctx.updateCurrent));
   const selected = () => ctx.value === props.value;
   return (
     <div
@@ -51,6 +50,8 @@ export function ChipTabs(props: {
   contextMenuButtons?: (itemId: string) => MaybePromise<ButtonMenuItemOptionsVerifiable[]>,
   children: JSX.Element
   ref?: Ref<HTMLDivElement>
+  /** the row the chips are laid out in, which scrolls */
+  scrollableRef?: (el: HTMLDivElement) => void
   center?: boolean
   needIntersectionObserver?: boolean
 }) {
@@ -100,6 +101,14 @@ export function ChipTabs(props: {
 
   createEffect(on(() => props.value, () => fastRaf(updateCurrent)))
 
+  // * the chosen chip can also move without being chosen anew: when chips come before it, or the
+  // * chips are put in another order
+  onMount(() => {
+    const observer = new MutationObserver(() => fastRaf(updateCurrent));
+    observer.observe(scrollable, {childList: true});
+    onCleanup(() => observer.disconnect());
+  });
+
   if(props.needIntersectionObserver) {
     onMount(() => {
       const observer = new IntersectionObserver((mutations) => {
@@ -131,9 +140,7 @@ export function ChipTabs(props: {
         buttons: [],
         filterButtons: async() => {
           const buttons = await props.contextMenuButtons(chosenElement.dataset.value)
-          return filterAsync(buttons, async(button) => {
-            return button?.verify ? (await button.verify()) ?? false : true;
-          })
+          return filterAsync(buttons, verifyMenuItem)
         }
       })
     })
@@ -145,8 +152,7 @@ export function ChipTabs(props: {
         get value() {
           return props.value;
         },
-        onClick: handleClick,
-        updateCurrent
+        onClick: handleClick
       }}
     >
       <div
@@ -161,7 +167,14 @@ export function ChipTabs(props: {
         role="tablist"
         onKeyDown={handleTabKeyDown}
       >
-        <Scrollable axis="x" ref={scrollable} tabIndex={null}>
+        <Scrollable
+          axis="x"
+          ref={(el) => {
+            scrollable = el;
+            props.scrollableRef?.(el);
+          }}
+          tabIndex={null}
+        >
           <div class={styles.chosen} ref={chosenRef} aria-hidden="true" />
           {props.children}
         </Scrollable>

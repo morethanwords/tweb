@@ -11,10 +11,13 @@
  */
 
 import EventListenerBase from '@helpers/eventListenerBase';
+import type {ActiveAccountNumber} from '@lib/accounts/types';
+import {CallAccount, CallHold, holdCall} from '@lib/calls/callAccount';
 import CALL_STATE from '@lib/calls/callState';
+import type {AppManagers} from '@lib/managers';
 import {logger} from '@lib/logger';
 
-export type ConferenceInviteInstanceOptions = {
+export type ConferenceInviteInstanceOptions = Partial<CallAccount> & {
   interlocutorUserId: UserId,
   /** Server id of the invite service message — the join/decline authorization. */
   msgId: number,
@@ -37,9 +40,14 @@ export default class ConferenceInviteInstance extends EventListenerBase<{
   public readonly msgId: number;
   public readonly conferenceId: string;
   public readonly participants: PeerId[];
+  // * the account invited: the tab may show another one meanwhile (see callAccount)
+  public readonly accountNumber: ActiveAccountNumber;
+  public readonly managers: AppManagers;
+  public readonly myId: PeerId;
 
   private log: ReturnType<typeof logger>;
   private state: CALL_STATE;
+  private heldCall: CallHold;
   private onAccept: ConferenceInviteInstanceOptions['onAccept'];
   private onDecline: ConferenceInviteInstanceOptions['onDecline'];
 
@@ -52,6 +60,11 @@ export default class ConferenceInviteInstance extends EventListenerBase<{
     this.participants = options.participants;
     this.onAccept = options.onAccept;
     this.onDecline = options.onDecline;
+    this.accountNumber = options.accountNumber;
+    this.managers = options.managers;
+    this.myId = options.myId;
+    // * no call yet, so no id: it is held for what a reload would end
+    this.heldCall = this.accountNumber && holdCall(this.accountNumber);
 
     this.log = logger('CONFERENCE-INVITE-' + this.msgId);
     this.state = CALL_STATE.PENDING;
@@ -71,6 +84,10 @@ export default class ConferenceInviteInstance extends EventListenerBase<{
     }
 
     this.state = state;
+    if(state === CALL_STATE.CLOSED) {
+      this.heldCall?.release();
+    }
+
     this.dispatchEvent('state', state);
   }
 

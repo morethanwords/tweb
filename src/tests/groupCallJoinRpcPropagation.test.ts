@@ -105,29 +105,43 @@ describe('GroupCallConnectionInstance join error propagation', () => {
     vi.restoreAllMocks();
   });
 
-  it('observes a rejected presentation sender parameter update', async() => {
+  it('observes a rejected screen sharing sender parameter update', async() => {
     vi.spyOn(CallConnectionInstanceBase.prototype, 'negotiate').mockResolvedValue(undefined);
     const parameterError = new Error('setParameters rejected');
     const warn = vi.fn();
     const sender = {
-      getParameters: vi.fn(() => ({})),
-      setParameters: vi.fn().mockRejectedValue(parameterError),
-      track: {kind: 'video'}
+      getParameters: vi.fn(() => ({encodings: [{active: true}, {active: true}]})),
+      setParameters: vi.fn().mockRejectedValue(parameterError)
     };
-    const instance = {
-      connection: {getTransceivers: () => [{sender}]},
-      log: {warn},
-      negotiating: undefined as Promise<void> | undefined,
+    const instance = new GroupCallConnectionInstance({
+      streamManager: {} as any,
+      log: Object.assign(vi.fn(), {warn}) as any,
+      groupCall: {} as any,
+      type: 'presentation',
       options: {type: 'presentation'},
-      updateConstraints: false
+      managers: {} as any
+    });
+    (instance as any).connection = {signalingState: 'stable'};
+    (instance as any).description = {
+      findEntry: (verify: (entry: unknown) => boolean) => {
+        const entry = {type: 'video', direction: 'sendonly', transceiver: {sender}};
+        return verify(entry) ? entry : undefined;
+      }
     };
 
-    await expect(GroupCallConnectionInstance.prototype.negotiate.call(instance as any))
-    .resolves.toBeUndefined();
+    await expect(instance.negotiate()).resolves.toBeUndefined();
     await vi.waitFor(() => expect(warn).toHaveBeenCalledWith(
-      'setting presentation sender parameters failed',
+      'setting video sender parameters failed',
       parameterError
     ));
+    // Two-layer screen share, maintain-resolution, in one setParameters.
+    expect(sender.setParameters).toHaveBeenCalledWith({
+      degradationPreference: 'maintain-resolution',
+      encodings: [
+        {active: true, maxBitrate: 100000, scaleResolutionDownBy: 2},
+        {active: true, maxBitrate: 1000000, scaleResolutionDownBy: 1}
+      ]
+    });
   });
 
   it('runs a fresh offer when a queued request overlaps a direct negotiation', async() => {

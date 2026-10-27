@@ -15,15 +15,17 @@ import {
 import {
   bytesToHex,
   computeSharedSecret,
+  concatBytes,
   ed25519GenerateKeyPair,
   ed25519SkToCurve25519,
   ensureCryptoReady,
   hmacSha512,
+  int32LeToBytes,
   randomBytes,
   sha256
 } from '../crypto';
 import {PrivateKey, PublicKey} from '../keys';
-import {encryptData, encryptHeader} from '../messageEncryption';
+import {decryptData, encryptData, encryptHeader} from '../messageEncryption';
 import {SharedKey} from '../tlTypes';
 
 beforeAll(() => ensureCryptoReady());
@@ -157,6 +159,82 @@ describe('encryptPacket / decryptPacket', () => {
     expect(decoded.seqno).toBe(1);
     expect(bytesToHex(decoded.data)).toBe(bytesToHex(data));
     expect(bytesToHex(decoded.epochHash)).toBe(bytesToHex(epoch.epochHash));
+  });
+
+  // Pins the wire format part by part, each recomputed with the plain
+  // primitives (header_b slots with encryptHeader from the raw epoch key, not
+  // the header key encryptPacket caches on the epoch), at sizes on both sides
+  // of the aes-js / Web Crypto split.
+  it('lays a frame out as the wire format says — every part recomputable from the spec', async() => {
+    const MAGIC_CALL_PACKET = int32LeToBytes(0x40a6bee9);
+    const MAGIC_CALL_PACKET_LARGE_MSG_ID = int32LeToBytes(0x1ce56c2d);
+    const key = PrivateKey.fromSeed(new Uint8Array(32).fill(15));
+    const userId = BigInt('9');
+    const participants = [{userId, publicKey: key.publicKey()}];
+    const epochs = [await makeEpoch(1, participants), await makeEpoch(2, participants), await makeEpoch(3, participants)];
+    const oneTimeSecret = randomBytes(32);
+    const seqno = 0xfffffffe;
+
+    for(const [size, prefixLength] of [[0, 0], [100, 0], [4000, 10], [20000, 1]]) {
+      const data = randomBytes(size);
+      const packet = await encryptPacket({
+        channelId: 7,
+        data,
+        unencryptedPrefixLength: prefixLength,
+        epochs,
+        privateKey: key,
+        seqno,
+        oneTimeSecret
+      });
+
+      let offset = 0;
+      const take = (length: number) => packet.subarray(offset, offset += length);
+      const prefix = take(prefixLength);
+      const headerA = take(4 + 32 * epochs.length);
+      const headerB = take(32 * epochs.length);
+      const encryptedPacket = packet.subarray(offset, packet.length - 4);
+      const encryptedPayload = encryptedPacket.subarray(0, encryptedPacket.length - 64);
+      const signature = encryptedPacket.subarray(encryptedPacket.length - 64);
+
+      expect(bytesToHex(prefix)).toBe(bytesToHex(data.subarray(0, prefixLength)));
+      expect(bytesToHex(headerA)).toBe(bytesToHex(concatBytes(int32LeToBytes(epochs.length), ...epochs.map((e) => e.epochHash))));
+      expect(bytesToHex(packet.subarray(packet.length - 4))).toBe(bytesToHex(int32LeToBytes(prefixLength)));
+
+      const {output: payload, largeMsgId} = await decryptData(
+        encryptedPayload,
+        oneTimeSecret,
+        concatBytes(MAGIC_CALL_PACKET, headerA, prefix)
+      );
+      expect(bytesToHex(payload)).toBe(bytesToHex(concatBytes(int32LeToBytes(7), int32LeToBytes(seqno), data.subarray(prefixLength))));
+      // Ed25519 is deterministic: the same message signs to the same bytes.
+      expect(bytesToHex(signature)).toBe(bytesToHex(key.sign(concatBytes(MAGIC_CALL_PACKET_LARGE_MSG_ID, largeMsgId))));
+      for(let i = 0; i < epochs.length; i++) {
+        const expected = await encryptHeader(oneTimeSecret, encryptedPacket, epochs[i].groupSharedKey);
+        expect(bytesToHex(headerB.subarray(32 * i, 32 * i + 32))).toBe(bytesToHex(expected));
+      }
+    }
+  });
+
+  it('derives an epoch\'s header key once, for every frame after the first', async() => {
+    const key = PrivateKey.fromSeed(new Uint8Array(32).fill(16));
+    const userId = BigInt('10');
+    const epoch = await makeEpoch(0, [{userId, publicKey: key.publicKey()}]);
+    const frame = (seqno: number) => encryptPacket({
+      channelId: 0,
+      data: new Uint8Array([1, 2, 3]),
+      unencryptedPrefixLength: 0,
+      epochs: [epoch],
+      privateKey: key,
+      seqno
+    });
+
+    expect(epoch.headerKey).toBeUndefined();
+    const first = await frame(1);
+    const headerKey = epoch.headerKey;
+    expect(headerKey).toBeDefined();
+    await frame(2);
+    await decryptPacket({packet: first, fromUserId: userId, epochs: [epoch]});
+    expect(epoch.headerKey).toBe(headerKey);
   });
 
   it('multi-epoch packet decodes with either epoch', async() => {

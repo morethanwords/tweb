@@ -1,6 +1,6 @@
 import deferredPromise from '@helpers/cancellablePromise';
 
-import {getCurrentAccountFromURL} from '@lib/accounts/getCurrentAccountFromURL';
+import getClientAccount from '@lib/serviceWorker/clientAccounts';
 import {get500ErrorResponse} from '@lib/serviceWorker/errors';
 import {parseRange} from '@lib/serviceWorker/stream';
 
@@ -20,7 +20,7 @@ export async function onHlsStreamFetch(event: FetchEvent, inParams: string, sear
     const range = parseRange(event.request.headers.get('Range'));
 
     const client = await ctx.clients.get(event.clientId);
-    const accountNumber = getCurrentAccountFromURL(client.url);
+    const accountNumber = await getClientAccount(client);
 
 
     const [lowerBound, upperBound] = range;

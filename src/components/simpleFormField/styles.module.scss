@@ -33,11 +33,11 @@
   }
 
   &.withEndButtonIcon {
-    padding-right: calc(var(--padding-horizontal) - 0.5rem);
+    padding-inline-end: calc(var(--padding-horizontal) - 0.5rem);
   }
 
   &.withStartButtonIcon {
-    padding-left: calc(var(--padding-horizontal) - 0.5rem);
+    padding-inline-start: calc(var(--padding-horizontal) - 0.5rem);
   }
 
   &.hoverEnabled:hover:not(.error) .BorderThin {
@@ -52,7 +52,7 @@
     --cover-padding: 0.25rem;
     font-size: 0.8rem;
     top: 0;
-    left: calc(var(--padding-horizontal) - var(--cover-padding));
+    inset-inline-start: calc(var(--padding-horizontal) - var(--cover-padding));
     padding: 0 var(--cover-padding);
     background-color: var(--surface-color);
   }
@@ -88,7 +88,7 @@
   &Thin {
     border: 1px solid var(--input-search-border-color);
 
-    @include animation-level-global(2) {
+    @include animation-level-global(1) {
       transition: border-color .2s;
     }
   }
@@ -97,7 +97,7 @@
     border: 2px solid var(--primary-color);
     opacity: 0;
 
-    @include animation-level-global(2) {
+    @include animation-level-global(1) {
       transition: opacity .2s;
     }
   }
@@ -143,7 +143,8 @@
 
 .Label {
   position: absolute;
-  left: var(--offset, 0px);
+  // `--offset` is measured from the inline start (see `SimpleFormField.Label`)
+  inset-inline-start: var(--offset, 0px);
   top: 50%;
   transform: translateY(-50%);
   font-size: 1rem;
@@ -151,9 +152,7 @@
   color: $placeholder-color;
   pointer-events: none;
 
-  @include animation-level-global(2) {
-    transition: all .2s, font-weight .05s 0.1s;
-  }
+  @include animation-level-transition(font-size .2s, top .2s, left .2s, padding .2s, color .2s, background-color .2s, font-weight .05s .1s, $global: true);
 
   &.noTransition {
     transition: none !important;
@@ -165,10 +164,10 @@
   margin: 0 0.25rem;
 
   &.first {
-    margin-left: 0;
+    margin-inline-start: 0;
   }
   &.last {
-    margin-right: 0;
+    margin-inline-end: 0;
   }
 
   // Keep the icon closer to top when the text wraps multiple lines

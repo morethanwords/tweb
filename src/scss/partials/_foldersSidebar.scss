@@ -128,6 +128,11 @@
       background: var(--folders-sidebar-background-hover);
     }
 
+    // * a folder whose context menu is open keeps the hover plate
+    &.menu-open {
+      background: var(--folders-sidebar-background-hover);
+    }
+
     &-icon {
       font-size: var(--size);
     }
@@ -156,7 +161,7 @@
     &-badge {
       position: absolute;
       top: 6px;
-      right: 10px;
+      inset-inline-end: 10px;
       font-size: var(--font-size-12);
       line-height: 18px !important;
       // box-shadow: 0 0 0 1px var(--folders-sidebar-background-hover);
@@ -215,13 +220,15 @@
     left: 50%;
     transform: translateX(-50%) !important;
 
+    // * `:has()` of a child, not of the whole document: that one was searched again each time the
+    // * button was restyled (see .sidebar-left-overlay)
     @include respond-to(no-floating-left-sidebar) {
-      html:has(#column-left.is-collapsed) & {
+      #main-columns:has(> #column-left.is-collapsed) & {
         display: flex;
       }
 
       // a11y: `.btn-corner` is hidden until it is slid in
-      html:where(.a11y):has(#column-left.is-collapsed) & {
+      html:where(.a11y) #main-columns:has(> #column-left.is-collapsed) & {
         visibility: visible;
       }
     }
@@ -230,8 +237,9 @@
   &__add-folders-button {
     position: absolute;
     top: calc(var(--offset) * 1px);
-    right: 0;
-    transform: translate(100%, -50%);
+    inset-inline-end: 0;
+    // * a tab sticking out of the bar's inline end into the chat list
+    transform: translate(calc(100% * var(--reflect)), -50%);
 
     display: none;
     flex-direction: column;
@@ -241,9 +249,10 @@
 
     width: 4.5rem;
     height: 5.5rem;
-    border-top-right-radius: $border-radius;
-    border-bottom-right-radius: $border-radius;
+    border-start-end-radius: $border-radius;
+    border-end-end-radius: $border-radius;
 
+    // * the shape is drawn for the left-to-right side: its notches meet the bar on the left
     mask-image: url('/assets/img/add-chats-to-folder-shape.svg');
 
     font-size: 10px;
@@ -251,7 +260,7 @@
     font-weight: var(--font-weight-bold);
 
     color: #aaaaaa;
-    border-left: 1px solid rgba(0, 0, 0, 0.1);
+    border-inline-start: 1px solid rgba(0, 0, 0, 0.1);
 
     transition: opacity .2s;
 
@@ -261,16 +270,20 @@
       background: var(--folders-sidebar-background-hover);
     }
 
-    :has(#column-left.is-collapsed:not(.has-open-tabs)) & {
+    #main-columns:has(> #column-left.is-collapsed:not(.has-open-tabs)) & {
       display: flex;
     }
 
-    body:has(.hide-add-folders) & {
+    #main-columns:has(> #column-left.hide-add-folders) & {
       opacity: 0 !important;
     }
 
     &-icon {
       font-size: 30px;
+    }
+
+    :where(.is-rtl) & {
+      mask-image: url('/assets/img/add-chats-to-folder-shape-rtl.svg');
     }
   }
 }

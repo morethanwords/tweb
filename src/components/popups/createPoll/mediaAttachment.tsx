@@ -5,8 +5,8 @@ import type {ButtonMenuSync} from '@components/buttonMenu';
 import {IconTsx} from '@components/iconTsx';
 import {EditingMediaState} from '@components/mediaEditor/context';
 import {MediaEditorFinalResult} from '@components/mediaEditor/finalRender/createFinalResult';
+import RenderProgressCircle from '@components/mediaEditor/renderProgressCircle';
 import {MAX_EDITABLE_VIDEO_SIZE, supportsVideoEncoding} from '@components/mediaEditor/support';
-import {ProgressCircleSVG} from '@components/progressCircleSVG';
 import {StickerPreview} from '@components/stickerPreview';
 import PhotoTsx from '@components/wrappers/photoTsx';
 import {animateImageToTarget} from '@helpers/animateImageToTarget';
@@ -34,6 +34,7 @@ import {openPollLinkEditorPopup} from '../pollLink';
 import styles from './mediaAttachment.module.scss';
 import {useStickersDropdown} from './stickersDropdown';
 import {AttachedLink, AttachedMedia, AttachedVideo, SupportedMediaType} from './storeContext';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 
 type PersistingState = {
@@ -49,7 +50,6 @@ type PersistingState = {
 type CreatingVideoState = {
   previewObjectUrl: string;
   editorResult: MediaEditorFinalResult;
-  progress: () => number;
 };
 
 export const MediaAttachment = (props: {
@@ -310,6 +310,7 @@ export const MediaAttachment = (props: {
   });
 
   const onEdit = wrapAsyncClickHandler(async() => {
+    const managers = bindManagersToSession(rootScope.managers);
     if(!props.attachedMedia || !persistingState) return;
     if(props.attachedMedia.type !== 'photo' && props.attachedMedia.type !== 'video') return;
 
@@ -323,6 +324,8 @@ export const MediaAttachment = (props: {
     const sourceHeight = willAnimateFromVideo ? (sourceEl as HTMLVideoElement).videoHeight : (sourceEl as HTMLImageElement).naturalHeight;
 
     const {openMediaEditorFromMedia} = await import('@components/mediaEditor');
+    // * the attachment can be gone by the time the editor loads (its popup closed, the account switched)
+    if(persistingState !== editingState) return;
     const mediaSrc = objectURLs.create(editingState.initialFile);
 
     openMediaEditorFromMedia({
@@ -332,7 +335,7 @@ export const MediaAttachment = (props: {
       mediaType: wasInitiallyVideo ? 'video' : 'image',
       mediaSrc,
       getMediaBlob: async() => editingState.initialFile,
-      managers: rootScope.managers,
+      managers,
       onEditFinish: (editorResult) => handleFinish(editorResult, editingState.initialFile, startOperation()),
       editingMediaState: editingState.editingState,
       onClose: () => objectURLs.release(mediaSrc),
@@ -430,12 +433,9 @@ export const MediaAttachment = (props: {
       return;
     }
 
-    const [progress] = editorResult.creationProgress;
-
     setCreatingVideoState({
       previewObjectUrl,
-      editorResult,
-      progress
+      editorResult
     });
 
     // Block submit while video render is in progress.
@@ -854,16 +854,7 @@ export const MediaAttachment = (props: {
               class={styles.videoCreatingPreview}
             />
             <div class={styles.videoCreatingOverlay}>
-              <div class={styles.videoCreatingProgress}>
-                <ProgressCircleSVG
-                  progress={state.progress()}
-                  strokeThickness={1 / 8}
-                  stroke='white'
-                />
-              </div>
-              <div role='button' class={styles.videoCreatingCancel}>
-                <IconTsx icon='close' class={styles.videoCreatingCancelIcon} />
-              </div>
+              <RenderProgressCircle creationProgress={state.editorResult.creationProgress} fill />
             </div>
           </div>
         )}

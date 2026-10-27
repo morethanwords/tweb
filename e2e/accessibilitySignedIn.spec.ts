@@ -14,8 +14,8 @@ import {clickVisible, expectNoA11yViolations, trackBrowserErrors} from './access
  * Like the pixel sweeps it needs an authorized preview and skips without one
  * rather than reporting a clean run it never made:
  *
- *   bash scripts/start-preview.sh --port 9105
- *   PLAYWRIGHT_BASE_URL=http://localhost:9105 pnpm exec playwright test e2e/accessibilitySignedIn.spec.ts
+ *   bash scripts/start-preview.sh --detach    # prints the URL, say http://localhost:9001
+ *   PLAYWRIGHT_BASE_URL=http://localhost:9001 pnpm exec playwright test e2e/accessibilitySignedIn.spec.ts
  */
 test.describe('the signed-in client has no detectable accessibility violations', () => {
   test.skip(!process.env.PLAYWRIGHT_BASE_URL, 'needs an authorized preview (PLAYWRIGHT_BASE_URL)');
@@ -118,7 +118,9 @@ test.describe('the signed-in client has no detectable accessibility violations',
     await page.waitForFunction(() => document.querySelectorAll('.chatlist-chat').length > 0,
       null, {timeout: 180_000});
     await clickVisible(page, '#column-left .btn-menu-toggle');
-    await page.waitForTimeout(700);
+    // * the menu builds its rows first - one per signed-in account, each asked of the worker - so it opens
+    // * when they are in, not at a set time after the click
+    await page.waitForSelector('.btn-menu.active', {timeout: 15_000}).catch(() => {});
     const settings = page.locator('.btn-menu.active .btn-menu-item').filter({hasText: /settings|настройк/i}).first();
     expect(await settings.isVisible().catch(() => false), 'the main menu has no settings item').toBe(true);
     await settings.click({timeout: 8000});

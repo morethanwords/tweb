@@ -2,7 +2,7 @@ import {formatDate} from '@helpers/date';
 import {makeDateFromTimestamp} from '@helpers/date/makeDateFromTimestamp';
 import formatDuration from '@helpers/formatDuration';
 import prepareTextWithEntitiesForCopying from '@helpers/prepareTextWithEntitiesForCopying';
-import {ChannelAdminLogEventAction, ChatBannedRights, Message} from '@layer';
+import {ChannelAdminLogEventAction, ChatBannedRights, Message, TextWithEntities} from '@layer';
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
 import {isBannedParticipant} from '@appManagers/utils/chats/isBannedParticipant';
 import removeChatBannedRightsFromParticipant from '@appManagers/utils/chats/removeChatBannedRightsFromParticipant';
@@ -96,15 +96,8 @@ export function extractDefaultRightsChanges(
   return {added, removed};
 }
 
-export function getMessageTextForCopy(message: Message) {
-  if(message._ !== 'message') {
-    return {text: '', html: ''};
-  }
-
-  return prepareTextWithEntitiesForCopying({
-    text: message.message,
-    entities: message.entities
-  });
+function getMessageTextWithEntities(message: Message): Omit<TextWithEntities, '_'> {
+  return message._ === 'message' ? {text: message.message, entities: message.entities} : {text: '', entities: []};
 }
 
 export async function createSimpleServiceCopyText(
@@ -129,11 +122,9 @@ export async function createMessageCopyText(
   const dateText = getDateTextForCopy(timestamp);
   const peerTitle = await getPeerTitle({peerId, plainText: true});
   const text = formatText(peerTitle);
-  const msg = getMessageTextForCopy(message);
-  return {
-    text: `${text} [${dateText}]\n${msg.text}`,
-    html: `${text} [${dateText}]<br/>${msg.html}`
-  };
+  // the line above the message holds a peer's title, text its owner chose: it goes into the HTML
+  // as text, never as markup
+  return prepareTextWithEntitiesForCopying(getMessageTextWithEntities(message), [`${text} [${dateText}]`]);
 }
 
 export async function createPreviousValueCopyText(
@@ -178,13 +169,11 @@ export async function createMessageWithPreviousCopyText(
   const dateText = getDateTextForCopy(timestamp);
   const peerTitle = await getPeerTitle({peerId, plainText: true});
   const mainText = formatMainText(peerTitle);
-  const newMsg = getMessageTextForCopy(newMessage);
-  const prevMsg = getMessageTextForCopy(prevMessage);
   const previousLabel = formatPreviousLabel();
-  return {
-    text: `${mainText} [${dateText}]\n${newMsg.text}\n\n${previousLabel}:\n${prevMsg.text}`,
-    html: `${mainText} [${dateText}]<br/>${newMsg.html}<br/><br/>${previousLabel}:<br/>${prevMsg.html}`
-  };
+  return prepareTextWithEntitiesForCopying(
+    [getMessageTextWithEntities(newMessage), getMessageTextWithEntities(prevMessage)],
+    [`${mainText} [${dateText}]`, `${previousLabel}:`]
+  );
 }
 
 export async function createTwoPeerCopyText(

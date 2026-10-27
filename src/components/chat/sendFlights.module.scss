@@ -1,0 +1,125 @@
+// The copies of what is being sent, drawn over the chat: above the list, the composer and the panel.
+// The overlay is an origin, not a box; every part of a copy is laid out once, from it or from its parent's
+// corner, and then only moved, stretched and faded by the compositor.
+.overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  z-index: 4;
+  pointer-events: none;
+  // what the copies lay out is laid out here and nowhere else: of a size of its own, it is where a layout
+  // of them starts and stops
+  contain: size layout style;
+}
+
+// a part moves across in a wrapper (`.part`) and up in itself, each on its own curve
+.flight,
+.part,
+.piece,
+.tail,
+.clip,
+.window,
+.box {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+
+// a text bubble's background: bands and corners in its colour, stretched and moved to their places
+.piece {
+  background-color: currentColor;
+}
+
+.clip,
+.window,
+.box {
+  overflow: hidden;
+}
+
+// a picture grows from its middle
+.box {
+  transform-origin: 50% 50%;
+}
+
+.round {
+  border-radius: 50%;
+}
+
+// the field's text as it was laid out in the field
+.fieldText {
+  position: absolute !important;
+  left: 0;
+  margin: 0 !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  background: none !important;
+}
+
+// the quote of the composer's reply panel, as big as it was there
+.quote {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box;
+}
+
+// the bubble as it is laid out in the list, without its own background: the copy's background is it
+.bubble {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box;
+}
+
+.bubbleContent {
+  background: none !important;
+  box-shadow: none !important;
+
+  :global(.bubble-tail) {
+    display: none !important;
+  }
+}
+
+// a picture taken out of its message to fly, filling the box that flies it, under the picture of its source (which
+// gives way to it), whatever layer its message puts it on (`.bubble.sticker .attachment`)
+.borrowed {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  z-index: 0 !important;
+}
+
+// what holds such a picture in its message, there for the rules that style the picture through it, but neither
+// laid out nor drawn itself
+.context {
+  display: contents !important;
+
+  &::before,
+  &::after {
+    content: none !important;
+  }
+}
+
+// what a box shows, filling it: over the place and the size of its own the copy of a control takes along
+// (`copyControl`) and over rules that place it where it stood (`.row-media`)
+.fill {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+}
+
+// what of the message is not seen while its copy flies into it, whatever transition it has
+.hidden.hidden {
+  opacity: 0 !important;
+  transition: none !important;
+}

@@ -24,13 +24,15 @@ import {PeerTitleTsx} from '@components/peerTitleTsx';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {FloatingStarsBalance} from './floatingStarsBalance';
-import showStarsPopup from './stars';
 import formatStarsAmount from '../../lib/appManagers/utils/payments/formatStarsAmount';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export async function showCreateStarGiftOfferPopup(options: {
   gift: MyStarGift
   onFinish?: (result: 'created' | 'cancel') => void
 }) {
+  const managers = bindManagersToSession(rootScope.managers);
   const gift = options.gift.raw as StarGift.starGiftUnique;
   const peerTitle = await wrapPeerTitle({peerId: getPeerId(gift.owner_id), onlyFirstName: true})
   const [show, setShow] = createSignal(true);
@@ -84,7 +86,7 @@ export async function showCreateStarGiftOfferPopup(options: {
         options.onFinish?.('created')
       } catch(err) {
         if((err as ApiError).type === 'BALANCE_TOO_LOW') {
-          showStarsPopup({
+          hotReloadGuard.showStarsPopup({
             itemPrice: starsAmount.amount,
             ton: ton(),
             onTopup: async() => {
@@ -142,6 +144,7 @@ export async function showCreateStarGiftOfferPopup(options: {
 
     return (
       <PopupElement
+        managers={managers}
         class={styles.popup}
           show={show()}
         closable={true}

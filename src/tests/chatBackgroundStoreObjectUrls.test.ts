@@ -7,7 +7,8 @@ const mocks = vi.hoisted(() => ({
   pinObjectURL: vi.fn(() => vi.fn()),
   releaseSharedObjectURL: vi.fn(),
   save: vi.fn(),
-  setSharedObjectURL: vi.fn()
+  setSharedObjectURL: vi.fn(),
+  currentAccount: 2
 }));
 
 vi.mock('@helpers/objectUrl', () => ({
@@ -19,7 +20,7 @@ vi.mock('@helpers/objectUrl', () => ({
 }));
 
 vi.mock('@lib/accounts/getCurrentAccount', () => ({
-  getCurrentAccount: () => 2
+  getCurrentAccount: () => mocks.currentAccount
 }));
 
 vi.mock('@lib/files/cacheStorage', () => ({
@@ -37,6 +38,7 @@ function makeOwner(slug: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.currentAccount = 2;
 });
 
 describe('ChatBackgroundStore object URL ownership', () => {
@@ -132,8 +134,19 @@ describe('ChatBackgroundStore object URL ownership', () => {
     await ChatBackgroundStore.preloadWallPapers(managers, {downloadMediaVoid} as any);
 
     expect(downloadMediaVoid).toHaveBeenCalledTimes(2);
-    expect(ChatBackgroundStore.cachedWallPapers).toBe(wallPapers);
+    expect(ChatBackgroundStore.getCachedWallPapers()).toBe(wallPapers);
     expect(mocks.createSharedObjectURL).not.toHaveBeenCalled();
     expect(mocks.setSharedObjectURL).not.toHaveBeenCalled();
+  });
+
+  it('keeps the cached wallpaper list to the account it was loaded for', () => {
+    const wallPapers = [{_: 'wallPaper', slug: 'uploaded', document: {_: 'document', id: '3'}}] as any[];
+    ChatBackgroundStore.setCachedWallPapers(wallPapers);
+
+    mocks.currentAccount = 1;
+    expect(ChatBackgroundStore.getCachedWallPapers()).toBeUndefined();
+
+    mocks.currentAccount = 2;
+    expect(ChatBackgroundStore.getCachedWallPapers()).toBe(wallPapers);
   });
 });

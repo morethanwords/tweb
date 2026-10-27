@@ -7,6 +7,10 @@ $transition: .2s ease-in-out;
     //animation: rotate 2s linear infinite;
     animation: rotate 1s linear infinite;
     height: 100%;
+
+    @include animation-level-below(1) {
+      animation: none;
+    }
     transform-origin: center center;
     /* width: 100%; */
     position: absolute;
@@ -43,9 +47,7 @@ $transition: .2s ease-in-out;
     opacity: 0;
     transform: scale(0);
 
-    body:not(.animation-level-0) & {
-      transition: opacity $transition, transform $transition;
-    }
+    @include animation-level-transition(opacity $transition, transform $transition);
 
     &.is-visible {
       &.forwards {
@@ -59,6 +61,12 @@ $transition: .2s ease-in-out;
     position: absolute;
     inset: 0;
     opacity: 0;
+
+    // * the sweeps only while shown, as the spinner above
+    &:not(.is-visible) .loading {
+      animation: none;
+    }
+
     overflow: hidden;
     pointer-events: none;
     backdrop-filter: blur(0px) brightness(1.0);
@@ -121,7 +129,9 @@ $transition: .2s ease-in-out;
     stroke-width: 2;
   }
 
-  @include animation-level(2) {
+  // a spinner and its progress say something is going on, so they keep going
+  // with reduced animations
+  @include animation-level(1) {
     &.is-visible:not(.manual), &.is-visible.animating {
       .you-spin-me-round {
         animation: rotate 2s linear infinite;
@@ -136,7 +146,10 @@ $transition: .2s ease-in-out;
   &.preloader-swing {
     cursor: default;
 
-    .you-spin-me-round {
+    // * only while shown (and fading out): a player keeps its buffering spinner, hidden, for as long as
+    // * it is open, and an endless animation on what is not painted runs on the main thread - a frame
+    // * every 16 ms under a playing video
+    &.is-visible .you-spin-me-round {
       animation: rotate 1s linear infinite !important;
     }
 
@@ -163,7 +176,7 @@ $transition: .2s ease-in-out;
     //transform: scale(1);
     opacity: 1;
     
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: opacity .2s ease-in-out/* , transform .2s ease-in-out */;
     }
 
@@ -223,6 +236,102 @@ $transition: .2s ease-in-out;
   &.preloader-bold {
     .preloader-path-new {
       stroke-width: 3.5;
+    }
+  }
+}
+
+// the cancelable progress: a ring of dots that a line goes round, and the download arrow that turns
+// into it (preloaderRing.ts); the disc under it is .preloader-circular, as before. A progress that
+// cannot be cancelled has the share done in the middle instead (.preloader-percent).
+.preloader-dots {
+  container-type: size;
+
+  .preloader-dots-spin,
+  .preloader-dots-ring,
+  .preloader-arrow,
+  .preloader-cross {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  // "100%" fits inside the ring
+  .preloader-percent {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color);
+    font-size: 22cqmin;
+    font-weight: var(--font-weight-bold);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  // a small one (a file's icon, an audio button, a thumbnail) has no room for the ring's margin: the
+  // whole drawing grows together, the J still meeting the ring, to put the ring at the box's edge where
+  // the old one was
+  @container (width < 50px) {
+    .preloader-dots-spin,
+    .preloader-arrow,
+    .preloader-cross {
+      scale: 1.263;
+    }
+
+    // the drawing is larger, so the number is too
+    .preloader-percent {
+      font-size: 25cqmin;
+    }
+  }
+
+  .preloader-dot,
+  .preloader-dots-rest {
+    fill: var(--color);
+  }
+
+  .preloader-line,
+  .preloader-arrow,
+  .preloader-cross {
+    fill: none;
+    stroke: var(--color);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  // as wide as a dot, so a dot the line reaches becomes part of it
+  .preloader-line {
+    stroke-width: 3;
+  }
+
+  .preloader-arrow {
+    stroke-width: 2;
+  }
+
+  .preloader-cross {
+    stroke-width: 1.8;
+  }
+
+  // at rest the state says what is seen; at the full animation level a change is drawn by the script,
+  // at the reduced one these crossfade
+  &.manual .preloader-dots-spin,
+  &.is-going .preloader-dots-spin,
+  &.manual .preloader-cross,
+  &:not(.manual) .preloader-arrow {
+    opacity: 0;
+  }
+
+  @include animation-level(1) {
+    .preloader-dots-spin,
+    .preloader-arrow,
+    .preloader-cross {
+      transition: opacity .2s ease-in-out;
+    }
+
+    // it says the download is going on, so it keeps turning with reduced animations, as a spinner does
+    &.is-spinning .preloader-dots-spin {
+      animation: rotate 8s linear infinite;
     }
   }
 }

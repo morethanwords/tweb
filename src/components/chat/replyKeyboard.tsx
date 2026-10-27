@@ -107,10 +107,13 @@ export default class ReplyKeyboard extends DropdownHover {
   }
 
   private async getReplyMarkup(): Promise<ReplyMarkup> {
+    const {chat} = this.chatInput;
     // the welcome messages section shares the chat's history storage, yet a bot's keyboard or
-    // force-reply there is not for writing templates (desktop and Android have none in it)
-    const replyMarkup = this.chatInput.chat.type !== ChatType.Welcome &&
-      this.chatInput.chat.historyStorageNoThreadId.replyMarkup;
+    // force-reply there is not for writing templates (desktop and Android have none in it).
+    // A topic or a comment thread shows the keyboard of its own last bot message, not the
+    // chat's: its storage keeps that one (desktop's replies keyboard, Android's per-topic one)
+    const replyMarkup = chat.type !== ChatType.Welcome &&
+      chat.historyStorage.replyMarkup;
     return replyMarkup || {
       _: 'replyKeyboardHide',
       pFlags: {}

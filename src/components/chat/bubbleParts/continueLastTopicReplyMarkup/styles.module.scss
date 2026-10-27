@@ -1,9 +1,9 @@
 .ArrowIcon {
   opacity: 0.4;
-  transform: rotate(-90deg);
+  // * the down chevron turned to point along the line, to its end
+  transform: rotate(calc(-90deg * var(--reflect)));
 }
 
 .Button {
-  padding-left: 16px;
-  padding-right: 10px;
+  padding-inline: 16px 10px;
 }

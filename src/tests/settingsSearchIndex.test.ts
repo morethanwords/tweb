@@ -3,6 +3,7 @@ import {resolve} from 'path';
 import {createRequire} from 'module';
 import {describe, expect, it} from 'vitest';
 import generated from '@lib/settingsSearch/generated';
+import {getSections} from '@lib/settingsSearch/registry';
 import lang from '../lang';
 import langSign from '../langSign';
 
@@ -83,6 +84,8 @@ describe('settings search index', () => {
       expect(seen.has(link.path), `duplicate ${link.path}`).toBe(false);
       seen.add(link.path);
       expect(sectionIds.has(link.sectionId), `unknown section in ${link.path}`).toBe(true);
+      // a step the search cannot open is dropped at runtime, and a link into it goes with it
+      expect(getSections().has(link.sectionId), `${link.path} lands in a step the search cannot open`).toBe(true);
 
       // the highlight names a label on the screen; most are indexed rows, the
       // rest are controls the table points at explicitly

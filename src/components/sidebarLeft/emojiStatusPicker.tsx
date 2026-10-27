@@ -7,6 +7,7 @@ import {EmoticonsDropdown} from '@components/emoticonsDropdown';
 import EmojiTab from '@components/emoticonsDropdown/tabs/emoji';
 import Icon, {getIconContent} from '@components/icon';
 import {getOverlayRoot} from '@helpers/appWindow';
+import {getManagersSession, isSessionLeaving} from '@lib/accounts/getCurrentAccount';
 
 const openPickers = new WeakMap<HTMLElement, EmoticonsDropdown>();
 
@@ -16,6 +17,8 @@ export function openEmojiStatusPicker(options: {
   onChosen?: () => void
 }) {
   const {managers, anchorElement} = options
+  // * asked for by an account session that is over, or on its way out: it would open over the next account
+  if(isSessionLeaving(getManagersSession(managers))) return;
 
   const openPicker = openPickers.get(anchorElement);
   if(openPicker) {

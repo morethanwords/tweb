@@ -3,9 +3,10 @@ import {LangPackKey} from '@lib/langPack';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import {toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
-import appImManager from '@lib/appImManager';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import {createCopyLinkFooter, showSharingPickerPopup} from '@components/popups/pickUser';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 // Shared "send a URL via the standard sharing picker" helper. Subsumes the
 // near-identical onSelect handlers in giftLink.tsx, appMediaViewerRtmp.ts
@@ -52,6 +53,7 @@ export default function shareUrlToPeers(options: ShareUrlOptions): void {
     multiSelect: options.multiSelect,
     ...(copyFooter || {}),
     onSelect: async(chosen) => {
+      const managers = bindManagersToSession(rootScope.managers);
       let sent = 0;
       for(const {peerId, threadId, monoforumThreadId} of chosen) {
         const preparedPayment = await PaidMessagesInterceptor.prepareStarsForPayment({
@@ -60,7 +62,7 @@ export default function shareUrlToPeers(options: ShareUrlOptions): void {
         });
         if(preparedPayment === PAYMENT_REJECTED) continue;
 
-        rootScope.managers.appMessagesManager.sendText({
+        managers.appMessagesManager.sendText({
           peerId,
           threadId,
           text: options.url,
@@ -77,7 +79,7 @@ export default function shareUrlToPeers(options: ShareUrlOptions): void {
       const single = chosen[0];
 
       if(!isMulti && options.openAfter) {
-        appImManager.setInnerPeer({peerId: single.peerId});
+        hotReloadGuard.appImManager.setInnerPeer({peerId: single.peerId});
         return;
       }
 

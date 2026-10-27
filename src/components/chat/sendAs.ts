@@ -18,9 +18,10 @@ import {ButtonMenuItemOptions, ButtonMenuSync} from '@components/buttonMenu';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import Icon from '@components/icon';
 import PeerTitle from '@components/peerTitle';
-import showPremiumPopup from '@components/popups/premium';
 import SetTransition from '@components/singleTransition';
 import getChatMembersString from '@components/wrappers/getChatMembersString';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const SEND_AS_ANIMATION_DURATION = 300;
 
@@ -166,7 +167,7 @@ export default class ChatSendAs {
       return {
         onClick: idx ? async() => {
           if(sendAsPeer.needPremium && !rootScope.premium) {
-            showPremiumPopup();
+            hotReloadGuard.showPremiumPopup();
             return;
           }
 
@@ -320,13 +321,14 @@ export default class ChatSendAs {
     const auto = wasSkippingAnimation && !skipAnimation;
 
     const updatingPromise = this.updatingPromise = callbackify(result, async(sendAsPeerId) => {
+      const managers = bindManagersToSession(this.managers);
       if(!middleware() || sendAsPeerId === undefined) return;
 
       await this.changeSendAsPeerId(sendAsPeerId, skipAnimation);
       if(!middleware()) return;
 
       Promise.all([
-        this.managers.appChatsManager.getSendAs(chatId, this.forPaidReaction),
+        managers.appChatsManager.getSendAs(chatId, this.forPaidReaction),
         apiManagerProxy.isPremiumFeaturesHidden()
       ]).then(([sendAsPeers, isPremiumFeaturesHidden]) => {
         if(!middleware()) return;

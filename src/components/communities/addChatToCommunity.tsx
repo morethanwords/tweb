@@ -4,14 +4,10 @@ import AppSelectPeers from '@components/appSelectPeers';
 import Row from '@components/rowTsx';
 import Section from '@components/section';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
-import {
-  AppAddChatToCommunityTab,
-  AppCommunityChatSettingsTab,
-  AppNewChannelTab,
-  AppNewGroupTab
-} from '@components/solidJsTabs/tabs';
 import useCommunityTabGuard from '@components/communities/useCommunityTabGuard';
 import styles from '@components/communities/addChatToCommunity.module.scss';
+import type {AppAddChatToCommunityTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export default function AddChatToCommunity() {
   const [tab] = useSuperTab<typeof AppAddChatToCommunityTab>();
@@ -21,7 +17,7 @@ export default function AddChatToCommunity() {
   const candidatesPromise = Promise.all([chatsPromise, botsPromise]);
 
   const openChatSettings = async(peerId: PeerId) => {
-    const settingsTab = tab.slider.createTab(AppCommunityChatSettingsTab);
+    const settingsTab = tab.slider.createTab(hotReloadGuard.tabs.AppCommunityChatSettingsTab);
     await settingsTab.open({
       communityId: tab.payload.communityId,
       peerId,
@@ -32,7 +28,7 @@ export default function AddChatToCommunity() {
     tab.slider.removeTabFromHistory(tab);
   };
   const createGroup = () => {
-    tab.slider.createTab(AppNewGroupTab).open({
+    tab.slider.createTab(hotReloadGuard.tabs.AppNewGroupTab).open({
       peerIds: [],
       asChannel: true,
       openAfter: false,
@@ -40,7 +36,7 @@ export default function AddChatToCommunity() {
     });
   };
   const createChannel = () => {
-    tab.slider.createTab(AppNewChannelTab).open({
+    tab.slider.createTab(hotReloadGuard.tabs.AppNewChannelTab).open({
       openAfter: false,
       onCreate: (chatId) => openChatSettings(chatId.toPeerId(true))
     });

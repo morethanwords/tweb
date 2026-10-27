@@ -33,13 +33,23 @@ $input-height: 3rem;
 
 $button-border-radius: $border-radius-medium;
 $button-height: 3rem;
+$btn-tile-height: 3.625rem;
 
 $section-rounded-border-radius: $border-radius-big;
 $section-rounded-padding: 1rem;
 
 $fonts-path: "assets/fonts" !default;
+// Roboto Serif (italic text and the serif style, ~290 KB) and Merriweather (rich headings, ~450 KB)
+// weigh more than what they set is worth for now: off, those styles take the app's own font
+// (`--font-serif` and `--font-heading` in base.scss)
+$serif-fonts: false !default;
 $tgico-font-family: "tgico" !default;
 $tgico-font-path: $fonts-path;
 
 $header-height: 3.5rem;
 $menu-height: 3rem;
+
+// A message's shade: its secondary color (what a bubble's --secondary-text-color is) mixed into its
+// background — a table's header cell, a plain rich button. A bubble sets both to its own; the
+// composer reads the chat's, so it matches an incoming bubble.
+$message-shade-color: color-mix(in srgb, var(--message-status-color) 10%, var(--message-background-color));

@@ -2,7 +2,8 @@ import shareUrlToPeers from '@components/popups/shareUrl';
 import {toastNew} from '@components/toast';
 import type {GroupCall} from '@layer';
 import type GroupCallInstance from '@lib/calls/groupCallInstance';
-import rootScope from '@lib/rootScope';
+import {showCallAccount} from '@lib/calls/callAccount';
+import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 
 /**
  * Export the call's own invite link and hand it to the sharing picker — the
@@ -19,6 +20,8 @@ import rootScope from '@lib/rootScope';
  *
  * `isAlive` guards every await: it must return false once the surface that
  * started the share is gone (popup closed, call left, another call took over).
+ * The link goes to the chats of the call's account, which the tab switches back
+ * to first when it shows another one — closing that surface on its own.
  */
 export default async function shareGroupCallInviteLink(
   instance: GroupCallInstance,
@@ -30,7 +33,7 @@ export default async function shareGroupCallInviteLink(
 
   let link: string;
   try {
-    link = await rootScope.managers.appGroupCallsManager.exportGroupCallInvite(instance.id, canSelfUnmute);
+    link = await instance.managers.appGroupCallsManager.exportGroupCallInvite(instance.id, canSelfUnmute);
   } catch(err) {
     if(!isAlive()) return;
     console.error('export group call invite failed', err);
@@ -39,6 +42,14 @@ export default async function shareGroupCallInviteLink(
   }
 
   if(!isAlive()) return;
+
+  // * the switch closes the surface that started the share: from then on the call is what has to last
+  let isStillWanted = isAlive;
+  if(instance.accountNumber !== getCurrentAccount()) {
+    await showCallAccount(instance.accountNumber);
+    isStillWanted = () => !instance.isClosing;
+    if(!isStillWanted()) return;
+  }
 
   try {
     if(instance.e2e) {
@@ -49,7 +60,7 @@ export default async function shareGroupCallInviteLink(
       // the link's own menu; the picker alone offers no way to just take the
       // link. Imported here because the box reaches back into the call stack.
       const {default: showCallLinkPopup} = await import('@components/call/callLinkPopup');
-      if(!isAlive()) return;
+      if(!isStillWanted()) return;
 
       showCallLinkPopup({
         link,
@@ -66,7 +77,7 @@ export default async function shareGroupCallInviteLink(
       toastKeyForMany: 'InviteLinkSentMany'
     });
   } catch(err) {
-    if(!isAlive()) return;
+    if(!isStillWanted()) return;
     console.error('open share invite popup failed', err);
     toastNew({langPackKey: 'Error.AnError'});
   }

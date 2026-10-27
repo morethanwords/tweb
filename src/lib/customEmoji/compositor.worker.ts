@@ -222,8 +222,10 @@ compositorMessagePort.addMultipleEventsListeners({
 
     // * resizing clears the canvas, and the flush that draws it again is a frame away - the emoji
     // * would blink out in between. What is on it is carried over into the new box instead, so the
-    // * flush replaces a picture rather than filling a hole. It is the picture of another size for
-    // * that one frame, which is what a resized <img> does, and nobody sees it as missing.
+    // * flush replaces a picture rather than filling a hole. It keeps its own size, from the corner
+    // * the offsets are measured from: the emoji stay where they were for that one frame instead of
+    // * being scaled with the box - a box that grows a little every frame (a details opening) would
+    // * have them riding up and down with it.
     let carried: OffscreenCanvas;
     if(oldWidth && oldHeight && width && height) {
       carried = new OffscreenCanvas(oldWidth, oldHeight);
@@ -234,7 +236,7 @@ compositorMessagePort.addMultipleEventsListeners({
     canvas.height = height;
 
     if(carried) {
-      context.drawImage(carried, 0, 0, width, height);
+      context.drawImage(carried, 0, 0);
     }
 
     renderer.dirty = true;
@@ -276,29 +278,21 @@ compositorMessagePort.addMultipleEventsListeners({
     });
   }),
 
-  detachGroup: ({rendererId, groupId}) => {
-    const renderer = renderers.get(rendererId);
-    const group = renderer?.groups.get(groupId);
-    if(!group) {
-      return;
-    }
-
-    renderer.groups.delete(groupId);
-    renderer.dirty = true;
-
-    // a detach means the player died globally (it is sent when the last synced-player
-    // middleware drops) - sweep every renderer's groups still referencing it, otherwise
-    // they would retain the dead player's last bitmap until those renderers detach entirely
-    for(const otherRenderer of renderers.values()) {
-      for(const [otherGroupId, otherGroup] of otherRenderer.groups) {
-        if(otherGroup.playerReqId === group.playerReqId) {
-          otherRenderer.groups.delete(otherGroupId);
-          otherRenderer.dirty = true;
+  // The player died globally (sent when its last synced-player middleware drops): every renderer's
+  // groups still drawing it go, or they would keep its last bitmap until those renderers detach
+  // entirely. Keyed by the player, not by a renderer: the one that let it go may be gone by then, as
+  // the release waits a moment for another element to take the player over.
+  detachPlayer: ({playerReqId}) => {
+    for(const renderer of renderers.values()) {
+      for(const [groupId, group] of renderer.groups) {
+        if(group.playerReqId === playerReqId) {
+          renderer.groups.delete(groupId);
+          renderer.dirty = true;
         }
       }
     }
 
-    releasePlayerFrameIfOrphan(group.playerReqId);
+    releasePlayerFrameIfOrphan(playerReqId);
     scheduleFlush();
   },
 

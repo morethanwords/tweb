@@ -12,13 +12,14 @@
 import {isLiveSession, mockManagers} from './bootstrapState';
 import PopupElementTsx from '@components/popups/indexTsx';
 import I18n from '@lib/langPack';
+import Modes from '@config/modes';
 import themeController from '@helpers/themeController';
 import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import appDownloadManager from '@lib/appDownloadManager';
 import rootScope from '@lib/rootScope';
 import {createLiveManagers, LiveManagersController} from './liveManagers';
-import type {AppManagers} from '@lib/managers';
+import type {AppManagers, TabManagers} from '@lib/managers';
 import {setAppSettingsSilent} from '@stores/appSettings';
 import {AppTheme, SETTINGS_INIT} from '@config/state';
 
@@ -56,8 +57,39 @@ function restoreSandboxTheme() {
   if(stored && isKnownTheme(stored)) setAppSettingsSilent('theme', stored);
 }
 
+/*
+ * Direction. `?rtl=1` lays out any boot right to left; this is the panel's switch for the same,
+ * kept like the theme so the reloads of an edit-and-look pass keep it.
+ */
+const DIRECTION_STORAGE_KEY = 'popup-sandbox-dir';
+
+export type SandboxDirection = 'ltr' | 'rtl';
+
+export function getSandboxDirection(): SandboxDirection {
+  return I18n.getIsRTL() ? 'rtl' : 'ltr';
+}
+
+export function setSandboxDirection(dir: SandboxDirection) {
+  try {
+    localStorage.setItem(DIRECTION_STORAGE_KEY, dir);
+  } catch{}
+
+  I18n.forceRTL(dir === 'rtl');
+}
+
+function restoreSandboxDirection() {
+  let stored: string;
+  try {
+    stored = localStorage.getItem(DIRECTION_STORAGE_KEY);
+  } catch{}
+
+  // * `?rtl=1` wins over what was stored; the language's own direction does not, or a choice of LTR
+  // * would not survive a reload over a right-to-left language
+  if(stored === 'rtl' || stored === 'ltr') I18n.forceRTL(Modes.rtl || stored === 'rtl');
+}
+
 /** The real managers of the session the sandbox opened on top of; undefined when standalone. */
-let realManagers: AppManagers;
+let realManagers: TabManagers;
 let liveManagers: LiveManagersController;
 
 export function getLiveManagers() {
@@ -71,7 +103,7 @@ export function getLiveManagers() {
  * values are captured and put back on close. Popups already open keep whatever they were given —
  * they capture `managers` when they are constructed — which is what you want for a story on screen.
  */
-function useManagers(managers: AppManagers) {
+function useManagers(managers: AppManagers & TabManagers) {
   const previous = {
     root: rootScope.managers,
     popup: PopupElementTsx.MANAGERS
@@ -134,9 +166,9 @@ export function installSandboxEnvironment() {
     await import('@lib/appDialogsManager');
 
     if(!isLiveSession) {
-      const langPack = await I18n.getCacheLangPackAndApply();
-      document.documentElement.dir = 'ltr';
-      document.documentElement.lang = langPack.lang_code;
+      // Lays the document out in the pack's direction too (`?rtl=1` forces right to left).
+      await I18n.getCacheLangPackAndApply();
+      restoreSandboxDirection();
 
       restoreSandboxTheme();
       // Applies the theme too (it runs its dark-mode check immediately).

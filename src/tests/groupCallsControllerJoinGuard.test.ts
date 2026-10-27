@@ -34,6 +34,12 @@ vi.mock('@lib/calls/e2e/encryptWorkerHost', () => {
   return {EncryptWorkerHost};
 });
 
+// The legacy join captures the microphone first; the roster test below only
+// needs a stand-in manager.
+vi.mock('@lib/calls/helpers/createMainStreamManager', () => ({
+  default: vi.fn(async() => ({stop: vi.fn()}))
+}));
+
 import groupCallsController from '@lib/calls/groupCallsController';
 import GROUP_CALL_STATE from '@lib/calls/groupCallState';
 import type {InputGroupCall, Updates} from '@layer';
@@ -67,6 +73,12 @@ function installManagers(opts: {
       cancelDelayedPlay: () => {}
     }
   });
+}
+
+// * the chain tip is fetched through the account the call is joined on
+function fetchLastConferenceBlock(...args: unknown[]) {
+  const controller = groupCallsController as any;
+  return controller.fetchLastConferenceBlock(controller.managers, ...args);
 }
 
 const SELF_USER_ID = BigInt(1234);
@@ -178,7 +190,7 @@ describe('GroupCallsController.joinConference — InputGroupCall type guard', ()
       } satisfies Updates.updates)
     });
 
-    await expect((groupCallsController as any).fetchLastConferenceBlock(input))
+    await expect(fetchLastConferenceBlock(input))
     .rejects.toThrow(/matching block update/);
   });
 
@@ -222,7 +234,7 @@ describe('GroupCallsController.joinConference — InputGroupCall type guard', ()
       } satisfies Updates.updatesCombined)
     });
 
-    await expect((groupCallsController as any).fetchLastConferenceBlock(input, canonical)).resolves.toEqual({
+    await expect(fetchLastConferenceBlock(input, canonical)).resolves.toEqual({
       block: new Uint8Array([5]),
       nextOffset: 3
     });
@@ -249,7 +261,7 @@ describe('GroupCallsController.joinConference — InputGroupCall type guard', ()
     });
 
     let settled = false;
-    const result = (groupCallsController as any).fetchLastConferenceBlock(EXPECTED_CALL).then((value: unknown) => {
+    const result = fetchLastConferenceBlock(EXPECTED_CALL).then((value: unknown) => {
       settled = true;
       return value;
     });
@@ -282,7 +294,7 @@ describe('GroupCallsController.joinConference — InputGroupCall type guard', ()
       } satisfies Updates.updates)
     });
 
-    await expect((groupCallsController as any).fetchLastConferenceBlock(input))
+    await expect(fetchLastConferenceBlock(input))
     .rejects.toThrow(/invalid next_offset/);
   });
 
@@ -303,7 +315,7 @@ describe('GroupCallsController.joinConference — InputGroupCall type guard', ()
     (groupCallsController as any).log.warn = warn;
 
     try {
-      await expect(groupCallsController.joinGroupCall(1 as ChatId, 'call-id' as any, true, true))
+      await expect(groupCallsController.joinGroupCall(1 as ChatId, 'call-id' as any, true, false))
       .resolves.toBeUndefined();
       const rosterError = new Error('initial roster proxy failed');
       rejectRoster(rosterError);

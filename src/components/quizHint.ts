@@ -6,7 +6,7 @@
 
 import Icon from '@components/icon';
 import setInnerHTML from '@helpers/dom/setInnerHTML';
-import appImManager from '@lib/appImManager';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const hideQuizHint = (element: HTMLElement, onHide: () => void, timeout: number) => {
   element.classList.remove('active');
@@ -95,7 +95,7 @@ export const setQuizHint = (options: {
 
   if(!isListenerSet) {
     isListenerSet = true;
-    appImManager.addEventListener('peer_changed', () => {
+    hotReloadGuard.appImManager.addEventListener('peer_changed', () => {
       if(prevQuizHint && prevQuizHint.dataset.dontCloseOnPeerChange !== '1') {
         hideQuizHint(prevQuizHint, prevQuizHintOnHide, prevQuizHintTimeout);
       }

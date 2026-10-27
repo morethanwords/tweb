@@ -1,4 +1,5 @@
-import {EmoticonsTab, EmoticonsDropdown, EMOTICONSSTICKERGROUP, EMOJI_TEXT_COLOR} from '.';
+import {EmoticonsTab, EmoticonsDropdown} from '.';
+import {EMOTICONSSTICKERGROUP, EMOJI_TEXT_COLOR} from '@components/emoticonsDropdown/constants';
 import createStickersContextMenu from '@helpers/dom/createStickersContextMenu';
 import customProperties from '@helpers/dom/customProperties';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';
@@ -9,7 +10,7 @@ import safeAssign from '@helpers/object/safeAssign';
 import Animated from '@helpers/solid/animations';
 import windowSize from '@helpers/windowSize';
 import {EmojiGroup, StickerSet} from '@layer';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import {LangPackKey, i18n} from '@lib/langPack';
 import {AnyFunction} from '@types';
@@ -17,7 +18,7 @@ import {createSignal, createMemo, createResource, createEffect, untrack} from 's
 import {render, Portal} from 'solid-js/web';
 import Icon from '@components/icon';
 import Scrollable, {ScrollableX} from '@components/scrollable';
-import attachStickerViewerListeners from '@components/stickerViewer';
+import attachMediaPeekListeners from '@components/mediaPeek';
 import VisibilityIntersector from '@components/visibilityIntersector';
 import StickersTabCategory, {EmoticonsTabStyles, StickersTabStyles} from '@components/emoticonsDropdown/category';
 import Tabs from '@components/tabs';
@@ -57,9 +58,9 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
   public middlewareHelper: MiddlewareHelper;
   private disposeSearch: () => void;
 
-  public managers: AppManagers;
+  public managers: ReadingManagers;
   protected noMenu: boolean;
-  protected additionalStickerViewerClass: string;
+  protected mediaPeekClass: string;
   // * returning the results directly (not a promise) renders them without a repaint gap
   protected searchFetcher?: (value: string) => MaybePromise<T>;
   protected groupFetcher?: (group: EmojiGroup) => MaybePromise<T>;
@@ -71,9 +72,9 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
   protected searchVerifyDebounce?: Parameters<typeof EmoticonsSearch>[0]['verifyDebounce'];
 
   constructor(options: {
-    managers: AppManagers,
+    managers: ReadingManagers,
     noMenu?: boolean,
-    additionalStickerViewerClass?: string,
+    mediaPeekClass?: string,
     searchFetcher?: EmoticonsTabC<Category, T>['searchFetcher'],
     groupFetcher?: EmoticonsTabC<Category, T>['groupFetcher'],
     processSearchResult?: EmoticonsTabC<Category, T>['processSearchResult'],
@@ -468,8 +469,8 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     isGif?: boolean,
     onContextMenu?: Parameters<typeof createStickersContextMenu>[0]['onContextMenu']
   } = {}) {
-    attachStickerViewerListeners({
-      additionalClass: this.additionalStickerViewerClass,
+    attachMediaPeekListeners({
+      class: this.mediaPeekClass,
       listenTo: this.content,
       listenerSetter: this.listenerSetter,
       getTextColor

@@ -22,10 +22,21 @@ vi.mock('@richTextProcessor/wrapEmojiText', () => ({default: vi.fn()}));
 vi.mock('@helpers/dom/createContextMenu', () => ({default: vi.fn()}));
 
 import AppSelectPeers from '@components/appSelectPeers';
+import * as mocked1 from '@lib/appDialogsManager';
+import * as mocked2 from '@components/popups/premium';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+
+// the code under test reads the top level from the registry, not from the modules mocked above
+registerHotReloadGuard({
+  appDialogsManager: (mocked1 as any).default,
+  showPremiumPopup: (mocked2 as any).default
+});
+
 
 describe('selector dialog readiness', () => {
   let selector: AppSelectPeers;
   let middlewareHelper: ReturnType<typeof getMiddleware>;
+  let listMiddlewareHelper: ReturnType<typeof getMiddleware>;
   let titles: Map<PeerId, ReturnType<typeof deferredPromise<void>>>;
   let avatars: Map<PeerId, ReturnType<typeof deferredPromise<void>>>;
 
@@ -34,6 +45,7 @@ describe('selector dialog readiness', () => {
 
   beforeEach(() => {
     middlewareHelper = getMiddleware();
+    listMiddlewareHelper = getMiddleware();
     titles = new Map();
     avatars = new Map();
     mocks.addDialogNew.mockImplementation((options) => {
@@ -59,6 +71,7 @@ describe('selector dialog readiness', () => {
         container,
         middlewareHelper: rowMiddlewareHelper,
         dom: {containerEl: container, lastMessageSpan: subtitle},
+        destroy: () => rowMiddlewareHelper.destroy(),
         remove: () => {
           rowMiddlewareHelper.destroy();
           container.remove();
@@ -71,6 +84,7 @@ describe('selector dialog readiness', () => {
       list: document.createElement('ul'),
       peerType: ['dialogs'],
       middlewareHelperLoader: middlewareHelper,
+      listMiddlewareHelper,
       multiSelect: 'disabled',
       selected: new Set(),
       renderedPeerIds: new Set(),
@@ -82,6 +96,7 @@ describe('selector dialog readiness', () => {
 
   afterEach(() => {
     middlewareHelper.destroy();
+    listMiddlewareHelper.destroy();
     document.body.replaceChildren();
     vi.clearAllMocks();
   });
@@ -211,6 +226,7 @@ describe('selector dialog readiness', () => {
   it.each(['clean', 'destroy'] as const)('discards a pending batch after middleware %s', async(action) => {
     const oldList = selector.list;
     const rendering = render([peerId(1)]);
+    const rowAlive = mocks.addDialogNew.mock.results[0].value.middlewareHelper.get();
     middlewareHelper[action]();
     selector.list = document.createElement('ul');
     document.body.append(selector.list);
@@ -218,5 +234,19 @@ describe('selector dialog readiness', () => {
     expect(oldList.children).toHaveLength(0);
     expect(oldList.childNodes).toHaveLength(0);
     expect(selector.list.children).toHaveLength(0);
+    expect(rowAlive()).toBe(false);
+  });
+
+  it('keeps shown rows alive while a new search is on its way, until their list goes', async() => {
+    const rendering = render([peerId(1)]);
+    for(const ready of [...titles.values(), ...avatars.values()]) ready.resolve();
+    await rendering;
+    const rowAlive = mocks.addDialogNew.mock.results[0].value.middlewareHelper.get();
+    // * a new search: the list stays on screen until its results are in
+    middlewareHelper.clean();
+    expect(rowAlive()).toBe(true);
+    // * the results took its place
+    listMiddlewareHelper.destroy();
+    expect(rowAlive()).toBe(false);
   });
 });

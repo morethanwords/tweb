@@ -17,8 +17,8 @@
     &-header {
       width: 100%;
       align-items: center;
-      // Three slots — close (left, auto-added by PopupElement), emojis
-      // (center), action cluster (right). The emoji slot is absolute-centred
+      // Three slots — close (start, auto-added by PopupElement), emojis
+      // (center), action cluster (end). The emoji slot is absolute-centred
       // (see `.call-emojis` below) so it stays in the geometric middle of
       // the header even when the close and action clusters have different
       // widths.
@@ -92,7 +92,7 @@
     image-rendering: auto;
     opacity: 1;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: opacity .6s ease;
     }
 
@@ -207,9 +207,7 @@
     opacity: 0;
     z-index: 0;
 
-    @include animation-level(2) {
-      transition: opacity var(--transition-standard-in), width var(--transition-standard-in), height var(--transition-standard-in), margin-bottom var(--transition-standard-in);
-    }
+    @include animation-level-transition(opacity var(--transition-standard-in), width var(--transition-standard-in), height var(--transition-standard-in), margin-bottom var(--transition-standard-in));
 
     .avatar-full {
       font-size: 3.5rem;
@@ -243,22 +241,18 @@
   // Transitions cover both the size change (video↔no-video) and the
   // opacity change (controls visibility).
   &-title {
-    @include animation-level(2) {
-      transition: opacity var(--transition-standard-in), font-size var(--transition-standard-in);
-    }
+    @include animation-level-transition(opacity var(--transition-standard-in), font-size var(--transition-standard-in));
   }
 
   &-subtitle {
-    @include animation-level(2) {
-      transition: opacity var(--transition-standard-in), font-size var(--transition-standard-in);
-    }
+    @include animation-level-transition(opacity var(--transition-standard-in), font-size var(--transition-standard-in));
   }
 
   &-emojis,
   .popup-header {
     opacity: 0;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: opacity var(--transition-standard-in);
     }
   }
@@ -302,20 +296,19 @@
       }
     }
 
-    @include animation-level(2) {
-      .call-button { // ! fix backdrop-filter transition
-        &,
-        &-text {
-          transition: opacity var(--transition-standard-in), transform var(--transition-standard-in);
-        }
+    .call-button { // ! fix backdrop-filter transition
+      &,
+      &-text {
+        @include animation-level-transition(opacity var(--transition-standard-in), transform var(--transition-standard-in));
       }
     }
 
+    // the rows run along the line: in RTL the end-call button lands on the start side
     &.is-first {
       .call-button { // ! fix backdrop-filter transition
         &,
         &-text {
-          transform: /* scale(var(--scale))  */translateX(calc(var(--call-button-size) * -.5 + var(--call-button-margin) * -.5));
+          transform: /* scale(var(--scale))  */translateX(calc((var(--call-button-size) * -.5 + var(--call-button-margin) * -.5) * var(--reflect)));
         }
       }
     }
@@ -326,7 +319,7 @@
       .call-button { // ! fix backdrop-filter transition
         &,
         &-text {
-          transform: /* scale(var(--scale))  */translateX(calc(var(--call-button-size) * 2 + var(--call-button-margin) * var(--margin-length)));
+          transform: /* scale(var(--scale))  */translateX(calc((var(--call-button-size) * 2 + var(--call-button-margin) * var(--margin-length)) * var(--reflect)));
         }
       }
     }
@@ -345,7 +338,8 @@
     // call's dark gradient in every theme, so spell the colour out (the same
     // way `.group-call-button` does with `--gc-primary-text-color`).
     color: #fff;
-    background-color: rgba(255, 255, 255, .15);
+    // fuller than it was under a backdrop blur, which no longer thickens it
+    background-color: rgba(255, 255, 255, .25);
 
     &-red {
       background-color: var(--danger-color) !important;
@@ -381,11 +375,13 @@
         filter: brightness(0);
       }
     }
+  }
 
-    &,
-    &-text {
-      opacity: 0;
-    }
+  // Hidden over the video until the pointer comes (`.show-controls`; `.no-video` keeps them shown).
+  // Inside the panel only: the button itself is shared with the video chat's.
+  .call-button,
+  .call-button-text {
+    opacity: 0;
   }
 
   // ===== Video tiles =====
@@ -411,8 +407,7 @@
 
       &.small {
         bottom: 8rem;
-        right: 1rem;
-        left: auto;
+        inset-inline: auto 1rem;
         top: auto;
         z-index: 1;
         border-radius: $border-radius-medium;
@@ -430,7 +425,7 @@
 
     &,
     &-blur {
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: opacity var(--transition-standard-in);
       }
     }
@@ -461,21 +456,17 @@
     display: flex;
     align-items: center;
     margin-top: 1rem;
-    backdrop-filter: var(--blur-off, blur(25px));
     font-weight: var(--font-weight-bold);
     opacity: 0;
     transform: scale(0) translateY(0);
     max-width: 100%;
 
-    @include animation-level(2) {
-      transition: opacity var(--transition-standard-in), transform var(--transition-standard-in);
-    }
+    @include animation-level-transition(opacity var(--transition-standard-in), transform var(--transition-standard-in));
 
     .lottie-icon {
       width: 1.875rem !important;
       height: 1.875rem !important;
-      margin-right: .25rem;
-      margin-left: -.25rem;
+      margin-inline: -.25rem .25rem;
       flex: 0 0 auto;
     }
 
@@ -514,7 +505,8 @@
     align-items: center;
     gap: .5rem;
     margin-top: .75rem;
-    padding: .25rem .75rem .25rem .25rem;
+    padding-block: .25rem;
+    padding-inline: .25rem .75rem;
     border-radius: 1.25rem;
     background: rgba(255, 255, 255, .15);
     opacity: 1;

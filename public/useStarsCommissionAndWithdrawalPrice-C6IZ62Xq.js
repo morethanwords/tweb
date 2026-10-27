@@ -1,2 +1,0 @@
-import{g as e}from"./solid-WnanT5kq.js";import{r as t}from"./hotReloadGuard-Cf_gJi1H.js";var n=(n,{commissionKey:r=`stars_paid_message_commission_permille`,withdrawRateKey:i=`stars_usd_withdraw_rate_x1000`}={})=>{let{useAppConfig:a}=t(),o=a(),s=e(()=>(+o[r]||0)/1e3),c=e(()=>(+o[i]||0)/1e3);return{commissionPercents:e(()=>Math.round(s()*100)),willReceiveDollars:e(()=>Math.max(.01*Number(!!n()),Math.round(s()*c()*n())/100))}};export{n as t};
-//# sourceMappingURL=useStarsCommissionAndWithdrawalPrice-C6IZ62Xq.js.map

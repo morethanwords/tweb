@@ -1,5 +1,6 @@
 import type LazyLoadQueue from '@components/lazyLoadQueue';
-import appDialogsManager, {AppDialogsManager, DialogDom, DialogElement, DialogElementSize} from '@lib/appDialogsManager';
+import {AppDialogsManager} from '@lib/appDialogsManager';
+import {DialogDom, DialogElement, DialogElementSize} from '@components/dialogElement';
 import {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
 import isInDOM from '@helpers/dom/isInDOM';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';
@@ -7,12 +8,18 @@ import replaceContent from '@helpers/dom/replaceContent';
 import {fastRaf} from '@helpers/schedulers';
 import SortedList, {SortedElementBase} from '@helpers/sortedList';
 import safeAssign from '@helpers/object/safeAssign';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import getUserStatusString from '@components/wrappers/getUserStatusString';
 import getChatMembersString from '@components/wrappers/getChatMembersString';
-import wrapParticipantRank from '@components/wrappers/participantRank';
-import getParticipantRank from '@appManagers/utils/chats/getParticipantRank';
+import {MemberTagBadge, makeMemberTagPressable, wrapMemberTag} from '@components/wrappers/participantRank';
+import {i18n} from '@lib/langPack';
 import {Middleware, MiddlewareHelper} from '@helpers/middleware';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+
+// * a row's tag; an `editable` one opens its editor on a click, and one with no `rank` is
+// * my own missing tag, offered as "Add tag"
+export type SortedUserListRank = Partial<MemberTagBadge> & {editable?: boolean};
 
 interface SortedUser extends SortedElementBase<PeerId> {
   dom: DialogDom,
@@ -22,7 +29,7 @@ interface SortedUser extends SortedElementBase<PeerId> {
 export default class SortedUserList extends SortedList<SortedUser> {
   protected static SORT_INTERVAL = 30e3;
   public list: HTMLUListElement;
-  public ranks: Map<PeerId, ReturnType<typeof getParticipantRank>> = new Map();
+  public ranks: Map<PeerId, SortedUserListRank> = new Map();
 
   protected lazyLoadQueue: LazyLoadQueue;
   protected avatarSize: DialogElementSize = 'abitbigger';
@@ -30,7 +37,7 @@ export default class SortedUserList extends SortedList<SortedUser> {
   protected autonomous = true;
   protected createChatListOptions: Parameters<AppDialogsManager['createChatList']>[0];
   protected onListLengthChange: () => void;
-  protected managers: AppManagers;
+  protected managers: ReadingManagers;
 
   constructor(options: Partial<{
     lazyLoadQueue: SortedUserList['lazyLoadQueue'],
@@ -52,15 +59,15 @@ export default class SortedUserList extends SortedList<SortedUser> {
         this.onListLengthChange?.();
       },
       onUpdate: options.onUpdate || (async(element) => {
+        const managers = bindManagersToSession(this.managers);
         if(element.id.isAnyChat()) {
-          const status = await getChatMembersString(element.id.toChatId(), this.managers);
+          const status = await getChatMembersString(element.id.toChatId(), managers);
           replaceContent(element.dom.lastMessageSpan, status);
         } else {
-          const status = getUserStatusString(await this.managers.appUsersManager.getUser(element.id));
+          const status = getUserStatusString(await managers.appUsersManager.getUser(element.id));
           replaceContent(element.dom.lastMessageSpan, status);
 
-          const rank = this.ranks.get(element.id);
-          element.dialogElement.titleRight.replaceChildren(...(rank ? [wrapParticipantRank(rank)] : []));
+          this.renderRank(element.id, element.dialogElement);
         }
       }),
       onSort: (element, idx) => {
@@ -72,7 +79,7 @@ export default class SortedUserList extends SortedList<SortedUser> {
         }
       },
       onElementCreate: (base) => {
-        const dialogElement = appDialogsManager.addDialogNew({
+        const dialogElement = hotReloadGuard.appDialogsManager.addDialogNew({
           peerId: base.id,
           container: false,
           avatarSize: this.avatarSize,
@@ -86,8 +93,7 @@ export default class SortedUserList extends SortedList<SortedUser> {
           withStories: true
         });
 
-        const rank = this.ranks.get(base.id);
-        dialogElement.titleRight.replaceChildren(...[rank ? wrapParticipantRank(rank) : undefined].filter(Boolean));
+        this.renderRank(base.id, dialogElement);
 
         (base as SortedUser).dom = dialogElement.dom;
         (base as SortedUser).dialogElement = dialogElement;
@@ -116,7 +122,7 @@ export default class SortedUserList extends SortedList<SortedUser> {
 
     safeAssign(this, options);
 
-    this.list = appDialogsManager.createChatList(this.createChatListOptions);
+    this.list = hotReloadGuard.appDialogsManager.createChatList(this.createChatListOptions);
 
     let timeout: number;
     const doTimeout = () => {
@@ -130,5 +136,29 @@ export default class SortedUserList extends SortedList<SortedUser> {
     };
 
     doTimeout();
+    // * otherwise the loop ends only at its next tick, once the list is out of the DOM - holding a closed
+    // * list and every row of it for up to SORT_INTERVAL
+    this.middlewareHelper.onDestroy(() => window.clearTimeout(timeout));
+  }
+
+  protected renderRank(peerId: PeerId, dialogElement: DialogElement) {
+    const rank = this.ranks.get(peerId);
+    let element: HTMLElement;
+    if(rank?.rank !== undefined) {
+      element = wrapMemberTag(rank as MemberTagBadge);
+    } else if(rank?.editable) {
+      element = document.createElement('span');
+      element.classList.add('member-tag-add');
+      element.append(i18n('MemberTag.AddMine'));
+    }
+
+    if(element && rank.editable) {
+      element.classList.add('member-tag-editable');
+      makeMemberTagPressable(element);
+      // * the row opens its chat on a press anywhere but here (setListClickListener)
+      element.dataset.dialogListAction = 'true';
+    }
+
+    dialogElement.titleRight.replaceChildren(...(element ? [element] : []));
   }
 }

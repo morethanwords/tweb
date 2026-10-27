@@ -4,6 +4,14 @@ import {For, JSX} from 'solid-js';
 import '@helpers/peerIdPolyfill';
 import ActiveSessions from '@components/sidebarLeft/tabs/activeSessions';
 import {Authorization, ConnectedBot} from '@layer';
+import * as mocked1 from '@components/solidJsTabs/tabs';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+
+// the code under test reads the top level from the registry, not from the modules mocked above
+registerHotReloadGuard({
+  tabs: {...mocked1} as any
+});
+
 
 type ContextMenu = {buttons: Array<{text: string, onClick: () => void}>};
 
@@ -343,6 +351,18 @@ describe('active sessions tab', () => {
 
     rowByTitle(container, '777').click();
     expect(mocks.openTab).toHaveBeenCalledWith({connectedBot});
+  });
+
+  // * device and location are optional: the manager builds a connected bot without them when it
+  //   cannot fetch it, and the row must still render, with whichever of them there is
+  it('shows a connected bot that names no device or only some of it', () => {
+    const container = mount({
+      authorizations: [makeAuthorization({hash: 0, pFlags: {current: true}})],
+      connectedBot: {...connectedBot, device: 'Pixel 8'} as ConnectedBot.connectedBot
+    });
+
+    const row = rowByTitle(container, '777');
+    expect(row.querySelector('.row-midtitle').textContent).toBe('Pixel 8');
   });
 
   it('follows chat_automation_update when the bot is disconnected elsewhere', () => {

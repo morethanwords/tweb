@@ -1,13 +1,11 @@
 import type {Message, MessageEntity, PeerSettings} from '@layer';
 import {MESSAGE_LINK_ENTITY_TYPES} from '@lib/richTextProcessor/filterDisabledEntities';
+import isSuspiciousPeer from '@appManagers/utils/peers/isSuspiciousPeer';
 
 export const HIDDEN_LINK_ENTITY_TYPES: ReadonlySet<MessageEntity['_']> = MESSAGE_LINK_ENTITY_TYPES;
 
 export function shouldHidePeerMessageLinks(peerId: PeerId, peerSettings?: PeerSettings) {
-  return peerId.isUser() && !!(
-    peerSettings?.pFlags.report_spam ||
-    peerSettings?.pFlags.block_contact
-  );
+  return isSuspiciousPeer(peerId, peerSettings);
 }
 
 export function shouldHideMessageLinks(

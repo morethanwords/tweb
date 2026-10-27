@@ -10,8 +10,8 @@ import {clickVisible} from './accessibility.helpers';
  *
  * It needs a signed-in client, so it runs against an authorized preview:
  *
- *   bash scripts/start-preview.sh --port 9105
- *   PLAYWRIGHT_BASE_URL=http://localhost:9105 pnpm exec playwright test e2e/focusPixelsApp.spec.ts
+ *   bash scripts/start-preview.sh --detach    # prints the URL, say http://localhost:9001
+ *   PLAYWRIGHT_BASE_URL=http://localhost:9001 pnpm exec playwright test e2e/focusPixelsApp.spec.ts
  *
  * Without one it skips rather than reporting a clean run it never made.
  *

@@ -1,5 +1,4 @@
 @use "../../scss/variables" as *;
-@use "../../scss/mixins" as *;
 
 .Container {
   min-width: 12rem !important;
@@ -53,7 +52,7 @@
 
   &Text {
     max-width: 100%;
-    padding-right: 4px;
+    padding-inline-end: 4px;
 
     white-space: nowrap;
     overflow: hidden;
@@ -104,6 +103,8 @@
     border-bottom-width: var(--border-width);
   }
 
+  // * the left and the right end of a matched run - which of its characters stands there depends on
+  // * the title's own direction, see `highlightTextNodes`
   &.start {
     border-top-left-radius: var(--border-radius);
     border-bottom-left-radius: var(--border-radius);
@@ -153,7 +154,7 @@
 
     &Check {
       position: absolute;
-      right: -5px;
+      inset-inline-end: -5px;
       bottom: -2px;
 
       font-size: 12px;
@@ -169,14 +170,3 @@
   }
 }
 
-.AppearZoom {
-  &EnterActive, &ExitActive {
-    @include animation-level-global(2) {
-      transition: transform 0.1s;
-    }
-  }
-
-  &Enter, &ExitTo {
-    transform: scale(0);
-  }
-}

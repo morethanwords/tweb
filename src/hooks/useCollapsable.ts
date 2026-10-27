@@ -27,14 +27,15 @@ export function useCollapsable(props: {
   const folded = createMemo(() => progress() === STATE_FOLDED);
 
   const setProgress = (progress: number, skipAnimation?: boolean) => {
-    if(liteMode.isAvailable('animations') && !skipAnimation) setIsTransition(true);
+    if(liteMode.isAvailable('motion') && !skipAnimation) setIsTransition(true);
     _setProgress(progress);
   };
 
   const scrollTo = (wasProgress: number, open?: boolean) => {
     const startTime = Date.now();
+    const duration = liteMode.isAvailable('motion') ? 125 : 0;
     const _animation = animation = animateSingle(() => {
-      const value = clamp((Date.now() - startTime) / 125, 0, 1);
+      const value = duration ? clamp((Date.now() - startTime) / duration, 0, 1) : 1;
 
       let progress = wasProgress;
       if((wasProgress > 0.5 || open === false) && open !== true) {

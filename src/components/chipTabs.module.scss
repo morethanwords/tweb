@@ -56,7 +56,9 @@
   z-index: 0;
 
   &.animate {
-    transition: width var(--transition-standard-in), left var(--transition-standard-in);
+    @include animation-level-global(2) {
+      transition: width var(--transition-standard-in), left var(--transition-standard-in);
+    }
   }
   
   .surface & {

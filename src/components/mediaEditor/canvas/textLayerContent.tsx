@@ -298,12 +298,13 @@ function updateOutlineStyle(container: HTMLDivElement, contentEditable: HTMLDivE
           <text
             x="${info.size * 0.2}"
             y="${info.size * 1.33 * fontInfo.baseline}"
-            style="font-size:${info.size}px;stroke:${info.color};stroke-width:${div.clientHeight * 0.15}px;font-family:${fontInfo.fontFamily};font-weight:${fontInfo.fontWeight};">
-            ${div.innerText}
-          </text>
+            style="font-size:${info.size}px;stroke:${info.color};stroke-width:${div.clientHeight * 0.15}px;font-family:${fontInfo.fontFamily};font-weight:${fontInfo.fontWeight};"
+          ></text>
         </svg>
       </div>
     `);
+    // the line is text anyone could have typed or pasted: written into the markup, it would be markup
+    svg.querySelector('text').textContent = div.innerText;
     div.prepend(svg);
   }
 

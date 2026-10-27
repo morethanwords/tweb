@@ -1,5 +1,6 @@
-import {Boost} from '@layer';
+import {Boost, PremiumMyBoosts} from '@layer';
 import {AppManager} from '@appManagers/manager';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
 
 export default class AppBoostsManager extends AppManager {
   public saveBoost(peerId: PeerId, boost: Boost) {
@@ -46,12 +47,15 @@ export default class AppBoostsManager extends AppManager {
     });
   }
 
+  // * the last known: where each slot stood before a boost moves it elsewhere
+  private myBoosts: PremiumMyBoosts;
+
   public getMyBoosts() {
     return this.apiManager.invokeApiSingleProcess({
       method: 'premium.getMyBoosts',
       processResult: (myBoosts) => {
         this.appPeersManager.saveApiPeers(myBoosts);
-        return myBoosts;
+        return this.myBoosts = myBoosts;
       }
     });
   }
@@ -87,6 +91,26 @@ export default class AppBoostsManager extends AppManager {
       params: {
         peer: this.appPeersManager.getInputPeerById(peerId),
         slots
+      },
+      processResult: (myBoosts) => {
+        this.appPeersManager.saveApiPeers(myBoosts);
+        // * the boosts given to a group are on its full chat, and enough of them lift its restrictions: the
+        // * group boosted, and every group the slots were taken from, are asked for it again
+        const peerIds = new Set<PeerId>([peerId]);
+        this.myBoosts?.my_boosts.forEach((myBoost) => {
+          if(myBoost.peer && slots?.includes(myBoost.slot)) {
+            peerIds.add(getPeerId(myBoost.peer));
+          }
+        });
+
+        this.myBoosts = myBoosts;
+        peerIds.forEach((peerId) => {
+          if(this.appPeersManager.isMegagroup(peerId)) {
+            this.appProfileManager.getChatFull(peerId.toChatId(), true);
+          }
+        });
+
+        return myBoosts;
       }
     });
   }

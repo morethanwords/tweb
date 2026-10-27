@@ -24,7 +24,6 @@
   --popup-footer-height: calc(var(--popup-footer-padding) * 2 + var(--popup-footer-button-height));
   --popup-footer-gradient-start: 50%;
 
-  --link-color: var(--primary-color);
   position: fixed !important;
   top: 0;
   right: 0;
@@ -102,7 +101,8 @@
     min-height: string.unquote('min(100%, var(--popup-min-height))');
     max-height: string.unquote('min(100%, var(--popup-max-height))');
 
-    body.animation-level-0 & {
+    // reduced: the popup fades in where it stands
+    @include animation-level-below(2) {
       transition: none;
     }
   }
@@ -160,7 +160,7 @@
         opacity: 0;
         // visibility: hidden;
 
-        @include animation-level(2) {
+        @include animation-level(1) {
           transition: opacity var(--transition-standard-in)/* , visibility 0s */;
           // transition-delay: 0s, var(--transition-standard-in-time);
         }
@@ -231,9 +231,12 @@
   // margin hands those pixels straight back — the footer, and everything in it, stays put.
   // Only against a footer that is right below it in the flow: the pixels have to land in
   // something that can spare them, and a floating footer is not part of that column at all.
+  // The content's own z-indexes stay inside the scroll: a field's label (2) would otherwise paint
+  // over the footer (1) where the bleed puts it behind the footer's edge.
   &-scrollable:has(+ #{&}-footer-shaded) {
     padding-bottom: $popup-scroll-bleed;
     margin-bottom: -$popup-scroll-bleed;
+    isolation: isolate;
   }
 
   // A floating footer is painted over the end of the scroll. The browser does
@@ -253,7 +256,7 @@
     border-top: 1px solid transparent;
     background-color: transparent;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: background-color var(--transition-standard-in), border-top-color var(--transition-standard-in);
     }
 
@@ -397,6 +400,24 @@
   }
 }
 
+// A movable panel (the call popups) squares off a corner pushed into the window's own corner —
+// `--movable-round-*` is 0 there (movableElement.ts). No more specific than the container's own
+// radius, so a full-screen or bottom-sheet panel still squares all of them.
+:where(.popup.movable-element) > .popup-container {
+  border-radius:
+    calc(var(--popup-border-radius) * var(--movable-round-tl, 1))
+    calc(var(--popup-border-radius) * var(--movable-round-tr, 1))
+    calc(var(--popup-border-radius) * var(--movable-round-br, 1))
+    calc(var(--popup-border-radius) * var(--movable-round-bl, 1));
+  transition:
+    transform var(--popup-transition-time) var(--popup-transition-function),
+    border-radius var(--transition-standard-in);
+
+  body.animation-level-0 & {
+    transition: none;
+  }
+}
+
 .suggested-post-popup {
   .popup-container {
     width: 400px !important;
@@ -425,196 +446,5 @@
 
   .popup-header {
     margin-bottom: 0.5rem;
-  }
-}
-
-.popup-create-link {
-  .popup-container {
-    max-width: calc(100% - 1rem);
-    width: 22.5rem;
-  }
-
-  &-fields {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    padding: .5rem 1rem 0;
-  }
-}
-
-.popup-rich-button {
-  .popup-container {
-    max-width: calc(100% - 1rem);
-    width: 22.5rem;
-  }
-
-  &-fields {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    padding: .5rem 1rem 0;
-  }
-
-  &-caption {
-    color: var(--secondary-text-color);
-    font-size: .875rem;
-    margin-bottom: -.5rem;
-  }
-
-  // the choices are drawn the way the button will look on a page — over the page's surface, not
-  // over the popup's grey, where the default tint would lose its contrast
-  &-styles {
-    --iv-scale: 1;
-    --page-button-backdrop: var(--surface-color);
-    display: flex;
-    gap: .5rem;
-  }
-
-  &-style {
-    padding-inline: .5rem;
-    font-size: .875rem;
-
-    &.is-active {
-      outline: 2px solid var(--primary-color);
-      outline-offset: 2px;
-    }
-  }
-}
-
-.popup-rich-math {
-  .popup-container {
-    max-width: calc(100% - 1rem);
-    width: 25rem;
-  }
-
-  &-preview {
-    background-color: var(--light-filled-secondary-text-color);
-    border-radius: .75rem;
-    min-height: 6rem;
-    overflow-x: auto;
-    padding: 1rem;
-  }
-
-  &-preview-section {
-    margin-block-start: 1rem;
-  }
-
-  &-separate-line {
-    margin-block-start: 1rem;
-  }
-
-  &-preview-label {
-    color: var(--secondary-text-color);
-    font-size: .875rem;
-    margin-block-end: .5rem;
-  }
-
-  &-preview-content {
-    align-items: center;
-    display: flex;
-    justify-content: center;
-    min-height: 4rem;
-    min-width: max-content;
-
-    &.is-empty {
-      color: var(--secondary-text-color);
-      min-width: 100%;
-    }
-  }
-}
-
-.popup-rich-map {
-  .popup-container {
-    max-width: calc(100% - 1rem);
-    width: 25rem;
-  }
-
-  &-picker {
-    padding: .5rem 1rem 0;
-  }
-
-  &-preview {
-    aspect-ratio: 2;
-    background-color: var(--light-filled-secondary-text-color);
-    border-radius: .75rem;
-    cursor: grab;
-    overflow: hidden;
-    position: relative;
-    touch-action: none;
-    user-select: none;
-
-    &:focus-visible {
-      outline: 2px solid var(--primary-color);
-      outline-offset: 2px;
-    }
-
-    &.is-dragging {
-      cursor: grabbing;
-    }
-  }
-
-  &-image,
-  &-photo {
-    height: 100%;
-    width: 100%;
-  }
-
-  &-image {
-    pointer-events: none;
-    will-change: transform;
-  }
-
-  &-photo {
-    .media-photo,
-    img {
-      height: 100%;
-      object-fit: cover;
-      width: 100%;
-    }
-  }
-
-  &-pin {
-    inset: 50% auto auto 50%;
-    pointer-events: none;
-    position: absolute;
-    transform: translate(-50%, -100%);
-  }
-
-  &-coordinates {
-    background: var(--surface-color);
-    border-radius: .375rem;
-    bottom: .5rem;
-    color: var(--secondary-text-color);
-    font-size: .75rem;
-    inset-inline-start: .5rem;
-    padding: .25rem .375rem;
-    pointer-events: none;
-    position: absolute;
-  }
-
-  &-zoom-controls {
-    display: flex;
-    gap: .25rem;
-    margin-block-start: .5rem;
-
-    .btn-icon {
-      background: var(--light-filled-secondary-text-color);
-      border-radius: 50%;
-      height: 2.5rem;
-      width: 2.5rem;
-    }
-  }
-
-  &-current-location {
-    margin-block-start: .75rem;
-    min-height: 2.5rem;
-    width: 100%;
-  }
-
-  &-fields {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-block-start: 1rem;
   }
 }

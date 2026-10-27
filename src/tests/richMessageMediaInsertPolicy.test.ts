@@ -6,7 +6,6 @@ import {
   getRichMessageMediaFileType,
   getRichMessageMediaRequiredRight,
   groupRichMessageMediaEntries,
-  isRichMessageMediaMimeType,
   isVisualRichMessageMimeType,
   normalizeRichMessageMediaFile
 } from '@helpers/files/richMessageMediaInsertPolicy';
@@ -39,13 +38,13 @@ describe('rich-message media insert policy', () => {
     ['audio/mp3', 'audio'],
     ['audio/flac', 'audio'],
     ['audio/x-flac', 'audio'],
-    ['video/ogg', undefined],
-    ['audio/wav', undefined],
-    ['application/pdf', undefined],
-    ['text/plain', undefined]
+    // what a rich message cannot draw as media or play goes as a file
+    ['video/ogg', 'document'],
+    ['audio/wav', 'document'],
+    ['application/pdf', 'document'],
+    ['text/plain', 'document']
   ] as const)('classifies %s as rich media type %s', (mimeType, expected) => {
     expect(getRichMessageMediaFileType(mimeType)).toBe(expected);
-    expect(isRichMessageMediaMimeType(mimeType)).toBe(expected !== undefined);
   });
 
   test.each([
@@ -55,7 +54,7 @@ describe('rich-message media insert policy', () => {
     ['image/jpeg', 'photo.jpg', 'photo', 'send_photos'],
     ['image/gif', 'animation.gif', 'video', 'send_gifs'],
     ['video/mp4', 'video.mp4', 'video', 'send_videos'],
-    ['application/pdf', 'track.mp3.pdf', undefined, undefined]
+    ['application/pdf', 'track.mp3.pdf', 'document', 'send_docs']
   ] as const)(
     'classifies %s/%s as %s with %s permission',
     (mimeType, fileName, expectedType, expectedRight) => {
@@ -64,6 +63,17 @@ describe('rich-message media insert policy', () => {
       .toBe(expectedRight);
     }
   );
+
+  // the attach menu's File: a file block whatever it is, but music stays an audio, as in tdesktop
+  test.each([
+    ['image/jpeg', 'photo.jpg', 'document', 'send_docs'],
+    ['video/mp4', 'video.mp4', 'document', 'send_docs'],
+    ['application/zip', 'archive.zip', 'document', 'send_docs'],
+    ['audio/mpeg', 'track.mp3', 'audio', 'send_audios']
+  ] as const)('classifies %s/%s attached as a file as %s with %s permission', (mimeType, fileName, expectedType, expectedRight) => {
+    expect(getRichMessageMediaFileType(mimeType, fileName, true)).toBe(expectedType);
+    expect(getRichMessageMediaRequiredRight(mimeType, fileName, true)).toBe(expectedRight);
+  });
 
   test('normalizes extension-only audio before creating its preview URL', () => {
     const file = new File(['audio'], 'track.opus', {
@@ -81,19 +91,20 @@ describe('rich-message media insert policy', () => {
     expect(normalizeRichMessageMediaFile(image)).toBe(image);
   });
 
-  test('keeps audio standalone while preserving contiguous visual runs', () => {
+  test('keeps audio and files standalone while preserving contiguous visual runs', () => {
     const entries = [
       {id: 1, type: 'photo' as const},
       {id: 2, type: 'video' as const},
       {id: 3, type: 'audio' as const},
-      {id: 4, type: 'audio' as const},
-      {id: 5, type: 'photo' as const},
-      {id: 6, type: 'video' as const}
+      {id: 4, type: 'document' as const},
+      {id: 5, type: 'document' as const},
+      {id: 6, type: 'photo' as const},
+      {id: 7, type: 'video' as const}
     ];
 
     expect(groupRichMessageMediaEntries(entries).map((group) => (
       group.map(({id}) => id)
-    ))).toEqual([[1, 2], [3], [4], [5, 6]]);
+    ))).toEqual([[1, 2], [3], [4], [5], [6, 7]]);
   });
 
   test('splits contiguous visual runs at the Telegram collage limit', () => {
@@ -108,9 +119,9 @@ describe('rich-message media insert policy', () => {
   });
 });
 
-for(const name of ['movie.ogv', 'movie.ogg', 'misleading.opus']) test(`preserves Ogg video MIME and rejects rich audio routing for ${name}`, () => {
+for(const name of ['movie.ogv', 'movie.ogg', 'misleading.opus']) test(`preserves Ogg video MIME and sends ${name} as a file, not an audio`, () => {
   const file = new File(['OggS'], name, {type: 'video/ogg'});
   expect(normalizeRichMessageMediaFile(file)).toBe(file);
-  expect(getRichMessageMediaFileType(file.type, file.name)).toBeUndefined();
-  expect(getRichMessageMediaRequiredRight(file.type, file.name)).toBeUndefined();
+  expect(getRichMessageMediaFileType(file.type, file.name)).toBe('document');
+  expect(getRichMessageMediaRequiredRight(file.type, file.name)).toBe('send_docs');
 });

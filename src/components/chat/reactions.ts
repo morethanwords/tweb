@@ -5,8 +5,7 @@ import positionElementByIndex from '@helpers/dom/positionElementByIndex';
 import {makeMediaSize} from '@helpers/mediaSize';
 import {Middleware, MiddlewareHelper} from '@helpers/middleware';
 import {ReactionCount, SavedReactionTag} from '@layer';
-import appImManager from '@lib/appImManager';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
 import {CustomEmojiRendererElement} from '@lib/customEmoji/renderer';
 import rootScope from '@lib/rootScope';
@@ -16,6 +15,8 @@ import ReactionElement, {ReactionLayoutType, REACTIONS_DISPLAY_COUNTER_AT, REACT
 import {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
 import pause from '@helpers/schedulers/pause';
 import {Accessor, Setter} from 'solid-js';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {hotListen} from '@helpers/hotModule';
 
 
 const CLASS_NAME = 'reactions';
@@ -46,7 +47,7 @@ export function getPendingPaidReactionKey(message: ReactionsContext) {
 // peer's full info changes (an admin may toggle paid reactions on/off).
 const PAID_REACTION_AVAILABLE: Map<PeerId, MaybePromise<boolean>> = new Map();
 
-function getPaidReactionAvailable(managers: AppManagers, peerId: PeerId): MaybePromise<boolean> {
+function getPaidReactionAvailable(managers: ReadingManagers, peerId: PeerId): MaybePromise<boolean> {
   let value = PAID_REACTION_AVAILABLE.get(peerId);
   if(value === undefined) {
     value = managers.appReactionsManager.isPaidReactionAvailable(peerId);
@@ -62,12 +63,16 @@ function getPaidReactionAvailable(managers: AppManagers, peerId: PeerId): MaybeP
   return value;
 }
 
-rootScope.addEventListener('chat_full_update', (chatId) => {
+hotListen(import.meta.hot, rootScope, 'chat_full_update', (chatId) => {
   PAID_REACTION_AVAILABLE.delete(chatId.toPeerId(true));
 });
 
+hotListen(import.meta.hot, rootScope, 'account_switched', () => {
+  PAID_REACTION_AVAILABLE.clear();
+});
+
 export const savedReactionTags: SavedReactionTag[] = [];
-rootScope.addEventListener('saved_tags', ({savedPeerId, tags}) => {
+hotListen(import.meta.hot, rootScope, 'saved_tags', ({savedPeerId, tags}) => {
   if(savedPeerId) {
     return;
   }
@@ -85,13 +90,18 @@ rootScope.addEventListener('saved_tags', ({savedPeerId, tags}) => {
 });
 
 export default class ReactionsElement extends HTMLElement {
+  public static create() {
+    // the registered class: after a hot update this module's class is a copy, which the element registry does not know
+    return new (customElements.get(TAG_NAME) as typeof ReactionsElement)();
+  }
+
   private context: ReactionsContext;
   private key: string;
   private isPlaceholder: boolean;
   private type: ReactionLayoutType;
   private sorted: ReactionElement[];
   private onConnectCallback: () => void;
-  private managers: AppManagers;
+  private managers: ReadingManagers;
   private middleware: Middleware;
   private middlewareHelpers: Map<ReactionElement, MiddlewareHelper>;
   public customEmojiRenderer: CustomEmojiRendererElement;
@@ -99,6 +109,11 @@ export default class ReactionsElement extends HTMLElement {
   private animationGroup: AnimationItemGroup;
   private lazyLoadQueue: LazyLoadQueue;
   private forceCounter: boolean;
+  // * the bubble is raised for a paid reaction's effect by a class of its own (a `:has()` of it was
+  // * searched through every bubble restyled): given when the effect starts or the strip is put into
+  // * a bubble, whichever comes last
+  private paidEffect: boolean;
+  private paidEffectBubble: HTMLElement;
 
   constructor() {
     super();
@@ -120,6 +135,19 @@ export default class ReactionsElement extends HTMLElement {
       this.onConnectCallback();
       this.onConnectCallback = undefined;
     }
+
+    this.syncPaidEffectBubble();
+  }
+
+  private syncPaidEffectBubble() {
+    const bubble = this.paidEffect ? this.closest<HTMLElement>('.bubble') : undefined;
+    if(bubble === this.paidEffectBubble) {
+      return;
+    }
+
+    this.paidEffectBubble?.classList.remove('has-paid-effect');
+    bubble?.classList.add('has-paid-effect');
+    this.paidEffectBubble = bubble;
   }
 
   disconnectedCallback() {
@@ -311,7 +339,7 @@ export default class ReactionsElement extends HTMLElement {
       let reactionElement: ReactionElement = this.sorted.find((reactionElement) => reactionsEqual(reactionElement.reactionCount.reaction, reactionCount.reaction));
       if(!reactionElement) {
         const middlewareHelper = this.middleware.create();
-        reactionElement = new ReactionElement();
+        reactionElement = ReactionElement.create();
         reactionElement.init(this.type, middlewareHelper.get());
         this.middlewareHelpers.set(reactionElement, middlewareHelper);
       }
@@ -365,7 +393,11 @@ export default class ReactionsElement extends HTMLElement {
       paidReactionElement.setPaidReactionCounter(pendingPaidReaction.count());
       if(!paidReactionElement.classList.contains('effect-active')) {
         paidReactionElement.classList.add('effect-active');
+        this.paidEffect = true;
+        this.syncPaidEffectBubble();
         pendingPaidReaction.abortController.signal.addEventListener('abort', () => {
+          this.paidEffect = false;
+          this.syncPaidEffectBubble();
           paidReactionElement.classList.remove('effect-active');
           paidReactionElement.querySelectorAll('.reaction-sticker-activate').forEach((it) => it.remove());
           paidReactionElement.destroyPaidReactionCounter();
@@ -431,7 +463,7 @@ export default class ReactionsElement extends HTMLElement {
   private async handleChangedResults(changedResults: ReactionCount[], waitPromise?: Promise<any>, withDelay?: boolean) {
     await getHeavyAnimationPromise();
     // ! temp
-    if(this.context.peerId !== appImManager.chat.peerId) return;
+    if(this.context.peerId !== hotReloadGuard.appImManager.chat.peerId) return;
     if(withDelay) {
       waitPromise = (waitPromise || Promise.resolve()).then(() => pause(150));
     }
@@ -449,3 +481,6 @@ export default class ReactionsElement extends HTMLElement {
 if(!customElements.get(TAG_NAME)) {
   customElements.define(TAG_NAME, ReactionsElement);
 }
+
+// a method edited here takes effect on the reactions on screen, without a reload (see @helpers/hotRegistry)
+if(import.meta.hot) import.meta.hot.accept();

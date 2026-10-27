@@ -1,5 +1,30 @@
 @use "../shared" as *;
 
+// * the status keeps the anchor of the line as it crossfades and resizes (`crossfadeContent`): its
+// * centre where the line stays centred - the old status and the new, overflowing the resizing
+// * box or not - and its start where the line stays put at its start
+@mixin status-leaving-anchor($centred) {
+  .profile-subtitle-status {
+    @if $centred {
+      justify-content: center;
+
+      .crossfade-leaving {
+        inset-inline-start: auto;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+    } @else {
+      justify-content: flex-start;
+
+      .crossfade-leaving {
+        left: auto;
+        inset-inline-start: 0;
+        transform: none;
+      }
+    }
+  }
+}
+
 .profile {
   &-avatars {
     &-container {
@@ -12,6 +37,13 @@
       cursor: pointer;
       z-index: 1;
       min-height: 276px;
+      // * the middle of the circle in the collapsed header, higher over the buttons: the circle's own
+      // * place (`-fake`) and the middle of a collectible status's background
+      --profile-avatar-center-y: 48%;
+
+      .has-actions & {
+        --profile-avatar-center-y: calc(48% - var(--profile-actions-room) / 2);
+      }
 
       @include animation-level(2) {
         transition: padding-bottom var(--transition-standard-in);
@@ -113,7 +145,7 @@
       align-items: center;
       flex-wrap: nowrap;
       transform: translate(0, 0);
-      transform-origin: left top;
+      transform-origin: var(--transform-origin-inline-start) top;
       transition: transform .2s ease-in-out;
       position: absolute;
     }
@@ -133,7 +165,7 @@
         --size: 420px;
         opacity: 0;
 
-        @include animation-level(2) {
+        @include animation-level(1) {
           transition: opacity var(--transition-standard-in);
         }
       }
@@ -171,15 +203,20 @@
         transition-delay: 0s, 0s;
         transform: scale(1);
 
-        @include animation-level(2) {
-          transition: opacity .05s, transform var(--transition-standard-in);
+        @include animation-level-transition(opacity .05s, transform var(--transition-standard-in));
+
+        // reduced: no shrink to time its fade by - it fades on a clock of its own
+        @include animation-level-only(1) {
+          transition: opacity var(--transition-standard-out);
         }
       }
 
       &-fake {
         position: absolute !important;
         left: 50%;
-        top: 48%;
+        // * with the circle, above the buttons - open as well, where the photo covers it: a place
+        // * of the collapsed header's alone would be let go of at once as it opens, a step down
+        top: var(--profile-avatar-center-y);
         transform: translate(-50%, -50%);
         visibility: hidden;
       }
@@ -194,7 +231,12 @@
       background: linear-gradient(360deg, rgba(0, 0, 0, .3) 8.98%, rgba(0, 0, 0, 0) 100%);
       pointer-events: none;
 
-      @include animation-level(2) {
+      // * the name stands higher, over the buttons
+      .has-actions &:not(.profile-avatars-gradient-top) {
+        height: calc(100px + var(--profile-actions-room));
+      }
+
+      @include animation-level(1) {
         opacity: 1;
         transition: opacity var(--transition-standard-easing) calc(var(--transition-standard-in-time) / 2);
         transition-delay: calc(var(--transition-standard-in-time) / 2);
@@ -222,9 +264,15 @@
         bottom: 1.9375rem;
       }
 
-      @include animation-level(2) {
-        transition: transform var(--transition-standard-in), color var(--transition-standard-in), bottom var(--transition-standard-in);
+      .has-actions & {
+        bottom: calc(.4375rem + var(--profile-actions-room));
       }
+
+      .has-actions.has-music & {
+        bottom: calc(1.9375rem + var(--profile-actions-room));
+      }
+
+      @include animation-level-transition(transform var(--transition-standard-in), color var(--profile-recolor), bottom var(--transition-standard-in));
 
       .profile-name,
       .profile-subtitle {
@@ -236,9 +284,16 @@
         position: relative;
         white-space: nowrap;
 
-        @include animation-level(2) {
-          transition: inset-inline-start var(--transition-standard-in), transform var(--transition-standard-in), color var(--transition-standard-in), max-width var(--transition-standard-in);
+        // the width follows the place it moves to, so it goes along with it: at once, with reduced animations
+        @include animation-level(1) {
+          transition: color var(--profile-recolor);
         }
+
+        @include animation-level(2) {
+          transition: inset-inline-start var(--transition-standard-in), transform var(--transition-standard-in), color var(--profile-recolor), max-width var(--transition-standard-in);
+        }
+
+        @include status-leaving-anchor(false);
       }
 
       .emoji-status {
@@ -251,8 +306,8 @@
         
         &-text {
           opacity: var(--secondary-opacity-max);
-          @include animation-level(2) {
-            transition: opacity var(--transition-standard-in);
+          @include animation-level(1) {
+            transition: opacity var(--profile-recolor);
           }
         }
       }
@@ -264,7 +319,7 @@
       }
 
       .stars-rating-icon:not(.stars-rating-icon-warning) {
-        margin-left: -4px;
+        margin-inline-start: -4px;
       }
 
       .online {
@@ -272,8 +327,8 @@
       }
 
       .premium-icon {
-        @include animation-level(2) {
-          transition: color var(--transition-standard-in), opacity var(--transition-standard-in);
+        @include animation-level(1) {
+          transition: color var(--profile-recolor), opacity var(--profile-recolor);
         }
       }
     }
@@ -287,7 +342,7 @@
       height: .125rem;
       pointer-events: none;
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         opacity: 1;
         transition: opacity var(--transition-standard-in);
       }
@@ -330,7 +385,7 @@
     &-arrow {
       position: absolute;
       top: 0;
-      left: 0;
+      inset-inline-start: 0;
       bottom: 0;
       width: calc(100% / 3);
       opacity: 0;
@@ -339,7 +394,7 @@
         opacity: 1;
       }
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: opacity .2s ease-in-out;
       }
 
@@ -349,7 +404,7 @@
         transform: translateY(-50%);
         font-size: 2.1875rem;
         color: #fff;
-        left: .625rem;
+        inset-inline-start: .625rem;
       }
 
       .profile-avatars-container:not(.is-swiping) & {
@@ -366,12 +421,10 @@
       } */
 
       &-next {
-        left: auto;
-        right: 0;
+        inset-inline: auto 0;
 
         .profile-avatars-arrow-icon {
-          left: auto;
-          right: .625rem;
+          inset-inline: auto .625rem;
         }
       }
     }
@@ -388,6 +441,13 @@
       .profile-container:not(.is-collapsed) & {
         opacity: 0;
         transform: translate(-50%, -50%) scale(1.2);
+      }
+
+      // * around the circle, above the buttons - open too, where it fades out where it stood
+      .has-actions & {
+        @include respond-to(not-handhelds) {
+          top: calc(49% - var(--profile-actions-room) / 2);
+        }
       }
 
       @include respond-to(handhelds) {
@@ -409,6 +469,11 @@
     position: relative;
     width: 100%;
 
+    // * the buttons under the name, and the room the header makes for them
+    &.has-actions {
+      --profile-actions-room: #{$btn-tile-height + .75rem};
+    }
+
     .stars-rating-icon {
       display: flex;
       align-items: center;
@@ -422,11 +487,11 @@
       //   drop-shadow(0 0 #{$thickness} rgba(0, 0, 0, 0.1));
 
       &-warning {
-        margin-right: 0.25rem;
+        margin-inline-end: 0.25rem;
       }
 
       @include animation-level(2) {
-        transition: margin-left var(--transition-standard-in);
+        transition: margin-inline-start var(--transition-standard-in);
       }
     }
 
@@ -461,9 +526,22 @@
   }
 
   &-container {
+    // * the colours that turn white over the photo turn as it covers them, in the second half of its
+    // * growth, and back as it leaves them, in the first half of its shrinking: white over the bare
+    // * header, or a dark name over the photo, would be lost on it
+    --profile-recolor: calc(var(--transition-standard-in-time) / 2) var(--transition-standard-easing);
+
+    &:not(.is-collapsed) {
+      @include animation-level(2) {
+        --profile-recolor: calc(var(--transition-standard-in-time) / 2) var(--transition-standard-easing) calc(var(--transition-standard-in-time) / 2);
+      }
+    }
+
     &.is-collapsed {
+      // * the least height is the padding's own: the padding is animated, and a min-height that
+      // * held the header up would let go of it at once, the header jumping before it grows
       .profile-avatars-container {
-        padding-bottom: 66%;
+        padding-bottom: max(66%, 276px);
       }
 
       .profile-avatars-avatar.active {
@@ -501,8 +579,10 @@
         .profile-name,
         .profile-subtitle {
           inset-inline-start: 50%;
-          transform: translateX(-50%);
+          transform: translateX(calc(-50% * var(--reflect)));
         }
+
+        @include status-leaving-anchor(true);
 
         .profile-name {
           max-width: 21.25rem;
@@ -515,10 +595,32 @@
         }
       }
 
+      // * the header grows by the row of buttons, and what stood in its middle stays where it was
+      .has-actions {
+        .profile-avatars-container {
+          padding-bottom: calc(max(66%, 276px) + var(--profile-actions-room));
+        }
+
+        .profile-avatars-avatar.active {
+          transform: translateY(calc(-3% - var(--profile-actions-room) / 2)) scale(calc(120 / 400));
+        }
+
+        // * a topic's icon is not scaled down, only centred
+        .profile-avatars-container.is-topic .profile-avatars-avatar.active {
+          transform: translateY(calc(var(--profile-actions-room) / -2));
+        }
+      }
+
       .has-stories .profile-avatars-avatar-first {
         opacity: 0;
         transform: scale(.8916666667);
         transition-delay: calc(var(--transition-standard-in-time) - .05s), 0s;
+
+        // reduced: it fades out where it stands, at once
+        @include animation-level-below(2) {
+          transform: none;
+          transition-delay: 0s;
+        }
       }
 
       .profile-subtitle-text,
@@ -529,7 +631,7 @@
       }
 
       .stars-rating-icon {
-        margin-left: 0;
+        margin-inline-start: 0;
       }
     }
 
@@ -616,6 +718,16 @@
           }
         }
       }
+
+      // * the photo comes up under them as it grows
+      &:not(.is-collapsed) .sidebar-header {
+        .sidebar-header__title,
+        .btn-icon {
+          @include animation-level(2) {
+            transition: color var(--profile-recolor);
+          }
+        }
+      }
     }
 
     .sidebar-header {
@@ -625,19 +737,19 @@
       inset-inline: 0;
       z-index: 3;
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: background-color var(--transition);
       }
 
       &:after {
-        @include animation-level(2) {
+        @include animation-level(1) {
           transition: opacity var(--transition);
         }
       }
 
       .sidebar-header__title,
       .btn-icon {
-        @include animation-level(2) {
+        @include animation-level(1) {
           transition: color var(--transition);
         }
       }
@@ -726,6 +838,21 @@
     .online {
       color: var(--primary-color);
     }
+
+    // * a box of its own, which what it showed fades out over (`crossfadeContent`) - an inline one
+    // * would leave that a line of another height - and which the new status resizes. What fades
+    // * out is not cut to the new status
+    &-status {
+      display: inline-flex;
+
+      .crossfade-leaving {
+        inset-inline-end: auto;
+        width: max-content;
+        overflow: visible;
+      }
+    }
+
+    @include status-leaving-anchor(true);
 
     .show-when {
       margin-inline-start: .25rem;
@@ -825,6 +952,73 @@
     .has-music & {
       bottom: 2.1875rem;
     }
+
+    .has-actions & {
+      bottom: calc(.75rem + var(--profile-actions-room));
+    }
+
+    .has-actions.has-music & {
+      bottom: calc(2.1875rem + var(--profile-actions-room));
+    }
+  }
+
+  // * the row of buttons under the name (`PeerProfileActions`), as iOS has them: it stands over the
+  // * header's colour, and over the photo once that opens, and takes its colours from either
+  &-actions {
+    position: absolute;
+    inset-inline: 1rem;
+    bottom: .75rem;
+    z-index: 2;
+    display: flex;
+    gap: .5rem;
+    // * a click between the buttons is the header's: it opens the photo
+    pointer-events: none;
+
+    .has-music & {
+      bottom: 2.25rem;
+    }
+  }
+
+  &-action {
+    // * what a hover and an open menu lay over the button's own colour. With no colour under it the
+    // * button is a plain one: an icon button's colour and ripple, the ripple's shade laid over it on
+    // * hover - the gray of a hover on the page would turn the button into the page's own colour
+    --profile-action-highlight: var(--original-ripple-color);
+    pointer-events: all;
+    background-color: var(--surface-color);
+    color: var(--primary-text-color);
+    text-transform: lowercase;
+
+    @include animation-level(1) {
+      transition: background-color var(--profile-recolor), color var(--profile-recolor);
+    }
+
+    @include hover() {
+      background-image: linear-gradient(var(--profile-action-highlight), var(--profile-action-highlight));
+    }
+
+    &.menu-open {
+      background-image: linear-gradient(var(--profile-action-highlight), var(--profile-action-highlight));
+    }
+
+    // * over the header's own colour: the white the icon buttons there take would be lost on the
+    // * button's own
+    .need-white & {
+      --profile-action-highlight: rgba(255, 255, 255, .15);
+      --ripple-color: var(--profile-action-highlight);
+      --focus-ring-color: #fff;
+      background-color: rgba(255, 255, 255, .2);
+      color: #fff;
+
+      .night & {
+        background-color: rgba(0, 0, 0, .2);
+      }
+    }
+
+    // * over the photo
+    .profile-container:not(.is-collapsed) & {
+      background-color: rgba(255, 255, 255, .15);
+    }
   }
 
   &-story-previews {
@@ -834,12 +1028,12 @@
     opacity: 1;
     transform: translateX(0);
     transition: opacity var(--transition-standard-in), transform var(--transition-standard-in);
-    transform-origin: right center;
+    transform-origin: var(--transform-origin-right-center);
     transition-delay: 0.1s;
 
     .profile-container.is-collapsed & {
       opacity: 0;
-      transform: translateX(12px);
+      transform: translateX(calc(12px * var(--reflect)));
       pointer-events: none;
       transition-delay: 0s;
     }
@@ -892,13 +1086,16 @@
       }
     }
 
+    // * mirrored in RTL, where the circle before it overlaps from the right: the bite
+    // * `#story-item-clip` takes out of the left has to come out of the right side
     &-media {
       border-radius: 50%;
       overflow: hidden;
       position: relative;
-      transform: scale(0.95);
+      transform: scale(calc(.95 * var(--reflect)), .95);
     }
 
+    // * ...and the photo turned back, media is never mirrored
     &-img {
       width: 100% !important;
       height: 100% !important;
@@ -906,6 +1103,7 @@
       position: absolute;
       top: 0;
       left: 0;
+      transform: scaleX(var(--reflect));
     }
   }
 
@@ -1021,10 +1219,19 @@
   &-albums {
     .stories-album-chip {
       max-width: 8rem;
-    }
 
-    .stories-album-chip {
-      max-width: 8rem;
+      @include sortable-item-transition();
+
+      &.is-reorderable {
+        cursor: grab;
+      }
+
+      // * the chip held is lifted off the row on a plate of its own, the chosen one's staying where it was
+      &.is-dragging {
+        z-index: 2;
+        background-color: var(--surface-color);
+        box-shadow: var(--menu-box-shadow);
+      }
     }
 
     .my-stories-container & {

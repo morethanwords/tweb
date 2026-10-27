@@ -35,6 +35,7 @@ export function FoldersSidebarContent(props: {
   const {
     rootScope,
     appSidebarLeft,
+    appDialogsManager,
     AppChatFoldersTab,
     AppEditFolderTab,
     i18n,
@@ -79,7 +80,8 @@ export function FoldersSidebarContent(props: {
     const _menuTarget = menuTarget();
     if(!_menuTarget) return;
 
-    appSidebarLeft.createToolsMenu(_menuTarget, {top: 8, left: 48});
+    // * the menu stands off the bar's inline start: `positionMenuTrigger` takes that from `right` in RTL
+    appSidebarLeft.createToolsMenu(_menuTarget, {top: 8, left: 48, right: 48});
     _menuTarget.classList.add('sidebar-tools-button', 'is-visible');
   });
 
@@ -87,6 +89,7 @@ export function FoldersSidebarContent(props: {
   onMount(() => {
     contextMenu = createFolderContextMenu({
       appSidebarLeft,
+      appDialogsManager,
       AppChatFoldersTab,
       AppEditFolderTab,
       managers: rootScope.managers,

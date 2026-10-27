@@ -70,7 +70,7 @@ function AutomationPlateBody(props: {
             </Show>
             <ButtonMenuToggleTsx
               class="pinned-automation-menu"
-              direction="bottom-right"
+              direction="bottom-left"
               buttons={[{
                 icon: 'settings',
                 text: 'ChatAutomation.ManageBot',

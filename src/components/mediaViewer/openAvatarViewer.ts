@@ -1,8 +1,9 @@
 import isObject from '@helpers/object/isObject';
 import {Photo, MessageAction, Message} from '@layer';
 import rootScope from '@lib/rootScope';
-import AppMediaViewer from '@components/mediaViewer';
 import AppMediaViewerAvatar from '@components/mediaViewer/avatar';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 type AvatarViewerItem = Photo.photo['id'] | Message.messageService;
 
@@ -16,7 +17,8 @@ export default async function openAvatarViewer(
   cachedPhoto?: Photo.photo,
   fallbackPhotoId?: Photo.photo['id']
 ) {
-  let photo = cachedPhoto || await rootScope.managers.appProfileManager.getFullPhoto(peerId);
+  const managers = bindManagersToSession(rootScope.managers);
+  let photo = cachedPhoto || await managers.appProfileManager.getFullPhoto(peerId);
   if(!middleware() || photo?._ !== 'photo') {
     return;
   }
@@ -30,7 +32,7 @@ export default async function openAvatarViewer(
     const inputFilter = 'inputMessagesFilterChatPhotos';
     let message = isObject(item) ? item as Message.messageService : undefined;
     if(!message) {
-      message = await rootScope.managers.appMessagesManager.generateFakeAvatarMessage(peerId, photo);
+      message = await managers.appMessagesManager.generateFakeAvatarMessage(peerId, photo);
       if(!middleware()) return;
     }
 
@@ -38,7 +40,7 @@ export default async function openAvatarViewer(
       // ! гений в деле, костылируем (но это гениально)
       const messagePhoto = (message.action as MessageAction.messageActionChannelEditPhoto).photo;
       if(messagePhoto.id !== photo.id) {
-        message = await rootScope.managers.appMessagesManager.generateFakeAvatarMessage(peerId, photo);
+        message = await managers.appMessagesManager.generateFakeAvatarMessage(peerId, photo);
         if(!middleware()) return;
       }
 
@@ -48,7 +50,7 @@ export default async function openAvatarViewer(
         peerId: (el.item as Message.messageService).peerId
       }));
 
-      new AppMediaViewer()
+      new hotReloadGuard.AppMediaViewer()
       .setSearchContext({
         peerId,
         inputFilter: {_: inputFilter}
@@ -66,7 +68,7 @@ export default async function openAvatarViewer(
 
   if(photo) {
     if(!isObject(item) && item && photo.id !== item) {
-      photo = await rootScope.managers.appPhotosManager.getPhoto(item);
+      photo = await managers.appPhotosManager.getPhoto(item);
     }
 
     const f = (arr: typeof prevTargets) => arr.map((el) => ({
