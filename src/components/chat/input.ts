@@ -155,7 +155,7 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import showTooltip from '@components/tooltip';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import {Accessor, createComponent, createEffect, createRoot, createSignal, Setter} from 'solid-js';
-import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
+import {unwrapSolidElement, wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import SelectedEffect from '@components/chat/selectedEffect';
 import windowSize from '@helpers/windowSize';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
@@ -1646,7 +1646,7 @@ export default class ChatInput {
       const [effect, setEffect] = createSignal<DocId>();
       this.effect = effect;
       this.setEffect = setEffect;
-      this.btnSendContainer.append(SelectedEffect({effect: this.effect}) as HTMLElement);
+      this.btnSendContainer.append(unwrapSolidElement(SelectedEffect({effect: this.effect})) as HTMLElement);
     });
 
     this.sendMenu = new SendMenu({

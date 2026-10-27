@@ -71,6 +71,7 @@ import {ChatType} from '@components/chat/chatType';
 import pause from '@helpers/schedulers/pause';
 import {Accessor, createMemo, createRoot, createSignal, onCleanup, onMount, Setter, Signal, useContext} from 'solid-js';
 import SelectedEffect from '@components/chat/selectedEffect';
+import {unwrapSolidElement} from '@helpers/solid/wrapSolidComponent';
 import showMakePaidPopup from '@components/popups/makePaid';
 import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
 import Icon from '@components/icon';
@@ -545,7 +546,7 @@ export default function showNewMediaPopup(
         const [effect, setEffect] = createSignal<DocId>(wasDraft?.effect);
         effectAccessor = effect;
         setEffectAccessor = setEffect;
-        btnConfirm.append(SelectedEffect({effect: effectAccessor}) as HTMLElement);
+        btnConfirm.append(unwrapSolidElement(SelectedEffect({effect: effectAccessor})) as HTMLElement);
       });
 
       const sendMenu = new SendContextMenu({
