@@ -3760,8 +3760,9 @@ export default class ChatBubbles {
       // like a failed middleware, a stale unreadedChat leaves `this[readPromiseKey]` latched —
       // `cleanup()` is what resets both the promise and the sets
       if(!middleware() || this.isUnreadedChatChanged()) return;
-      // * the hold can come while the tab waits for focus
-      if(type === 'history' && this.isReadHeld()) {
+      // * the hold can come while the tab waits for focus, and what was seen can go with a held read meanwhile
+      // * (`releaseHeldReads`)
+      if((type === 'history' && this.isReadHeld()) || !this[unreadedSeenKey].size) {
         this[readPromiseKey] = undefined;
         return;
       }
@@ -7029,6 +7030,7 @@ export default class ChatBubbles {
         })
       ]).then(() => {
         if(!middleware()) return;
+        this.requestPeerSettingsForReads(peerId);
         log('scrolledAllDown:', scrollable.loadedAll.bottom);
         if(scrollable.loadedAll.bottom && topMessageFullMid !== EMPTY_FULL_MID && !this.unreaded.size) {
           this.onScrolledAllDown();
@@ -14394,6 +14396,15 @@ export default class ChatBubbles {
       heldRead.monoforumThreadId === chat.monoforumThreadId;
   }
 
+  // * the plate brings the settings only to the open that asked for them, and a jump within the chat before they come
+  // * cuts that off: without them the reads would stay held until the chat is opened again
+  private requestPeerSettingsForReads(peerId: PeerId) {
+    if(this.peerSettingsPeerId === peerId || !this.isReadHeld()) return;
+    this.managers.appProfileManager.getPeerSettings(peerId).then((peerSettings) => {
+      this.setPeerSettings(peerId, peerSettings);
+    }, noop);
+  }
+
   // * a jump within a held chat keeps what the hold put off over the cleanup: none of it is read yet
   private keepHeldReads() {
     if(!this.isReadHeld()) return;
@@ -14409,19 +14420,32 @@ export default class ChatBubbles {
 
   private releaseHeldReads() {
     const heldRead = this.isHeldReadOfThisChat() && this.heldRead;
-    this.heldRead = undefined;
-    if(heldRead) {
-      const {peerId, threadId, monoforumThreadId, maxId} = heldRead;
+    if(!heldRead) {
+      this.heldRead = undefined;
+      if(this.unreadedSeen.size) {
+        this.readUnreaded('history');
+      }
+
+      return;
+    }
+
+    // * like the list's own reads it waits until the user can see the chat, which may have changed by then
+    idleController.getFocusPromise().then(() => {
+      if(this.heldRead !== heldRead || !this.isHeldReadOfThisChat() || this.isReadHeld()) return;
+      this.heldRead = undefined;
+
+      // * what was seen goes in the same read: another one while it is on its way would only be applied here,
+      // * `readHistory` takes it as covered by the one in flight and never sends it
+      const seen = this.isUnreadedChatChanged() ? [] : [...this.unreadedSeen];
+      this.unreadedSeen.clear();
+      const {peerId, threadId, monoforumThreadId} = heldRead;
+      const maxId = Math.max(heldRead.maxId, ...seen);
       if(heldRead.unreadMark) {
         this.managers.appMessagesManager.markDialogUnread({peerId, monoforumThreadId, read: true, maxId});
       } else if(maxId) {
         this.managers.appMessagesManager.readHistory({peerId, maxId, threadId, monoforumThreadId, force: true});
       }
-    }
-
-    if(this.unreadedSeen.size) {
-      this.readUnreaded('history');
-    }
+    });
   }
 
   // * the composer's reads, held like the list's own; one that marks the whole history read is made once the hold goes

@@ -7,6 +7,7 @@ let ChatBubbles: typeof import('@components/chat/bubbles').default;
 let AppProfileManager: typeof import('@appManagers/appProfileManager').AppProfileManager;
 let AppMessagesManager: typeof import('@appManagers/appMessagesManager').AppMessagesManager;
 let apiManagerProxy: typeof import('@lib/apiManagerProxy').default;
+let idleController: typeof import('@helpers/idleController').default;
 let rootScope: typeof import('@lib/rootScope').default;
 
 const MY_ID = 7 as PeerId;
@@ -20,6 +21,7 @@ beforeAll(async() => {
   AppProfileManager = (await import('@appManagers/appProfileManager')).AppProfileManager;
   AppMessagesManager = (await import('@appManagers/appMessagesManager')).AppMessagesManager;
   apiManagerProxy = (await import('@lib/apiManagerProxy')).default;
+  idleController = (await import('@helpers/idleController')).default;
   rootScope = (await import('@lib/rootScope')).default;
   rootScope.myId = MY_ID;
 }, LOAD_CHAT_BUBBLES_TIMEOUT);
@@ -42,7 +44,10 @@ function createHarness(peerId: PeerId, peerSettings?: PeerSettings) {
         return this.historyMaxId;
       }
     },
-    managers: {appMessagesManager: {readHistory, readAllHistory, markDialogUnread}},
+    managers: {
+      appMessagesManager: {readHistory, readAllHistory, markDialogUnread},
+      appProfileManager: {getPeerSettings: vi.fn(() => Promise.resolve(CLEAN))}
+    },
     unreaded: new Map<HTMLElement, number>(),
     unreadedSeen: new Set<number>(),
     unreadedChat: {peerId},
@@ -95,8 +100,28 @@ describe('reads in a suspicious user\'s chat', () => {
 
     harness.setPeerSettings(USER_ID, CLEAN);
     await settle();
+    expect(readHistory).toHaveBeenCalledOnce();
     expect(readHistory).toHaveBeenCalledWith(expect.objectContaining({peerId: USER_ID, maxId: 150, force: true}));
-    expect(readHistory).toHaveBeenCalledWith(expect.objectContaining({peerId: USER_ID, maxId: 150}));
+  });
+
+  test('what was put off and what was seen go out as one read', async() => {
+    // * a second read while the first is on its way would be applied locally and never sent
+    const {harness, readHistory} = createHarness(USER_ID, SUSPICIOUS);
+    harness.onScrolledAllDown();
+    see(harness, 180);
+    harness.setPeerSettings(USER_ID, CLEAN);
+    await settle();
+    expect(readHistory).toHaveBeenCalledOnce();
+    expect(readHistory).toHaveBeenCalledWith(expect.objectContaining({maxId: 180, force: true}));
+
+    const marked = createHarness(USER_ID, SUSPICIOUS);
+    marked.harness.readUnreadMark(160);
+    see(marked.harness, 180);
+    marked.harness.setPeerSettings(USER_ID, CLEAN);
+    await settle();
+    expect(marked.readHistory).not.toHaveBeenCalled();
+    expect(marked.markDialogUnread).toHaveBeenCalledOnce();
+    expect(marked.markDialogUnread).toHaveBeenCalledWith(expect.objectContaining({read: true, maxId: 180}));
   });
 
   test('the composer\'s reads wait too, and the one after a send is made once the hold goes', async() => {
@@ -106,6 +131,7 @@ describe('reads in a suspicious user\'s chat', () => {
     expect(readAllHistory).not.toHaveBeenCalled();
 
     harness.setPeerSettings(USER_ID, CLEAN);
+    await settle();
     expect(readAllHistory).not.toHaveBeenCalled();
     expect(readHistory).toHaveBeenCalledOnce();
     expect(readHistory).toHaveBeenCalledWith(expect.objectContaining({peerId: USER_ID, maxId: 150, force: true}));
@@ -119,22 +145,47 @@ describe('reads in a suspicious user\'s chat', () => {
     harness.chat.historyMaxId = 190;
 
     harness.setPeerSettings(USER_ID, CLEAN);
+    await settle();
     expect(readHistory).toHaveBeenCalledOnce();
     expect(readHistory).toHaveBeenCalledWith(expect.objectContaining({maxId: 170, force: true}));
   });
 
-  test('opening a chat marked unread clears the mark only once the hold goes, as far as the chat was then', () => {
+  test('opening a chat marked unread clears the mark only once the hold goes, as far as the chat was then', async() => {
     const {harness, readHistory, markDialogUnread} = createHarness(USER_ID, SUSPICIOUS);
     harness.readUnreadMark(160);
     expect(markDialogUnread).not.toHaveBeenCalled();
 
     harness.setPeerSettings(USER_ID, CLEAN);
+    await settle();
     expect(markDialogUnread).toHaveBeenCalledWith({peerId: USER_ID, monoforumThreadId: undefined, read: true, maxId: 160});
     expect(readHistory).not.toHaveBeenCalled();
 
     const plain = createHarness(USER_ID, CLEAN);
     plain.harness.readUnreadMark(160);
     expect(plain.markDialogUnread).toHaveBeenCalledWith({peerId: USER_ID, monoforumThreadId: undefined, read: true});
+  });
+
+  test('what is released waits until the user can see the chat, and takes what is seen meanwhile', async() => {
+    let focus: () => void;
+    const getFocusPromise = vi.spyOn(idleController, 'getFocusPromise').mockReturnValue(new Promise<void>((resolve) => focus = resolve));
+    try {
+      const {harness, readHistory} = createHarness(USER_ID, SUSPICIOUS);
+      harness.onScrolledAllDown();
+      see(harness, 160);
+      harness.setPeerSettings(USER_ID, CLEAN);
+      // * the hold is gone, the user is away: one more comes in view
+      see(harness, 180);
+      await settle();
+      expect(readHistory).not.toHaveBeenCalled();
+
+      focus();
+      await settle();
+      expect(readHistory).toHaveBeenCalledOnce();
+      expect(readHistory).toHaveBeenCalledWith(expect.objectContaining({maxId: 180, force: true}));
+      expect(harness.readPromise).toBeUndefined();
+    } finally {
+      getFocusPromise.mockRestore();
+    }
   });
 
   test('a hold that comes while the read waits is kept', async() => {
@@ -174,13 +225,20 @@ describe('reads in a suspicious user\'s chat', () => {
   test('a jump within the chat keeps what was put off', async() => {
     const {harness, readHistory} = createHarness(USER_ID, SUSPICIOUS);
     harness.onScrolledAllDown();
-    see(harness, 140);
+    see(harness, 160);
     jumpWithinTheChat(harness);
 
     harness.setPeerSettings(USER_ID, CLEAN);
     await settle();
-    expect(readHistory).toHaveBeenCalledWith(expect.objectContaining({maxId: 150, force: true}));
-    expect(readHistory).toHaveBeenCalledWith(expect.objectContaining({maxId: 140}));
+    expect(readHistory).toHaveBeenCalledOnce();
+    expect(readHistory).toHaveBeenCalledWith(expect.objectContaining({maxId: 160, force: true}));
+
+    const seenOnly = createHarness(USER_ID, SUSPICIOUS);
+    see(seenOnly.harness, 140);
+    jumpWithinTheChat(seenOnly.harness);
+    seenOnly.harness.setPeerSettings(USER_ID, CLEAN);
+    await settle();
+    expect(seenOnly.readHistory).toHaveBeenCalledWith(expect.objectContaining({maxId: 140}));
   });
 
   test('what a jump kept is not read in the chat opened after it', async() => {
@@ -193,6 +251,21 @@ describe('reads in a suspicious user\'s chat', () => {
     harness.setPeerSettings(43 as PeerId, CLEAN);
     await settle();
     expect(readHistory).not.toHaveBeenCalled();
+  });
+
+  test('settings the plate never brought, after a jump cut it off, are asked for by the chat itself', async() => {
+    vi.mocked(apiManagerProxy.getUser).mockReturnValue({_: 'user', id: USER_ID, pFlags: {}} as any);
+    const {harness, readHistory} = createHarness(USER_ID);
+    see(harness, 100);
+    harness.requestPeerSettingsForReads(USER_ID);
+    await settle();
+    expect(harness.managers.appProfileManager.getPeerSettings).toHaveBeenCalledWith(USER_ID);
+    expect(readHistory).toHaveBeenCalledWith(expect.objectContaining({maxId: 100}));
+
+    // * with the settings at hand nothing is asked
+    const known = createHarness(USER_ID, SUSPICIOUS);
+    known.harness.requestPeerSettingsForReads(USER_ID);
+    expect(known.harness.managers.appProfileManager.getPeerSettings).not.toHaveBeenCalled();
   });
 
   test('a user made a contact while the settings were on the way has what was seen read with them', async() => {
@@ -312,8 +385,8 @@ describe('a message sent to a suspicious user', () => {
       updateMessageContextForInserting: vi.fn()
     }) as any;
 
-    const send = (options: {isScheduled?: boolean} = {}) => {
-      const message = {_: 'message', id: 0.0001, mid: 0.0001, random_id: '1', peerId, pFlags: {out: true}};
+    const send = (options: {isScheduled?: boolean, noOutgoingMessage?: boolean} = {}, promise?: Promise<void>) => {
+      const message = {_: 'message', id: 0.0001, mid: 0.0001, random_id: '1', peerId, pFlags: {out: true}, promise};
       manager.beforeMessageSending(message, {...options, processAfter: () => {}});
       return message.id;
     };
@@ -343,6 +416,24 @@ describe('a message sent to a suspicious user', () => {
     expect(appProfileManager.peerSettings[USER_ID].pFlags).toEqual({add_contact: true});
   });
 
+  test('a send that makes no message of its own ends it once it is answered', async() => {
+    const {appProfileManager, send} = createSending();
+    appProfileManager.peerSettings[USER_ID] = structuredClone(SUSPICIOUS);
+    let answer: () => void;
+    send({noOutgoingMessage: true}, new Promise<void>((resolve) => answer = resolve));
+    await settle();
+    expect(appProfileManager.peerSettings[USER_ID].pFlags).toEqual(SUSPICIOUS.pFlags);
+
+    answer();
+    await settle();
+    expect(appProfileManager.peerSettings[USER_ID].pFlags).toEqual({add_contact: true});
+
+    const refused = createSending();
+    refused.send({noOutgoingMessage: true}, Promise.reject(new Error('PEER_FLOOD')));
+    await settle();
+    expect(refused.endSuspiciousPeer).not.toHaveBeenCalled();
+  });
+
   test('a refused one, a scheduled one, or one to a group or to Saved Messages changes nothing', () => {
     const refused = createSending();
     refused.manager.rejectPendingMessageCallbacks(refused.send(), {type: 'PEER_FLOOD'});
@@ -355,6 +446,45 @@ describe('a message sent to a suspicious user', () => {
       const other = createSending(peerId);
       expect(other.manager.tempFinalizeCallbacks[other.send()]).toBeUndefined();
     }
+  });
+});
+
+describe('reads that overlap', () => {
+  test('one that comes while another is on its way reaches the server once that one is answered', async() => {
+    const storage = {readMaxId: 0} as any;
+    const answers: Array<() => void> = [];
+    const invokeApi = vi.fn(() => new Promise<any>((resolve) => answers.push(() => resolve({pts: 0, pts_count: 0}))));
+    const manager = Object.assign(Object.create(AppMessagesManager.prototype), {
+      isEphemeralMessageId: () => false,
+      isEphemeralMessage: () => false,
+      getMessageByPeer: (): undefined => undefined,
+      getReadMaxIdIfUnread: () => 1,
+      getHistoryStorage: () => storage,
+      appPeersManager: {
+        isChannel: () => false,
+        getInputPeerById: (peerId: PeerId) => ({_: 'inputPeerUser', user_id: peerId}),
+        getOutputPeer: (peerId: PeerId) => ({_: 'peerUser', user_id: peerId}),
+        getPeerString: (peerId: PeerId) => '' + peerId
+      },
+      apiManager: {invokeApi},
+      apiUpdatesManager: {
+        processLocalUpdate: (update: any) => {
+          if(update._ === 'updateReadHistoryInbox') storage.readMaxId = Math.max(storage.readMaxId, update.max_id);
+        }
+      },
+      rootScope: {dispatchEvent: vi.fn()},
+      log: Object.assign(vi.fn(), {error: vi.fn(), warn: vi.fn()})
+    }) as any;
+
+    manager.readHistory({peerId: USER_ID, maxId: 100, force: true});
+    manager.readHistory({peerId: USER_ID, maxId: 150, force: true});
+    expect(invokeApi).toHaveBeenCalledOnce();
+    expect(storage.readMaxId).toBe(150);
+
+    answers[0]();
+    await settle();
+    expect(invokeApi).toHaveBeenCalledTimes(2);
+    expect(invokeApi).toHaveBeenLastCalledWith('messages.readHistory', expect.objectContaining({max_id: 150}));
   });
 });
 

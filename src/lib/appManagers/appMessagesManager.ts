@@ -5017,10 +5017,14 @@ export class AppMessagesManager extends AppManager {
 
     // * whether the user is suspicious is asked once the server has the message: their settings may come
     // * in the meantime; a scheduled message reaches no one yet and changes nothing
-    if(pending && !options.isScheduled && !options.isWelcome && peerId.isUser() && peerId !== this.appPeersManager.peerId) {
-      this.invokeAfterMessageIsSent(messageId, 'endSuspiciousPeer', async() => {
-        this.appProfileManager.endSuspiciousPeer(peerId);
-      });
+    if(!options.isScheduled && !options.isWelcome && peerId.isUser() && peerId !== this.appPeersManager.peerId) {
+      const endSuspiciousPeer = async() => this.appProfileManager.endSuspiciousPeer(peerId);
+      if(pending) {
+        this.invokeAfterMessageIsSent(messageId, 'endSuspiciousPeer', endSuspiciousPeer);
+      } else {
+        // * a send that makes no message of its own (an inline result with an outside file) has no pending one to wait for
+        message.promise?.then(endSuspiciousPeer, noop);
+      }
     }
 
     if(message.reactions) {
@@ -9844,9 +9848,12 @@ export class AppMessagesManager extends AppManager {
 
     this.rootScope.dispatchEvent('notification_reset', this.appPeersManager.getPeerString(peerId));
 
-    // Track the highest maxId we've locally applied so future overlapping calls
-    // can correctly decide whether the server call is still needed.
-    if(!(historyStorage.triedToReadMaxId >= maxId)) {
+    // Track the highest maxId the server was asked for, so future overlapping calls
+    // can correctly decide whether the server call is still needed. A read that was
+    // only applied here, while another one was in flight, is not one of them: the
+    // `finally` below sends it once that one is answered, and counting it here would
+    // make it look sent already.
+    if(apiPromise && !(historyStorage.triedToReadMaxId >= maxId)) {
       historyStorage.triedToReadMaxId = maxId;
     }
 
