@@ -4102,7 +4102,8 @@
     }
 
     .has-service-before {
-      margin-top: .5rem;
+      // `.bubble.service .bubble-content` outranks this and sets `margin: 0 auto`
+      margin-top: .5rem !important;
       border-radius: .875rem !important;
 
       .service-msg {
