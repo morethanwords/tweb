@@ -526,6 +526,19 @@ hotEffect(import.meta.hot, () => {
 // * every live highlight, so the ones whose container silently left the document (a cleared
 // * search list, an ejected bubble) can be released without a hook at each call site
 const instances = new Set<TextHighlighter>();
+
+/**
+ * Finds the text of every highlight inside `root` again. Its ranges collapse when an ancestor of its container
+ * is moved to another parent (rows put in from a list built aside, held in a look-alike of what they were in),
+ * and the container's own observer sees nothing of that: whoever moves highlighted rows calls this after
+ */
+export function reapplyTextHighlights(root: Node) {
+  for(const instance of instances) {
+    if(root.contains(instance.container)) {
+      instance.apply();
+    }
+  }
+}
 const SWEEP_INTERVAL = 30e3;
 // * a container may be detached only briefly (virtual lists reattach rows) — give it time
 const DETACHED_GRACE = 10e3;
@@ -641,7 +654,7 @@ class TextHighlighter implements TextHighlight {
     this.found = false;
   }
 
-  private apply() {
+  public apply() {
     if(this.disposed) {
       return;
     }

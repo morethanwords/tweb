@@ -9,6 +9,7 @@ import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {CROSS_FADE_KEYFRAMES, getAnimatedOptions} from '@helpers/dom/crossfadeContent';
 import liteMode from '@helpers/liteMode';
 import deferredPromise from '@helpers/cancellablePromise';
+import {reapplyTextHighlights} from '@helpers/dom/textHighlight';
 
 export type SearchGroupType = 'contacts' | 'globalContacts' | 'messages' | string;
 
@@ -231,6 +232,9 @@ export function createSearchGroup(options: {
       } else {
         list.append(...newRows);
       }
+
+      // * moved from the draft, as the rows leaving are into their list: their highlights are found again
+      reapplyTextHighlights(container);
     };
 
     const applyRest = () => {

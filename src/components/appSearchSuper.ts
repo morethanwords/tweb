@@ -7,6 +7,8 @@ import {commitSearchGroups, createSearchGroup, destroySearchRows, getSearchTrans
 import {horizontalMenu} from '@components/horizontalMenu';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import {putPreloader} from '@components/putPreloader';
+import noop from '@helpers/noop';
+import {reapplyTextHighlights} from '@helpers/dom/textHighlight';
 import Scrollable from '@components/scrollable';
 import {ScrollableContextValue} from '@components/scrollable2';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
@@ -1341,16 +1343,19 @@ export default class AppSearchSuper {
     return filterMessagesByInputFilter({inputFilter: type, messages: messages, limit: messages.length});
   }
 
-  private async processEmptyFilter({message, mediaTab}: ProcessSearchSuperResult) {
+  private async processEmptyFilter({message, mediaTab, middleware}: ProcessSearchSuperResult) {
     const isSaved = mediaTab.type === 'saved';
+    const query = this.searchContext.query;
 
     let peerId = message.peerId;
     if(isSaved) {
       peerId = message.fromId;
     }
     peerId = await this.managers.appPeersManager.getPeerMigratedTo(peerId) || peerId;
-
-    const middleware = this.middleware.get();
+    // * the query that asked is over: no row for it, under the next one's middleware or words
+    if(!middleware()) {
+      return;
+    }
 
     const loadPromises: Promise<any>[] = [];
     // * put in whole, with the others of its page (`performSearchResult`)
@@ -1375,7 +1380,7 @@ export default class AppSearchSuper {
       } as any,
       lastMessage: message,
       dialogElement,
-      highlightWord: this.searchContext.query,
+      highlightWord: query,
       noForwardIcon: isSaved
     });
 
@@ -1616,6 +1621,10 @@ export default class AppSearchSuper {
     let inputFilter = mediaTab.inputFilter;
 
     await getHeavyAnimationPromise();
+    // * the query that asked is over: the search's context and its group of found media are the next one's
+    if(!middleware()) {
+      return 0;
+    }
 
     let searchGroup: SearchGroup;
     if(inputFilter === 'inputMessagesFilterPhotoVideo' && !!this.searchContext.query.trim()) {
@@ -2610,7 +2619,8 @@ export default class AppSearchSuper {
         dom.lastMessageSpan.append(i18n('UnknownBotUsers'));
       }
 
-      await Promise.all(loadPromises);
+      // * a picture that did not come does not keep its row out
+      await Promise.all(loadPromises).catch(noop);
       return dom.containerEl;
     }));
 
@@ -2625,6 +2635,23 @@ export default class AppSearchSuper {
       const options = getAnimatedOptions(getSearchTransitionDuration());
       rows.forEach((row) => row.animate(CROSS_FADE_KEYFRAMES, options));
     }
+  }
+
+  /**
+   * Puts a tab's groups in together once their rows are there: one whose rows could not be had (a request of its
+   * failed) stays out, and the others go in all the same. False when the query is over by then
+   */
+  private async appendRenderedGroups(mediaTab: SearchSuperMediaTab, middleware: Middleware, rendering: [SearchGroup, Promise<any>][]) {
+    const isRendered = await Promise.all(rendering.map(([, promise]) => promise.then(() => true, (err) => {
+      this.log.error('search group error:', err);
+      return false;
+    })));
+    if(!middleware()) {
+      return false;
+    }
+
+    mediaTab.itemsTab.append(...rendering.filter((_, idx) => isRendered[idx]).map(([group]) => group.container));
+    return true;
   }
 
   private async loadChannels({mediaTab, middleware}: SearchSuperLoadTypeOptions) {
@@ -2659,34 +2686,33 @@ export default class AppSearchSuper {
     const channelDialogs = channelDialogsWithUndefined.filter(Boolean);
 
     // * the groups go in together, once they have their rows - not the joined channels before the similar ones
-    const groups: SearchGroup[] = [];
-    const promises: Promise<any>[] = [];
+    const rendering: [SearchGroup, Promise<any>][] = [];
     if(channelDialogs.length) {
       const group = createSearchGroup({name: 'Chat.Search.JoinedChannels', type: 'channels', middleware});
       group.setActive();
-      groups.push(group);
 
       const SHOW_MORE_LIMIT = 5;
       if(channelDialogs.length > SHOW_MORE_LIMIT) group.needShowMoreButton();
 
-      promises.push(this.renderPeerDialogs(channelDialogs.map((dialog) => dialog.peerId), group, middleware));
+      rendering.push([group, this.renderPeerDialogs(channelDialogs.map((dialog) => dialog.peerId), group, middleware)]);
     }
 
-    const recommendations = await managers.appChatsManager.getChannelRecommendations();
+    // * on top of the joined ones: failing, it leaves them be
+    const recommendations = await managers.appChatsManager.getChannelRecommendations().catch((err): undefined => {
+      this.log.error('channel recommendations error:', err);
+      return undefined;
+    });
     if(!middleware()) return;
 
-    if(recommendations.chats.length) {
+    if(recommendations?.chats.length) {
       const group = createSearchGroup({name: 'SimilarChannels', type: 'channels', middleware});
       group.setActive();
-      groups.push(group);
 
-      promises.push(this.renderPeerDialogs(recommendations.chats.map((chat) => chat.id.toPeerId(true)), group, middleware));
+      rendering.push([group, this.renderPeerDialogs(recommendations.chats.map((chat) => chat.id.toPeerId(true)), group, middleware)]);
     }
 
-    await Promise.all(promises);
-    if(!middleware()) return;
+    if(!await this.appendRenderedGroups(mediaTab, middleware, rendering)) return;
 
-    mediaTab.itemsTab.append(...groups.map((group) => group.container));
     this.afterPerforming(1, mediaTab);
     this.loaded[mediaTab.type] = true;
   }
@@ -2741,22 +2767,19 @@ export default class AppSearchSuper {
     if(!middleware()) return;
 
     // * the groups go in together, once they have their rows - not the first one before the popular apps
-    const groups: SearchGroup[] = [];
-    let topAppsPromise: Promise<void>;
+    const rendering: [SearchGroup, Promise<any>][] = [];
     if(myTopApps.length) {
       const group = createSearchGroup({name: 'MiniApps.Apps', type: 'apps', onFound: onClick, middleware});
       group.setActive();
-      groups.push(group);
 
       const SHOW_MORE_LIMIT = 5;
       if(myTopApps.length > SHOW_MORE_LIMIT) group.needShowMoreButton();
 
-      topAppsPromise = this.renderPeerDialogs(myTopApps.map((app) => app.id.toPeerId(false)), group, middleware, 'bots');
+      rendering.push([group, this.renderPeerDialogs(myTopApps.map((app) => app.id.toPeerId(false)), group, middleware, 'bots')]);
     }
 
     const group = createSearchGroup({name: 'MiniApps.Popular', type: 'apps', onFound: onClick, middleware});
     group.setActive();
-    groups.push(group);
 
     type GetPopularAppsResult = ReturnType<typeof rootScope.managers.appAttachMenuBotsManager.getPopularAppBots>;
     let currentOffset: string = '', loadPromise: GetPopularAppsResult;
@@ -2773,6 +2796,8 @@ export default class AppSearchSuper {
       const {nextOffset, userIds} = await loadPromise;
 
       await this.renderPeerDialogs(userIds.map((id) => id.toPeerId(false)), group, middleware, 'bots');
+      // * a query that is over marks nothing loaded: `loaded` is the next one's by now
+      if(!middleware()) return;
 
       currentOffset = nextOffset || undefined;
       loadPromise = undefined;
@@ -2790,10 +2815,9 @@ export default class AppSearchSuper {
       }
     });
 
-    await Promise.all([topAppsPromise, loadMoreApps()]);
-    if(!middleware()) return;
+    rendering.push([group, loadMoreApps()]);
+    if(!await this.appendRenderedGroups(mediaTab, middleware, rendering)) return;
 
-    mediaTab.itemsTab.append(...groups.map((group) => group.container));
     this.afterPerforming(1, mediaTab);
   }
 
@@ -3364,6 +3388,8 @@ export default class AppSearchSuper {
     ghost.inert = true;
     ghost.append(...content);
     tabContainer.append(ghost);
+    // * the rows were moved into it: their highlights of the query are found again
+    reapplyTextHighlights(ghost);
     return ghost;
   }
 
@@ -3398,7 +3424,8 @@ export default class AppSearchSuper {
       const wait = isNewQuery ? SEARCH_RESULTS_WAIT : SEARCH_RESULTS_WAIT + SEARCH_RESULTS_WAIT_LATE;
       Promise.race([settle(promise), pause(wait)]).then(() => {
         if(middleware()) {
-          this.revealTab(mediaTab, {resetScroll: isNewQuery, isLast: true});
+          // * only a new query's reveal lets the queries before it go: a tab opened empty held none of theirs
+          this.revealTab(mediaTab, {resetScroll: isNewQuery, isLast: isNewQuery});
         }
       });
       return;
@@ -3427,7 +3454,7 @@ export default class AppSearchSuper {
         groups: revealed.length === parts.length ? undefined : flatten(revealed.map((part) => part.groups)),
         resetScroll,
         merge,
-        isLast: !merge && parts.every((part) => part.isShown)
+        isLast: isNewQuery && !merge && parts.every((part) => part.isShown)
       });
       resetScroll = false;
     };

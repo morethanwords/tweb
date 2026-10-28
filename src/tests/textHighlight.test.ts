@@ -26,7 +26,8 @@ import createHighlight, {
   computeRanges,
   extractText,
   findQuoteSpan,
-  findSearchSpans
+  findSearchSpans,
+  reapplyTextHighlights
 } from '@helpers/dom/textHighlight';
 
 const highlights = new Set<TextHighlight>();
@@ -392,6 +393,26 @@ describe('highlightText', () => {
     expect(overlay.classList.contains('is-narrowing')).toBe(false);
     vi.advanceTimersByTime(1000);
     expect(overlay.classList.contains('is-narrowing')).toBe(false);
+    highlight.dispose();
+  });
+
+  it('finds its text again once a row moved to another list is reapplied', () => {
+    // * a row highlighted in a list built aside (a search group's draft), then put in the shown one
+    const draft = document.createElement('div');
+    const row = document.createElement('div');
+    row.innerHTML = '<span>moved text</span>';
+    draft.append(row);
+    const highlight = highlightText({container: row, match: {type: 'search', query: 'moved'}});
+    const texts = () => registered('tg-search').map((range) => range.toString());
+    expect(texts()).toEqual(['moved']);
+
+    // * the move collapses the live range, and the row's own observer sees nothing of it
+    const list = html('');
+    list.append(row);
+    expect(texts()).toEqual(['']);
+
+    reapplyTextHighlights(list);
+    expect(texts()).toEqual(['moved']);
     highlight.dispose();
   });
 
