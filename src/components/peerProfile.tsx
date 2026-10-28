@@ -8,6 +8,8 @@ import {useChat, usePeer} from '@stores/peers';
 import {BusinessWorkHours, Chat, ChatFull, GeoPoint, GroupCall, HelpTimezonesList, InputGroupCall, Photo, StoryItem, Document, MessageMedia, Timezone, User, UserFull, UserStatus} from '@layer';
 import getAudioTitles from '@appManagers/utils/docs/getAudioTitles';
 import {useFullPeer} from '@stores/fullPeers';
+import {appSettings} from '@stores/appSettings';
+import getPeerPhoto from '@appManagers/utils/peers/getPeerPhoto';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import createMiddleware from '@helpers/solid/createMiddleware';
@@ -18,7 +20,7 @@ import classNames from '@helpers/string/classNames';
 import Row from '@components/rowTsx';
 import formatUserPhone from '@components/wrappers/formatUserPhone';
 import {copyTextToClipboard} from '@helpers/clipboard';
-import {copyPhoneNumber, copyUsername} from '@helpers/copyContact';
+import {copyPeerId, copyPhoneNumber, copyUsername} from '@helpers/copyContact';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
 import anchorCopy from '@helpers/dom/anchorCopy';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
@@ -959,6 +961,50 @@ PeerProfile.ContactNote = () => {
         <Row.Title>{text()}</Row.Title>
         <Row.Subtitle subtitleRight={i18n('ContactNoteRowDesc')}>
           {i18n('ContactNoteRow')}
+        </Row.Subtitle>
+      </Row>
+    </Show>
+  );
+};
+
+PeerProfile.PeerId = () => {
+  const context = useContext(PeerProfileContext);
+  const {i18n} = useHotReloadGuard();
+  const peerId = createMemo(() => {
+    if(!appSettings.showPeerIds || !context.canBeDetailed() || context.isTopic) {
+      return;
+    }
+
+    return '' + Math.abs(context.peerId);
+  });
+
+  const dcId = createMemo(() => {
+    const photo = getPeerPhoto(context.peer as User | Chat);
+    if(photo?._ === 'userProfilePhoto' && photo.pFlags.personal) {
+      return ((context.fullPeer as UserFull.userFull)?.profile_photo as Photo.photo)?.dc_id;
+    }
+
+    return photo?.dc_id;
+  });
+
+  const onClick = () => copyPeerId(peerId());
+
+  return (
+    <Show when={peerId()}>
+      <Row
+        clickable={onClick}
+        contextMenu={{
+          buttons: [{
+            icon: 'copy',
+            text: 'Text.CopyLabel_Id',
+            onClick
+          }]
+        }}
+      >
+        <Row.Icon icon="tag_alt_filled" text="ID" />
+        <Row.Title><span dir="ltr">{peerId()}</span></Row.Title>
+        <Row.Subtitle subtitleRight={dcId() && i18n('PeerInfo.DataCenter', [dcId()])}>
+          {i18n('PeerInfo.Id')}
         </Row.Subtitle>
       </Row>
     </Show>
@@ -2018,6 +2064,7 @@ PeerProfile.MainSection = () => {
       <PeerProfile.Username />
       <PeerProfile.Location />
       <PeerProfile.Bio />
+      <PeerProfile.PeerId />
       <PeerProfile.Link />
       <PeerProfile.Birthday />
       <PeerProfile.ContactNote />

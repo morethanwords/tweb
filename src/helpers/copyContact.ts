@@ -25,3 +25,8 @@ export function copyPhoneNumber(phone: string) {
   copyTextToClipboard(phone.replace(/\s/g, ''));
   toastNew({langPackKey: 'PhoneCopied'});
 }
+
+export function copyPeerId(id: string) {
+  copyTextToClipboard(id);
+  toastNew({langPackKey: 'IdCopied'});
+}
