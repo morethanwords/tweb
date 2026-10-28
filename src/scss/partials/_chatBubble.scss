@@ -2517,6 +2517,7 @@
       display: flex;
       flex-direction: column;
       gap: .125rem;
+      text-align: start;
     }
 
     &-title {
@@ -2530,17 +2531,6 @@
       font-size: var(--font-size-13);
       line-height: var(--line-height-13);
       opacity: .7;
-    }
-
-    &-button {
-      flex: 0 0 auto;
-      min-height: 30px;
-      margin: 0;
-      margin-inline-start: .25rem;
-      padding: 0 .75rem;
-      border-radius: 15px;
-      font-size: var(--font-size-14);
-      background-color: rgba(0, 0, 0, .11);
     }
   }
 
@@ -3443,6 +3433,20 @@
     &-wrapper {
       max-width: 100%;
       padding: 0 2rem;
+    }
+  }
+
+  &.is-unsupported {
+    .bubble-content-wrapper {
+      padding: 0;
+    }
+
+    &-in {
+      justify-content: flex-start;
+    }
+
+    &-out {
+      justify-content: flex-end;
     }
   }
 }

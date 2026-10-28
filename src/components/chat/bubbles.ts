@@ -9432,7 +9432,8 @@ export default class ChatBubbles {
           s.append(avatarContainer, text, button);
         }
       } else if(isUnsupported) {
-        wrapUnsupportedMessagePlate(s, this.listenerSetter);
+        bubble.classList.add('is-unsupported', this.chat.isOutMessage(message) ? 'is-unsupported-out' : 'is-unsupported-in');
+        wrapUnsupportedMessagePlate(s);
       } else if(isSelfDestructingMedia) {
         const promise = wrapMessageForReply({
           message,

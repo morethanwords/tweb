@@ -1489,7 +1489,8 @@
 
 	&.is-chat,
   &.with-message-avatars {
-  	.is-in .bubble-content-wrapper {
+  	.is-in .bubble-content-wrapper,
+  	.bubble.is-unsupported-in .bubble-content-wrapper {
      	margin-inline-start: 2.875rem;
    	}
 	}

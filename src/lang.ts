@@ -495,7 +495,6 @@ const lang = {
   'Message.Unsupported.Mobile': '__This message is currently not supported on Telegram Web. Try [telegram.org/dl](https://telegram.org/dl/)__',
   'UnsupportedMessageTitle': 'Unsupported Message',
   'UnsupportedMessageMessage': 'Update Telegram to view this message',
-  'UnsupportedUpdate': 'Update',
   'RichMessage.Error.TooLong': 'This rich text message is too long (%1$d of %2$d characters).',
   'RichMessage.Error.TooManyBlocks': 'This rich text message has too many blocks (%1$d of %2$d).',
   'RichMessage.Error.TooDeep': 'This rich text message is nested too deeply (%1$d of %2$d levels).',
