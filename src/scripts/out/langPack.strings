@@ -1723,6 +1723,7 @@
 "ContactDetails.Organization" = "Organization";
 "ContactDetails.Name" = "Name";
 "UsernameCopied" = "Username copied to clipboard.";
+"IdCopied" = "ID copied to clipboard.";
 "BioCopied" = "Bio copied to clipboard.";
 "UserBio" = "Bio";
 "Username" = "Username";
@@ -4340,11 +4341,17 @@
 "Text.CopyLabel_Username" = "Copy Username";
 "Text.CopyLabel_ShareLink" = "Copy Share Link";
 "Text.CopyLabel_Note" = "Copy Note";
+"Text.CopyLabel_Id" = "Copy ID";
 "GeneralSettings.BigEmoji" = "Large Emoji";
 "GeneralSettings.EmojiPrediction" = "Suggest Emoji";
 "GeneralSettings.IncreaseContrast" = "Increase Contrast";
 "GeneralSettings.IncreaseContrastInfo" = "Make text and buttons easier to see.";
 "GeneralSettings.IncreaseContrast.SearchKeywords" = "accessibility, a11y, high contrast, readability, colors";
+"GeneralSettings.ShowPeerIds" = "Show Peer IDs";
+"GeneralSettings.ShowPeerIdsInfo" = "Show the ID and data center of users, bots, groups and channels in their profiles.";
+"GeneralSettings.ShowPeerIds.SearchKeywords" = "id, user id, chat id, channel id, dc, data center, developer";
+"PeerInfo.Id" = "ID";
+"PeerInfo.DataCenter" = "DC %d";
 "GroupPermission.Delete" = "Delete Exception";
 "Search.Confirm.ClearHistory" = "Are you sure you want to clear your search history?";
 "SecureId.Identity.Placeholder.ExpiryDate" = "Expiry Date";

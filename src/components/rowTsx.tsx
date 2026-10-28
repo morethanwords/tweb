@@ -435,7 +435,7 @@ Row.Icon = (props: {
       }}
     >
       {props.text ?
-        <span class="row-icon-text">{props.text}</span> :
+        <span aria-hidden="true" class="row-icon-text">{props.text}</span> :
         <IconTsx icon={props.icon} class="row-icon-icon" />}
     </span>
   ));
