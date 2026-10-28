@@ -1,8 +1,9 @@
 import {describe, expect, test} from 'vitest';
-import type {TextWithEntities} from '@layer';
+import type {MessageEntity, TextWithEntities} from '@layer';
 import type {SolidInlineText as SolidInlineTextType} from '@components/chat/bubbleParts/solidMessageText';
 import {batch, createSignal} from 'solid-js';
 import {render} from 'solid-js/web';
+import wrapMessageEntities from '@lib/richTextProcessor/wrapMessageEntities';
 
 /**
  * The incremental renderer in `solidMessageText` reaches into the DOM that
@@ -286,4 +287,63 @@ test.each([false, true])('keeps the separator before the supplied middle quote (
   expect(harness.root.lastChild?.textContent).toBe('123123');
   expect(harness.root.textContent).toBe('123123\n123123123123');
   harness.dispose();
+});
+
+// wrapRichText draws a quote's closing line break only while no text follows the quote
+describe('a streamed quote that closes with a line break draws as a fresh one', () => {
+  const message = (text: string, entities: TextWithEntities['entities']) =>
+    textWithEntities(text, wrapMessageEntities(text, entities).totalEntities);
+  const quote = (offset: number, length: number, collapsed?: true): MessageEntity =>
+    ({_: 'messageEntityBlockquote', pFlags: collapsed ? {collapsed} : {}, offset, length});
+  const spoiler = (offset: number, length: number): MessageEntity => ({_: 'messageEntitySpoiler', offset, length});
+
+  const draw = (source: TextWithEntities, streaming: boolean) => {
+    const harness = mount(source, streaming ? 1 : source.text.length);
+    if(streaming) for(let visible = 2; visible <= source.text.length; ++visible) harness.setVisible(visible);
+    harness.setPhase('final');
+    const drawn = {
+      text: harness.root.textContent,
+      quotes: Array.from(harness.root.querySelectorAll('blockquote'), (element) => element.textContent)
+    };
+    harness.dispose();
+    return drawn;
+  };
+
+  test.each<[string, TextWithEntities]>([
+    ['with a blank line', message('a\nquote\n\n\nz', [quote(2, 7)])],
+    ['with text right after it', message('a\nquote\nz', [quote(2, 6)])],
+    ['in a spoiler over the whole text', message('a\nquote\n\n\nz', [spoiler(0, 11), quote(2, 7)])],
+    ['at the start of a spoiler', message('quote\n\n\nz', [spoiler(0, 9), quote(0, 7)])],
+    ['under a spoiler of its own', message('a\nquote\n\nz', [spoiler(2, 6), quote(2, 6)])],
+    ['with formatting inside', message('a\nquote\n\nz', [quote(2, 6), {_: 'messageEntityBold', offset: 4, length: 4}])],
+    ['before another quote', message('a\nquote\n\nnext\n\nz', [quote(2, 6), quote(9, 4)])],
+    ['with nested formatting at its end, in a spoiler', message('a\nquote\nzabc', [
+      spoiler(0, 12),
+      quote(2, 6),
+      {_: 'messageEntityBold', offset: 4, length: 4},
+      {_: 'messageEntityItalic', offset: 5, length: 1}
+    ])],
+    // the entities the API sent alone, no line break among them: wrapRichText keeps the break
+    ['without line break entities', textWithEntities('quote\nz', [quote(0, 6)])]
+  ])('%s', (_name, source) => {
+    expect(draw(source, true)).toEqual(draw(source, false));
+  });
+
+  test.each([false, true])('keeps the quote the user unfolded (in a spoiler=%s)', (inSpoiler) => {
+    const source = message('a\nquote\n\n\nz', [
+      ...(inSpoiler ? [spoiler(0, 11)] : []),
+      quote(2, 7, true)
+    ]);
+    const harness = mount(source, 1);
+    for(let visible = 2; visible <= 9; ++visible) harness.setVisible(visible);
+    const unfolded = harness.root.querySelector('blockquote');
+    unfolded.classList.add('is-expanded');
+    for(let visible = 10; visible <= source.text.length; ++visible) harness.setVisible(visible);
+    harness.setPhase('final');
+    expect(harness.root.querySelector('blockquote')).toBe(unfolded);
+    expect(unfolded.classList.contains('is-expanded')).toBe(true);
+    expect(unfolded.querySelector('.quote-like-collapse')).not.toBeNull();
+    expect(unfolded.textContent).toBe('quote\n');
+    harness.dispose();
+  });
 });

@@ -482,6 +482,25 @@ const isSplittableTextEntity = (entity: MessageEntity) => !isAtomicTextEntity(en
   entity._ !== 'messageEntityBlockquote' &&
   entity._ !== 'messageEntitySpoiler';
 
+/** wrapRichText draws a quote's closing line break (its entity, a source without one keeps it) only while no text follows the quote */
+function dropsQuoteClosingBreak(entity: MessageEntity, value: TextWithEntities) {
+  const end = (entity.offset || 0) + (entity.length || 0);
+  return entity._ === 'messageEntityBlockquote' &&
+    end < value.text.length &&
+    value.text[end - 1] === '\n' &&
+    (value.entities || []).some((other) => other._ === 'messageEntityLinebreak' && other.offset === end - 1);
+}
+
+/** How much shorter than its source text the drawing of `value` is between `from` and `to` */
+function countDroppedQuoteBreaks(value: TextWithEntities, from: number, to: number) {
+  let count = 0;
+  for(const entity of value.entities || []) {
+    const end = (entity.offset || 0) + (entity.length || 0);
+    if(end > from && end <= to && dropsQuoteClosingBreak(entity, value)) ++count;
+  }
+  return count;
+}
+
 function getCommonTextPrefixLength(left: string, right: string) {
   const length = Math.min(left.length, right.length);
   let index = 0;
@@ -749,6 +768,27 @@ export function SolidInlineText(props: SolidInlineTextProps): JSX.Element {
     return keepLength === offset;
   };
 
+  // A quote drawn with its closing line break loses it in place once text comes after it, as a fresh
+  // drawing would have it: the quote, folded or unfolded by the user, stays. One drawn otherwise than
+  // its source text is left as it is.
+  const dropPassedQuoteBreaks = (previous: TextWithEntities, current: TextWithEntities) => {
+    let ordinal = -1;
+    for(const entity of current.entities || []) {
+      if(entity._ !== 'messageEntityBlockquote') continue;
+      ++ordinal;
+      const start = entity.offset || 0;
+      const end = start + (entity.length || 0);
+      if(end < previous.text.length || !dropsQuoteClosingBreak(entity, current)) continue;
+      const quote = element.querySelectorAll<HTMLElement>('blockquote.quote-block')[ordinal];
+      if(quote?.textContent !== current.text.slice(start, end)) continue;
+      // the break is the last character of the last text the quote holds, however deep in its formatting
+      const walker = document.createTreeWalker(quote, NodeFilter.SHOW_TEXT);
+      let last: Text;
+      for(let node = walker.nextNode(); node; node = walker.nextNode()) if((node as Text).length) last = node as Text;
+      last.deleteData(last.length - 1, 1);
+    }
+  };
+
   const tryMergeStaticAppend = (chunk: RenderedTextChunk) => {
     const previousChunk = renderedChunks[renderedChunks.length - 1];
     if(
@@ -853,7 +893,12 @@ export function SolidInlineText(props: SolidInlineTextProps): JSX.Element {
         );
         const outerStart = currentEntity.offset || 0;
         const renderFrom = Math.max(outerStart, Math.min(previousEnd, nestedDirtyStart));
-        if(!truncateContainerText(target as HTMLElement, renderFrom - outerStart)) return;
+        // the drawing is its source but for the closing breaks of the quotes text follows; one that is
+        // not is drawn anew rather than cut at a guess
+        const drawnLength = previousEnd - outerStart - countDroppedQuoteBreaks(previous, outerStart, previousEnd);
+        if(target.textContent.length !== drawnLength) return;
+        const keepLength = renderFrom - outerStart - countDroppedQuoteBreaks(previous, outerStart, renderFrom);
+        if(!truncateContainerText(target as HTMLElement, keepLength)) return;
         const prepared = prepareNestedSuffix(current, renderFrom, currentEnd, index);
         target.append(prepared.fragment);
         chunk.middlewares.push(...prepared.chunk.middlewares);
@@ -869,6 +914,7 @@ export function SolidInlineText(props: SolidInlineTextProps): JSX.Element {
         const wrapperIndex = chunk.nodes.indexOf(wrapper);
         if(wrapperIndex !== -1) chunk.nodes[wrapperIndex] = container;
       }
+      dropPassedQuoteBreaks(previous, current);
       // The completed quote supplies the line boundary. Consume its external
       // separator here too, before the independently rendered suffix loses
       // the quote context needed by wrapRichText to suppress that newline.
