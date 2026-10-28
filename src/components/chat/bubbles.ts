@@ -5299,7 +5299,7 @@ export default class ChatBubbles {
     // position. Dedicated listener (not via onScroll) so it fires reliably on every scroll.
     this.listenerSetter.add(this.scrollable.container)('scroll', this.saveReflowScrollDebounced, {passive: true});
 
-    // Shared outgoing gradient: each bubble samples the viewport-fixed fill so
+    // each bubble samples the viewport-fixed fill so 
     // messages at different Y positions get different colours.
     this.outgoingMessageGradientSync = createOutgoingMessageGradientSync(() => this.chatInner);
     this.listenerSetter.add(this.scrollable.container)('scroll', () => {
@@ -5877,7 +5877,7 @@ export default class ChatBubbles {
         if(this.updateGradient) {
           const {gradientRenderer} = this.chat;
           gradientRenderer?.toNextPosition(dimensions.getProgress);
-          // Animated message_colors: advance the shared freeform fill with the send scroll.
+          // advance the shared freeform fill with the send scroll.
           if(isOutgoingMessageGradientAnimated()) {
             animateOutgoingMessageGradient(dimensions.getProgress);
           }
