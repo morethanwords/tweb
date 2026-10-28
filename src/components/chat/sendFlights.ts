@@ -1335,11 +1335,8 @@ class TextFlight extends SendFlight {
   // the field's text is the bubble's all the way
   private keepFieldText: boolean;
   private background: {color: string, shadow: string, radii: Radii};
-  /**
-   * Shared outgoing message_colors fill (viewport-anchored). When set, the flight's
-   * solid currentColor pieces are hidden and a rounded fill samples the same gradient
-   * the landed bubble will — updated every frame while transforms move it.
-   */
+
+  // when set, solid currentColor pieces are hidden and a rounded fill samples the same gradient
   private gradientImage?: string;
   private gradientFill?: HTMLElement;
   private gradientRaf = 0;
@@ -1470,8 +1467,7 @@ class TextFlight extends SendFlight {
     }
 
     const contentStyle = getComputedStyle(content);
-    // Prefer the shared theme fill; fall back to the bubble's own background-image
-    // (inline --out-grad-* already applied). Solid colour alone still counts.
+    // prefer shared theme fill and fall back to the bubble's own background image
     this.gradientImage = getOutgoingMessageGradientImage() ||
       (contentStyle.backgroundImage && contentStyle.backgroundImage !== 'none' ?
         contentStyle.backgroundImage :
@@ -1665,9 +1661,8 @@ class TextFlight extends SendFlight {
     shape.append(...[...bands, ...corners].map(({across}) => across));
     const tail = this.tail && createAxes(this.tail);
 
-    // Gradient themes: solid currentColor pieces can't sample the viewport fill
-    // (and scale transforms would warp it). Hide them and drive a rounded fill
-    // each frame instead — same slice the landed bubble will show.
+    // solid currentColor pieces can't sample the viewport fill
+    // (and scale transforms would remove it). Hide them and use a rounded fill each frame instead
     if(this.gradientImage) {
       shape.style.opacity = '0';
       const fill = this.gradientFill = createPart(styles.part);
@@ -1675,8 +1670,8 @@ class TextFlight extends SendFlight {
       fill.style.filter = this.background.shadow;
       fill.style.backgroundRepeat = 'no-repeat';
       if(this.tail) {
-        // Same trick as landed `.bubble-tail`: paint the shared fill on the
-        // wrapper and punch the SVG silhouette through as an alpha mask.
+        // paint the shared fill on the wrapper and
+        // punch the SVG through as an alpha mask
         const svg = this.tail.firstElementChild as SVGElement | null;
         if(svg) {
           try {
@@ -1774,11 +1769,6 @@ class TextFlight extends SendFlight {
     }
   }
 
-  /**
-   * Keep the flight fill (and tail) sampling the shared outgoing gradient as the
-   * morphing box moves — same viewport windowing as landed `.bubble.is-out`s.
-   * Freeform themes re-read the CSS image each frame so send-scroll advances apply.
-   */
   private startGradientSync() {
     this.stopGradientSync();
     if(!this.gradientFill) return;
