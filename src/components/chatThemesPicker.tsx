@@ -134,10 +134,8 @@ export default function ChatThemesPicker(props: ChatThemesPickerProps) {
     } as unknown as Theme;
     themeController.applyTheme(virtualTheme, item.container);
 
-    // Force `.theme-bubble.is-out` to the theme's raw message_colors (bottom→top
-    // linear, or freeform image for animated themes like Gaming). applyTheme
-    // already scopes the CSS var onto the container; this paints the pill itself
-    // so previews don't fall back to a blended --light-filled-* colour.
+    // Paint .theme-bubble.is-out to the theme's raw message_colors
+    // linear, or freeform image for animated themes like for Gaming theme
     const messageColorHexes = (entry?.message_colors ?? []).map((color) =>
       rgbaToHexa(getRgbColorFromTelegramColor(color))
     );
@@ -145,7 +143,7 @@ export default function ChatThemesPicker(props: ChatThemesPickerProps) {
       item.container.querySelector<HTMLElement>('.theme-bubble.is-out'),
       {
         hexColors: messageColorHexes,
-        // Freeform only when TL flags.2 message_colors_animated is set.
+        // Freeform
         animated: !!(
           entry?.pFlags?.message_colors_animated ||
           ((entry?.flags ?? 0) & (1 << 2))
@@ -193,16 +191,12 @@ export default function ChatThemesPicker(props: ChatThemesPickerProps) {
     if(!themes) return;
 
     // Stickers can load in parallel with tile construction. The animated-emoji
-    // set must exist before wrapStickerEmoji, but we don't need to block wallpaper
-    // + bubble paint on it — kick it off and await only when wrapping.
+    // set must exist before wrapStickerEmoji, so remove it and await only when wrapping.
     const stickerSetReady = managers.appStickersManager.getAnimatedEmojiStickerSet();
 
     const defaultThemes = themes.filter((theme) => theme.pFlags.default);
     defaultThemes.unshift(DEFAULT_THEME);
 
-    // Build shells synchronously so .theme-bubble.is-out exists *before*
-    // paintThemeOutBubble runs. Previously applyThemeOnItem ran first, queried
-    // a missing bubble, and left every out-pill on the CSS fallback until click.
     const containers: HTMLElement[] = [];
     for(const theme of defaultThemes) {
       const container = document.createElement('div');
@@ -251,13 +245,12 @@ export default function ChatThemesPicker(props: ChatThemesPickerProps) {
       container.append(bubbleIn, bubble);
 
       themesMap.set(container, k);
-      // Bubbles are children now — applyTheme + paintThemeOutBubble hit the out pill.
+
       applyThemeOnItem(k);
       setActive(container, String(theme.id ?? '') === props.selectedId());
 
       containers.push(container);
 
-      // Stickers + wallpaper bitmaps fill in without blocking the strip reveal.
       if(emoticonContainer && theme.emoticon) {
         const loadPromises: Promise<any>[] = [];
         stickerSetReady.then(() => {
@@ -278,7 +271,7 @@ export default function ChatThemesPicker(props: ChatThemesPickerProps) {
           });
         }).catch(() => {});
       }
-      // Warm wallpaper loads in the background (DOM already has the containers).
+
       void Promise.all(results.map((result) => result.loadPromise)).catch(() => {});
     }
 
