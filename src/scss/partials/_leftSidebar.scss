@@ -188,8 +188,9 @@
       }
     }
 
+    // * centred over the avatars: half of what the narrow column leaves beside it, less the header's padding
     body:not(.has-folders-sidebar) & .left-sidebar-burger {
-      margin-inline-start: .75rem;
+      margin-inline-start: calc((var(--sidebar-collapsed-width) - 2.5rem) / 2 - 1rem);
     }
 
     #new-menu {
