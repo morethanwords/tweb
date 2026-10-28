@@ -6,6 +6,7 @@ import {StarGiftsGrid} from '@components/stargifts/stargiftsGrid';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import createButtonMenuCheckboxFilters from '@components/buttonMenuCheckboxFilters';
 import {AnimationList} from '@helpers/solid/animationList';
+import Animated from '@helpers/solid/animations';
 import {ChipTab, ChipTabs} from '@components/chipTabs';
 import {I18nTsx} from '@helpers/solid/i18n';
 import I18n from '@lib/langPack';
@@ -273,48 +274,51 @@ export function StarGiftsProfileTab(props: {
 
   const collectionContent = createMemo(() => {
     store.chosenCollection
+    // * the preloader, the gifts and a notice of none take one another's place with a crossfade
     return untrack(() => (
-      <div class={styles.collectionContent}>
-        <Switch>
-          <Match when={store.loading && store.items.length === 0}>
-            <PreloaderTsx />
-          </Match>
-          <Match when={store.items.length === 0 && store.chosenCollection !== ALL_COLLECTIONS_ID && store.canManageGifts}>
-            <div class={/* @once */ styles.empty}>
-              <I18nTsx class={/* @once */ styles.emptyTitle} key="StarGiftCollectionsEmptyTitle" />
-              <I18nTsx class={/* @once */ styles.emptySubtitle} key="StarGiftCollectionsEmptySubtitle" />
-              <Button
-                class="btn-primary btn-color-primary btn-control"
-                text="StarGiftCollectionsAddGifts"
-                onClick={() => openAddGiftsPopup({
-                  actions,
-                  collectionId: store.chosenCollection,
-                  peerId: props.peerId
-                })}
+      <div class={classNames(styles.collectionContent, 'crossfade-block')}>
+        <Animated type="cross-fade" noItemClass itemClass="crossfade-block-item">
+          <Switch>
+            <Match when={store.loading && store.items.length === 0}>
+              <PreloaderTsx />
+            </Match>
+            <Match when={store.items.length === 0 && store.chosenCollection !== ALL_COLLECTIONS_ID && store.canManageGifts}>
+              <div class={/* @once */ styles.empty}>
+                <I18nTsx class={/* @once */ styles.emptyTitle} key="StarGiftCollectionsEmptyTitle" />
+                <I18nTsx class={/* @once */ styles.emptySubtitle} key="StarGiftCollectionsEmptySubtitle" />
+                <Button
+                  class="btn-primary btn-color-primary btn-control"
+                  text="StarGiftCollectionsAddGifts"
+                  onClick={() => openAddGiftsPopup({
+                    actions,
+                    collectionId: store.chosenCollection,
+                    peerId: props.peerId
+                  })}
+                />
+              </div>
+            </Match>
+            <Match when={store.items.length === 0}>
+              <div class={/* @once */ styles.empty}>
+                <I18nTsx class={/* @once */ styles.emptySubtitle} key="StarGiftCollectionsEmptyOther" />
+              </div>
+            </Match>
+            <Match when={true}>
+              <StarGiftsGrid
+                class={/* @once */ styles.grid}
+                items={unwrap(store.items)}
+                view='profile'
+                profilePeerId={props.peerId}
+                canManageGifts={store.canManageGifts}
+                profileCollections={store.collections ? unwrap(store.collections) : undefined}
+                scrollParent={props.scrollParent}
+                autoplay={false}
+                onClick={(item) => {
+                  showStarGiftInfoPopup({gift: item});
+                }}
               />
-            </div>
-          </Match>
-          <Match when={store.items.length === 0}>
-            <div class={/* @once */ styles.empty}>
-              <I18nTsx class={/* @once */ styles.emptySubtitle} key="StarGiftCollectionsEmptyOther" />
-            </div>
-          </Match>
-          <Match when={true}>
-            <StarGiftsGrid
-              class={/* @once */ styles.grid}
-              items={unwrap(store.items)}
-              view='profile'
-              profilePeerId={props.peerId}
-              canManageGifts={store.canManageGifts}
-              profileCollections={store.collections ? unwrap(store.collections) : undefined}
-              scrollParent={props.scrollParent}
-              autoplay={false}
-              onClick={(item) => {
-                showStarGiftInfoPopup({gift: item});
-              }}
-            />
-          </Match>
-        </Switch>
+            </Match>
+          </Switch>
+        </Animated>
       </div>
     ))
   })

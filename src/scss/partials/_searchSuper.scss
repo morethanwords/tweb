@@ -104,6 +104,22 @@
     position: relative;
     min-height: 150px;
     background: none !important;
+
+    // * loading a new query under what it showed (`holdTab`): out of sight, of the tab order and of
+    // * the accessibility tree until it is shown
+    &.is-holding > * {
+      visibility: hidden;
+    }
+
+    &.is-holding > .search-super-ghost {
+      visibility: visible;
+    }
+  }
+
+  &-ghost {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
   }
 
   &-content-container {

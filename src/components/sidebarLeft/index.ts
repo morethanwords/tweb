@@ -1,7 +1,8 @@
 import {createEffect, createRoot, createSignal, createUniqueId, on} from 'solid-js';
 import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
-import {createSearchGroup, SearchGroup} from '@components/searchGroup';
+import {createSearchGroup, getSearchTransitionDuration, SearchGroup} from '@components/searchGroup';
+import crossfadeContent, {CROSS_FADE_KEYFRAMES, getAnimatedOptions} from '@helpers/dom/crossfadeContent';
 import DialogsContextMenu from '@components/dialogsContextMenu';
 import Scrollable, {ScrollableX} from '@components/scrollable';
 import InputSearch from '@components/inputSearch';
@@ -1211,7 +1212,8 @@ export class AppSidebarLeft extends SidebarSlider {
 
     this.searchGroups.messages.createPlaceholder = () => {
       const placeholder = new EmptySearchPlaceholder;
-      if(chatTypeMenu.props.selected !== 'all' && !chatTypeMenu.props.hidden)
+      const canSearchAllChats = chatTypeMenu.props.selected !== 'all' && !chatTypeMenu.props.hidden;
+      if(canSearchAllChats)
         placeholder.feedProps({
           onAllChats: () => {
             chatTypeMenu.props.selected = 'all';
@@ -1219,6 +1221,8 @@ export class AppSidebarLeft extends SidebarSlider {
           }
         });
 
+      // * the same notice for the next query stays on screen as it is (`commitSearchGroups`)
+      placeholder.dataset.key = canSearchAllChats ? 'chat-type' : 'all';
       return placeholder;
     };
 
@@ -1306,12 +1310,11 @@ export class AppSidebarLeft extends SidebarSlider {
     scrollable.append(searchSuper.container);
 
     const resetSearch = () => {
-      searchSuper.setQuery({
+      searchSuper.changeQuery({
         peerId: ''.toPeerId(),
         folderId: 0
       });
       searchSuper.selectTab(0);
-      searchSuper.load(true);
     };
 
     resetSearch();
@@ -1475,18 +1478,63 @@ export class AppSidebarLeft extends SidebarSlider {
         unselectEntity(el);
       });
 
-      helper.replaceChildren();
-      onHelperLength();
+      setHelperChips([]);
     };
 
+    // * the chips found for a query take the tabs' place, and give it back, with a crossfade
+    let finishHelperSwap: () => void;
     const onHelperLength = (hide = !helper.firstElementChild) => {
-      helper.classList.toggle('hide', hide);
-      searchSuper.nav.classList.toggle('hide', !hide);
+      finishHelperSwap?.();
+      const [shown, hidden] = hide ? [searchSuper.nav, helper] : [helper, searchSuper.nav];
+      const leaving = hidden.classList.contains('hide') ? undefined : hidden;
+      shown.classList.remove('hide');
+      // * a row of chips that has gone takes them with it
+      const onLeft = () => {
+        hidden.classList.add('hide');
+        if(hidden === helper) {
+          helper.replaceChildren();
+        }
+      };
+
+      if(!leaving || !liteMode.isAvailable('animations') || !helper.isConnected || document.hidden) {
+        onLeft();
+        return;
+      }
+
+      leaving.classList.add('search-helper-leaving');
+      // * out of the tab order while it fades away
+      leaving.inert = true;
+      const options = getAnimatedOptions(getSearchTransitionDuration());
+      const animations = [
+        shown.animate(CROSS_FADE_KEYFRAMES, options),
+        leaving.animate(CROSS_FADE_KEYFRAMES.slice().reverse(), {...options, fill: 'forwards'})
+      ];
+      const finish = finishHelperSwap = () => {
+        finishHelperSwap = undefined;
+        animations.forEach((animation) => animation.cancel());
+        leaving.classList.remove('search-helper-leaving');
+        leaving.inert = false;
+        onLeft();
+      };
+
+      animations[1].finished.then(() => finishHelperSwap === finish && finish(), noop);
     };
 
-    const appendToHelper = (elements: HTMLElement[]) => {
-      helper.append(...elements);
-      onHelperLength();
+    const setHelperChips = (elements: HTMLElement[]) => {
+      if(!elements.length) {
+        onHelperLength(true);
+        return;
+      }
+
+      // * on screen and staying: the chips crossfade
+      if(!helper.classList.contains('hide') && !helper.classList.contains('search-helper-leaving')) {
+        crossfadeContent(helper, elements);
+        return;
+      }
+
+      finishHelperSwap?.();
+      helper.replaceChildren(...elements);
+      onHelperLength(false);
     };
 
     this.inputSearch.onChange = (value) => {
@@ -1540,8 +1588,7 @@ export class AppSidebarLeft extends SidebarSlider {
       }
 
       // spot input
-      searchSuper.cleanupHTML();
-      searchSuper.setQuery({
+      searchSuper.changeQuery({
         peerId: selectedPeerId,
         communityId: selectedCommunityId,
         folderId: selectedPeerId || selectedCommunityId ? undefined : (selectedArchive ? FOLDER_ID_ARCHIVE : 0),
@@ -1550,11 +1597,9 @@ export class AppSidebarLeft extends SidebarSlider {
         minDate: selectedMinDate,
         maxDate: selectedMaxDate
       });
-      searchSuper.load(true);
 
       helperMiddlewareHelper.clean();
       const helperMiddleware = helperMiddlewareHelper.get();
-      onHelperLength(true);
 
       const promises: MaybePromise<HTMLElement[]>[] = [];
 
@@ -1590,9 +1635,8 @@ export class AppSidebarLeft extends SidebarSlider {
           return;
         }
 
-        helper.replaceChildren();
-        const flattened = flatten(arrays);
-        appendToHelper(flattened);
+        // * the chips shown stay until the new ones are known
+        setHelperChips(flatten(arrays));
       });
     };
 

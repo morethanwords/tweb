@@ -1,6 +1,19 @@
 @use "../shared" as *;
 
 .search-group {
+  // * what leaves on a new query's results is laid over them (`commitSearchGroups`)
+  position: relative;
+
+  &-content {
+    position: relative;
+  }
+
+  &-leaving {
+    position: absolute;
+    margin: 0;
+    pointer-events: none;
+  }
+
   &-scrollable-x {
     position: relative !important;
     padding-inline: var(--section-margin-inline);

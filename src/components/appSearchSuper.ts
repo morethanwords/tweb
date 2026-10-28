@@ -3,7 +3,7 @@ import {getOverlayRoot} from '@helpers/appWindow';
 import {DIALOG_LIST_ELEMENT_TAG, DialogDom} from '@components/dialogElement';
 import {logger} from '@lib/logger';
 import rootScope from '@lib/rootScope';
-import {createSearchGroup, SearchGroup, SearchGroupType} from '@components/searchGroup';
+import {commitSearchGroups, createSearchGroup, destroySearchRows, getSearchTransitionDuration, SearchGroup, SearchGroupType} from '@components/searchGroup';
 import {horizontalMenu} from '@components/horizontalMenu';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import {putPreloader} from '@components/putPreloader';
@@ -12,6 +12,7 @@ import {ScrollableContextValue} from '@components/scrollable2';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
 import I18n, {LangPackKey, i18n, join} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
+import findUpAsChild from '@helpers/dom/findUpAsChild';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {getMiddleware, Middleware, MiddlewareHelper} from '@helpers/middleware';
 import {BotMenuButton, ChannelParticipant, Chat, ChatFull, ChatParticipant, ChatParticipants, Document, Message, MessageMedia, MessagesChats, MessagesFilter, Peer, Photo, StoryItem, Update, User, UserFull, WebPage} from '@layer';
@@ -71,7 +72,7 @@ import openEditMemberTag from '@components/memberTag/openEditMemberTag';
 import {FOLDER_ID_ARCHIVE, NULL_PEER_ID} from '@appManagers/constants';
 import createParticipantContextMenu from '@helpers/dom/createParticipantContextMenu';
 import findAndSpliceAll from '@helpers/array/findAndSpliceAll';
-import deferredPromise from '@helpers/cancellablePromise';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import {children, createEffect, createRoot, For, on} from 'solid-js';
 import {StoriesProfileList, isStoryReorderTarget} from '@components/stories/profileList';
 import {StoriesContextActions} from '@components/stories/store';
@@ -99,7 +100,6 @@ import {unwrap} from 'solid-js/store';
 import {usePeer} from '@stores/peers';
 import {useAppState} from '@stores/appState';
 import {AutonomousSavedDialogList} from '@components/autonomousDialogList/savedDialogs';
-import SetTransition from '@components/singleTransition';
 import liteMode from '@helpers/liteMode';
 import {wrapGlobalPostsSearch} from './sidebarLeft/globalPostsSearch';
 import createMiddleware from '@helpers/solid/createMiddleware';
@@ -108,6 +108,9 @@ import Section from '@components/section';
 import copyMessageMediaWithFeedback from '@components/copyMessageMediaWithFeedback';
 import createTopPeersList from '@components/topPeersList';
 import {fastRaf} from '@helpers/schedulers';
+import pause from '@helpers/schedulers/pause';
+import flatten from '@helpers/array/flatten';
+import {CROSS_FADE_KEYFRAMES, getAnimatedOptions} from '@helpers/dom/crossfadeContent';
 import {SearchSuperMediaInputFilter} from '@components/sharedMediaFilters';
 import {getMediaTypeForProfileTab, orderMediaTabsByMain, ProfileTabMediaType} from '@components/sharedMediaProfileTab';
 import {supportsSharedMediaScrollDate} from '@components/sharedMediaScrollDate';
@@ -179,7 +182,6 @@ type SearchSuperLoadTypeOptions = {
 type PerformSearchResultArgs = {
   messages: (Message.message | Message.messageService)[];
   mediaTab: SearchSuperMediaTab;
-  canAnimateIn?: boolean;
   append?: boolean;
 };
 
@@ -400,6 +402,127 @@ export type ProcessSearchSuperResult = {
   mediaTab: SearchSuperMediaTab
 };
 
+/** What stands in a tab's container next to its content - a preloader, a "nothing found" - and not the ghost over it */
+function getTabExtras(tabContainer: HTMLElement) {
+  return (Array.from(tabContainer.children) as HTMLElement[])
+  .slice(1)
+  .filter((child) => !child.classList.contains('search-super-ghost'));
+}
+
+/**
+ * A tab with nothing in it: no items, and no more in its containers than the way down to them - not the
+ * media tab with the group of messages a query found, which stands beside its grid
+ */
+function isMediaTabBlank({contentTab, itemsTab}: SearchSuperMediaTab) {
+  if(itemsTab.childElementCount) {
+    return false;
+  }
+
+  for(let element = itemsTab; element !== contentTab; element = element.parentElement) {
+    if(element.parentElement.childElementCount !== 1) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * The middleware of what a search shows for a query. A new query makes the last one's stale at once -
+ * its loads stop where they are - while what it rendered can live on (`next(true)`): a held tab
+ * (`holdTab`) goes on showing it until the new results take its place and it is let go (`release`).
+ * A query's middleware is cleaned when it ends, as one middleware for all of them was; the destructors
+ * registered on it (a video's source) run with the search (`destroy`)
+ */
+class QueryMiddleware {
+  private helper: MiddlewareHelper;
+  private middleware: Middleware;
+  private retired: MiddlewareHelper[] = [];
+  private ended: MiddlewareHelper[] = [];
+  private destroyed: boolean;
+
+  constructor() {
+    this.start();
+  }
+
+  private start() {
+    const helper = this.helper = getMiddleware();
+    this.middleware = helper.get(() => this.helper === helper);
+  }
+
+  public get() {
+    return this.middleware;
+  }
+
+  public next(keepAlive?: boolean) {
+    const previous = this.helper;
+    this.start();
+    if(keepAlive) {
+      this.retired.push(previous);
+    } else {
+      this.end(previous);
+    }
+  }
+
+  private end(helper: MiddlewareHelper) {
+    // * a transition can outlive the search
+    if(this.destroyed) {
+      helper.destroy();
+      return;
+    }
+
+    helper.clean();
+    this.ended.push(helper);
+  }
+
+  /** The queries before this one that were kept alive on screen, to be let go (`release`) once they are off it */
+  public takeRetired() {
+    return this.retired.splice(0, this.retired.length);
+  }
+
+  public release(helpers: MiddlewareHelper[]) {
+    helpers.forEach((helper) => this.end(helper));
+  }
+
+  public destroy() {
+    this.destroyed = true;
+    this.release(this.takeRetired());
+    this.ended.splice(0, this.ended.length).forEach((helper) => helper.destroy());
+    this.helper.destroy();
+  }
+}
+
+// * how long a held tab (`changeQuery`) waits for its new results before it shows what it has
+const SEARCH_RESULTS_WAIT = 1500;
+// * and how long, after that, a part of them that is late keeps what it showed before
+const SEARCH_RESULTS_WAIT_LATE = 4500;
+// * how long the pointer rests on a tab before the tab starts loading (`prefetchMediaTab`): not one it passes over
+const TAB_PREFETCH_HOVER_DELAY = 100;
+// * the tabs that load ahead of being opened - not posts, whose search spends a quota, nor stories, gifts or
+// * saved dialogs, whose lists follow the scroll
+const PREFETCHED_MEDIA_TYPES: Set<SearchSuperMediaType> = new Set([
+  'media',
+  'saved',
+  'files',
+  'links',
+  'music',
+  'voice',
+  'channels',
+  'apps',
+  'members',
+  'groups',
+  'similar'
+]);
+// * the tabs whose loaders show nothing until they are through: held with nothing in them (`holdTab`), they show
+// * the preloader the message tabs have (`cleanupHTML`) - not gifts, stories or posts, which show their own
+const PRELOADED_MEDIA_TYPES: Set<SearchSuperMediaType> = new Set([
+  'channels',
+  'apps',
+  'members',
+  'groups',
+  'similar'
+]);
+
 export default class AppSearchSuper {
   public tabs: {[t in SearchSuperType]: HTMLDivElement} = {} as any;
 
@@ -414,7 +537,9 @@ export default class AppSearchSuper {
   private prevTabId = -1;
 
   private lazyLoadQueue = new LazyLoadQueue();
-  public middleware = getMiddleware();
+  public middleware = new QueryMiddleware();
+  // * a query is being changed with what the tab shows held on screen (`changeQuery`)
+  private isHoldingQuery: boolean;
 
   public historyStorage: Partial<{[type in SearchSuperType]: {mid: number, peerId: PeerId}[]}> = {};
   public usedFromHistory: Partial<{[type in SearchSuperType]: number}> = {};
@@ -427,7 +552,12 @@ export default class AppSearchSuper {
   private loaded: Partial<{[type in SearchSuperMediaType]: boolean}> = {};
   private refiller: ScrollableRefiller<SearchSuperMediaType>;
   private loadedChats = false;
+  // * the chats tab's own part of a query's load, settled once it has rendered (or failed): the groups
+  // * of found chats, the top peers, recent search. Made with the query, the load starts it (`loadChats`)
+  private loadChatsPromise: CancellablePromise<void> = deferredPromise<void>();
   private firstLoad = true;
+  // * what a tab showed before the query it is loading: kept over it until the new results are there
+  private tabGhosts: Map<SearchSuperMediaTab, HTMLElement> = new Map();
 
   private log = logger('SEARCH-SUPER');
   public selectTab: ReturnType<typeof horizontalMenu>;
@@ -460,7 +590,6 @@ export default class AppSearchSuper {
   public onChangeTab?: (mediaTab: SearchSuperMediaTab) => void;
   public showSender? = false;
   public useMainProfileTab?: boolean;
-
   private searchContextMenu: SearchContextMenu;
   public selection: SearchSelection;
 
@@ -663,8 +792,6 @@ export default class AppSearchSuper {
 
     // * construct end
 
-    this.searchGroupMedia = createSearchGroup({type: 'messages'});
-
     // this.scrollable.onScrolledTop = () => {
     //   if(this.mediaTab.contentTab && this.canLoadMediaTab(this.mediaTab)/* && false */) {
     //     // this.log('onScrolledTop will load media');
@@ -746,9 +873,23 @@ export default class AppSearchSuper {
       /* this.log('setVirtualContainer', id, this.sharedMediaSelected, this.sharedMediaSelected.childElementCount);
       this.scroll.setVirtualContainer(this.sharedMediaSelected); */
 
-      if(this.prevTabId !== -1 && !newMediaTab.itemsTab.childElementCount) { // quick brown fix
-        // this.contentContainer.classList.remove('loaded');
-        this.load(true);
+      // * the tab a query opens on is loaded by whoever set the query, a tab opened after that loads here -
+      // * after the first load too, though a query resets `prevTabId`
+      if(
+        fromMediaTab !== newMediaTab &&
+        (this.prevTabId !== -1 || !this.firstLoad) &&
+        !newMediaTab.itemsTab.childElementCount
+      ) {
+        // * one with nothing in it yet gets its results at once, over what stands in it (a preloader) - those
+        // * it has been loading already (`prefetchMediaTab`) too
+        if(
+          isMediaTabBlank(newMediaTab) &&
+          (this.loadPromises[newMediaTab.type] || this.canLoadMediaTab(newMediaTab))
+        ) {
+          this.loadHeld(newMediaTab);
+        } else {
+          this.load(true);
+        }
       }
 
       this.prevTabId = id;
@@ -768,6 +909,38 @@ export default class AppSearchSuper {
 
       this.onTransitionEnd();
     }, undefined, navScrollableContext, this.listenerSetter);
+
+    // * a tab the pointer rests on or presses starts loading, so that it is all there, or nearer, when it slides in
+    let hoveredMediaTab: SearchSuperMediaTab, hoverTimeout: number;
+    const getMenuMediaTab = (target: EventTarget) => {
+      const menuTab = findUpAsChild(target as HTMLElement, this.tabsMenu);
+      return menuTab && this.mediaTabs.find((mediaTab) => mediaTab.menuTab === menuTab);
+    };
+    const setHoveredMediaTab = (mediaTab: SearchSuperMediaTab) => {
+      if(hoveredMediaTab === mediaTab) {
+        return;
+      }
+
+      hoveredMediaTab = mediaTab;
+      clearTimeout(hoverTimeout);
+      if(mediaTab) {
+        hoverTimeout = window.setTimeout(() => this.prefetchMediaTab(mediaTab), TAB_PREFETCH_HOVER_DELAY);
+      }
+    };
+    // * by the pointer's moves, not `pointerover`: the menu scrolling the chosen tab to its middle brings
+    // * another one under a pointer that stays where it is
+    this.listenerSetter.add(this.tabsMenu)('pointermove', (e) => {
+      if(e.pointerType === 'mouse') {
+        setHoveredMediaTab(getMenuMediaTab(e.target));
+      }
+    });
+    this.listenerSetter.add(this.tabsMenu)('pointerleave', () => setHoveredMediaTab(undefined));
+    // * the click comes on the way up; arrow keys (`attachTabList`) open a tab as they focus it
+    this.listenerSetter.add(this.tabsMenu)('pointerdown', (e) => {
+      const mediaTab = getMenuMediaTab(e.target);
+      mediaTab && this.prefetchMediaTab(mediaTab);
+    });
+    this.listenerSetter.addCleanup(() => clearTimeout(hoverTimeout));
 
     attachClickEvent(this.tabsContainer, (e) => {
       if(this.selection.isSelecting) {
@@ -1106,7 +1279,7 @@ export default class AppSearchSuper {
       this.mediaFilterCommittedState = undefined;
 
       const parent = mediaTab.contentTab.parentElement;
-      Array.from(parent.children).slice(1).forEach((element) => element.remove());
+      getTabExtras(parent).forEach((element) => element.remove());
       if(!itemsTab.childElementCount) {
         parent.append(this.createNothingFoundElement());
       }
@@ -1168,7 +1341,7 @@ export default class AppSearchSuper {
     return filterMessagesByInputFilter({inputFilter: type, messages: messages, limit: messages.length});
   }
 
-  private async processEmptyFilter({message, searchGroup, mediaTab}: ProcessSearchSuperResult) {
+  private async processEmptyFilter({message, mediaTab}: ProcessSearchSuperResult) {
     const isSaved = mediaTab.type === 'saved';
 
     let peerId = message.peerId;
@@ -1180,10 +1353,11 @@ export default class AppSearchSuper {
     const middleware = this.middleware.get();
 
     const loadPromises: Promise<any>[] = [];
+    // * put in whole, with the others of its page (`performSearchResult`)
     const dialogElement = hotReloadGuard.appDialogsManager.addDialogNew({
       dontSetActive: true,
       peerId,
-      container: searchGroup?.list || false,
+      container: false,
       avatarSize: 'bigger',
       loadPromises,
       wrapOptions: {
@@ -1207,10 +1381,6 @@ export default class AppSearchSuper {
 
     loadPromises.push(setLastMessagePromise);
     return Promise.all(loadPromises).then(() => {
-      if(searchGroup) {
-        return;
-      }
-
       return {element: dialogElement.container, message};
     });
   }
@@ -1437,7 +1607,7 @@ export default class AppSearchSuper {
     }
   }
 
-  public async performSearchResult({messages, mediaTab, canAnimateIn = false, append = true}: PerformSearchResultArgs) {
+  public async performSearchResult({messages, mediaTab, append = true}: PerformSearchResultArgs) {
     const elemsToAppend: {element: HTMLElement, message: any}[] = [];
     const sharedMediaDiv: HTMLElement = mediaTab.contentTab;
     const promises: Promise<any>[] = [];
@@ -1450,25 +1620,12 @@ export default class AppSearchSuper {
     let searchGroup: SearchGroup;
     if(inputFilter === 'inputMessagesFilterPhotoVideo' && !!this.searchContext.query.trim()) {
       inputFilter = 'inputMessagesFilterEmpty';
-      searchGroup = this.searchGroupMedia;
-      sharedMediaDiv.append(searchGroup.container);
+      searchGroup = this.searchGroupMedia ??= createSearchGroup({type: 'messages', middleware});
+      if(searchGroup.container.parentElement !== sharedMediaDiv) {
+        sharedMediaDiv.append(searchGroup.container);
+      }
     } else if(inputFilter === 'inputMessagesFilterEmpty' && !isSaved) {
       searchGroup = this.searchGroups.messages;
-    }
-
-    if(canAnimateIn && liteMode.isAvailable('animations') && searchGroup?.container) {
-      searchGroup.container.classList.add('is-hidden');
-
-      setTimeout(() => SetTransition({
-        element: searchGroup.container,
-        className: 'is-visible',
-        forwards: true,
-        duration: 250,
-        onTransitionEnd: () => {
-          searchGroup.container.classList.remove('is-hidden');
-          searchGroup.container.classList.remove('is-visible');
-        }
-      }), 100); // doesn't properly animate without it, even useRafs don't really help
     }
 
     const options: ProcessSearchSuperResult = {
@@ -1532,23 +1689,23 @@ export default class AppSearchSuper {
       elemsToAppend.push(...awaited);
     }
 
-    const showSearchGroupAnyway = mediaTab.type === 'chats' && searchGroup.createPlaceholder;
-    if(searchGroup && (searchGroup.list.childElementCount || showSearchGroupAnyway)) {
-      searchGroup.setActive();
-
-      if(!searchGroup.list?.childElementCount && searchGroup.createPlaceholder) searchGroup.addPlaceholder(searchGroup.createPlaceholder());
-    }
-
     if(this.loadMutex) {
       promises.push(this.loadMutex);
     }
 
     if(promises.length) {
       await Promise.all(promises);
-      if(!middleware()) {
-        // this.log.warn('peer changed');
-        return 0;
+    }
+
+    // * rendered aside while they waited (subtitles, avatars): the rows of a query that is over go, not
+    // * into a group's list, which is the next query's by now
+    if(!middleware()) {
+      // this.log.warn('peer changed');
+      if(searchGroup) {
+        destroySearchRows(elemsToAppend.map(({element}) => element));
       }
+
+      return 0;
     }
 
     const length = elemsToAppend.length;
@@ -1556,21 +1713,34 @@ export default class AppSearchSuper {
     if(length) {
       const method = append ? 'append' : 'prepend';
       const threadId = isSaved ? this.searchContext.peerId : undefined;
-      const container = this.tabs[inputFilter];
+      // * a group's rows are dialogs - not the items the search's own selection and menu take
+      const container = searchGroup ? searchGroup.list : this.tabs[inputFilter];
+      // * a page more of what is shown fades in; the first one comes in with its tab or group
+      const fadeIn = !!container.childElementCount &&
+        !searchGroup?.isDrafting &&
+        !this.tabGhosts.has(mediaTab) &&
+        this.canAnimateResults(mediaTab);
+      const fadeInOptions = fadeIn && getAnimatedOptions(getSearchTransitionDuration());
       elemsToAppend.forEach((details) => {
         const {element, message} = details;
         if(!message) {
           debugger;
         }
 
-        element.classList.add('search-super-item');
-        element.dataset.mid = '' + message.mid;
-        element.dataset.peerId = '' + message.peerId;
-        element.dataset.timestamp = '' + message.date;
-        threadId && (element.dataset.threadId = '' + threadId);
-        container[method](element);
+        if(!searchGroup) {
+          element.classList.add('search-super-item');
+          element.dataset.mid = '' + message.mid;
+          element.dataset.peerId = '' + message.peerId;
+          element.dataset.timestamp = '' + message.date;
+          threadId && (element.dataset.threadId = '' + threadId);
+        }
 
-        if(this.selection?.isSelecting) {
+        container[method](element);
+        if(fadeIn) {
+          element.animate(CROSS_FADE_KEYFRAMES, fadeInOptions);
+        }
+
+        if(this.selection?.isSelecting && !searchGroup) {
           this.selection.toggleElementCheckbox(element, true);
         }
       });
@@ -1596,6 +1766,14 @@ export default class AppSearchSuper {
       }
     }
 
+    // * the messages group stays with a notice of nothing found in the chats tab
+    const showSearchGroupAnyway = mediaTab.type === 'chats' && searchGroup?.createPlaceholder;
+    if(searchGroup && (searchGroup.list.childElementCount || showSearchGroupAnyway)) {
+      searchGroup.setActive();
+
+      if(!searchGroup.list.childElementCount && searchGroup.createPlaceholder) searchGroup.addPlaceholder(searchGroup.createPlaceholder());
+    }
+
     // if(type !== 'inputMessagesFilterEmpty') {
     this.afterPerforming(inputFilter === 'inputMessagesFilterEmpty' ? 1 : length, mediaTab);
     // }
@@ -1618,7 +1796,7 @@ export default class AppSearchSuper {
     }
 
     const parent = contentTab.parentElement;
-    Array.from(parent.children).slice(1).forEach((child) => {
+    getTabExtras(parent).forEach((child) => {
       child.remove();
     });
 
@@ -1633,10 +1811,12 @@ export default class AppSearchSuper {
     const renderedPeerIds: Set<PeerId> = new Set();
     const middleware = this.middleware.get();
 
-    for(const i in this.searchGroups) {
-      const group = this.searchGroups[i as SearchGroupType];
-      group.clear();
-      this.tabs.inputMessagesFilterEmpty.append(group.container);
+    const groups = this.getSearchGroupsList();
+    groups.forEach((group) => group.clear());
+    // * only when they are not in place: a custom element put in again (the notice of nothing found) starts over
+    const tabElement = this.tabs.inputMessagesFilterEmpty;
+    if(groups.some((group, idx) => tabElement.children[idx] !== group.container)) {
+      tabElement.append(...groups.map((group) => group.container));
     }
 
     const query = this.searchContext.query;
@@ -1683,14 +1863,17 @@ export default class AppSearchSuper {
         }
       }
 
-      const setResults = (results: PeerId[], group: SearchGroup, showMembersCount = false) => {
-        results.map((peerId) => {
+      // * settles once its rows have their subtitles and their avatars' first pictures, to be shown whole
+      const setResults = (results: PeerId[], group: SearchGroup) => {
+        const promises: Promise<any>[] = [];
+        results.forEach((peerId) => {
           if(renderedPeerIds.has(peerId)) {
             return;
           }
 
           renderedPeerIds.add(peerId);
 
+          const loadPromises: Promise<any>[] = [];
           const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
             peerId: peerId,
             container: group.list,
@@ -1699,12 +1882,14 @@ export default class AppSearchSuper {
             wrapOptions: {
               middleware
             },
-            withStories: true
+            withStories: true,
+            loadPromises
           });
-          return {dom, peerId};
-        }).filter(Boolean).forEach(async({dom, peerId}) => addDialogSubtitle(dom, peerId));
+          promises.push(addDialogSubtitle(dom, peerId), ...loadPromises);
+        });
 
         group.toggle();
+        return Promise.all(promises);
       };
 
       const onLoad = <T>(arg: T) => {
@@ -1723,7 +1908,7 @@ export default class AppSearchSuper {
         .then(onLoad)
         .then((peerIds) => {
           if(peerIds) {
-            setResults(peerIds, this.searchGroups.contacts, true);
+            return setResults(peerIds, this.searchGroups.contacts);
           }
         });
       }
@@ -1733,7 +1918,7 @@ export default class AppSearchSuper {
         .then(onLoad)
         .then((contacts) => {
           if(contacts) {
-            setResults(contacts, this.searchGroups.contacts, true);
+            return setResults(contacts, this.searchGroups.contacts);
           }
         }),
 
@@ -1742,7 +1927,9 @@ export default class AppSearchSuper {
         .then((peers) => {
           if(!peers?.length) return;
 
+          const promises: Promise<any>[] = [];
           for(const peer of peers.reverse()) {
+            const loadPromises: Promise<any>[] = [];
             const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
               peerId: peer.peer,
               container: this.searchGroups.globalContacts.list,
@@ -1751,7 +1938,8 @@ export default class AppSearchSuper {
               autonomous: this.searchGroups.globalContacts.autonomous,
               wrapOptions: {
                 middleware
-              }
+              },
+              loadPromises
             });
 
             dom.containerEl.dataset.sponsored = 'true';
@@ -1784,26 +1972,28 @@ export default class AppSearchSuper {
 
             dom.lastTimeSpan.appendChild(chip)
 
-            addDialogSubtitle(dom, peer.peer);
+            promises.push(addDialogSubtitle(dom, peer.peer), ...loadPromises);
           }
+
+          return Promise.all(promises);
         }),
 
         this.managers.appUsersManager.searchContacts(query, 20)
         .then(onLoad)
         .then((contacts) => {
           if(contacts) {
-            setResults(contacts.my_results, this.searchGroups.contacts, true);
-            setResults(contacts.results/* .concat(contacts.results, contacts.results, contacts.results) */, this.searchGroups.globalContacts);
+            const promises = [
+              setResults(contacts.my_results, this.searchGroups.contacts),
+              setResults(contacts.results/* .concat(contacts.results, contacts.results, contacts.results) */, this.searchGroups.globalContacts)
+            ];
 
             this.searchGroups.globalContacts.container.classList.add('is-short');
-
-            if(this.searchGroups.globalContacts.nameEl.lastElementChild !== this.searchGroups.globalContacts.nameEl.firstElementChild) {
-              this.searchGroups.globalContacts.nameEl.lastElementChild.remove();
-            }
 
             if(this.searchGroups.globalContacts.list.childElementCount > 3) {
               this.searchGroups.globalContacts.needShowMoreButton('is-short');
             }
+
+            return Promise.all(promises);
           }
         }),
 
@@ -1811,7 +2001,7 @@ export default class AppSearchSuper {
         .then(onLoad)
         .then((value) => {
           if(value) {
-            setResults(value.dialogs.map((d) => d.peerId), this.searchGroups.contacts, true);
+            return setResults(value.dialogs.map((d) => d.peerId), this.searchGroups.contacts);
           }
         })
       ]);
@@ -1824,6 +2014,8 @@ export default class AppSearchSuper {
 
         this.searchGroups.recent.list.replaceChildren();
 
+        // * the rows' subtitles and avatars, for the group to be shown whole
+        const promises: Promise<any>[] = [];
         createRoot((dispose) => {
           middleware.onClean(dispose);
 
@@ -1835,6 +2027,7 @@ export default class AppSearchSuper {
             },
             children: (peerId) => {
               const middlewareHelper = createMiddleware();
+              const loadPromises: Promise<any>[] = [];
               const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
                 peerId: peerId,
                 container: false,
@@ -1844,24 +2037,28 @@ export default class AppSearchSuper {
                 wrapOptions: {
                   middleware: middlewareHelper.get()
                 },
-                withStories: true
+                withStories: true,
+                loadPromises
               });
-              (async() => {
+              promises.push((async() => {
                 dom.lastMessageSpan.append(await (peerId.isUser() ?
                   Promise.resolve(getUserStatusString(await this.managers.appUsersManager.getUser(peerId.toUserId()))) :
                   getChatMembersString(peerId.toChatId())));
-              })();
+              })(), ...loadPromises);
 
               return dom.containerEl;
             }
           });
 
           const elements = children(() => arr);
+          // * shown on while the next query is held, but no more its own: `list` is that query's draft by then
           createEffect(() => {
+            if(!middleware()) return;
             this.searchGroups.recent.list.replaceChildren(...(elements.toArray() as HTMLElement[]));
           });
 
           createEffect(() => {
+            if(!middleware()) return;
             if(!appState.recentSearch.length) {
               this.searchGroups.recent.clear();
             } else if(setActive) {
@@ -1869,6 +2066,8 @@ export default class AppSearchSuper {
             }
           });
         });
+
+        return Promise.all(promises);
       };
 
       return Promise.all([
@@ -2368,30 +2567,38 @@ export default class AppSearchSuper {
     mediaTab.itemsTab.append(list);
     this.afterPerforming(1, mediaTab);
 
-    this._loadSavedDialogs = () => Promise.resolve(xd.onChatsScroll());
+    const loadSavedDialogs = this._loadSavedDialogs = () => Promise.resolve(xd.onChatsScroll());
     middleware.onClean(() => {
       xd.destroy();
-      this._loadSavedDialogs = undefined;
+      if(this._loadSavedDialogs === loadSavedDialogs) {
+        this._loadSavedDialogs = undefined;
+      }
     });
 
     return xd.onChatsScroll();
   }
 
+  /** Puts the rows in once they all have their subtitles and avatars - a page more of them fading in */
   private async renderPeerDialogs(peerIds: PeerId[], group: SearchGroup, middleware: Middleware, type?: 'bots' | 'channels') {
     const managers = bindManagersToSession(this.managers);
     if(!middleware()) return;
 
-    for(const peerId of peerIds) {
+    const rows = await Promise.all(peerIds.map(async(peerId) => {
+      const loadPromises: Promise<any>[] = [];
       const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
         peerId,
-        container: group.list,
+        container: false,
+        autonomous: true,
         avatarSize: 'abitbigger',
         wrapOptions: {
           middleware
-        }
+        },
+        loadPromises
       });
-      const peer = await managers.appPeersManager.getPeer(peerId);
-      const username = await managers.appPeersManager.getPeerUsername(peerId);
+      const [peer, username] = await Promise.all([
+        managers.appPeersManager.getPeer(peerId),
+        managers.appPeersManager.getPeerUsername(peerId)
+      ]);
 
       if('participants_count' in peer) {
         dom.lastMessageSpan.append(await getChatMembersString(peerId.toChatId()));
@@ -2402,7 +2609,22 @@ export default class AppSearchSuper {
       } else if(type === 'bots') {
         dom.lastMessageSpan.append(i18n('UnknownBotUsers'));
       }
-    };
+
+      await Promise.all(loadPromises);
+      return dom.containerEl;
+    }));
+
+    if(!middleware()) {
+      destroySearchRows(rows);
+      return;
+    }
+
+    const fadeIn = !!group.list.childElementCount && group.list.isConnected && liteMode.isAvailable('animations');
+    group.list.append(...rows);
+    if(fadeIn) {
+      const options = getAnimatedOptions(getSearchTransitionDuration());
+      rows.forEach((row) => row.animate(CROSS_FADE_KEYFRAMES, options));
+    }
   }
 
   private async loadChannels({mediaTab, middleware}: SearchSuperLoadTypeOptions) {
@@ -2420,7 +2642,8 @@ export default class AppSearchSuper {
       );
       const filteredResults = filteredResultsWithUndefined.filter(Boolean);
 
-      this.renderPeerDialogs(filteredResults.map((user) => user.toPeerId(true)), group, middleware);
+      await this.renderPeerDialogs(filteredResults.map((user) => user.toPeerId(true)), group, middleware);
+      if(!middleware()) return;
 
       if(filteredResults.length) {
         mediaTab.itemsTab.append(group.container);
@@ -2435,27 +2658,35 @@ export default class AppSearchSuper {
     const channelDialogsWithUndefined = await Promise.all(dialogs.map(async(dialog) => await managers.appPeersManager.isBroadcast(dialog.peerId) ? dialog : undefined));
     const channelDialogs = channelDialogsWithUndefined.filter(Boolean);
 
+    // * the groups go in together, once they have their rows - not the joined channels before the similar ones
+    const groups: SearchGroup[] = [];
+    const promises: Promise<any>[] = [];
     if(channelDialogs.length) {
       const group = createSearchGroup({name: 'Chat.Search.JoinedChannels', type: 'channels', middleware});
       group.setActive();
-      mediaTab.itemsTab.append(group.container);
+      groups.push(group);
 
       const SHOW_MORE_LIMIT = 5;
       if(channelDialogs.length > SHOW_MORE_LIMIT) group.needShowMoreButton();
 
-      this.renderPeerDialogs(channelDialogs.map((dialog) => dialog.peerId), group, middleware);
+      promises.push(this.renderPeerDialogs(channelDialogs.map((dialog) => dialog.peerId), group, middleware));
     }
 
     const recommendations = await managers.appChatsManager.getChannelRecommendations();
+    if(!middleware()) return;
 
     if(recommendations.chats.length) {
       const group = createSearchGroup({name: 'SimilarChannels', type: 'channels', middleware});
       group.setActive();
-      mediaTab.itemsTab.append(group.container);
+      groups.push(group);
 
-      this.renderPeerDialogs(recommendations.chats.map((chat) => chat.id.toPeerId(true)), group, middleware);
+      promises.push(this.renderPeerDialogs(recommendations.chats.map((chat) => chat.id.toPeerId(true)), group, middleware));
     }
 
+    await Promise.all(promises);
+    if(!middleware()) return;
+
+    mediaTab.itemsTab.append(...groups.map((group) => group.container));
     this.afterPerforming(1, mediaTab);
     this.loaded[mediaTab.type] = true;
   }
@@ -2493,7 +2724,8 @@ export default class AppSearchSuper {
       );
       const filteredResults = filteredResultsWithUndefined.filter(Boolean);
 
-      this.renderPeerDialogs(filteredResults.map((user) => user.toPeerId(false)), group, middleware, 'bots');
+      await this.renderPeerDialogs(filteredResults.map((user) => user.toPeerId(false)), group, middleware, 'bots');
+      if(!middleware()) return;
 
       if(filteredResults.length) {
         mediaTab.itemsTab.append(group.container);
@@ -2505,21 +2737,26 @@ export default class AppSearchSuper {
     }
 
     const myTopApps = await managers.appUsersManager.getTopPeers('bots_app');
+    // * the next query's load would take a paging callback made here for its own (`_loadMoreApps`)
+    if(!middleware()) return;
 
+    // * the groups go in together, once they have their rows - not the first one before the popular apps
+    const groups: SearchGroup[] = [];
+    let topAppsPromise: Promise<void>;
     if(myTopApps.length) {
       const group = createSearchGroup({name: 'MiniApps.Apps', type: 'apps', onFound: onClick, middleware});
       group.setActive();
-      mediaTab.itemsTab.append(group.container);
+      groups.push(group);
 
       const SHOW_MORE_LIMIT = 5;
       if(myTopApps.length > SHOW_MORE_LIMIT) group.needShowMoreButton();
 
-      this.renderPeerDialogs(myTopApps.map((app) => app.id.toPeerId(false)), group, middleware, 'bots');
+      topAppsPromise = this.renderPeerDialogs(myTopApps.map((app) => app.id.toPeerId(false)), group, middleware, 'bots');
     }
 
     const group = createSearchGroup({name: 'MiniApps.Popular', type: 'apps', onFound: onClick, middleware});
     group.setActive();
-    mediaTab.itemsTab.append(group.container);
+    groups.push(group);
 
     type GetPopularAppsResult = ReturnType<typeof rootScope.managers.appAttachMenuBotsManager.getPopularAppBots>;
     let currentOffset: string = '', loadPromise: GetPopularAppsResult;
@@ -2546,12 +2783,17 @@ export default class AppSearchSuper {
     }
 
     this._loadMoreApps = loadMoreApps;
-    await loadMoreApps();
-
+    // * a held query's middleware is let go after the next one has set its own
     middleware.onClean(() => {
-      this._loadMoreApps = undefined;
+      if(this._loadMoreApps === loadMoreApps) {
+        this._loadMoreApps = undefined;
+      }
     });
 
+    await Promise.all([topAppsPromise, loadMoreApps()]);
+    if(!middleware()) return;
+
+    mediaTab.itemsTab.append(...groups.map((group) => group.container));
     this.afterPerforming(1, mediaTab);
   }
 
@@ -2670,7 +2912,8 @@ export default class AppSearchSuper {
 
     if(inputFilter === 'inputMessagesFilterEmpty' && !history.length && type !== 'saved') {
       if(!this.loadedChats) {
-        this.loadChats();
+        const loadChatsPromise = this.loadChatsPromise;
+        this.loadChats().then(() => loadChatsPromise.resolve(), () => loadChatsPromise.resolve());
         this.loadedChats = true;
       }
 
@@ -2794,12 +3037,15 @@ export default class AppSearchSuper {
       }
 
       // if(value.history.length) {
-      return this.performSearchResult({messages: this.filterMessagesByType(messages, inputFilter), mediaTab, canAnimateIn: !offsetId});
+      return this.performSearchResult({messages: this.filterMessagesByType(messages, inputFilter), mediaTab});
       // }
     }).catch((err) => {
       this.log.error('load error:', err);
     }).finally(() => {
-      this.loadPromises[type] = null;
+      // * not the next query's load of the tab, which another load has to wait for
+      if(this.loadPromises[type] === promise) {
+        this.loadPromises[type] = null;
+      }
     });
 
     return promise;
@@ -2971,6 +3217,10 @@ export default class AppSearchSuper {
     if(firstMediaTab) {
       this.skipScroll = true;
       this.selectTab(this.mediaTabs.indexOf(firstMediaTab), false);
+      // * and it comes in whole, once its first page is in - not as an empty section filling up
+      if(isMediaTabBlank(firstMediaTab) && this.canLoadMediaTab(firstMediaTab)) {
+        this.loadHeld(firstMediaTab);
+      }
       // firstMediaTab.menuTab.classList.add('active');
 
       const isSingle = count <= 1;
@@ -2994,6 +3244,292 @@ export default class AppSearchSuper {
     if(changeActive && visibleTabs.length) {
       this.selectTab(this.mediaTabs.indexOf(visibleTabs[0]), false);
     }
+  }
+
+  private getSearchGroupsList() {
+    return this.searchGroups ? Object.values(this.searchGroups) : [];
+  }
+
+  private canAnimateResults(mediaTab: SearchSuperMediaTab) {
+    return this.mediaTab === mediaTab &&
+      liteMode.isAvailable('animations') &&
+      !document.hidden &&
+      this.container.isConnected;
+  }
+
+  /**
+   * A new query for the search on screen. What the tab in view shows stays until the new results
+   * are in (`holdTab`) and then gives way to them in one go - instead of the tab going blank and
+   * filling up piece by piece. The other tabs are emptied, as `cleanupHTML` does
+   */
+  public changeQuery(query: Parameters<AppSearchSuper['setQuery']>[0]) {
+    const mediaTab = this.mediaTab;
+    this.holdTab(mediaTab);
+    this.cleanupHTML(mediaTab);
+    this.isHoldingQuery = true;
+    this.setQuery(query);
+    this.isHoldingQuery = false;
+    this.revealWhenLoaded(mediaTab, this.load(true), true);
+  }
+
+  /**
+   * The first load of a tab opened with nothing in it, or the one under way for it already: its results come in
+   * at once, over what it showed
+   */
+  private loadHeld(mediaTab: SearchSuperMediaTab) {
+    this.holdTab(mediaTab);
+    this.revealWhenLoaded(mediaTab, this.loadPromises[mediaTab.type] || this.load(true));
+  }
+
+  /**
+   * Loads a tab about to be opened - pointed at or pressed - out of sight, as opening it would: one
+   * with nothing in it yet, once the query's first load is through. Opened while that runs, it is held for it
+   */
+  private prefetchMediaTab(mediaTab: SearchSuperMediaTab) {
+    if(
+      mediaTab === this.mediaTab ||
+      this.firstLoad ||
+      !PREFETCHED_MEDIA_TYPES.has(mediaTab.type) ||
+      !isMediaTabBlank(mediaTab) ||
+      !this.canLoadMediaTab(mediaTab)
+    ) {
+      return;
+    }
+
+    this.loadType({
+      mediaTab,
+      justLoad: false,
+      loadCount: this.getLoadCount(),
+      middleware: this.middleware.get(),
+      side: 'bottom'
+    }).catch((err) => {
+      this.log.error('prefetch error:', err);
+    });
+  }
+
+  /** A screenful of items and more, or a page ahead of the scroll (`justLoad`) */
+  private getLoadCount(justLoad?: boolean) {
+    return justLoad ? 50 : Math.round((windowSize.height / 130 | 0) * 3 * 1.25); // that's good for all types
+  }
+
+  /**
+   * Keeps what a tab shows on screen while it loads: the chats tab's groups take the new rows aside
+   * (`startDraft`), any other tab's content is moved as it is into a look-alike of its containers laid
+   * over the tab (a ghost), the new content filling the tab hidden under it (`is-holding`)
+   */
+  private holdTab(mediaTab: SearchSuperMediaTab) {
+    if(mediaTab.type === 'chats') {
+      this.getSearchGroupsList().forEach((group) => group.startDraft());
+      return;
+    }
+
+    const tabContainer = mediaTab.contentTab.parentElement;
+    tabContainer.classList.add('is-holding');
+    // * still on screen: the query before this one did not get its results either
+    if(this.tabGhosts.has(mediaTab)) {
+      return;
+    }
+
+    const {itemsTab} = mediaTab;
+    const ghostOf = (element: HTMLElement): HTMLElement => {
+      const clone = element.cloneNode(false) as HTMLElement;
+      clone.removeAttribute('id');
+      if(element === itemsTab) {
+        clone.append(...Array.from(element.childNodes));
+      } else {
+        Array.from(element.children).forEach((child) => {
+          clone.append(child.contains(itemsTab) ? ghostOf(child as HTMLElement) : child);
+        });
+      }
+
+      return clone;
+    };
+
+    // * the content, and what stands next to it: a preloader, a "nothing found"
+    const isBlank = isMediaTabBlank(mediaTab);
+    const extras = Array.from(tabContainer.children).filter((child) => child !== mediaTab.contentTab);
+    const ghost = this.createGhost(tabContainer, [ghostOf(mediaTab.contentTab), ...extras]);
+    if(isBlank && !extras.length && PRELOADED_MEDIA_TYPES.has(mediaTab.type)) {
+      putPreloader(ghost, true);
+    }
+
+    this.tabGhosts.set(mediaTab, ghost);
+  }
+
+  /** What a tab showed, laid over it (`.search-super-ghost`) */
+  private createGhost(tabContainer: HTMLElement, content: Element[]) {
+    const ghost = document.createElement('div');
+    ghost.classList.add('search-super-ghost');
+    ghost.setAttribute('aria-hidden', 'true');
+    ghost.inert = true;
+    ghost.append(...content);
+    tabContainer.append(ghost);
+    return ghost;
+  }
+
+  /** The tab's own content fades in under what it showed, which fades out and goes */
+  private crossfadeFromGhost(tabContainer: HTMLElement, ghost: HTMLElement, onEnd: () => void) {
+    const drop = () => {
+      this.dropGhost(ghost);
+      onEnd();
+    };
+
+    const options = getAnimatedOptions(getSearchTransitionDuration());
+    Array.from(tabContainer.children).forEach((child) => {
+      if(child !== ghost) {
+        (child as HTMLElement).animate(CROSS_FADE_KEYFRAMES, options);
+      }
+    });
+    ghost.animate(CROSS_FADE_KEYFRAMES.slice().reverse(), {...options, fill: 'forwards'}).finished.then(drop, drop);
+  }
+
+  /**
+   * Shows what a held tab (`holdTab`) has loaded once it is all there. The chats tab gets its found
+   * chats and its messages apart: if one of them takes too long, the other is shown, the slow one's
+   * group holding what it showed until its own results come - or until even that has taken too long,
+   * and then its group goes on adding what comes after (a draft that `merge`s)
+   */
+  private revealWhenLoaded(mediaTab: SearchSuperMediaTab, promise: Promise<any>, isNewQuery?: boolean) {
+    const middleware = this.middleware.get();
+    const settle = (promise: Promise<any>) => promise.then(() => {}, () => {});
+    if(mediaTab.type !== 'chats') {
+      // * only the results of the query before are kept no longer than that: a tab that showed nothing
+      // * (`loadHeld`) has nothing to keep and waits for all of its own, as long as a late part would
+      const wait = isNewQuery ? SEARCH_RESULTS_WAIT : SEARCH_RESULTS_WAIT + SEARCH_RESULTS_WAIT_LATE;
+      Promise.race([settle(promise), pause(wait)]).then(() => {
+        if(middleware()) {
+          this.revealTab(mediaTab, {resetScroll: isNewQuery, isLast: true});
+        }
+      });
+      return;
+    }
+
+    const {messages, ...chats} = this.searchGroups;
+    const parts = [{
+      groups: [messages],
+      // * the tab's own load is its first page of messages
+      loaded: settle(promise)
+    }, {
+      groups: Object.values(chats),
+      // * started by that load (`loadChats`)
+      loaded: settle(this.loadChatsPromise)
+    }].map((part) => {
+      const state = {...part, isDone: false, isShown: false};
+      state.loaded.then(() => state.isDone = true);
+      return state;
+    });
+
+    let resetScroll = isNewQuery;
+    const reveal = (revealed: typeof parts, merge?: boolean) => {
+      revealed.forEach((part) => part.isShown = true);
+      this.revealTab(mediaTab, {
+        // * a part alone changes its own groups, the rest of the tab is not crossfaded with them
+        groups: revealed.length === parts.length ? undefined : flatten(revealed.map((part) => part.groups)),
+        resetScroll,
+        merge,
+        isLast: !merge && parts.every((part) => part.isShown)
+      });
+      resetScroll = false;
+    };
+
+    Promise.race([Promise.all(parts.map((part) => part.loaded)), pause(SEARCH_RESULTS_WAIT)]).then(() => {
+      if(!middleware()) {
+        return;
+      }
+
+      const done = parts.filter((part) => part.isDone);
+      if(done.length) {
+        reveal(done);
+      }
+
+      parts.filter((part) => !part.isDone).forEach((part) => {
+        Promise.race([part.loaded, pause(SEARCH_RESULTS_WAIT_LATE)]).then(() => {
+          if(!middleware()) {
+            return;
+          }
+
+          if(part.isDone) {
+            reveal([part]);
+            return;
+          }
+
+          // * shown as it is, the rest added as it comes
+          reveal([part]);
+          part.groups.forEach((group) => group.startDraft(true));
+          part.loaded.then(() => {
+            if(middleware()) {
+              reveal([part], true);
+            }
+          });
+        });
+      });
+    });
+  }
+
+  /**
+   * Puts what a held tab has loaded in place of what it showed: the chats tab's `groups` (all of them
+   * by default), any other tab's ghost. The queries held on screen are let go after the `isLast` one
+   */
+  private revealTab(mediaTab: SearchSuperMediaTab, {resetScroll, merge, groups, isLast}: {
+    resetScroll?: boolean,
+    merge?: boolean,
+    groups?: SearchGroup[],
+    isLast?: boolean
+  } = {}) {
+    const animate = this.canAnimateResults(mediaTab);
+    if(resetScroll && this.mediaTab === mediaTab) {
+      this.scrollable.scrollPosition = 0;
+    }
+
+    // * the queries whose results were held on screen go once they are off it
+    const retired = isLast ? this.middleware.takeRetired() : [];
+    const release = () => this.middleware.release(retired);
+
+    if(mediaTab.type === 'chats') {
+      const isWhole = !groups;
+      groups ??= this.getSearchGroupsList();
+      const wasShown = this.getSearchGroupsList().some((group) => group.isShown);
+      // * groups coming or going would move all there is below them: the tab crossfades as a whole
+      if(animate && isWhole && !merge && wasShown && groups.some((group) => group.isShown !== group.willShow)) {
+        const tabContainer = mediaTab.contentTab.parentElement;
+        const content = mediaTab.contentTab.cloneNode(false) as HTMLElement;
+        content.append(...groups.filter((group) => group.isShown).map((group) => group.ghost()));
+        const ghost = this.createGhost(tabContainer, [content]);
+        commitSearchGroups(groups, {animate: false});
+        this.crossfadeFromGhost(tabContainer, ghost, release);
+        return;
+      }
+
+      commitSearchGroups(groups, {
+        animate,
+        // * nothing around to make room in: the groups that come fade in where they stand
+        fadeOnly: !wasShown
+      }).then(release);
+      return;
+    }
+
+    const tabContainer = mediaTab.contentTab.parentElement;
+    tabContainer.classList.remove('is-holding');
+    const ghost = this.tabGhosts.get(mediaTab);
+    if(!ghost) {
+      release();
+      return;
+    }
+
+    this.tabGhosts.delete(mediaTab);
+    if(!animate) {
+      this.dropGhost(ghost);
+      release();
+      return;
+    }
+
+    this.crossfadeFromGhost(tabContainer, ghost, release);
+  }
+
+  private dropGhost(ghost: HTMLElement) {
+    const rows = Array.from(ghost.querySelectorAll(DIALOG_LIST_ELEMENT_TAG)).filter((row) => (row as any).dialogElement);
+    destroySearchRows(rows);
+    ghost.remove();
   }
 
   public async load(single = false, justLoad = false, side: 'top' | 'bottom' = 'bottom') {
@@ -3026,7 +3562,7 @@ export default class AppSearchSuper {
       return;
     }
 
-    const loadCount = justLoad ? 50 : Math.round((windowSize.height / 130 | 0) * 3 * 1.25); // that's good for all types
+    const loadCount = this.getLoadCount(justLoad);
 
     const promises: Promise<any>[] = toLoad.map((mediaTab) => {
       return this.loadType({
@@ -3228,8 +3764,10 @@ export default class AppSearchSuper {
       this.mediaTab = tab;
     } */
 
-    this.middleware.clean();
+    this.middleware.next(this.isHoldingQuery);
     this.loadFirstTimePromise = undefined;
+    this.loadChatsPromise = deferredPromise<void>();
+    this.searchGroupMedia = undefined;
     this.cleanScrollPositions();
 
     this.membersList = undefined;
@@ -3237,6 +3775,9 @@ export default class AppSearchSuper {
     this.membersMiddlewareHelper?.destroy();
     this.membersMiddlewareHelper = undefined;
     this.globalPostsSearch = undefined;
+    // * the last query's paging, whose middleware may be let go only once its results are off screen
+    this._loadMoreApps = undefined;
+    this._loadSavedDialogs = undefined;
   }
 
   public cleanScrollPositions() {
@@ -3265,11 +3806,36 @@ export default class AppSearchSuper {
     this.scrollDateBadge.update(true);
   }
 
-  public cleanupHTML() {
+  /**
+   * Empties the tabs for a new query or peer. `keep` is the tab held on screen (`changeQuery`): the
+   * chats tab's groups stay where they are, getting the new rows aside, and the scroll stays until the
+   * new results are shown
+   */
+  public cleanupHTML(keep?: SearchSuperMediaTab) {
     this.scrollDateBadge?.reset();
 
     this.mediaTabs.forEach((tab) => {
+      if(tab === keep && tab.type === 'chats') {
+        return;
+      }
+
+      // * held for a query that is over (`loadHeld`, opened and left before it was shown): what it waited
+      // * for is not coming, and the next load must not fill it out of sight
+      const ghost = tab !== keep && this.tabGhosts.get(tab);
+      if(ghost) {
+        this.tabGhosts.delete(tab);
+        this.dropGhost(ghost);
+        tab.contentTab.parentElement.classList.remove('is-holding');
+      }
+
       tab.itemsTab.replaceChildren();
+      if(tab.type === 'chats') {
+        // * out of the tab with it, not to come back with what they showed when it loads again
+        this.getSearchGroupsList().forEach((group) => {
+          group.discardDraft();
+          group.clear();
+        });
+      }
 
       if(tab.hideOn) {
         tab.hideOn.classList.add('hide');
@@ -3287,17 +3853,25 @@ export default class AppSearchSuper {
 
       if(tab.inputFilter && !this.historyStorage[tab.inputFilter]) {
         const parent = tab.contentTab.parentElement;
-        if(!parent.querySelector('.preloader')) {
+        const extras = getTabExtras(parent);
+        if(!extras.some((element) => element.classList.contains('preloader'))) {
           putPreloader(parent, true);
         }
 
-        const empty = parent.querySelector('.content-empty');
-        empty?.remove();
+        extras.find((element) => element.classList.contains('content-empty'))?.remove();
       }
     });
 
-    this.searchGroupMedia.clear();
-    this.scrollable.scrollPosition = 0;
+    // * the media tab's group of messages is made for each query; one held in a ghost leaves with it
+    const searchGroupMedia = this.searchGroupMedia;
+    if(searchGroupMedia && !searchGroupMedia.container.closest('.search-super-ghost')) {
+      searchGroupMedia.clear();
+      searchGroupMedia.container.remove();
+    }
+
+    if(!keep) {
+      this.scrollable.scrollPosition = 0;
+    }
   }
 
   private copySearchContext(newInputFilter: MyInputMessagesFilter, nextRate: number, skipSensitive: boolean) {
@@ -3335,6 +3909,9 @@ export default class AppSearchSuper {
   }
 
   public destroy() {
+    this.getSearchGroupsList().forEach((group) => group.discardDraft());
+    this.tabGhosts.forEach((ghost) => this.dropGhost(ghost));
+    this.tabGhosts.clear();
     this.cleanup();
     // * cleaning ends what is loading, the destructors registered on it (a video's source) run only here
     this.middleware.destroy();

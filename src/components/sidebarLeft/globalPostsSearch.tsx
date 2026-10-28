@@ -22,6 +22,7 @@ import {wrapLeftDuration} from '../wrappers/wrapDuration';
 import usePremium from '../../stores/premium';
 import {toastNew} from '../toast';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import Animated from '@helpers/solid/animations';
 
 const renderHistoryResult = (options: {
   messages: (Message.message | Message.messageService)[]
@@ -56,6 +57,8 @@ export function GlobalPostsSearch(props: {
 }) {
   const [flood, setFlood] = createSignal<SearchPostsFlood | null>(null)
   const [results, setResults] = createSignal<HTMLElement[]>([])
+  // * the query the results shown are of: another one's come in with a crossfade
+  const [resultsQuery, setResultsQuery] = createSignal<string>()
   const [placeholder, setPlaceholder] = createSignal(true)
   const [loading, setLoading] = createSignal(false)
   const [canShowButtonAfterEmpty, setCanShowButtonAfterEmpty] = createSignal(false)
@@ -69,8 +72,20 @@ export function GlobalPostsSearch(props: {
     if(!props.query) return
     setLoading(true)
 
+    // * the first page of a query takes the place of what is shown, which stays until then
+    const query = props.query
+    const isFirstPage = !lastMessage
     const offsetId = lastMessage?.mid || 0
     const offsetPeerId = lastMessage?.peerId || NULL_PEER_ID
+    // * no page after all: what the query before found gives way, to what this one offers (a retry for Stars)
+    const dropShown = () => {
+      if(isFirstPage && query === props.query) {
+        batch(() => {
+          setResults([])
+          setPlaceholder(true)
+        })
+      }
+    }
 
     rootScope.managers.appMessagesManager.getHistory({
       peerId: NULL_PEER_ID,
@@ -83,6 +98,9 @@ export function GlobalPostsSearch(props: {
       query: props.query,
       allowStars: allowPaid ? flood()?.stars_amount : 0
     }).then((res) => {
+      // * a query typed since answers for itself
+      if(query !== props.query) return
+
       if(allowPaid && !res.flood.pFlags.query_is_free) {
         toastNew({
           langPackKey: 'PostsSearch.StarsSpent',
@@ -93,6 +111,7 @@ export function GlobalPostsSearch(props: {
       }
 
       if(!res.messages) {
+        dropShown();
         setLoading(false);
         return;
       }
@@ -104,16 +123,23 @@ export function GlobalPostsSearch(props: {
         query: props.query,
         middleware: middleware.get()
       }).then((doms) => {
+        if(query !== props.query) return
+
         batch(() => {
           setPlaceholder(false)
-          setResults([...results(), ...doms]);
+          setResults(isFirstPage ? doms : [...results(), ...doms]);
+          setResultsQuery(query);
           setLoading(false);
         })
       }).catch((err) => {
         console.error(err);
+        dropShown();
         setLoading(false);
       })
     }).catch((err: ApiError) => {
+      if(query !== props.query) return
+
+      dropShown()
       const m = (err.type as string ?? '').match(/^FLOOD_WAIT_(\d+)_OR_STARS_(\d+)$/)
       if(m) {
         setFlood({
@@ -140,10 +166,11 @@ export function GlobalPostsSearch(props: {
       setFlood(res)
       setCanShowButtonAfterEmpty(true)
       if(myQuery) {
-        setResults([])
-        setPlaceholder(true)
         if(res.pFlags.query_is_free) {
           loadMore(true)
+        } else {
+          setResults([])
+          setPlaceholder(true)
         }
       }
     })
@@ -158,6 +185,8 @@ export function GlobalPostsSearch(props: {
     }
     lastMessage = null
     nextRate = 0
+    // * what the last query was loading answers no more (`loadMore`)
+    setLoading(false)
     loadFlood()
   }))
 
@@ -257,39 +286,43 @@ export function GlobalPostsSearch(props: {
   }
 
   return (
-    <div>
-      <Switch>
-        <Match when={results().length}>
-          <Section noShadow noDelimiter>
-            <div
+    <div class="crossfade-block">
+      <Animated type="cross-fade" noItemClass itemClass="crossfade-block-item">
+        <Switch>
+          <Match when={results().length && resultsQuery()} keyed>
+            {(_query) => (
+              <Section noShadow noDelimiter>
+                <div
                   ref={(el) => {
-                hotReloadGuard.appDialogsManager.setListClickListener({
-                  list: el,
-                  autonomous: true
-                })
-              }}
-            >
-              {results()}
+                    hotReloadGuard.appDialogsManager.setListClickListener({
+                      list: el,
+                      autonomous: true
+                    })
+                  }}
+                >
+                  {results()}
+                </div>
+              </Section>
+            )}
+          </Match>
+          <Match when={loading() || !flood()}>
+            <PreloaderTsx />
+          </Match>
+          <Match when={placeholder()}>
+            <div class={styles.placeholder}>
+              <I18nTsx key={title()} class={styles.title} />
+              {description()}
+              {button()}
+              {footer()}
             </div>
-          </Section>
-        </Match>
-        <Match when={loading() || !flood()}>
-          <PreloaderTsx />
-        </Match>
-        <Match when={placeholder()}>
-          <div class={styles.placeholder}>
-            <I18nTsx key={title()} class={styles.title} />
-            {description()}
-            {button()}
-            {footer()}
-          </div>
-        </Match>
-        <Match when={true}>
-          <div class={styles.placeholder}>
-            {i18n('Chat.Search.NothingFound')}
-          </div>
-        </Match>
-      </Switch>
+          </Match>
+          <Match when={true}>
+            <div class={styles.placeholder}>
+              {i18n('Chat.Search.NothingFound')}
+            </div>
+          </Match>
+        </Switch>
+      </Animated>
     </div>
   )
 }

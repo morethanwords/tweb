@@ -1,3 +1,5 @@
+@use "../../scss/mixins" as *;
+
 .Container {
   display: flex;
   flex-direction: column;
@@ -11,8 +13,17 @@
   aspect-ratio: 1 / 1;
   width: var(--size);
   max-width: var(--size, 100%);
+  opacity: 0;
 
   cursor: pointer;
+
+  @include animation-level-global(1) {
+    transition: opacity var(--transition-standard-in);
+  }
+
+  &.isDrawn {
+    opacity: 1;
+  }
 }
 
 .NoResults {

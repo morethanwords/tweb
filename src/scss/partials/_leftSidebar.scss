@@ -772,6 +772,20 @@
     position: relative;
     flex: 1 1 auto;
   }
+
+  // * the chips found for a query and the tabs: the one leaving is laid over the other (`onHelperLength`)
+  .search-helper-leaving {
+    position: absolute;
+    inset-block: 0;
+    inset-inline: 0;
+    min-width: max-content;
+    pointer-events: none;
+  }
+
+  .search-helper .crossfade-leaving {
+    display: flex;
+    align-items: center;
+  }
 }
 
 .chat-folders-container,
