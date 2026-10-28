@@ -82,13 +82,13 @@ describe('wrapRichText tags', () => {
 
 
 describe('wrapRichText blockquote line boundaries', () => {
-  test.each([false, true])('replaces the separators around the middle quote (draft=%s)', (wrappingDraft) => {
+  test.each([false, true])('keeps the line break before the middle quote only in a message (draft=%s)', (wrappingDraft) => {
     const fragment = wrapRichText('123123\n123123\n123123', {wrappingDraft, entities: [
       {_: 'messageEntityLinebreak', offset: 6, length: 1},
       {_: 'messageEntityBlockquote', pFlags: {}, offset: 7, length: 6},
       {_: 'messageEntityLinebreak', offset: 13, length: 1}
     ]});
-    expect(fragment.firstChild?.textContent).toBe('123123');
+    expect(fragment.firstChild?.textContent).toBe(wrappingDraft ? '123123' : '123123\n');
     expect(fragment.lastChild?.textContent).toBe('123123');
     expect(fragment.querySelector(wrappingDraft ? '[data-markup="markup-quote"]' : 'blockquote')?.textContent).toBe('123123');
   });
@@ -112,6 +112,6 @@ describe('wrapRichText blockquote line boundaries', () => {
       {_: 'messageEntityLinebreak', offset: 12, length: 1},
       {_: 'messageEntityLinebreak', offset: 13, length: 1}
     ]});
-    expect([...fragment.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent).join('')).toBe('first\n\nlast');
+    expect([...fragment.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent).join('')).toBe('first\n\n\nlast');
   });
 });
