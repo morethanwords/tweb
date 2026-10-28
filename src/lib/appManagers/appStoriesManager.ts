@@ -1077,7 +1077,8 @@ export default class AppStoriesManager extends AppManager {
       method: 'stories.getAlbums',
       params: {
         peer: this.appPeersManager.getInputPeerById(peerId),
-        hash: cache.albumsHash
+        // * no hash before the first answer: `hash` is not optional, and an undefined one is logged as a missing param
+        hash: cache.albumsHash ?? 0
       },
       processResult: (response) => {
         if(response._ === 'stories.albumsNotModified') {
