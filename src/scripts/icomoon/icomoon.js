@@ -1,10 +1,10 @@
 // @ts-check
 // Thanks to https://github.com/Yuyz0112/icomoon-cli
 
-const fs = require('fs-extra');
+const fs = require('fs');
 const path = require('path');
-const extract = require('extract-zip');
-const puppeteer = require('puppeteer');
+const {unzipSync} = require('fflate');
+const {chromium} = require('@playwright/test');
 
 const DEFAULT_TIMEOUT = 60000;
 
@@ -55,6 +55,8 @@ const logger = (...args) => {
 
 const sleep = time => new Promise(resolve => setTimeout(resolve, time));
 
+const readJSON = filePath => JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
 const getAbsolutePath = inputPath => {
   let absoluteSelectionPath = inputPath;
   if(!path.isAbsolute(inputPath)) {
@@ -66,28 +68,24 @@ const getAbsolutePath = inputPath => {
   return absoluteSelectionPath;
 };
 
-const checkDownload = dest => new Promise((resolve, reject) => {
-  const interval = 1000;
-  let downloadSize = 0;
-  let timeCount = 0;
-  const timer = setInterval(async() => {
-    timeCount += interval;
-    /* const exist = await fs.exists(dest);
-    if (!exist) {
-      return;
-    } */
-    const stats = fs.statSync(dest);
-    if(stats.size > 0 && stats.size === downloadSize) {
-      clearInterval(timer);
-      resolve();
-    } else {
-      downloadSize = stats.size;
+// fflate hands back plain files, so an entry cannot be a symlink, and one whose name leads
+// out of the output folder is refused
+const unzip = (zipPath, outputDir) => {
+  const entries = unzipSync(fs.readFileSync(zipPath));
+  for(const name in entries) {
+    if(name.endsWith('/')) {
+      continue;
     }
-    if(timeCount > DEFAULT_TIMEOUT) {
-      reject('Timeout when download file, please check your network.');
+
+    const dest = path.resolve(outputDir, name);
+    if(!dest.startsWith(outputDir + path.sep)) {
+      throw new Error(`Refusing to unzip ${name} outside of ${outputDir}`);
     }
-  }, interval);
-});
+
+    fs.mkdirSync(path.dirname(dest), {recursive: true});
+    fs.writeFileSync(dest, entries[name]);
+  }
+};
 
 const checkDuplicateName = ({selectionPath, icons, names}, forceOverride) => {
   const iconNames = icons.map((icon, index) => {
@@ -97,7 +95,7 @@ const checkDuplicateName = ({selectionPath, icons, names}, forceOverride) => {
     return path.basename(icon).replace(path.extname(icon), '');
   });
   const duplicates = [];
-  const selection = fs.readJSONSync(selectionPath);
+  const selection = readJSON(selectionPath);
   selection.icons.forEach((icon, index) => {
     const name = icon.tags[0];
     if(iconNames.includes(name)) {
@@ -109,7 +107,7 @@ const checkDuplicateName = ({selectionPath, icons, names}, forceOverride) => {
   }
   if(forceOverride) {
     selection.icons = selection.icons.filter((icon, index) => !duplicates.some(d => d.index === index));
-    fs.writeJSONSync(selectionPath, selection, {spaces: 2});
+    fs.writeFileSync(selectionPath, JSON.stringify(selection, null, 2) + '\n');
   } else {
     throw new Error(`Found duplicate icon names: ${duplicates.map(d => d.name).join(',')}`);
   }
@@ -125,7 +123,7 @@ async function pipeline(options = {}) {
       whenFinished,
       visible = false
     } = options;
-    const outputDir = options.outputDir ? getAbsolutePath(options.outputDir) : DEFAULT_OPTIONS.outputDir;
+    const outputDir = path.resolve(options.outputDir ? getAbsolutePath(options.outputDir) : DEFAULT_OPTIONS.outputDir);
     // prepare stage
     logger('Preparing...');
     if(!icons || !icons.length) {
@@ -143,39 +141,35 @@ async function pipeline(options = {}) {
     //   icons,
     //   names,
     // }, forceOverride);
-    await fs.remove(outputDir);
-    await fs.ensureDir(outputDir);
+    fs.rmSync(outputDir, {recursive: true, force: true});
+    fs.mkdirSync(outputDir, {recursive: true});
 
-    const browser = await puppeteer.launch({headless: !visible});
+    const browser = await chromium.launch({headless: !visible});
     logger('Started a new chrome instance, going to load icomoon.io.');
     const page = await browser.newPage();
-    (await browser.target().createCDPSession()).send('Browser.setDownloadBehavior', {
-      behavior: 'allow',
-      downloadPath: outputDir
-    });
     await page.goto('https://icomoon.io/app/#/select');
-    await page.waitForSelector(PAGE.IMPORT_CONFIG_BUTTON);
+    await page.waitForSelector(PAGE.IMPORT_CONFIG_BUTTON, {state: 'attached'});
     logger('Dashboard is visible, going to upload config file');
     // remove init set
     await page.click(PAGE.MENU_BUTTON);
     await page.click(PAGE.REMOVE_SET_BUTTON);
 
-    const importInput = await page.waitForSelector(PAGE.IMPORT_SELECTION_INPUT);
-    await importInput.uploadFile(absoluteSelectionPath);
+    const importInput = await page.waitForSelector(PAGE.IMPORT_SELECTION_INPUT, {state: 'attached'});
+    await importInput.setInputFiles(absoluteSelectionPath);
     logger('Uploaded config, going to upload new icon files');
     try {
       await Promise.race([
         sleep(1000).then(() => {
           throw 0;
         }),
-        page.waitForSelector(PAGE.OVERLAY_CONFIRM, {visible: true})
+        page.waitForSelector(PAGE.OVERLAY_CONFIRM)
       ]);
       await page.click(PAGE.OVERLAY_CONFIRM);
     } catch(err) {
       logger('Overlay is missed?');
     }
 
-    const selection = fs.readJSONSync(selectionPath);
+    const selection = readJSON(selectionPath);
     /* if (selection.icons.length === 0) {
       logger('Selection icons is empty, going to create an empty set');
       await page.click(PAGE.MAIN_MENU_BUTTON);
@@ -184,32 +178,32 @@ async function pipeline(options = {}) {
     } */
 
     await page.click(PAGE.MENU_BUTTON);
-    const iconInput = await page.waitForSelector(PAGE.ICON_INPUT);
+    const iconInput = await page.waitForSelector(PAGE.ICON_INPUT, {state: 'attached'});
     const iconPaths = icons.map(getAbsolutePath);
-    await iconInput.uploadFile(...iconPaths);
+    await iconInput.setInputFiles(iconPaths);
     await page.waitForFunction(
       expectedCount => document.querySelectorAll('#set0 .miBox').length === expectedCount,
-      {timeout: DEFAULT_TIMEOUT * 2},
-      iconPaths.length
+      iconPaths.length,
+      {timeout: DEFAULT_TIMEOUT * 2}
     );
     try {
-      await page.waitForSelector(PAGE.STROKE_TO_FILL_URL, {timeout: 5000});
-      await page.waitForSelector(PAGE.CLOSE_STROKE_OVERLAY, {visible: true});
+      await page.waitForSelector(PAGE.STROKE_TO_FILL_URL, {state: 'attached', timeout: 5000});
+      await page.waitForSelector(PAGE.CLOSE_STROKE_OVERLAY);
       await page.click(PAGE.CLOSE_STROKE_OVERLAY);
       logger('Have wrong strokes');
     } catch(err) {
 
     }
 
-    await page.waitForSelector(PAGE.FIRST_ICON_BOX);
+    await page.waitForSelector(PAGE.FIRST_ICON_BOX, {state: 'attached'});
     await page.evaluate(selector => {
       const button = document.querySelector(selector);
       (/** @type {HTMLElement} */ (button)).click();
     }, PAGE.SELECT_ALL_BUTTON);
     await page.waitForFunction(
       expectedCount => document.querySelectorAll('#set0 .miBox.mi-selected').length === expectedCount,
-      {timeout: DEFAULT_TIMEOUT},
-      iconPaths.length
+      iconPaths.length,
+      {timeout: DEFAULT_TIMEOUT}
     );
     logger('Uploaded and selected all new icons');
     await page.evaluate(selector => {
@@ -220,14 +214,14 @@ async function pipeline(options = {}) {
       (/** @type {HTMLElement} */ (link)).click();
     }, PAGE.GENERATE_LINK);
     try {
-      await page.waitForSelector(PAGE.STROKE_CONTINUE, {visible: true, timeout: 10000});
+      await page.waitForSelector(PAGE.STROKE_CONTINUE, {timeout: 10000});
       await page.click(PAGE.STROKE_CONTINUE);
       logger('Confirmed stroke conversion warning');
     } catch(err) {
 
     }
     try {
-      await page.waitForSelector(PAGE.GLYPH_SET, {timeout: DEFAULT_TIMEOUT * 2});
+      await page.waitForSelector(PAGE.GLYPH_SET, {state: 'attached', timeout: DEFAULT_TIMEOUT * 2});
     } catch(err) {
       await page.screenshot({path: path.join(outputDir, 'icomoon-error.png'), fullPage: true});
       fs.writeFileSync(path.join(outputDir, 'icomoon-error.html'), await page.content());
@@ -241,7 +235,7 @@ async function pipeline(options = {}) {
         sleep(1000).then(() => {
           throw 0;
         }),
-        page.waitForSelector(PAGE.IE8_SUPPORTED)
+        page.waitForSelector(PAGE.IE8_SUPPORTED, {state: 'attached'})
       ]);
       await page.click(PAGE.IE8_DISABLE);
     } catch(err) {
@@ -313,29 +307,24 @@ async function pipeline(options = {}) {
     // await page.reload();
     await sleep(2000);
 
-    await page.waitForSelector(PAGE.DOWNLOAD_BUTTON);
+    await page.waitForSelector(PAGE.DOWNLOAD_BUTTON, {state: 'attached'});
+    const downloadPromise = page.waitForEvent('download', {timeout: DEFAULT_TIMEOUT});
     await page.click(PAGE.DOWNLOAD_BUTTON);
-    const meta = selection.preferences.fontPref.metadata;
-    const zipName = meta.majorVersion ?
-      `${meta.fontFamily}-v${meta.majorVersion}.${meta.minorVersion || 0}.zip` :
-      `${meta.fontFamily}.zip`;
+    const download = await downloadPromise;
+    const zipName = path.basename(download.suggestedFilename());
     logger(`Started to download ${zipName}`);
     const zipPath = path.join(outputDir, zipName);
-    await checkDownload(zipPath);
+    await download.saveAs(zipPath);
     logger('Successfully downloaded, going to unzip it.');
     await page.close();
     await browser.close();
     // unzip stage
-    extract(zipPath, {dir: outputDir}, async(err) => {
-      if(err) {
-        throw err;
-      }
-      await fs.remove(zipPath);
-      logger(`Finished. The output directory is ${outputDir}.`);
-      if(whenFinished) {
-        whenFinished({outputDir});
-      }
-    });
+    unzip(zipPath, outputDir);
+    fs.rmSync(zipPath);
+    logger(`Finished. The output directory is ${outputDir}.`);
+    if(whenFinished) {
+      whenFinished({outputDir});
+    }
   } catch(error) {
     console.error(error);
     if (error?.message?.includes(PAGE.GLYPH_SET)) {

@@ -2,8 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 
-const {parser} = require('stream-json');
-const {streamObject} = require('stream-json/streamers/StreamObject');
+const {streamObject} = require('stream-json/streamers/stream-object.js');
 
 
 const app = express();
@@ -119,9 +118,9 @@ const getComment = (f) => new Promise((_resolve) => {
     pipeline.destroy(); // Stop once we get the value
   };
 
+  // the parser inside the streamer's own stream, so a broken file reaches the 'error' handler below
   const pipeline = fs.createReadStream(path.join(SNAPSHOT_DIR, f))
-  .pipe(parser())
-  .pipe(streamObject())
+  .pipe(streamObject.withParserAsStream())
 
   // Assuming comment is positioned first in the json
 
