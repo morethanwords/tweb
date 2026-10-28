@@ -740,17 +740,17 @@ export default class DotRenderer implements AnimationItemWrapper {
   // * the color outlives the target it was rendered on: the element can be detached and
   // * reconnected (see BluffSpoilerController), the recolored spoiler must survive that
   private static inlineSpoilerTextColors = new WeakMap<HTMLElement, ValueOrGetter<CustomProperty>>();
-  private static inlineSpoilerUpdates = new Map<HTMLElement, () => void>();
+  private static inlineSpoilerUpdates = new Map<HTMLElement, (onlyColor?: boolean) => void>();
   private static onInlineAppearanceUpdate = () => this.inlineSpoilerUpdates.forEach((update) => update());
 
-  private static watchInlineSpoiler(element: HTMLElement, canvas: HTMLCanvasElement, update: () => void) {
+  private static watchInlineSpoiler(element: HTMLElement, canvas: HTMLCanvasElement, update: (onlyColor?: boolean) => void) {
     const wasEmpty = !this.inlineSpoilerUpdates.size;
     this.inlineSpoilerUpdates.set(element, update);
     // * the spoiler is an inline box, and a ResizeObserver never reports one once it is laid out.
     // * The canvas inside it is a block box that gets a size the moment it is rendered, so that
     // * is what measures text inserted later than the frame it was wrapped in (an auth card
     // * waits out the previous card's exit first) - otherwise it stays blank for good
-    const unobserve = observeResize(canvas, update);
+    const unobserve = observeResize(canvas, () => update());
     if(wasEmpty) {
       rootScope.addEventListener('theme_changed', this.onInlineAppearanceUpdate);
       rootScope.addEventListener('chat_background_set', this.onInlineAppearanceUpdate);
@@ -778,17 +778,33 @@ export default class DotRenderer implements AnimationItemWrapper {
       }
 
       this.inlineSpoilerTextColors.set(element, textColor);
-      update();
+      update(true);
     });
   }
 
   private static getInlineSpoilerParticleColor(element: HTMLElement) {
     // * without a color passed down, fall back to whatever the text around it ended up being
     const property = readValue(this.inlineSpoilerTextColors.get(element));
+    // Palette colours are written inline by the theme controller. Reading that declaration avoids
+    // resolving computed styles during a chat-list row's active-state change, even with a cold cache.
+    const paletteColor = property && document.documentElement.style.getPropertyValue('--' + property);
+    if(paletteColor?.startsWith('#')) return paletteColor;
     return property ? customProperties.getPropertyAsColor(property) : getComputedStyle(element).color;
   }
 
-  private static getBluffTextSpoilerState(element: HTMLElement, canvas: HTMLCanvasElement, dpr: number) {
+  private static getBluffTextSpoilerState(
+    element: HTMLElement,
+    canvas: HTMLCanvasElement,
+    dpr: number,
+    previousState?: Omit<SpoilerOverlayUpdate, 'type' | 'id'>,
+    onlyColor?: boolean
+  ) {
+    // A row becoming active changes only the tint. Reading its geometry after that class change would lay out
+    // the chat list during navigation; keep the measured rectangles until the existing size/appearance update.
+    if(onlyColor) {
+      return previousState && {...previousState, particleColor: this.getInlineSpoilerParticleColor(element)};
+    }
+
     const bounds = element.getBoundingClientRect();
     if(!bounds.width || !bounds.height) return;
 
@@ -816,6 +832,7 @@ export default class DotRenderer implements AnimationItemWrapper {
 
   private static attachBluffTextSpoilerTargetWithWorker(element: HTMLElement, canvas: HTMLCanvasElement) {
     let destroyed = false;
+    let state: Omit<SpoilerOverlayUpdate, 'type' | 'id'>;
     const target = this.attachTextSpoilerOverlay({
       canvas,
       animationGroup: 'BLUFF-SPOILER',
@@ -828,8 +845,8 @@ export default class DotRenderer implements AnimationItemWrapper {
       }
     });
 
-    const update = () => {
-      const state = this.getBluffTextSpoilerState(element, canvas, target.dpr);
+    const update = (onlyColor?: boolean) => {
+      state = this.getBluffTextSpoilerState(element, canvas, target.dpr, state, onlyColor);
       if(state) target.overlay.update(state);
     };
     const unwatch = this.watchInlineSpoiler(element, canvas, update);
@@ -867,8 +884,8 @@ export default class DotRenderer implements AnimationItemWrapper {
       element.classList.add('is-visible');
     };
 
-    const update = () => {
-      const newState = this.getBluffTextSpoilerState(element, canvas, target.dpr);
+    const update = (onlyColor?: boolean) => {
+      const newState = this.getBluffTextSpoilerState(element, canvas, target.dpr, state, onlyColor);
       if(!newState) return;
 
       state = newState;

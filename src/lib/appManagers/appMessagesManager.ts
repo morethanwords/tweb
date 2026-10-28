@@ -39,6 +39,7 @@ import {AppManager} from '@appManagers/manager';
 import getPhotoMediaInput from '@appManagers/utils/photos/getPhotoMediaInput';
 import parseMarkdown from '@lib/richTextProcessor/parseMarkdown';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
+import getReadMaxIdIfUnread from '@appManagers/utils/messages/getReadMaxIdIfUnread';
 import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 import isAnchoredEphemeralMessage from '@appManagers/utils/messages/isAnchoredEphemeralMessage';
@@ -5727,9 +5728,12 @@ export class AppMessagesManager extends AppManager {
     const historyStorage = this.getHistoryStorage(peerId, threadId);
     const readMaxId = this.getInboxReadMaxId(peerId, threadId);
     const message = this.getMessageByPeer(peerId, historyStorage.maxId); // usually message is missing, so pFlags.out won't be there anyway
-    // readMaxId can be 4294967295 (0) — a chat where nothing has been read yet has no cursor to point at
-    const hasCursor = this.isMergedReadCursorThread(peerId, threadId) || !!getServerMessageId(readMaxId);
-    return !message?.pFlags?.out && readMaxId < historyStorage.maxId && hasCursor ? readMaxId : 0;
+    return getReadMaxIdIfUnread({
+      readMaxId,
+      maxId: historyStorage.maxId,
+      topMessageOut: message?.pFlags?.out,
+      mergedThread: this.isMergedReadCursorThread(peerId, threadId)
+    });
   }
 
   // public lolSet = new Set();

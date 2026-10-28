@@ -1,4 +1,4 @@
-import {createContext, Index, JSX, onCleanup, Show, useContext} from 'solid-js';
+import {Accessor, createContext, Index, JSX, onCleanup, Show, useContext} from 'solid-js';
 
 import {attachPickerGrid} from '@helpers/dom/attachListNavigation';
 import classNames from '@helpers/string/classNames';
@@ -28,12 +28,15 @@ import styles from '@components/chatTips/chatTips.module.scss';
  * - `titleId` — the id the card's title is rendered with, so the slot can be named by it and the
  *   carousel can announce it when stepping to the card.
  */
-const TipSlotContext = createContext<{ready: () => void, titleId: string}>();
+const TipSlotContext = createContext<{ready: () => void, titleId: string, isVisible?: Accessor<boolean>}>();
 
 export const TipSlotProvider = TipSlotContext.Provider;
 
 /** Call once the card's own content is on screen. Safe to call more than once. */
 export const useTipReady = () => useContext(TipSlotContext)?.ready ?? (() => {});
+
+/** The empty-column deck stays mounted while a conversation covers it. */
+export const useTipVisibility = () => useContext(TipSlotContext)?.isVisible ?? (() => true);
 
 /**
  * Opens the settings screen a card's description points at. An already-open copy is brought back

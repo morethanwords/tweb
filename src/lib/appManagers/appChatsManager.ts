@@ -285,10 +285,13 @@ export class AppChatsManager extends AppManager {
       const changedProfileSignatures = (oldChat as Chat.channel).pFlags.signature_profiles !== (chat as Chat.channel).pFlags.signature_profiles;
 
       const storiesCallback = this.appStoriesManager.saveApiPeerStories(chat as Chat.channel, oldChat as Chat.channel);
+      // Preserve notifications for in-place mutations; a separate normalized payload can
+      // prove that a repeated history/profile response did not change this peer.
+      const unchanged = oldChat !== chat && deepEqual(oldChat, chat);
 
       safeReplaceObject(oldChat, chat);
       this.mirrorChat(oldChat);
-      this.rootScope.dispatchEvent('chat_update', chat.id);
+      if(!unchanged) this.rootScope.dispatchEvent('chat_update', chat.id);
 
       storiesCallback?.();
 

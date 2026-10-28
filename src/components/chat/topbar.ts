@@ -1,7 +1,7 @@
 import type {Channel} from '@appManagers/appChatsManager';
 import type {AppSidebarRight} from '@components/sidebarRight';
 import type Chat from '@components/chat/chat';
-import {RIGHT_COLUMN_ACTIVE_CLASSNAME, LEFT_COLUMN_ACTIVE_CLASSNAME} from '@lib/appColumns';
+import {LEFT_COLUMN_ACTIVE_CLASSNAME} from '@lib/appColumns';
 import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
 import rootScope, {BroadcastEvents} from '@lib/rootScope';
 import ButtonIcon from '@components/buttonIcon';
@@ -273,7 +273,8 @@ export default class ChatTopbar {
             return;
           }
 
-          this.appSidebarRight.toggleSidebar(!document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME));
+          // * a second click also cancels an opening that still waits for the profile
+          this.appSidebarRight.toggleSidebar(!this.appSidebarRight.isShownOrOpening());
         } else {
           this.appSidebarRight.toggleSidebar(true);
         }
@@ -1333,24 +1334,19 @@ export default class ChatTopbar {
     this.status?.destroy();
     const status = this.status = this.createStatus();
 
+    // * all at once: the auto-delete period is not awaited on its own before the rest starts
     const promises = [
-      this.managers.appPeersManager.isBroadcast(peerId),
-      this.managers.appPeersManager.isAnyChat(peerId),
-      peerId.isAnyChat() ? this.chat.peer : undefined,
       newAvatar?.readyThumbPromise,
       this.setTitleManual(),
       status?.prepare(true),
       modifyAckedPromise(this.plates.requests.setPeerId(peerId)),
       modifyAckedPromise(this.plates.actions.setPeerId(peerId)),
       modifyAckedPromise(this.plates.removeFee.setPeerId(peerId)),
-      this.chat.type === ChatType.Chat ? await modifyAckedPromise(this.chat.getAutoDeletePeriod()) : undefined,
+      this.chat.type === ChatType.Chat ? modifyAckedPromise(this.chat.getAutoDeletePeriod()) : undefined,
       this.setupPinnedMessageForPeer()
     ] as const;
 
     const [
-      isBroadcast,
-      isAnyChat,
-      chat,
       _,
       setTitleCallback,
       setStatusCallback,

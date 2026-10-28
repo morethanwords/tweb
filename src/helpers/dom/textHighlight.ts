@@ -14,7 +14,7 @@
  *
  * - default: the CSS Custom Highlight API — ranges registered under a global `Highlight`
  *   (`CSS.highlights`) and styled by `::highlight(<name>)` rules (see
- *   `scss/partials/_textHighlight.scss`). Nothing is inserted into the DOM, but browsers paint
+ *   `helpers/dom/textHighlight.scss`). Nothing is inserted into the text DOM, but browsers paint
  *   only glyph-high boxes, which leaves gaps between wrapped lines;
  * - `lineBoxes`: an absolutely positioned overlay inside the container with one box per line,
  *   stretched to the full line height — a contiguous block like a text selection. Needs a
@@ -30,6 +30,8 @@ import {animateValue} from '@helpers/animateValue';
 import liteMode from '@helpers/liteMode';
 import throttleWithRaf from '@helpers/schedulers/throttleWithRaf';
 import escapeRegExp from '@helpers/string/escapeRegExp';
+import {hotEffect} from '@helpers/hotModule';
+import highlightCss from '@helpers/dom/textHighlight.scss?inline';
 
 export type TextHighlightMatch = {
   /** server-search-like: case-insensitive, every query word matched at a word start */
@@ -465,17 +467,61 @@ export function computeNarrowing(full: TextLineBox[], targets: TextLineBox[]) {
   return {ends, extra: targets.filter((target) => !claimed.has(target))};
 }
 
+const registryHighlights = new Map<TextHighlightMatch['type'], Highlight>();
+let highlightStyle: HTMLStyleElement;
+let styleRemovalQueued = false;
+
 function getRegistryHighlight(type: TextHighlightMatch['type']) {
-  const name = HIGHLIGHT_NAMES[type];
-  let highlight = CSS.highlights.get(name);
+  let highlight = registryHighlights.get(type);
   if(!highlight) {
     highlight = new Highlight();
     highlight.priority = HIGHLIGHT_PRIORITIES[type];
-    CSS.highlights.set(name, highlight);
+    registryHighlights.set(type, highlight);
   }
 
   return highlight;
 }
+
+function hasCssRanges() {
+  for(const highlight of registryHighlights.values()) {
+    if(highlight.size) return true;
+  }
+  return false;
+}
+
+function syncCssHighlights() {
+  for(const [type, highlight] of registryHighlights) {
+    const name = HIGHLIGHT_NAMES[type];
+    if(highlight.size) {
+      if(CSS.highlights.get(name) !== highlight) CSS.highlights.set(name, highlight);
+    } else if(CSS.highlights.get(name) === highlight) {
+      CSS.highlights.delete(name);
+    }
+  }
+
+  if(hasCssRanges()) {
+    if(!highlightStyle) {
+      highlightStyle = document.createElement('style');
+      highlightStyle.dataset.textHighlight = '';
+    }
+    if(highlightStyle.textContent !== highlightCss) highlightStyle.textContent = highlightCss;
+    if(!highlightStyle.isConnected) document.head.append(highlightStyle);
+  } else if(highlightStyle?.isConnected && !styleRemovalQueued) {
+    // Replacing a query commonly disposes the previous handle before creating the next one.
+    // Keep the same sheet for that transaction; remove it before paint if no new match replaced it.
+    styleRemovalQueued = true;
+    queueMicrotask(() => {
+      styleRemovalQueued = false;
+      if(!hasCssRanges()) highlightStyle?.remove();
+    });
+  }
+}
+
+// HMR retains the ranges and their owners; refresh only their CSS, without adding a second sheet.
+hotEffect(import.meta.hot, () => {
+  syncCssHighlights();
+  return () => highlightStyle?.remove();
+});
 
 // * every live highlight, so the ones whose container silently left the document (a cleared
 // * search list, an ejected bubble) can be released without a hook at each call site
@@ -610,7 +656,7 @@ class TextHighlighter implements TextHighlight {
       for(const range of this.ranges) {
         this.highlight.add(range);
       }
-
+      syncCssHighlights();
       return;
     }
 
@@ -743,6 +789,7 @@ class TextHighlighter implements TextHighlight {
 
     this.disposed = true;
     this.clearRanges();
+    if(this.highlight) syncCssHighlights();
     this.clearIntro();
     this.stopObserving();
     this.cancelFade?.();

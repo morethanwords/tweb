@@ -631,7 +631,8 @@ import {Message, Chat, User, InputPeer} from '@layer';
   can observe what changed: `test:popups` / `test:a11y` /
   `test:focus` cover the popup sandbox and the sign-in screens, their `:app`
   variants the signed-in client, `test:editor:e2e` the composer, `test:peek:app`
-  the hold-to-peek on photos (`components/mediaPeek`), `test:viewer:app` the
+  the hold-to-peek on photos (`components/mediaPeek`), `test:idle:app` the profile
+  column (`components/sidebarRight`), `test:viewer:app` the
   media viewer's paging (`components/mediaViewer`), `test:send:app` a message
   flying out of the composer (`components/chat/sendFlights`), `test:calls` the calls'
   noise suppressor (`lib/calls/noiseSuppression`), `test:memory:app` what a long
@@ -862,7 +863,7 @@ pnpm test:a11y:full  # the same, with the story sweep in all four themes (~4 min
 pnpm test:focus    # keyboard focus is VISIBLE — sandbox stories + the sign-in screens (~50 s)
 pnpm test:focus:app  # the same, for the signed-in client (needs PLAYWRIGHT_BASE_URL)
 pnpm test:a11y:app   # Axe past the login screen (needs PLAYWRIGHT_BASE_URL)
-pnpm test:idle:app   # the profile sidebar goes idle once open (needs PLAYWRIGHT_BASE_URL)
+pnpm test:idle:app   # the profile sidebar goes idle once open, and slides in with its profile filled (needs PLAYWRIGHT_BASE_URL)
 pnpm test:peek:app   # holding a photo peeks at it: chat, rich message, shared media (needs PLAYWRIGHT_BASE_URL)
 pnpm test:viewer:app # the media viewer: its place and header, a step pressed mid-step, paging right to left, a dead picture URL, a video's stand-in (needs PLAYWRIGHT_BASE_URL)
 pnpm test:send:app   # a sent message flies out of the composer and lands on its bubble, on the very pixels it is drawn on, moved by the compositor (nothing of it restyled while it flies) while the list makes room smoothly; its custom emoji fly with it, drawn where they stand; a sticker or a GIF from the panel and the big emoji fly themselves, held still on the frame they were chosen at; nothing flies at the reduced level (sends to Saved Messages and deletes; needs PLAYWRIGHT_BASE_URL)

@@ -11,7 +11,7 @@ import {useAppState} from '@stores/appState';
 
 import {renderTopPeerItem} from '@components/topPeersList';
 
-import TipCard, {TipCardButton, useTipReady} from '@components/chatTips/tipCard';
+import TipCard, {TipCardButton, useTipReady, useTipVisibility} from '@components/chatTips/tipCard';
 import styles from '@components/chatTips/chatTips.module.scss';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
@@ -39,6 +39,7 @@ const [filter, setFilter] = createRoot(() => createSignal<ChatsFilter>('popular'
 export default function ChatsTipCard() {
   const {appSidebarLeft, rootScope} = useHotReloadGuard();
   const [appState] = useAppState();
+  const isVisible = useTipVisibility();
 
   // Top peers are a manager fetch (state cache, refreshed daily); the other two are mirrored
   // state, so they update themselves as chats are searched for and closed. Reading a REJECTED
@@ -48,11 +49,18 @@ export default function ChatsTipCard() {
     .getTopPeers('correspondents')
     .catch(() => [] as MyTopPeer[]));
 
-  const listOf = (value: ChatsFilter): PeerId[] => value === 'popular' ?
-    (topPeers()?.map(({id}) => id) ?? []) :
-    value === 'recent' ?
-      (appState.recentSearch ?? []) :
-      (appState.recentlyClosedChats ?? []);
+  // A close updates recent peers on every conversation switch. Keep the rendered cards while
+  // covered, and read the latest lists synchronously when the empty column is shown again.
+  // Copy the store arrays: keeping their reactive proxies would still wake the hidden grid.
+  const lists = createMemo<Record<ChatsFilter, PeerId[]>>((previous) => {
+    if(!isVisible()) return previous ?? {popular: [], recent: [], closed: []};
+    return {
+      popular: topPeers()?.map(({id}) => id) ?? [],
+      recent: [...(appState.recentSearch ?? [])],
+      closed: [...(appState.recentlyClosedChats ?? [])]
+    };
+  });
+  const listOf = (value: ChatsFilter): PeerId[] => lists()[value];
 
   // macOS only offers a filter that has something behind it, and moves off one that empties out.
   const available = createMemo(() => FILTERS.filter(([value]) => listOf(value).length));

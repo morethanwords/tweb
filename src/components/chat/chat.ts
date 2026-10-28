@@ -59,7 +59,9 @@ import useAutoDownloadSettings, {ChatAutoDownloadSettings} from '@hooks/useAutoD
 import usePeerTranslation from '@hooks/usePeerTranslation';
 import debounce from '@helpers/schedulers/debounce';
 import appNavigationController from '@components/appNavigationController';
-import {LEFT_COLUMN_ACTIVE_CLASSNAME, APP_TABS} from '@lib/appColumns';
+import {LEFT_COLUMN_ACTIVE_CLASSNAME, RIGHT_COLUMN_ACTIVE_CLASSNAME, APP_TABS} from '@lib/appColumns';
+import {doubleRaf} from '@helpers/schedulers';
+import {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
 import {AckedResult} from '@lib/superMessagePort';
 import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import hasRights from '@appManagers/utils/chats/hasRights';
@@ -78,7 +80,9 @@ export type FinishPeerChangeOptions = {
   startParam?: string,
   middleware: () => boolean,
   text?: string,
-  entities?: MessageEntity[]
+  entities?: MessageEntity[],
+  /** takes the input's own layout (height, centering) to be run once the new history is mounted */
+  deferInputLayout?: (layout: () => void) => void
 };
 
 export const CHAT_SEARCH_KEYS: (keyof ChatSearchKeys)[] = ['query', 'isCacheableSearch', 'isPublicHashtag', 'savedReaction', 'fromPeerId', 'inputFilter', 'hashtagType'];
@@ -891,7 +895,7 @@ export default class Chat extends EventListenerBase<{
     // const perf = performance.now();
 
     this.destroyPromise?.resolve();
-    this.destroySharedMediaTab();
+    this.destroySharedMediaTabs();
     this.topbar?.destroy();
     this.bubbles?.destroy();
     this.input?.destroy();
@@ -1177,7 +1181,7 @@ export default class Chat extends EventListenerBase<{
 
         if(!this.excludeParts.sharedMedia) {
           hotReloadGuard.appSidebarRight.replaceSharedMediaTab();
-          this.destroySharedMediaTab();
+          this.destroySharedMediaTabs();
           this.sharedMediaTab = undefined;
         }
       });
@@ -1253,6 +1257,11 @@ export default class Chat extends EventListenerBase<{
     });
   }
 
+  /** the current profile and the previous ones kept until it is built (see loadHiddenSharedMedia) */
+  private destroySharedMediaTabs() {
+    this.sharedMediaTabs.slice().forEach((tab) => this.destroySharedMediaTab(tab));
+  }
+
   public destroySharedMediaTab(tab = this.sharedMediaTab) {
     if(!tab) {
       return;
@@ -1298,12 +1307,15 @@ export default class Chat extends EventListenerBase<{
     }
 
     const sharedMediaTab = this.sharedMediaTab;
+    // * a profile on screen is put up with the chat, as one; a hidden one does not hold the opening up and is built
+    // * right after the chat's first frame - the column waits for it if it is opened before that
+    const sharedMediaShown = !!sharedMediaTab && document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME);
 
     const callbacksObj = await namedPromises({
       topbar: this.topbar?.finishPeerChange(options),
       bubbles: this.bubbles?.finishPeerChange(),
       input: this.input?.finishPeerChange(options),
-      sharedMedia: sharedMediaTab?.fillProfileElements(),
+      sharedMedia: sharedMediaShown ? sharedMediaTab.fillProfileElements() : undefined,
       backgrounds: this.handleBackgrounds()
     }, this.log);
 
@@ -1317,8 +1329,6 @@ export default class Chat extends EventListenerBase<{
         this.cleanup(false);
       }
 
-      sharedMediaTab?.loadSidebarMedia(true);
-
       if(!middleware()) {
         return;
       }
@@ -1328,8 +1338,13 @@ export default class Chat extends EventListenerBase<{
       });
 
       if(sharedMediaTab) {
+        // * a shown profile gets its shared media from here (the sidebar's ensureLoaded)
         hotReloadGuard.appSidebarRight.replaceSharedMediaTab(sharedMediaTab);
-        this.sharedMediaTabs.filter((tab) => tab !== sharedMediaTab).forEach((tab) => this.destroySharedMediaTab(tab));
+        const destroyOthers = () => {
+          this.sharedMediaTabs.filter((tab) => tab !== sharedMediaTab).forEach((tab) => this.destroySharedMediaTab(tab));
+        };
+        if(sharedMediaShown) destroyOthers();
+        else this.loadHiddenSharedMedia(sharedMediaTab, destroyOthers);
       }
 
       if(this.container) {
@@ -1343,6 +1358,19 @@ export default class Chat extends EventListenerBase<{
         this.appImManager.dispatchEvent('peer_changed', this);
       }
     };
+  }
+
+  private loadHiddenSharedMedia(tab: AppSharedMediaTab, onLoaded: () => void) {
+    const middleware = this.middlewareHelper.get();
+    Promise.all([this.setPeerPromise, getHeavyAnimationPromise()])
+    .then(() => doubleRaf())
+    .then(() => {
+      if(!middleware() || this.sharedMediaTab !== tab) return;
+      // * the profiles it replaces go once it listens to the updates itself: the shared media lists they keep are
+      // * common to all of them, and an update in between would be lost to them
+      return tab.ensureLoaded().catch(noop).then(() => middleware() && onLoaded());
+    })
+    .catch(noop);
   }
 
   public getMessage(mid: number | FullMid) {

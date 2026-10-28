@@ -2879,7 +2879,12 @@ export default class ChatInput {
   private createSendAs() {
     this.sendAsPeerId = undefined;
 
-    if(this.chat && (this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion)) {
+    // * only a channel or a supergroup can be written to as someone else (ChatSendAs.updateManual)
+    if(
+      this.chat?.isChannel &&
+      !this.chat.isMonoforum &&
+      (this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion)
+    ) {
       let firstChange = true;
       this.sendAs = new ChatSendAs({
         managers: this.managers,
@@ -2951,7 +2956,8 @@ export default class ChatInput {
       autoDeletePeriod,
       canManageAutoDelete,
       peerMuted,
-      ackedGlobalPrivacy
+      ackedGlobalPrivacy,
+      isAnonymousSending
     ] = await Promise.all([
       this.managers.appPeersManager.isBroadcast(peerId),
       this.managers.appPeersManager.isBroadcastGroup(peerId),
@@ -2971,10 +2977,16 @@ export default class ChatInput {
       this.managers.appNotificationsManager.isPeerLocalMuted({peerId, respectType: false}),
       this.btnSendGift ?
         modifyAckedPromise(this.managers.acknowledged.appPrivacyManager.getGlobalPrivacySettings()) :
-        undefined
+        undefined,
+      this.managers.appMessagesManager.isAnonymousSending(peerId)
     ]);
 
-    const placeholderParams = this.messageInput ? await this.getPlaceholderParams(canSendPlain) : undefined;
+    // * the placeholder needs the same flags: not asked for again, one after another
+    const placeholderParams = this.messageInput ? await this.getPlaceholderParams(canSendPlain, {
+      isBroadcast,
+      isBroadcastGroup,
+      isAnonymousSending
+    }) : undefined;
 
     return () => {
       const {isMonoforum, canManageDirectMessages, monoforumThreadId} = this.chat;
@@ -3184,14 +3196,17 @@ export default class ChatInput {
         }
       }
 
-      this.messageInputField?.measureHeight(undefined, true);
-
       // * testing
       // this.startParam = this.appPeersManager.isBot(peerId) ? '123' : undefined;
 
       this.startParam = startParam;
 
-      this._center(neededFakeContainer, false);
+      const applyLayout = () => {
+        this.messageInputField?.measureHeight(undefined, true);
+        this._center(neededFakeContainer, false);
+      };
+      if(options.deferInputLayout) options.deferInputLayout(applyLayout);
+      else applyLayout();
 
       this.setStarsAmount(this.chat?.starsAmount); // should reset when undefined
 
@@ -3349,7 +3364,11 @@ export default class ChatInput {
     this.updateOffset('commands', forwards, skipAnimation, useRafs, true);
   }
 
-  public async getPlaceholderParams(canSend?: boolean): Promise<Parameters<ChatInput['updateMessageInputPlaceholder']>[0]> {
+  public async getPlaceholderParams(canSend?: boolean, peerState?: {
+    isBroadcast: boolean,
+    isBroadcastGroup: boolean,
+    isAnonymousSending: boolean
+  }): Promise<Parameters<ChatInput['updateMessageInputPlaceholder']>[0]> {
     this.placeholderParamsMiddlewareHelper.clean();
     canSend ??= await this.chat.canSend('send_plain');
     const {peerId, threadId, isForum, type} = this.chat;
@@ -3361,8 +3380,8 @@ export default class ChatInput {
     } else if(threadId && !isForum && !peerId.isUser()) {
       key = 'Comment';
     } else if(
-      await this.managers.appPeersManager.isBroadcast(peerId) ||
-      await this.managers.appPeersManager.isBroadcastGroup(peerId)
+      (peerState ? peerState.isBroadcast : await this.managers.appPeersManager.isBroadcast(peerId)) ||
+      (peerState ? peerState.isBroadcastGroup : await this.managers.appPeersManager.isBroadcastGroup(peerId))
     ) {
       key = 'ChannelBroadcast';
     } else if(this.chat.isMonoforum && this.chat.canManageDirectMessages) {
@@ -3375,7 +3394,7 @@ export default class ChatInput {
       key = 'OffThreadMessage'
     } else if(
       (this.sendAsPeerId !== undefined && this.sendAsPeerId !== rootScope.myId) ||
-      await this.managers.appMessagesManager.isAnonymousSending(peerId)
+      (peerState ? peerState.isAnonymousSending : await this.managers.appMessagesManager.isAnonymousSending(peerId))
     ) {
       key = 'SendAnonymously';
     } else if(type === ChatType.Stories && !this.chat.starsAmount) {

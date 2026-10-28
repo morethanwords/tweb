@@ -91,6 +91,7 @@ import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import {MESSAGE_LINK_ENTITY_SELECTOR} from '@lib/richTextProcessor/filterDisabledEntities';
 import wrapMessageActionTextNew from '@components/wrappers/messageActionTextNew';
 import isMentionUnread from '@appManagers/utils/messages/isMentionUnread';
+import getReadMaxIdIfUnread from '@appManagers/utils/messages/getReadMaxIdIfUnread';
 import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
 import {getFakeUserIdForJustName, getPeerColorIndexById, getPeerColorIndexByPeer} from '@appManagers/utils/peers/getPeerColorById';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
@@ -907,6 +908,7 @@ export default class ChatBubbles {
   private getSponsoredMessagePromise: Promise<void>;
   private ephemeralHistoryPromise: Promise<MyEphemeralMessage[]>;
   private ephemeralHistoryLoaded = false;
+  private openingEphemeralHistory: ReturnType<ChatBubbles['requestEphemeralHistory']>;
   private ephemeralHistoryGeneration = 0;
   private pendingEphemeralHistory = 0;
 
@@ -5003,6 +5005,15 @@ export default class ChatBubbles {
     return this.bubbleGroups.itemsArr.some(({message}) => isEphemeralMessage(message));
   }
 
+  private requestEphemeralHistory() {
+    const peerId = this.peerId;
+    const threadId = this.chat.threadId || undefined;
+    const generation = this.ephemeralHistoryGeneration;
+    const promise = this.managers.appMessagesManager.getEphemeralHistory({peerId, threadId});
+    promise.catch(noop);
+    return {peerId, threadId, generation, promise};
+  }
+
   private getEphemeralHistoryMessages() {
     if(this.ephemeralHistoryPromise) {
       return this.ephemeralHistoryPromise;
@@ -5011,10 +5022,12 @@ export default class ChatBubbles {
     const middleware = this.getMiddleware();
     const peerId = this.peerId;
     const generation = this.ephemeralHistoryGeneration;
-    const promise: Promise<MyEphemeralMessage[]> = this.managers.appMessagesManager.getEphemeralHistory({
-      peerId,
-      threadId: this.chat.threadId || undefined
-    }).then((mids) => {
+    // * the one an opening asked for along with its history, if it is still this chat's
+    const opening = this.openingEphemeralHistory;
+    this.openingEphemeralHistory = undefined;
+    const request = opening?.peerId === peerId && opening.threadId === (this.chat.threadId || undefined) &&
+      opening.generation === generation ? opening : this.requestEphemeralHistory();
+    const promise: Promise<MyEphemeralMessage[]> = request.promise.then((mids) => {
       if(!middleware() || peerId !== this.peerId) {
         return [];
       }
@@ -6278,6 +6291,7 @@ export default class ChatBubbles {
     this.updateGradient = undefined;
     this.ephemeralHistoryPromise = undefined;
     this.ephemeralHistoryLoaded = false;
+    this.openingEphemeralHistory = undefined;
     this.ephemeralHistoryGeneration = 0;
     this.pendingEphemeralHistory = 0;
 
@@ -6671,6 +6685,13 @@ export default class ChatBubbles {
       chatInner.classList.add('bubbles-inner');
     }
 
+    if(!samePeer && !savedPosition?.mids && isGoingToBottomEnd &&
+      (chatType === ChatType.Chat || chatType === ChatType.Discussion)) {
+      // * it only reads the worker's cache: asked for along with the history, not in the middle of rendering its first
+      // * screen. Merging it and the loaded flag stay with performHistoryResult, so they still make the first frame
+      this.openingEphemeralHistory = this.requestEphemeralHistory();
+    }
+
     this.lazyLoadQueue.lock();
 
     const canScroll = samePeer && sameSearch;
@@ -6793,6 +6814,29 @@ export default class ChatBubbles {
       }
     };
 
+    const finishPeerChangeOptions: Parameters<Chat['finishPeerChange']>[0] = {
+      peerId,
+      isTarget,
+      isJump,
+      lastMsgId,
+      startParam,
+      middleware,
+      text: options.text,
+      entities: options.entities
+    };
+
+    // * from the cache the chat's other parts get ready while its bubbles are built - started as soon as the history
+    // * is in hand, not after its first screen is rendered - and are put up in the same task as they are mounted
+    let applyPeerChangePromise: ReturnType<Chat['prepareFinishPeerChange']>;
+    let applyInputLayout: () => void;
+    const prepareCachedPeerChange = samePeer ? undefined : () => {
+      if(!middleware() || applyPeerChangePromise) return;
+      // * the input is measured with the new list mounted, not the outgoing one
+      finishPeerChangeOptions.deferInputLayout = (layout) => applyInputLayout = layout;
+      applyPeerChangePromise = this.chat.prepareFinishPeerChange(finishPeerChangeOptions);
+      applyPeerChangePromise.catch(noop);
+    };
+
     // * the first frame gets what fills the screen where the chat opens
     const firstScreen = this.getFirstScreen({chatType, peerId, savedPosition, followingUnread, readMaxId, isTarget, isJump, lastMsgFullMid});
     let result: Awaited<ReturnType<ChatBubbles['getHistory']>>;
@@ -6803,9 +6847,15 @@ export default class ChatBubbles {
         isJump,
         additionalFullMid,
         undefined,
-        firstScreen
+        firstScreen,
+        prepareCachedPeerChange
       ));
     } else {
+      if(prepareCachedPeerChange) {
+        prepareCachedPeerChange();
+        await m(Promise.resolve());
+      }
+
       const {promise, restPromise} = this.renderFirstScreen({history: savedPosition.mids}, firstScreen, (historyResult) => {
         return getHeavyAnimationPromise().then(() => this.performHistoryResult(historyResult, true, true));
       });
@@ -6822,24 +6872,7 @@ export default class ChatBubbles {
     log.warn('got history');// warning
 
     const {promise, cached} = result;
-    const finishPeerChangeOptions: Parameters<Chat['finishPeerChange']>[0] = {
-      peerId,
-      isTarget,
-      isJump,
-      lastMsgId,
-      startParam,
-      middleware,
-      text: options.text,
-      entities: options.entities
-    };
-
-    // * from the cache the chat's other parts get ready while its bubbles are built, not after them, and are put up
-    // * in the same task as they are mounted
-    let applyPeerChangePromise: ReturnType<Chat['prepareFinishPeerChange']>;
-    if(cached && !samePeer) {
-      applyPeerChangePromise = this.chat.prepareFinishPeerChange(finishPeerChangeOptions);
-      applyPeerChangePromise.catch(noop);
-    }
+    if(cached) prepareCachedPeerChange?.();
 
     if(!cached && !samePeer) {
       (await m(this.chat.prepareFinishPeerChange(finishPeerChangeOptions, true)))?.();
@@ -6860,7 +6893,11 @@ export default class ChatBubbles {
       const mountedByLastMsgId = haveToScrollToBubble ? await m(lastMsgFullMid !== EMPTY_FULL_MID ? this.getMountedBubble(lastMsgFullMid) : {bubble: this.getLastBubble()}) : undefined;
       if(cached && !samePeer) {
         log.warn('finishing peer change');
-        (await m(applyPeerChangePromise || this.chat.prepareFinishPeerChange(finishPeerChangeOptions)))?.(); // * костыль
+        const applyPeerChange = await m(applyPeerChangePromise || this.chat.prepareFinishPeerChange(finishPeerChangeOptions)); // * костыль
+        // * the outgoing list is replaced below in this same task: what the parts measure while they are put up must
+        // * not lay it out
+        oldChatInner.remove();
+        applyPeerChange?.();
         log.warn('finished peer change');
       }
 
@@ -6880,6 +6917,9 @@ export default class ChatBubbles {
       // not-cached branch above.
       this.chat.revealPreparedBackground();
       scrollable.replaceChildren(this.paddingTop, chatInner, this.paddingBottom);
+      // * the input's height and centering, with the history it goes with mounted - before the initial scroll
+      applyInputLayout?.();
+      applyInputLayout = undefined;
 
       if(oldPlaceholderBubble) {
         this.cleanupPlaceholders(oldPlaceholderBubble);
@@ -6888,7 +6928,11 @@ export default class ChatBubbles {
       this.attachPlaceholderOnRender?.();
 
       if(!isTarget && this.chat.isPinnedMessagesNeeded()) {
-        this.chat.topbar.pinnedMessage?.setCorrectIndex(0);
+        const pinnedMessage = this.chat.topbar.pinnedMessage;
+        // * at the end the last bubble is the one at the bottom: no need to lay the new list out to find it
+        const lastMid = isGoingToBottomEnd && !savedPosition?.mids ? this.getLastBubble()?.dataset.mid : undefined;
+        if(lastMid !== undefined) pinnedMessage?.testMid(+lastMid, 0);
+        else pinnedMessage?.setCorrectIndex(0);
       }
 
       this.container.classList.toggle('has-groups', !!Object.keys(this.dateMessages).length);
@@ -7426,7 +7470,9 @@ export default class ChatBubbles {
     // * unopenable with no error anywhere. Bound the wait: the bubbles are already built, so at
     // * worst some media finishes loading after mount instead of before it.
     await m(withTimeout(Promise.all([...promises, this.setUnreadDelimiter()]).catch(noop), MEDIA_PROMISES_TIMEOUT)); // не нашёл места лучше
-    await m(fastRafPromise()); // have to be the last
+    // * a list built off screen (an opening) has no scroll or live layout to keep: it is mounted by setPeer, without
+    // * waiting for a frame first. Updates to a mounted list keep the frame boundary
+    if(this.chatInner.parentElement) await m(fastRafPromise()); // have to be the last
     log('media promises end');
 
     loadQueue = filterQueue(loadQueue);
@@ -13969,12 +14015,12 @@ export default class ChatBubbles {
     }
   }
 
-  public getHistory1(maxId?: FullMid, reverse?: boolean, isBackLimit?: boolean, additionalFullMid?: FullMid, justLoad?: boolean, firstScreen?: FirstScreen) {
+  public getHistory1(maxId?: FullMid, reverse?: boolean, isBackLimit?: boolean, additionalFullMid?: FullMid, justLoad?: boolean, firstScreen?: FirstScreen, onCachedHistoryReady?: () => void) {
     const middleware = this.getMiddleware(justLoad ? undefined : () => {
       return (reverse ? this.getHistoryTopPromise : this.getHistoryBottomPromise) === waitPromise;
     });
 
-    const result = this.getHistory(maxId, reverse, isBackLimit, additionalFullMid, justLoad, middleware, firstScreen);
+    const result = this.getHistory(maxId, reverse, isBackLimit, additionalFullMid, justLoad, middleware, firstScreen, onCachedHistoryReady);
     const waitPromise = result.then((res) => res && (res.waitPromise || res.promise));
 
     (reverse ? this.getHistoryTopPromise = waitPromise : this.getHistoryBottomPromise = waitPromise);
@@ -14031,7 +14077,8 @@ export default class ChatBubbles {
     additionalFullMid?: FullMid,
     justLoad = false,
     middleware?: () => boolean,
-    firstScreen?: FirstScreen
+    firstScreen?: FirstScreen,
+    onCachedHistoryReady?: () => void
   ): Promise<{cached: boolean, promise: Promise<void>, waitPromise: Promise<any>}> {
     const peerId = this.peerId;
 
@@ -14192,7 +14239,15 @@ export default class ChatBubbles {
       return null;
     } else {
       cached = true;
-      promise = renderFirstScreen(await result.result);
+      const historyResult = await result.result;
+      if(onCachedHistoryReady) {
+        if(middleware && !middleware()) throw PEER_CHANGED_ERROR;
+        onCachedHistoryReady();
+        // * let the worker bridge send the parts' requests before the synchronous sizing of the first screen
+        await Promise.resolve();
+        if(middleware && !middleware()) throw PEER_CHANGED_ERROR;
+      }
+      promise = renderFirstScreen(historyResult);
     }
 
     // * the fresh page renders what is new at the bottom, not the posts left out above. What was cached may not have
@@ -14282,7 +14337,19 @@ export default class ChatBubbles {
     const {peerId, threadId, monoforumThreadId} = this.chat;
 
     const historyMaxId = this.chat.getHistoryMaxId();
-    const readMaxId = await this.managers.appMessagesManager.getReadMaxIdIfUnread(peerId, threadId || monoforumThreadId);
+    // * a plain chat's history is mirrored here: the same decision against the mirror, not another round trip to
+    // * the worker that the opening batch waits for
+    const historyStorage = this.chat.historyStorage;
+    const mirroredReadMaxId = historyStorage?.readMaxId;
+    const mirroredMaxId = historyStorage?.maxId;
+    const useMirror = this.chat.type === ChatType.Chat && !threadId && !monoforumThreadId && !this.chat.isMonoforum &&
+      historyStorage?.type === 'history' && !historyStorage.searchHistory &&
+      Number.isFinite(mirroredReadMaxId) && Number.isFinite(mirroredMaxId);
+    const readMaxId = useMirror ? getReadMaxIdIfUnread({
+      readMaxId: mirroredReadMaxId,
+      maxId: mirroredMaxId,
+      topMessageOut: this.chat.getMessageByPeer(peerId, mirroredMaxId)?.pFlags?.out
+    }) : await this.managers.appMessagesManager.getReadMaxIdIfUnread(peerId, threadId || monoforumThreadId);
     if(!readMaxId || !middleware()) return;
 
     const firstUnreadFullMid = this.findFirstUnreadFullMid(readMaxId);

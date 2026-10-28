@@ -102,7 +102,123 @@ test.describe('the profile sidebar', () => {
     expect(loads, 'the shared-media list is loading in a loop with nobody touching it').toBeLessThan(10);
     expect(elapsed - 3000, 'the main thread is too busy to answer').toBeLessThan(2000);
   });
+
+  /*
+   * A chat opened while the column is hidden does not wait for its profile: that is built after the chat's first
+   * frame. Opened before that - from the header, the moment the conversation is up - the column must not slide in
+   * empty and fill afterwards: it waits for the profile. Opened and closed once first, so the column keeps a
+   * navigation history, which is the case that once slid in empty.
+   */
+  test('slides in with the profile of a chat opened while it was hidden', async({page}) => {
+    test.setTimeout(5 * 60_000);
+
+    await page.goto('/?noSharedWorker=1');
+    await page.waitForFunction(() => document.querySelectorAll('.chatlist-chat').length > 0,
+      null, {timeout: 180_000});
+    const peers = await pickReadConversations(page, 3);
+    expect(peers.length, 'three conversations with nothing unread are needed').toBe(3);
+
+    await page.evaluate(async(peerId) => {
+      const w = window as any;
+      await w.appImManager.setPeer({peerId});
+      await w.appImManager.chat.setPeerPromise;
+      await w.appSidebarRight.toggleSidebar(true);
+    }, peers[0]);
+    await page.waitForFunction(() => !!(window as any).appSidebarRight?.sharedMediaTab?.searchSuper, null, {timeout: 30_000});
+    await page.evaluate(() => (window as any).appSidebarRight.toggleSidebar(false));
+    await page.waitForTimeout(1000);
+
+    const atShown = await page.evaluate(async(peerId) => {
+      const w = window as any;
+      const sidebar = w.appSidebarRight;
+      let shown: {peerId: PeerId, nameLength: number};
+      const observer = new MutationObserver(() => {
+        if(shown || !document.body.classList.contains('is-right-column-shown')) return;
+        const tab = sidebar.sharedMediaTab;
+        shown = {peerId: tab?.peerId, nameLength: (tab?.container.querySelector('.profile-name')?.textContent || '').trim().length};
+      });
+      observer.observe(document.body, {attributes: true, attributeFilter: ['class']});
+      const previousInner = w.appImManager.chat.bubbles.chatInner;
+      w.appImManager.setPeer({peerId});
+      // * the frame the new conversation is put up in: the earliest its header can be clicked
+      await new Promise<void>((resolve) => {
+        const check = () => {
+          const inner = w.appImManager.chat.bubbles.chatInner;
+          if(inner !== previousInner && inner.isConnected && sidebar.sharedMediaTab?.peerId === peerId) resolve();
+          else requestAnimationFrame(check);
+        };
+        check();
+      });
+      sidebar.toggleSidebar(true);
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      observer.disconnect();
+      return shown;
+    }, peers[1]);
+
+    expect(atShown, 'the column never slid in').toBeTruthy();
+    expect(atShown.peerId, 'the column slid in with the profile of another chat').toBe(peers[1]);
+    expect(atShown.nameLength, 'the column slid in before the profile was filled').toBeGreaterThan(0);
+
+    // * closed again while it still waits for the profile: it must not slide in once the profile is there
+    await page.evaluate(() => (window as any).appSidebarRight.toggleSidebar(false));
+    await page.waitForTimeout(1000);
+    const shownAfterClose = await page.evaluate(async(peerId) => {
+      const w = window as any;
+      const sidebar = w.appSidebarRight;
+      const previousInner = w.appImManager.chat.bubbles.chatInner;
+      w.appImManager.setPeer({peerId});
+      await new Promise<void>((resolve) => {
+        const check = () => {
+          const inner = w.appImManager.chat.bubbles.chatInner;
+          if(inner !== previousInner && inner.isConnected && sidebar.sharedMediaTab?.peerId === peerId) resolve();
+          else requestAnimationFrame(check);
+        };
+        check();
+      });
+      sidebar.toggleSidebar(true);
+      sidebar.toggleSidebar(false);
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      return document.body.classList.contains('is-right-column-shown');
+    }, peers[2]);
+    expect(shownAfterClose, 'the column slid in after it was closed').toBe(false);
+
+    // * the header's avatar toggles the column: a second click while the first still waits cancels it, as it closes
+    // * a shown one
+    const shownAfterTwoClicks = await page.evaluate(async(peerId) => {
+      const w = window as any;
+      const sidebar = w.appSidebarRight;
+      const previousInner = w.appImManager.chat.bubbles.chatInner;
+      w.appImManager.setPeer({peerId});
+      await new Promise<void>((resolve) => {
+        const check = () => {
+          const inner = w.appImManager.chat.bubbles.chatInner;
+          if(inner !== previousInner && inner.isConnected && sidebar.sharedMediaTab?.peerId === peerId) resolve();
+          else requestAnimationFrame(check);
+        };
+        check();
+      });
+      // * what ChatTopbar does on a click on the avatar
+      sidebar.toggleSidebar(!sidebar.isShownOrOpening());
+      sidebar.toggleSidebar(!sidebar.isShownOrOpening());
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      return document.body.classList.contains('is-right-column-shown');
+    }, peers[0]);
+    expect(shownAfterTwoClicks, 'a second click on the avatar did not cancel the opening').toBe(false);
+  });
 });
+
+/** Conversations an opening reads nothing in: the preview may be signed in to a real account */
+async function pickReadConversations(page: Page, count: number) {
+  return page.evaluate(async(count) => {
+    const w = window as any;
+    const {dialogs} = await w.rootScope.managers.dialogsStorage.getDialogs({filterId: 0, limit: 40});
+    return dialogs.filter((dialog: any) => dialog._ === 'dialog' && dialog.top_message && dialog.peerId !== w.rootScope.myId &&
+      !dialog.unread_count && !dialog.pFlags?.unread_mark && !dialog.unread_mentions_count && !dialog.unread_reactions_count &&
+      !w.apiManagerProxy.isForum(dialog.peerId) && !w.apiManagerProxy.isMonoforum(dialog.peerId) && !w.apiManagerProxy.isBotforum(dialog.peerId))
+    .slice(0, count)
+    .map((dialog: any) => dialog.peerId as PeerId);
+  }, count);
+}
 
 async function openFirstConversation(page: Page) {
   // A real mouse click, not `el.click()` and not Enter on the focused row: the

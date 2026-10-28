@@ -126,6 +126,7 @@ function makeChat(type = ChatType.Chat) {
   const registry: Record<string, HTMLElement> = {};
   const harness = Object.assign(Object.create(ChatBubbles.prototype), {
     chat,
+    chatInner: root,
     bubbles: registry,
     changedMids,
     bubbleGroups,

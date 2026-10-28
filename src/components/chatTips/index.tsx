@@ -206,7 +206,7 @@ function ChatTipsDeck(props: {page: HTMLElement}) {
                 aria-labelledby={titleIds[i()]}
                 inert={Modes.a11y && i() !== index()}
               >
-                <TipSlotProvider value={{ready: () => onTipReady(i()), titleId: titleIds[i()]}}>
+                <TipSlotProvider value={{ready: () => onTipReady(i()), titleId: titleIds[i()], isVisible: shown}}>
                   <Dynamic component={Tip} />
                 </TipSlotProvider>
               </div>

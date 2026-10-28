@@ -1,17 +1,7 @@
 @use "../shared" as *;
 
-// Text highlights painted through the CSS Custom Highlight API — the ranges are registered by
-// helpers/dom/textHighlight.ts. Only color / background-color / text-decoration / text-shadow
-// take effect inside ::highlight(); custom properties are inherited from the originating
-// element, which is how the per-bubble selection color and the fade-out
-// (`--text-highlight-opacity`, set on the container by `fadeOut()`) reach the paint.
-
-// The text-selection tint, which is already tuned per theme and per bubble side (accent-hued
-// tints vanish on an accent-colored outgoing bubble).
-::highlight(tg-search),
-::highlight(tg-quote) {
-  background-color: color-mix(in srgb, var(--selection-background-color) calc(100% * var(--text-highlight-opacity, 1)), transparent);
-}
+// The CSS Custom Highlight rules live in helpers/dom/textHighlight.scss and are installed only
+// while the helper has ranges. Overlay geometry and the rows' local theme variables stay global.
 
 // `lineBoxes` mode (a search match jumped to in the history, the quoted part of a message):
 // one box per line stretched to the full line height, painted below the text and above the
@@ -46,16 +36,11 @@
   }
 }
 
-// Search matches in chat-list rows (global search, in-chat search results): accent-colored
-// text like tdesktop / Android, no background.
-.chatlist-chat ::highlight(tg-search) {
-  background-color: transparent;
-  color: var(--primary-color);
-}
-
 @include respond-to(not-handhelds) {
-  .chatlist-chat.active ::highlight(tg-search) {
-    background-color: rgba(255, 255, 255, .24);
-    color: #fff;
+  // A descendant ::highlight selector keyed by the shared `active` class makes Chromium
+  // invalidate every descendant when any active chat changes. Keep that change on the row.
+  .chatlist-chat.active {
+    --chatlist-search-highlight-background: rgba(255, 255, 255, .24);
+    --chatlist-search-highlight-color: #fff;
   }
 }

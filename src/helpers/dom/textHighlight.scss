@@ -1,0 +1,11 @@
+// Kept out of the global stylesheet: even an empty ::highlight registry makes these selectors
+// expensive during an ordinary chat switch. textHighlight.ts installs them only while ranges exist.
+::highlight(tg-search),
+::highlight(tg-quote) {
+  background-color: color-mix(in srgb, var(--selection-background-color) calc(100% * var(--text-highlight-opacity, 1)), transparent);
+}
+
+.chatlist-chat ::highlight(tg-search) {
+  background-color: var(--chatlist-search-highlight-background, transparent);
+  color: var(--chatlist-search-highlight-color, var(--primary-color));
+}

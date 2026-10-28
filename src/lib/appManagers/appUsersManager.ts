@@ -749,11 +749,15 @@ export class AppUsersManager extends AppManager {
       const newContact = !!user.pFlags.contact;
 
       const storiesCallback = this.appStoriesManager.saveApiPeerStories(user, oldUser);
+      // History/profile responses often repeat the same user. Keep mirroring the normalized
+      // payload, but don't announce a change that would invalidate an unchanged chat screen.
+      // A caller may have mutated the cached object itself, so identity alone proves nothing.
+      const unchanged = oldUser !== user && deepEqual(oldUser, user);
 
       safeReplaceObject(oldUser, user);
       this.mirrorUser(oldUser);
 
-      this.rootScope.dispatchEvent('user_update', userId);
+      if(!unchanged) this.rootScope.dispatchEvent('user_update', userId);
 
       if(wasContact !== newContact) {
         this.onContactUpdated(userId, newContact, wasContact);

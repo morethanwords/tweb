@@ -1050,7 +1050,7 @@ export class AppDialogsManager {
     changeTitleEmojiColor(listEl, this.getPrimaryColor(active));
 
     // the subtitle's text spoilers are painted on a canvas — CSS can't recolor them
-    DotRenderer.setInlineSpoilersTextColor(listEl, this.getTextColor(active));
+    DotRenderer.setInlineSpoilersTextColor(listEl, active ? '#ffffff' : this.getTextColor(active));
   }
 
   public setDialogActive(listEl: HTMLElement, active: boolean) {

@@ -1638,8 +1638,10 @@ export class InternalLinkProcessor {
       await pause(500);
     }
     appSidebarRight.toggleSidebar(true, true);
-    appSidebarRight.sharedMediaTab.setSearchTab('gifts');
-    appSidebarRight.sharedMediaTab.searchSuper.stargiftsActions?.setFilters({chosenCollection: Number(link.id)});
+    const sharedMediaTab = appSidebarRight.sharedMediaTab;
+    await sharedMediaTab.setSearchTab('gifts');
+    if(appSidebarRight.sharedMediaTab !== sharedMediaTab) return;
+    sharedMediaTab.searchSuper.stargiftsActions?.setFilters({chosenCollection: Number(link.id)});
   };
 
   public processStoryAlbumLink = async(link: InternalLink.InternalLinkStoryAlbum) => {
@@ -1662,8 +1664,10 @@ export class InternalLinkProcessor {
         await pause(500);
       }
       appSidebarRight.toggleSidebar(true, true);
-      appSidebarRight.sharedMediaTab.setSearchTab('stories');
-      appSidebarRight.sharedMediaTab.searchSuper.storiesSetAlbum(albumId);
+      const sharedMediaTab = appSidebarRight.sharedMediaTab;
+      await sharedMediaTab.setSearchTab('stories');
+      if(appSidebarRight.sharedMediaTab !== sharedMediaTab) return;
+      sharedMediaTab.searchSuper.storiesSetAlbum(albumId);
     }
   };
 

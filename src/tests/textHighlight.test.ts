@@ -12,11 +12,14 @@ vi.hoisted(() => {
 });
 
 vi.mock('@helpers/liteMode', () => ({
-  default: {isAvailable: () => false}
+  default: {isAvailable: vi.fn(() => false)}
 }));
+// Vitest stubs stylesheet imports; browser coverage compiles and checks the real inline SCSS.
+vi.mock('@helpers/dom/textHighlight.scss?inline', () => ({default: '::highlight(tg-search) {}'}));
 
-import type {TextLineBox} from '@helpers/dom/textHighlight';
-import highlightText, {
+import liteMode from '@helpers/liteMode';
+import type {TextHighlight, TextHighlightOptions, TextLineBox} from '@helpers/dom/textHighlight';
+import createHighlight, {
   computeFullRange,
   computeLineBoxes,
   computeNarrowing,
@@ -26,6 +29,13 @@ import highlightText, {
   findSearchSpans
 } from '@helpers/dom/textHighlight';
 
+const highlights = new Set<TextHighlight>();
+const highlightText = (options: TextHighlightOptions) => {
+  const highlight = createHighlight(options);
+  highlights.add(highlight);
+  return highlight;
+};
+
 const html = (markup: string) => {
   const element = document.createElement('div');
   element.innerHTML = markup;
@@ -33,10 +43,14 @@ const html = (markup: string) => {
   return element;
 };
 
-const registered = (name: string) => [...(CSS.highlights.get(name) as any as Set<Range>)];
+const registered = (name: string) => [...(CSS.highlights.get(name) as any as Set<Range> || [])];
+const highlightSheet = () => document.head.querySelector<HTMLStyleElement>('style[data-text-highlight]');
 
-afterEach(() => {
+afterEach(async() => {
+  highlights.forEach(highlight => highlight.dispose());
+  highlights.clear();
   document.body.replaceChildren();
+  await Promise.resolve();
 });
 
 describe('findSearchSpans', () => {
@@ -269,6 +283,90 @@ describe('highlightText', () => {
     highlight.dispose();
   });
 
+  it('keeps CSS rules and empty registry entries absent when there are no CSS matches', () => {
+    expect(highlightSheet()).toBeNull();
+    const empty = highlightText({container: html('unmatched'), match: {type: 'search', query: 'absent'}});
+    const boxes = highlightText({container: html('boxed'), match: {type: 'quote', text: 'boxed'}, lineBoxes: true});
+    expect(empty.found).toBe(false);
+    expect(boxes.found).toBe(true);
+    expect(CSS.highlights.size).toBe(0);
+    expect(highlightSheet()).toBeNull();
+    empty.dispose();
+    boxes.dispose();
+  });
+
+  it('shares one stylesheet across search and quote ranges until the last owner disposes', async() => {
+    const search = highlightText({container: html('search'), match: {type: 'search', query: 'search'}});
+    const sheet = highlightSheet();
+    expect(sheet?.textContent).toContain('::highlight(tg-search)');
+    const quote = highlightText({container: html('quote'), match: {type: 'quote', text: 'quote'}});
+    expect(highlightSheet()).toBe(sheet);
+    expect(document.head.querySelectorAll('style[data-text-highlight]')).toHaveLength(1);
+    search.dispose();
+    await Promise.resolve();
+    expect(CSS.highlights.has('tg-search')).toBe(false);
+    expect(CSS.highlights.has('tg-quote')).toBe(true);
+    expect(highlightSheet()).toBe(sheet);
+    quote.dispose();
+    await Promise.resolve();
+    expect(CSS.highlights.size).toBe(0);
+    expect(highlightSheet()).toBeNull();
+  });
+
+  it('does not toggle the stylesheet while replacing a query handle in the same task', async() => {
+    const element = html('alpha beta');
+    const first = highlightText({container: element, match: {type: 'search', query: 'alpha'}});
+    const sheet = highlightSheet();
+    const remove = vi.spyOn(sheet, 'remove');
+    first.dispose();
+    const second = highlightText({container: element, match: {type: 'search', query: 'beta'}});
+    await Promise.resolve();
+    expect(highlightSheet()).toBe(sheet);
+    expect(remove).not.toHaveBeenCalled();
+    expect(registered('tg-search').map(range => range.toString())).toEqual(['beta']);
+    remove.mockRestore();
+    second.dispose();
+  });
+
+  it('keeps the sheet during matching re-renders and removes it when the last match disappears', async() => {
+    const element = html('matched text');
+    const highlight = highlightText({container: element, match: {type: 'search', query: 'text'}});
+    const sheet = highlightSheet();
+    const remove = vi.spyOn(sheet, 'remove');
+    element.textContent = 'new text';
+    await vi.advanceTimersByTimeAsync(10);
+    expect(highlightSheet()).toBe(sheet);
+    expect(remove).not.toHaveBeenCalled();
+    element.textContent = 'absent';
+    await vi.advanceTimersByTimeAsync(10);
+    expect(highlight.found).toBe(false);
+    expect(CSS.highlights.size).toBe(0);
+    expect(highlightSheet()).toBeNull();
+    expect(remove).toHaveBeenCalledOnce();
+    element.textContent = 'text restored';
+    await vi.advanceTimersByTimeAsync(10);
+    expect(highlight.found).toBe(true);
+    expect(registered('tg-search').map(range => range.toString())).toEqual(['text']);
+    expect(highlightSheet()).toBe(sheet);
+    remove.mockRestore();
+    highlight.dispose();
+  });
+
+  it('retains the stylesheet throughout fade-out and releases it on completion', async() => {
+    const animations = vi.spyOn(liteMode, 'isAvailable').mockReturnValue(true);
+    const element = html('fading text');
+    const highlight = highlightText({container: element, match: {type: 'quote', text: 'fading'}});
+    const sheet = highlightSheet();
+    highlight.fadeOut(50);
+    expect(highlightSheet()).toBe(sheet);
+    expect(registered('tg-quote')).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(CSS.highlights.size).toBe(0);
+    expect(highlightSheet()).toBeNull();
+    expect(element.style.getPropertyValue('--text-highlight-opacity')).toBe('');
+    animations.mockRestore();
+  });
+
   it('paints line boxes through an overlay prepended to the container', () => {
     const element = html('<span>boxed text</span>');
     element.style.position = 'relative';
@@ -297,7 +395,7 @@ describe('highlightText', () => {
     highlight.dispose();
   });
 
-  it('collects a highlight whose container has left the document', () => {
+  it('collects a highlight whose container has left the document', async() => {
     const element = html('gone soon');
     highlightText({container: element, match: {type: 'search', query: 'gone'}});
     expect(registered('tg-search').map((r) => r.toString())).toEqual(['gone']);
@@ -306,6 +404,9 @@ describe('highlightText', () => {
     vi.advanceTimersByTime(30e3); // * noticed as detached
     expect(registered('tg-search')).toHaveLength(1);
     vi.advanceTimersByTime(30e3); // * still detached after the grace → released
+    await Promise.resolve();
     expect(registered('tg-search')).toEqual([]);
+    expect(CSS.highlights.size).toBe(0);
+    expect(highlightSheet()).toBeNull();
   });
 });

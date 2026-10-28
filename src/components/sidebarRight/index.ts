@@ -11,10 +11,13 @@ import installColumnResize from '@helpers/installColumnResize';
 import animationIntersector from '@components/animationIntersector';
 import {APP_TABS, RIGHT_COLUMN_ACTIVE_CLASSNAME} from '@lib/appColumns';
 import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import noop from '@helpers/noop';
 
 
 export class AppSidebarRight extends SidebarSlider {
   public sharedMediaTab: AppSharedMediaTab;
+  private pendingOpening: object;
+  private pendingSharedMediaTab: {tab: AppSharedMediaTab};
   // public rect: DOMRect;
 
   constructor() {
@@ -48,6 +51,25 @@ export class AppSidebarRight extends SidebarSlider {
   }
 
   public replaceSharedMediaTab(tab?: AppSharedMediaTab) {
+    const pending = this.pendingSharedMediaTab = {tab};
+    const shown = document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME);
+    // * a profile on screen gives its place only to a filled one, not to an empty column for as long as that takes:
+    // * one whose chat got ready while the column was hidden, or one a chat below left unbuilt. Whatever is put up
+    // * next overtakes it
+    if(shown && tab && !tab.isLoaded && this.sharedMediaTab && this.sharedMediaTab !== tab) {
+      tab.ensureLoaded().catch(noop).then(() => {
+        if(this.pendingSharedMediaTab === pending) this.swapSharedMediaTab(tab);
+      });
+      return;
+    }
+
+    this.swapSharedMediaTab(tab);
+    if(tab && shown) {
+      tab.ensureLoaded();
+    }
+  }
+
+  private swapSharedMediaTab(tab?: AppSharedMediaTab) {
     const previousTab = this.sharedMediaTab;
     if(previousTab) {
       const idx = this.historyTabIds.indexOf(previousTab);
@@ -90,6 +112,11 @@ export class AppSidebarRight extends SidebarSlider {
     this.sharedMediaTab = tab;
   }
 
+  /** the column is shown, or an opening of it waits for its profile */
+  public isShownOrOpening() {
+    return !!this.pendingOpening || document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME);
+  }
+
   public onCloseTab(id: number, animate: boolean, isNavigation?: boolean) {
     if(!this.historyTabIds.length) {
       this.toggleSidebar(false, animate);
@@ -99,6 +126,11 @@ export class AppSidebarRight extends SidebarSlider {
   }
 
   public hide() {
+    // * hidden by anything (an account switch hides it directly): an opening still waiting for its profile is off.
+    // * A profile waiting to be filled before it takes a shown one's place still does that once filled: unseen by
+    // * then, while swapping it now would show it empty in the column on its way out
+    this.pendingOpening = undefined;
+
     this.sidebarEl.inert = true;
     document.body.classList.remove(RIGHT_COLUMN_ACTIVE_CLASSNAME);
     appNavigationController.removeByType('right');
@@ -112,8 +144,10 @@ export class AppSidebarRight extends SidebarSlider {
     this.toggleSidebar(true);
   }
 
-  public toggleSidebar(enable?: boolean, animate?: boolean) {
+  public toggleSidebar(enable?: boolean, animate?: boolean): Promise<any> {
     const active = document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME);
+    // * an opening still waiting for its profile is overtaken by whatever is asked next - a close above all
+    this.pendingOpening = undefined;
     let willChange: boolean;
     if(enable !== undefined) {
       if(enable) {
@@ -129,6 +163,27 @@ export class AppSidebarRight extends SidebarSlider {
 
     if(!willChange) return Promise.resolve();
 
+    // * a chat opened while the column was hidden builds its profile after its first frame: the column does not slide
+    // * in before the profile is there
+    const tab = this.sharedMediaTab;
+    if(!active && tab && !tab.isLoaded) {
+      const pending = this.pendingOpening = {};
+      return tab.ensureLoaded().catch(noop).then(() => {
+        if(this.pendingOpening !== pending) return;
+        this.pendingOpening = undefined;
+        // * the chat was closed meanwhile: nothing to show
+        if(!this.sharedMediaTab) return;
+        // * another chat was opened meanwhile: its profile is what the column shows
+        if(this.sharedMediaTab !== tab) return this.toggleSidebar(enable, animate);
+        if(document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME) !== active) return;
+        return this.applySidebarToggle(active, enable, animate);
+      });
+    }
+
+    return this.applySidebarToggle(active, enable, animate);
+  }
+
+  private applySidebarToggle(active: boolean, enable: boolean, animate: boolean): Promise<any> {
     if(!active && !this.historyTabIds.length) {
       this.sharedMediaTab.open();
     }
