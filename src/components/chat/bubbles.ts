@@ -69,6 +69,7 @@ import type ReactionElement from '@components/chat/reaction';
 import LottiePlayer from '@lib/lottie/lottiePlayer';
 import pause from '@helpers/schedulers/pause';
 import ScrollSaver from '@helpers/scrollSaver';
+import {animateOutgoingMessageGradient, createOutgoingMessageGradientSync, isOutgoingMessageGradientAnimated} from '@helpers/outgoingMessageGradient';
 import mergeEphemeralHistoryForRender from '@components/chat/mergeEphemeralHistoryForRender';
 import placeEphemeralBadge, {
   shouldKeepSenderNameAcrossGroup,
@@ -778,6 +779,7 @@ export default class ChatBubbles {
   public container: HTMLDivElement;
   public chatInner: HTMLDivElement;
   public scrollable: Scrollable;
+  private outgoingMessageGradientSync: ReturnType<typeof createOutgoingMessageGradientSync>;
   public paddingTop: HTMLDivElement;
   public paddingBottom: HTMLDivElement;
 
@@ -5131,6 +5133,7 @@ export default class ChatBubbles {
 
   private onScroll = (ignoreHeavyAnimation?: boolean, scrollDimensions?: ScrollStartCallbackDimensions, forceDown?: boolean) => {
     // return;
+    this.outgoingMessageGradientSync?.schedule();
 
     if(this.isHeavyAnimationInProgress) {
       this.sliceViewportDebounced?.clearTimeout();
@@ -5295,6 +5298,17 @@ export default class ChatBubbles {
     // Keep the reflow anchor fresh so a window/PiP-window resize re-pins the user's real scroll
     // position. Dedicated listener (not via onScroll) so it fires reliably on every scroll.
     this.listenerSetter.add(this.scrollable.container)('scroll', this.saveReflowScrollDebounced, {passive: true});
+
+    // Shared outgoing gradient: each bubble samples the viewport-fixed fill so
+    // messages at different Y positions get different colours.
+    this.outgoingMessageGradientSync = createOutgoingMessageGradientSync(() => this.chatInner);
+    this.listenerSetter.add(this.scrollable.container)('scroll', () => {
+      this.outgoingMessageGradientSync.schedule();
+    }, {passive: true});
+    this.listenerSetter.add(window)('resize', () => {
+      this.outgoingMessageGradientSync.schedule();
+    });
+    this.outgoingMessageGradientSync.schedule();
     // this.scrollable.attachSentinels(undefined, 300);
 
     if(IS_TOUCH_SUPPORTED && false) {
@@ -5749,7 +5763,9 @@ export default class ChatBubbles {
         }
 
         // the message may have been sent before its bubble came out, and the bubble is under its new id then
-        sendFlight?.launch(this.getBubble(message.peerId, this.changedMids.get(message.mid) ?? message.mid));
+        const flight = sendFlight;
+        flight?.launch(this.getBubble(message.peerId, this.changedMids.get(message.mid) ?? message.mid));
+        flight?.landed.then(() => this.outgoingMessageGradientSync?.schedule());
 
         // this.scrollable.scrollIntoViewNew(this.chatInner, 'end');
 
@@ -5861,6 +5877,10 @@ export default class ChatBubbles {
         if(this.updateGradient) {
           const {gradientRenderer} = this.chat;
           gradientRenderer?.toNextPosition(dimensions.getProgress);
+          // Animated message_colors: advance the shared freeform fill with the send scroll.
+          if(isOutgoingMessageGradientAnimated()) {
+            animateOutgoingMessageGradient(dimensions.getProgress);
+          }
           this.updateGradient = undefined;
         }
       }
@@ -6172,6 +6192,8 @@ export default class ChatBubbles {
   }
 
   public destroy() {
+    this.outgoingMessageGradientSync?.destroy();
+
     // this.chat.log.error('Bubbles destroying');
 
     this.readMetricsTracker?.finalizeAll();
@@ -6350,19 +6372,15 @@ export default class ChatBubbles {
     }
   }
 
-  // * settles the bot START button once the history has loaded, like iOS and Android: shown only
-  // * for a chat that turned out empty, and never a /start sent on the user's behalf, while a start
-  // * parameter from a link goes out at once when the chat already has messages. A link to the
-  // * chat that is already open (`startAtOnce`) starts it even when it is empty, as every official
-  // * client does — but not a blocked bot (tdesktop): START unblocks it on a tap
-  private settleBotStart(middleware: () => boolean, startAtOnce?: boolean) {
-    if(!this.chat.isBot) {
+  private tryToForceStartParam(middleware: () => boolean) {
+    // start bot instantly if have messages
+    const startParam = this.chat.input.startParam;
+    if(startParam === undefined) {
       return;
     }
 
-    const startParam = this.chat.input.startParam;
     this.chat.isStartButtonNeeded().then((isNeeded) => {
-      if(!middleware() || this.chat.input.startParam !== startParam) {
+      if(!middleware() || isNeeded || this.chat.input.startParam !== startParam) {
         return;
       }
 
@@ -6526,12 +6544,6 @@ export default class ChatBubbles {
         this.followStack.push(makeFullMid(stack.peerId, stack.mid));
       }
 
-      // * the input is not rebuilt for the same chat, so a start parameter has to reach it here —
-      // * also when there is no bubble to land on (an empty chat is rendered again below)
-      if(startParam !== undefined) {
-        this.chat.input.setStartParam(startParam);
-      }
-
       const mounted = await m(this.getMountedBubble(lastMsgFullMid));
       let bubble = mounted?.bubble;
       if(!bubble && this.skippedMids.has(lastMsgFullMid)) {
@@ -6572,7 +6584,8 @@ export default class ChatBubbles {
         }
 
         if(startParam !== undefined) {
-          this.settleBotStart(middleware, startsBotFromLink);
+          this.chat.input.setStartParam(startParam);
+          this.tryToForceStartParam(middleware);
         }
 
         if(options.mediaTimestamp) {
@@ -7011,7 +7024,7 @@ export default class ChatBubbles {
           });
         }
 
-        this.settleBotStart(middleware, startsBotFromLink);
+        this.tryToForceStartParam(middleware);
 
         // if(cached) {
         // this.onRenderScrollSet();

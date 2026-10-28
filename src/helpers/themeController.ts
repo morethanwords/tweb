@@ -4,6 +4,7 @@ import type {BaseTheme, Theme, ThemeSettings} from '@layer';
 import {blendWallpaperForTinted, presetThemeId, presetToThemeSettings} from '@config/themePresets';
 import type {AppBackgroundTab} from '@components/sidebarLeft/tabs/background';
 import type {AppChatBackground} from '@components/chat/bubbles/chatBackground';
+import {setOutgoingMessageGradient} from '@helpers/outgoingMessageGradient';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import rootScope from '@lib/rootScope';
 import {changeColorAccent, ColorRgb, ensureTextContrast, getAccentColor, getAverageColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hslaStringToRgba, hslaToRgba, hsvToRgb, mixColors, relativeLuminance, rgbaToHexa, rgbaToHsla, rgbToHsv} from '@helpers/color';
@@ -879,6 +880,8 @@ export class ThemeController {
     }
 
     if(!themeSettings.message_colors?.length) {
+      setOutgoingMessageGradient({hexColors: [], element});
+      finalize();
       return;
     }
 
@@ -936,6 +939,20 @@ export class ThemeController {
       name: 'message-out-primary-color',
       hex: isNight ? '#ffffff' : rgbaToHexa(accentColor2 ? hsvToRgb(...accentColor2) : myMessagesAccent),
       mixColor: newMessageOutBackgroundColor
+    });
+
+    const messageColorHexes = themeSettings.message_colors.map((color) =>
+      rgbaToHexa(getRgbColorFromTelegramColor(color))
+    );
+
+    const messageColorsAnimated = !!(
+      themeSettings.pFlags?.message_colors_animated ||
+      ((themeSettings.flags ?? 0) & (1 << 2))
+    );
+    setOutgoingMessageGradient({
+      hexColors: messageColorHexes,
+      animated: messageColorsAnimated,
+      element
     });
 
     // if(accentColor2) {

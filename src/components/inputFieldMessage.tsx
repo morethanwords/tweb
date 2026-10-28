@@ -1,6 +1,5 @@
 import type {AnimationItemGroup} from '@components/animationIntersector';
 import Button from '@components/buttonTsx';
-import attachPlainMessageEditor from '@components/chat/inputEditor/plainField';
 import createEmojiDropdownButton from '@components/emojiDropdownButton';
 import {EmoticonsDropdown} from '@components/emoticonsDropdown';
 import {IconTsx} from '@components/iconTsx';
@@ -41,6 +40,10 @@ type InputFieldMessageProps = {
   sendOnShortcut?: boolean,
 };
 
+/**
+ * Caption / forward-comment field. Classic contenteditable InputField — not
+ * Tiptap. The rich composer mounts Tiptap only on RichMessageInput.
+ */
 const InputFieldMessage = (props: InputFieldMessageProps) => {
   const [container, setContainer] = createSignal<HTMLDivElement>();
   const [inputFieldContainer, setInputFieldContainer] = createSignal<HTMLDivElement>();
@@ -96,10 +99,13 @@ const InputFieldMessage = (props: InputFieldMessageProps) => {
         aria-label={props.btnProps?.['aria-label'] || I18n.format('Send', true)}
         ref={(ref) => {
           btnConfirm = ref;
-          (props.btnProps?.ref as any)(ref);
+          const forwarded = props.btnProps?.ref;
+          if(typeof forwarded === 'function') {
+            (forwarded as (el: HTMLElement) => void)(ref);
+          }
         }}
         primaryFilled
-        class={classNames(_additionalClass, props.btnProps.class)}
+        class={classNames(_additionalClass, props.btnProps?.class)}
         noRipple
       >
         <div ref={contentWrapper} class={contentClass}>
@@ -189,7 +195,6 @@ const InputFieldMessage = (props: InputFieldMessageProps) => {
 
   onCleanup(() => {
     dispose();
-    editor.destroy();
     inputField.destroy();
   });
 
