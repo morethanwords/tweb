@@ -211,10 +211,6 @@ $btn-menu-z-index: 4;
       line-height: var(--line-height-14);
       max-width: 15rem;
     }
-
-    .btn-menu-footer {
-      background-color: var(--background-color);
-    }
   }
 
   &.active {
@@ -599,6 +595,23 @@ $btn-menu-z-index: 4;
         order: 1;
       }
     }
+
+    &.has-toggle {
+      padding-inline-end: 1rem;
+
+      .checkbox-field-toggle {
+        --size: 1.5rem;
+        order: 2;
+        margin-inline-start: auto !important;
+        padding-inline-start: 1.5rem !important;
+      }
+
+      // * a quiet switch: the row's text is what the item says
+      .checkbox-toggle {
+        scale: .75;
+        transform-origin: var(--transform-origin-inline-end) center;
+      }
+    }
   }
 
   &-items {
@@ -638,28 +651,6 @@ $btn-menu-z-index: 4;
 
     width: auto !important;
     max-width: none !important;
-  }
-
-  &.has-footer {
-    padding-bottom: 0;
-  }
-
-  &-footer {
-    height: 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-bottom-left-radius: inherit;
-    border-bottom-right-radius: inherit;
-    font-size: .875rem;
-    color: var(--input-placeholder-color);
-    font-weight: 500;
-    font-size: 12px;
-    // cursor: default;
-
-    /* &-text {
-      margin-top: -.125rem;
-    } */
   }
 
   hr {

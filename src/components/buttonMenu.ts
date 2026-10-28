@@ -249,7 +249,8 @@ export function ButtonMenuItem(options: ButtonMenuItemOptions) {
     el.setAttribute('role', 'none');
     el.removeAttribute('tabindex');
     el.append(checkboxField.label);
-    el.classList.add('has-checkbox')
+    el.classList.add('has-checkbox');
+    el.classList.toggle('has-toggle', checkboxField.label.classList.contains('checkbox-field-toggle'));
   }
 
   if(options.separator === true || options.separatorDown) {

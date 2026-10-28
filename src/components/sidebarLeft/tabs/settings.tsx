@@ -32,6 +32,8 @@ import {openSettingsSearchItem} from '@lib/settingsSearch/navigate';
 import {ROOT_SECTION_ID} from '@lib/settingsSearch/registry';
 import {bumpRecentSettingsSearch} from '@lib/settingsSearch/recent';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import App from '@config/app';
+import styles from '@components/sidebarLeft/tabs/settings.module.scss';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper — wraps a sub-tab declaration. If the tab has a static `getInitArgs`,
@@ -434,6 +436,14 @@ const Settings = () => {
           </Row>
         </Section>
       </Show>
+      <div class={styles.version}>
+        <a class={styles.name} href="https://telegram.org/apps" target="_blank" rel="noopener noreferrer">
+          Telegram Web {App.suffix}
+        </a>
+        <a class={styles.number} href="https://github.com/morethanwords/tweb/" target="_blank" rel="noopener noreferrer">
+          {App.version} ({App.build})
+        </a>
+      </div>
     </>
   );
 };

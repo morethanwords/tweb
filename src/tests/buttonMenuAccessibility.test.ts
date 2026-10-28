@@ -26,9 +26,10 @@ vi.mock('@components/checkboxField', () => ({
     public input = document.createElement('input');
     public label = document.createElement('span');
 
-    constructor() {
+    constructor(options: {toggle?: boolean} = {}) {
       this.input.type = 'checkbox';
       this.label.append(this.input);
+      options.toggle && this.label.classList.add('checkbox-field-toggle');
     }
 
     get checked() {
@@ -137,6 +138,22 @@ describe('ButtonMenu keyboard accessibility', () => {
     expect(pressKey(checkboxField.input, ' ').defaultPrevented).toBe(true);
     expect(onClick).toHaveBeenCalledTimes(1);
     expect(checkboxField.checked).toBe(true);
+  });
+
+  it('puts a toggle at the end of its item and keeps a checkbox at the start', () => {
+    const toggle = new CheckboxField({toggle: true});
+    const checkbox = new CheckboxField();
+    const menu = ButtonMenuSync({
+      buttons: [
+        {checkboxField: toggle, regularText: 'Toggle', onClick: vi.fn()},
+        {checkboxField: checkbox, regularText: 'Checkbox', onClick: vi.fn()}
+      ]
+    });
+    const [toggleItem, checkboxItem] = menu.querySelectorAll<HTMLElement>('.btn-menu-item');
+
+    expect(toggleItem.classList.contains('has-toggle')).toBe(true);
+    expect(checkboxItem.classList.contains('has-checkbox')).toBe(true);
+    expect(checkboxItem.classList.contains('has-toggle')).toBe(false);
   });
 
   it('labels native radios and preserves both click and change behavior from the keyboard', () => {

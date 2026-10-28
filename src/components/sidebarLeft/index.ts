@@ -28,7 +28,7 @@ import ButtonMenuToggle from '@components/buttonMenuToggle';
 import sessionStorage from '@lib/sessionStorage';
 import focusWhenSettled from '@helpers/dom/focusWhenSettled';
 import isLastInputPointer from '@helpers/dom/inputModality';
-import {attachClickEvent, CLICK_EVENT_NAME, simulateClickEvent} from '@helpers/dom/clickEvent';
+import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import ensureButtonSemantics from '@helpers/dom/ensureButtonSemantics';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import ButtonIcon from '@components/buttonIcon';
@@ -42,7 +42,7 @@ import ListenerSetter from '@helpers/listenerSetter';
 import formatNumber from '@helpers/number/formatNumber';
 import {TabManagers} from '@lib/managers';
 import themeController from '@helpers/themeController';
-import contextMenuController from '@helpers/contextMenuController';
+import CheckboxField from '@components/checkboxField';
 import appDialogsManager from '@lib/appDialogsManager';
 import {DIALOG_LIST_ELEMENT_TAG} from '@components/dialogElement';
 import apiManagerProxy from '@lib/apiManagerProxy';
@@ -739,6 +739,20 @@ export class AppSidebarLeft extends SidebarSlider {
       createSubmenu: (args) => this.createMoreSubmenu(args, closeTabsBefore)
     });
 
+    const darkModeToggle = new CheckboxField({toggle: true});
+    const btnDarkMode: typeof menuButtons[0] = {
+      icon: 'darkmode',
+      text: 'DarkMode',
+      checkboxField: darkModeToggle,
+      onClick: () => {
+        const rect = darkModeToggle.label.getBoundingClientRect();
+        themeController.switchTheme(undefined, {
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2
+        });
+      }
+    };
+
     const newSubmenu = createSubmenuTrigger({
       options: {
         text: 'CreateANew',
@@ -800,7 +814,7 @@ export class AppSidebarLeft extends SidebarSlider {
           this.createTab(AppSettingsTab).open();
         });
       }
-    }, moreSubmenu];
+    }, btnDarkMode, moreSubmenu];
 
     const filteredButtons = menuButtons.filter(Boolean);
     const filteredButtonsSliced = filteredButtons.slice();
@@ -916,6 +930,7 @@ export class AppSidebarLeft extends SidebarSlider {
         filteredButtons.splice(0, filteredButtons.length, ...buttons);
       },
       onOpen: () => {
+        darkModeToggle.checked = themeController.isNight();
         moreSubmenu.onOpen();
         newSubmenu.onOpen();
         btnArchive.element?.append(this.archivedCount);
@@ -935,25 +950,9 @@ export class AppSidebarLeft extends SidebarSlider {
     {middleware}: CreateSubmenuArgs,
     closeTabsBefore: (clb: () => void) => void
   ) {
-    const toggleTheme = () => {
-      const item = btns[0].element;
-      const icon = item.querySelector('.tgico');
-      const rect = icon.getBoundingClientRect();
-      themeController.switchTheme(undefined, {
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2
-      });
-    };
-
-    const darkModeText = document.createElement('span');
-    darkModeText.append(i18n(themeController.isNight() ? 'DisableDarkMode': 'EnableDarkMode'));
     const animationsText = document.createElement('span');
 
     const btns: ButtonMenuItemOptionsVerifiable[] = [{
-      icon: 'darkmode',
-      regularText: darkModeText,
-      onClick: () => {}
-    }, {
       id: 'animations-toggle',
       icon: 'animations',
       regularText: animationsText,
@@ -1076,15 +1075,7 @@ export class AppSidebarLeft extends SidebarSlider {
       buttons: filtered
     });
 
-    menu.append(getVersionLink());
     menu.classList.add('sidebar-tools-submenu');
-
-    const darkModeBtn = btns[0].element;
-    darkModeBtn.addEventListener(CLICK_EVENT_NAME, (e) => {
-      e.stopPropagation();
-      toggleTheme();
-      pause(20).then(() => contextMenuController.close());
-    }, true);
 
     updateAnimationsToggleButton();
 
@@ -1928,22 +1919,5 @@ const appSidebarLeft = new AppSidebarLeft();
 MOUNT_CLASS_TO.appSidebarLeft = appSidebarLeft;
 registerHotReloadGuard({appSidebarLeft});
 export default appSidebarLeft;
-
-function getVersionLink() {
-  const btnMenuFooter = document.createElement('a');
-  btnMenuFooter.href = 'https://github.com/morethanwords/tweb/blob/master/CHANGELOG.md';
-  setBlankToAnchor(btnMenuFooter);
-  btnMenuFooter.classList.add('btn-menu-footer');
-  btnMenuFooter.addEventListener(CLICK_EVENT_NAME, (e) => {
-    e.stopPropagation();
-    contextMenuController.close();
-  });
-  const t = document.createElement('span');
-  t.classList.add('btn-menu-footer-text');
-  t.textContent = `Telegram Web${App.suffix} ${App.version} (${App.build})`;
-  btnMenuFooter.append(t);
-
-  return btnMenuFooter;
-}
 
 if(import.meta.hot) import.meta.hot.accept();
