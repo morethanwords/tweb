@@ -148,6 +148,7 @@ import {modifyAckedPromise} from '@helpers/modifyAckedResult';
 import callbackify from '@helpers/callbackify';
 import {avatarNew, findUpAvatar} from '@components/avatarNew';
 import Icon from '@components/icon';
+import wrapUnsupportedMessagePlate from '@components/chat/bubbleParts/unsupportedMessagePlate';
 import SendingStatusIcon, {SendingStatusIconState, setSendingStatusIconState} from '@components/sendingStatusIcon';
 import wrapCallBubble from '@components/wrappers/callBubble';
 import {FullMid, makeFullMid, splitFullMid} from '@appManagers/utils/messages/fullMid';
@@ -347,10 +348,11 @@ if(IS_GROUP_CALL_SUPPORTED) {
 
 const isStoryMentionMessage = (message: Message.message) => !!(message.media as MessageMedia.messageMediaStory)?.pFlags?.via_mention;
 const isSelfDestructingMediaMessage = (message: Message.message) => !!(message.media as MessageMedia.messageMediaPhoto)?.ttl_seconds;
+const isUnsupportedMessage = (message: Message.message) => message.media?._ === 'messageMediaUnsupported';
 
 /**
  * Whether a message is drawn as a service line, neither incoming nor outgoing: a service message but a call, a
- * story mention, self-destructing media that cannot be seen
+ * story mention, self-destructing media that cannot be seen, a message this client cannot show
  */
 function isDrawnAsService(message: Message.message | Message.messageService) {
   if(message._ !== 'message') {
@@ -358,7 +360,9 @@ function isDrawnAsService(message: Message.message | Message.messageService) {
     return !action || !SERVICE_AS_REGULAR.has(action._);
   }
 
-  return isStoryMentionMessage(message) || (isSelfDestructingMediaMessage(message) && !canSeeMessageMedia(message));
+  return isStoryMentionMessage(message) ||
+    (isSelfDestructingMediaMessage(message) && !canSeeMessageMedia(message)) ||
+    isUnsupportedMessage(message);
 }
 
 // Service actions whose inline photo (suggested profile photo, or a group/channel
@@ -9088,6 +9092,7 @@ export default class ChatBubbles {
 
     const isStoryMention = isMessage && isStoryMentionMessage(message);
     const isSelfDestructingMedia = isMessage && isSelfDestructingMediaMessage(message);
+    const isUnsupported = isMessage && isUnsupportedMessage(message);
     let returnService: boolean;
 
     if(
@@ -9703,6 +9708,9 @@ export default class ChatBubbles {
 
           s.append(avatarContainer, text, button);
         }
+      } else if(isUnsupported) {
+        bubble.classList.add('is-unsupported', this.chat.isOutMessage(message) ? 'is-unsupported-out' : 'is-unsupported-in');
+        wrapUnsupportedMessagePlate(s);
       } else if(isSelfDestructingMedia) {
         const promise = wrapMessageForReply({
           message,

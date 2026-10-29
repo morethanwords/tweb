@@ -265,7 +265,7 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
             break;
           }
 
-          addPart(UNSUPPORTED_LANG_PACK_KEY);
+          addPart('UnsupportedMessageTitle');
           break;
         }
 

@@ -2518,6 +2518,55 @@
     }
   }
 
+  &-unsupported {
+    &-wrapper {
+      display: flex !important;
+      align-items: center;
+      gap: .5rem;
+      width: 25rem;
+      max-width: 100%;
+      padding: .4375rem .6875rem .4375rem .375rem !important;
+      border-radius: 1.125rem !important;
+      text-align: start;
+    }
+
+    &-icon {
+      flex: 0 0 auto;
+      width: 3rem;
+      height: 3rem;
+
+      &-bubble {
+        fill: rgba(0, 0, 0, .11);
+      }
+
+      &-plane {
+        fill: currentColor;
+      }
+    }
+
+    &-text {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: .125rem;
+      text-align: start;
+    }
+
+    &-title {
+      @include text-overflow();
+      font-size: var(--font-size-14);
+      line-height: var(--line-height-14);
+      font-weight: var(--font-weight-bold);
+    }
+
+    &-subtitle {
+      font-size: var(--font-size-13);
+      line-height: var(--line-height-13);
+      opacity: .7;
+    }
+  }
+
   // Generic "media + caption + button" service bubble (e.g. suggested profile
   // photo). Centered round media, modeled on the story-mention bubble above.
   &-service-media {
@@ -3417,6 +3466,20 @@
     &-wrapper {
       max-width: 100%;
       padding: 0 2rem;
+    }
+  }
+
+  &.is-unsupported {
+    .bubble-content-wrapper {
+      padding: 0;
+    }
+
+    &-in {
+      justify-content: flex-start;
+    }
+
+    &-out {
+      justify-content: flex-end;
     }
   }
 }
