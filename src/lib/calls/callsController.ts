@@ -395,16 +395,29 @@ export class CallsController extends EventListenerBase<{
     rootScope.dispatchEvent('call_update', call);
   }
 
+  // A ringing incoming call is not this tab's alone: the other devices keep
+  // ringing, and tdesktop leaves it on quit too (`isQuitPrevent`).
+  private isEndedByUnload(instance: CallInstance) {
+    return !instance.isClosing && (instance.isOutgoing || instance.connectionState !== CALL_STATE.PENDING);
+  }
+
+  /**
+   * Whether leaving the page would end a call: one `discardAllOnUnload` hangs
+   * up, a group call or a live stream.
+   */
+  public wouldUnloadEndCall() {
+    const {groupCall} = groupCallsController;
+    return !!(
+      (this.instances && [...this.instances.values()].some((instance) => this.isEndedByUnload(instance))) ||
+      rtmpCallsController.currentCall ||
+      (groupCall && groupCall.state !== GROUP_CALL_STATE.CLOSED)
+    );
+  }
+
   private discardAllOnUnload() {
     for(const instance of this.instances.values()) {
       const state = instance.connectionState;
-      if(instance.isClosing) {
-        continue;
-      }
-
-      // A ringing incoming call is not this tab's alone: the other devices keep
-      // ringing, and tdesktop leaves it on quit too (`isQuitPrevent`).
-      if(!instance.isOutgoing && state === CALL_STATE.PENDING) {
+      if(!this.isEndedByUnload(instance)) {
         continue;
       }
 

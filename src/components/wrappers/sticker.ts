@@ -38,6 +38,7 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import Icon from '@components/icon';
 import {SHOULD_HANDLE_VIDEO_LEAK, attachVideoLeakListeners, leakVideoFallbacks, onVideoLeak} from '@helpers/dom/handleVideoLeak';
 import noop from '@helpers/noop';
+import safePlay from '@helpers/dom/safePlay';
 import {IS_WEBM_SUPPORTED} from '@environment/videoSupport';
 import toArray from '@helpers/array/toArray';
 import {createEffect, createRoot, on, onCleanup, Ref, untrack} from 'solid-js';
@@ -527,29 +528,34 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
           const video = media = createVideo({middleware});
           video.muted = true;
           if(play) video.autoplay = true;
-          if(loop) video.loop = true;
           video._autoplay = play || false;
-          video._loop = loop || false;
+          // * a number of plays is counted by their ends: with the attribute a wrap shows only in `timeupdate`,
+          // * and a play shorter than its period (an emoji status of 0.11 s) reads 0 there before and after
+          // * every wrap - it played on for ever. So the attribute stays off, and `_loop` with it: the intersector
+          // * puts the attribute back on what has one whenever the settings apply
+          video._loop = typeof(loop) === 'number' ? false : loop || false;
 
-          if(loop && typeof(loop) === 'number') {
-            let previousTime = 0, playedTimes = 0;
-            function onTimeupdate(this: HTMLVideoElement) {
-              if(previousTime > this.currentTime && ++playedTimes === loop as number) {
-                this.autoplay = false;
-                this.loop = false;
-                this.pause();
-                video.removeEventListener('timeupdate', onTimeupdate);
+          if(typeof(loop) === 'number') {
+            let playedTimes = 0;
+            const onEnded = () => {
+              if(++playedTimes < loop) {
+                // * a play of ended media starts it over - while it may still play on its own, as the attribute would
+                // * (Power Saving takes `autoplay` off; the intersector plays the rest once it is back)
+                if(video.autoplay) safePlay(video);
+                return;
               }
 
-              (this as any).timeUpdatedTimes = ((this as any).timeUpdatedTimes || 0) + 1;
+              // * as the lottie player's last lap (`onLap`): nothing plays it again
+              video.autoplay = video._autoplay = false;
+              video.removeEventListener('ended', onEnded);
+            };
 
-              previousTime = this.currentTime;
-            }
-
-            video.addEventListener('timeupdate', onTimeupdate);
+            video.addEventListener('ended', onEnded);
             middleware.onClean(() => {
-              video.removeEventListener('timeupdate', onTimeupdate);
+              video.removeEventListener('ended', onEnded);
             });
+          } else if(loop) {
+            video.loop = true;
           }
         }
 

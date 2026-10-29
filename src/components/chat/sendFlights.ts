@@ -18,7 +18,8 @@
  * Across and up have curves of their own, iOS's — across fast, up slower — which bends the way; both last
  * 300 ms.
  *
- * What flies is a copy, drawn over the chat (above the composer and the panel), while the message stands
+ * What flies is a copy, drawn over the chat and the composer (under the emoji panel, but for a picture that goes
+ * out of it), while the message stands
  * where it goes, unseen. The list lays it out and scrolls to its end as always, only in the copy's time and
  * curve, so the older messages make room the way iOS has them do; the copy goes to where the message will
  * stand at that end. Then the copy goes and the message shows where it was, drawn on the same pixels. A
@@ -141,8 +142,13 @@ export const SEND_FLIGHT_SCROLL = {duration: DURATION, transition: EASE_Y};
 type Glyphs = {first: DOMRect, last: DOMRect, text: string, color: string};
 
 export type SendFlightsHost = {
-  /** the chat's element: the copies are drawn in it */
+  /** the chat's element: the copies are drawn over it */
   container: () => HTMLElement,
+  /**
+   * The composer: the copies are drawn in it, over what it holds and under the emoji panel it holds too (a picture
+   * chosen in the panel goes over it). Over the chat with it, which is under the composer
+   */
+  composer: () => HTMLElement,
   /** whether a message sent now is shown at once, at the end of the list */
   canFly: () => boolean,
   /** the height of the visible list: a message taller than it does not fly */
@@ -646,6 +652,8 @@ function showMoment(element: HTMLElement, moment: Moment): Promise<unknown> {
 export abstract class SendFlight {
   public root: HTMLElement;
   public done: boolean;
+  /** it goes out of the emoji panel, over it: what else flies goes under the panel */
+  public overPanel = false;
   protected target: HTMLElement;
   /** what of the message is not seen while the copy flies */
   protected hidden: HTMLElement[] = [];
@@ -1588,9 +1596,12 @@ class BoxFlight extends SendFlight {
     /** where its picture was as it was chosen: the message's own flies from there */
     moment?: Moment,
     /** what of the source is not seen while its copy stands in for it */
-    sourceHidden?: HTMLElement[]
+    sourceHidden?: HTMLElement[],
+    /** it goes out of the emoji panel, over it */
+    overPanel?: boolean
   }) {
     super(flights, options.matches);
+    this.overPanel = !!options.overPanel;
     this.sourceHidden.push(...(options.sourceHidden || []));
     this.landFade = LAND_FADE;
     this.heightAcross = true;
@@ -1721,7 +1732,8 @@ export default class SendFlights {
         from: snapshot.picture,
         layers: [{element: snapshot.canvas}],
         findTarget: findMediaTarget('.attachment'),
-        moment: snapshot.moment
+        moment: snapshot.moment,
+        overPanel: true
       });
     });
   }
@@ -1865,6 +1877,7 @@ export default class SendFlights {
     const overlay = this.getOverlay();
     this.updateOrigin();
     overlay.append(flight.root);
+    this.updateLayer();
   }
 
   public forget(flight: SendFlight) {
@@ -1875,7 +1888,13 @@ export default class SendFlights {
 
     if(!flight.root.isConnected) {
       this.shown.delete(flight);
+      this.updateLayer();
     }
+  }
+
+  // the copies go under the emoji panel, but while one goes out of it
+  private updateLayer() {
+    this.overlay.classList.toggle(styles.overPanel, Array.from(this.shown).some((flight) => flight.overPanel));
   }
 
   /** where the copies are placed from: the overlay's corner */
@@ -1895,7 +1914,7 @@ export default class SendFlights {
     return x >= container.left && x <= container.right && y >= container.top && y <= container.bottom;
   }
 
-  // put in the chat once and kept there, empty when nothing flies: putting it in lays the whole chat out again
+  // put in the composer once and kept there, empty when nothing flies: putting it in lays the composer out again
   private getOverlay() {
     let {overlay} = this;
     if(!overlay) {
@@ -1904,9 +1923,9 @@ export default class SendFlights {
       overlay.inert = true;
     }
 
-    const container = this.host.container();
-    if(overlay.parentElement !== container) {
-      container.append(overlay);
+    const composer = this.host.composer();
+    if(overlay.parentElement !== composer) {
+      composer.append(overlay);
     }
 
     return overlay;

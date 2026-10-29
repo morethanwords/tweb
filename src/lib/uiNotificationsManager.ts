@@ -819,9 +819,10 @@ export class UiNotificationsManager {
     //   window.addEventListener('click', this.requestPermission);
     // }
 
+    // * not on beforeunload: the page can ask there to be stayed on (a call), and would stay with them cleared
     try {
-      if('onbeforeunload' in window) {
-        window.addEventListener('beforeunload', () => this.clear(getCurrentAccount()));
+      if('onpagehide' in window) {
+        window.addEventListener('pagehide', () => this.clear(getCurrentAccount()));
       }
     } catch(e) {}
   }

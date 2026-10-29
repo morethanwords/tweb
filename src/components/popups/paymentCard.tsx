@@ -242,6 +242,8 @@ export default function showPaymentCardPopup(options: {
   let onPay: () => Promise<void>;
   // Whichever branch below applies defines the body; the popup instantiates it under its own owner.
   let Content: Component;
+  // * the card number, unless the saved card fills it in
+  let focusField: HTMLElement;
 
   let telegramWebView: TelegramWebView;
   if(!isNative) {
@@ -610,7 +612,7 @@ export default function showPaymentCardPopup(options: {
     setShow(true);
 
     if(!cardInputField.validateNew(undefined, undefined, true)) {
-      placeCaretAtEnd(cardInputField.input);
+      focusField = cardInputField.input;
     }
   }
 
@@ -623,6 +625,7 @@ export default function showPaymentCardPopup(options: {
         class="popup-payment popup-payment-card"
         closable
         show={show()}
+        initialFocus={() => focusField}
       >
         <PopupElement.Header>
           <PopupElement.CloseButton />

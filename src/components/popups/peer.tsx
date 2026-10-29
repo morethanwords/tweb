@@ -99,7 +99,6 @@ export default function showPeerPopup(className: string, options: PopupPeerOptio
     const [inputValid, setInputValid] = createSignal(!inputField || inputField.isValid());
     if(inputField) {
       subscribeOn(inputField.input)('input', () => setInputValid(inputField.isValid()));
-      onMount(() => inputField.input.focus());
     }
 
     const Buttons = () => {
@@ -187,6 +186,7 @@ export default function showPeerPopup(className: string, options: PopupPeerOptio
         show={show()}
         containerClass={checkboxes ? 'have-checkbox' : undefined}
         closable={options.closable ?? true}
+        initialFocus={options.initialFocus ?? (inputField && (() => inputField.input))}
         old
       >
         <Show when={!options.noHeader}>

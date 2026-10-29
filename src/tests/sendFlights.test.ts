@@ -65,6 +65,7 @@ describe('overlapping send flights', () => {
     container = document.body.appendChild(document.createElement('div'));
     flights = new SendFlights({
       container: () => container,
+      composer: () => container,
       canFly: () => true,
       viewportHeight: () => 600,
       scrollToEnd: () => 0,

@@ -1,4 +1,4 @@
-import {createMemo, createSignal, JSX, onMount} from 'solid-js';
+import {createMemo, createSignal, JSX} from 'solid-js';
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import {MyStarGift} from '@appManagers/appGiftsManager';
 
@@ -7,7 +7,6 @@ import {i18n, LangPackKey} from '@lib/langPack';
 import Row from '@components/rowTsx';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import {InputFieldTsx} from '@components/inputFieldTsx';
-import {fastRaf} from '@helpers/schedulers';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {toastNew} from '@components/toast';
 import {StarsAmount} from '@layer';
@@ -101,12 +100,6 @@ export default async function showSellStarGiftPopup(options: {
     const isUnlisting = () => !sellAmount() && allowUnlist;
 
     let inputRef: HTMLElement;
-    onMount(() => {
-      fastRaf(() => {
-        inputRef.focus();
-      });
-    });
-
     const onConfirm = () => {
       setLoading(true);
       const amount: StarsAmount | null = isUnlisting() ? null : (ton() ? {
@@ -134,6 +127,7 @@ export default async function showSellStarGiftPopup(options: {
         class={styles.popup}
         closable
         show={show()}
+        initialFocus={() => inputRef}
         onClose={() => !finished && options.onFinish?.('cancel')}
       >
         <PopupElement.Header>

@@ -1,11 +1,10 @@
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
-import {createEffect, createMemo, createSignal, on, onMount, Show} from 'solid-js';
+import {createEffect, createMemo, createSignal, on, Show} from 'solid-js';
 import {MyStarGift} from '@appManagers/appGiftsManager';
 import {i18n, LangPackKey} from '@lib/langPack';
 import Row from '@components/rowTsx';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import {InputFieldTsx} from '@components/inputFieldTsx';
-import {fastRaf} from '@helpers/schedulers';
 import paymentsWrapCurrencyAmount, {formatNanoton, parseNanotonFromDecimal} from '@helpers/paymentsWrapCurrencyAmount';
 import Section from '@components/section';
 import rootScope from '@lib/rootScope';
@@ -57,12 +56,6 @@ export async function showCreateStarGiftOfferPopup(options: {
     let isCreated = false;
     let inputRef!: HTMLElement;
     let durationRowRef!: HTMLElement;
-
-    onMount(() => {
-      fastRaf(() => {
-        inputRef.focus();
-      });
-    });
 
     const handleSubmit = async() => {
       const starsAmount: StarsAmount = ton() ? {
@@ -147,6 +140,7 @@ export async function showCreateStarGiftOfferPopup(options: {
         managers={managers}
         class={styles.popup}
           show={show()}
+        initialFocus={() => inputRef}
         closable={true}
         onClose={() => {
           if(!isCreated) {

@@ -384,6 +384,8 @@ export class AppImManager extends EventListenerBase<{
 
     appMediaPlaybackController.construct(managers);
 
+    window.addEventListener('beforeunload', this.onBeforeUnload);
+
     this.log = logger('IM', LogTypes.Log | LogTypes.Warn | LogTypes.Debug | LogTypes.Error);
 
     // Pre-cache the bundled wallpaper svg for every base entry — multiple base themes
@@ -2818,6 +2820,20 @@ export class AppImManager extends EventListenerBase<{
       skipAnimation
     );
   }
+
+  // * leaving the page ends a call and stops what is playing, so the browser asks first - unless the app leaves it
+  // * itself (a log out, a restart), which is not to be stayed on
+  private onBeforeUnload = (e: BeforeUnloadEvent) => {
+    if(appNavigationController.leaving) {
+      return;
+    }
+
+    const media = appMediaPlaybackController.getPlayingMedia();
+    if(callsController.wouldUnloadEndCall() || (media && !media.paused)) {
+      e.preventDefault();
+      e.returnValue = ''; // * Chrome before 119 asks only when it is set
+    }
+  };
 
   // * every level up to the current one, so `@include animation-level(1)` holds at full too
   private setAnimationLevel = () => {

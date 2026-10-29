@@ -1,5 +1,4 @@
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
-import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import {InputInvoice, PaymentRequestedInfo, PaymentsPaymentForm, PaymentsValidatedRequestedInfo} from '@layer';
 import matchEmail from '@lib/richTextProcessor/matchEmail';
 import CountryInputField from '@components/countryInputField';
@@ -199,6 +198,7 @@ export default function showPaymentShippingPopup(options: {
       class="popup-payment popup-payment-shipping"
       closable
       show
+      initialFocus={() => focusField?.input}
     >
       <PopupElement.Header>
         <PopupElement.CloseButton />
@@ -237,8 +237,4 @@ export default function showPaymentShippingPopup(options: {
       </PopupElement.Footer>
     </PopupElement>
   ));
-
-  if(focusField) {
-    placeCaretAtEnd(focusField.input);
-  }
 }

@@ -1,4 +1,3 @@
-import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import AppSelectPeers, {SelectSearchPeerType} from '@components/appSelectPeers';
 import PopupElement, {createPopup, PopupContext, PopupContextValue} from '@components/popups/indexTsx';
 import I18n, {LangPackKey, i18n} from '@lib/langPack';
@@ -498,10 +497,6 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
       onFirstRender: () => {
         setShow(true);
         selector.checkForTriggers();
-
-        if(!IS_TOUCH_SUPPORTED && selector.inputSearch) {
-          selector.inputSearch.input.focus();
-        }
       },
       noPlaceholder: true,
       rippleEnabled: false,
@@ -618,6 +613,7 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
           options.onCloseAfterTimeout?.();
         }}
         btnConfirmOnEnter={options.btnConfirmOnEnter}
+        initialFocus={() => selector?.inputSearch?.input}
       >
         <PopupElement.Header>
           <PopupElement.CloseButton

@@ -53,6 +53,8 @@ export class AppNavigationController {
   private modificationBusy: boolean;
   private modificationResolve: () => void;
   public onHashChange: () => void;
+  /** the app leaves the page itself (a reload, another address): it is not for the user to stay */
+  public leaving: boolean;
 
   constructor() {
     this.navigations = [];
@@ -529,6 +531,7 @@ export class AppNavigationController {
       });
     }
     this.modifyHistoryFromEvent(() => {
+      this.leaving = true;
       location.reload();
     });
   }
@@ -572,6 +575,7 @@ export class AppNavigationController {
     }
 
     setTimeout(() => {
+      this.leaving = true;
       location.href = url;
     }, 100);
   }

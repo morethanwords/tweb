@@ -1,17 +1,24 @@
-// The copies of what is being sent, drawn over the chat: above the list, the composer and the panel.
+// The copies of what is being sent, drawn over the chat: in the composer, above the list and what the composer
+// holds, under the emoji panel (z-index 4), which the message lands under too.
 // The overlay is an origin, not a box; every part of a copy is laid out once, from it or from its parent's
-// corner, and then only moved, stretched and faded by the compositor.
+// corner, and then only moved, stretched and faded by the compositor. It is at the composer's bottom corner,
+// which stays where it is as the composer shrinks after a send.
 .overlay {
   position: absolute;
   left: 0;
-  top: 0;
+  bottom: 0;
   width: 0;
   height: 0;
-  z-index: 4;
+  z-index: 3;
   pointer-events: none;
   // what the copies lay out is laid out here and nowhere else: of a size of its own, it is where a layout
   // of them starts and stops
   contain: size layout style;
+
+  // a sticker or a GIF goes out of the panel it was chosen in, over it
+  &.overPanel {
+    z-index: 5;
+  }
 }
 
 // laid out from their corner, as the parts of a background are (`bubbleShape.module.scss`)

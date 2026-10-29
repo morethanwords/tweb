@@ -1,6 +1,5 @@
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import anchorCallback from '@helpers/dom/anchorCallback';
-import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import shake from '@helpers/dom/shake';
 import {Middleware} from '@helpers/middleware';
 import I18n, {LangPackKey} from '@lib/langPack';
@@ -8,7 +7,7 @@ import currencyStarIcon from '@components/currencyStarIcon';
 import InputField from '@components/inputField';
 import Section from '@components/section';
 import rootScope from '@lib/rootScope';
-import {createSignal, onMount} from 'solid-js';
+import {createSignal} from 'solid-js';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
@@ -73,10 +72,8 @@ export default async function showMakePaidPopup(onSave: (value: number) => void,
       inputField.value = '' + editingFrom;
     }
 
-    onMount(() => placeCaretAtEnd(inputField.input));
-
     return (
-      <PopupElement managers={managers} class="popup-make-paid" closable show={show()}>
+      <PopupElement managers={managers} class="popup-make-paid" closable show={show()} initialFocus={() => inputField.input}>
         <PopupElement.Header>
           <PopupElement.CloseButton />
           <PopupElement.Title title="PaidMedia.Title" />

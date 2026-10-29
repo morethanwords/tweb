@@ -60,7 +60,8 @@ export type PopupOptions = Partial<{
   btnConfirmOnEnter?: Accessor<HTMLElement>,
   /**
    * Where the focus goes on open instead of the first control (the close button). A text field
-   * takes the caret at its end, after whatever is already in it.
+   * takes the caret at its end, after whatever is already in it - without the a11y layer too, where
+   * nothing else is focused.
    */
   initialFocus?: Accessor<HTMLElement | undefined>,
   old: boolean
@@ -263,15 +264,18 @@ const PopupElement = (props: {
           container.setAttribute('aria-labelledby', titleEl.id);
         }
 
+        const initialFocus = props.initialFocus?.();
         if(!withoutOverlay && Modes.a11y) {
           focusTrap = createFocusTrap(
             container,
             () => PopupElement.POPUPS[PopupElement.POPUPS.length - 1] === value
           );
-          const initialFocus = props.initialFocus?.();
           focusTrap.activate(previouslyFocusedEl, initialFocus);
-          if(initialFocus && isTargetAnInput(initialFocus)) placeCaretAtEnd(initialFocus);
         }
+
+        // * a text field is where the popup opens, with the layer or without it: not before it shows, when the
+        // * popup is still hidden and a focus goes nowhere (not on touch either - no keyboard pops up unasked)
+        if(initialFocus && isTargetAnInput(initialFocus)) placeCaretAtEnd(initialFocus);
       }
 
       const handleKeydown = (e: KeyboardEvent) => {

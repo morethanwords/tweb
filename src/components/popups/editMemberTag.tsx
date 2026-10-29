@@ -1,5 +1,4 @@
-import {createEffect} from 'solid-js';
-import PopupElement, {createPopup, usePopupContext} from '@components/popups/indexTsx';
+import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import Section from '@components/section';
 import {MemberTagFieldPreview} from '@components/memberTag/memberTagEditor';
 import createMemberTagInputField from '@components/memberTag/memberTagField';
@@ -19,19 +18,6 @@ export type EditMemberTagPopupOptions = {
   role?: MemberTagRole,
   onSaved?: (rank: string) => void
 };
-
-// * the field takes the caret once the popup is up (desktop): showing it takes the focus off
-// * whatever had it, so not before
-function FocusWhenShown(props: {element: HTMLElement}) {
-  const context = usePopupContext();
-  createEffect(() => {
-    if(context.shown()) {
-      setTimeout(() => props.element.focus(), 0);
-    }
-  });
-
-  return null as null;
-}
 
 /**
  * "Edit tag" (desktop's EditCustomRankBox): the author's message with the tag on it, the field with
@@ -91,7 +77,6 @@ export default async function showEditMemberTagPopup(options: EditMemberTagPopup
           >
             {inputField.container}
           </Section>
-          <FocusWhenShown element={inputField.input} />
         </PopupElement.Body>
         <PopupElement.Footer>
           <PopupElement.FooterButton confirm langKey="Save" callback={save} />

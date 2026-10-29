@@ -1,12 +1,11 @@
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
-import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import {AccountPassword, AccountTmpPassword} from '@layer';
 import {InputState} from '@components/inputField';
 import PasswordInputField from '@components/passwordInputField';
 import Section from '@components/section';
 import {toastNew} from '@components/toast';
 import rootScope from '@lib/rootScope';
-import {createSignal, onMount} from 'solid-js';
+import {createSignal} from 'solid-js';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export default function showPaymentCardConfirmationPopup(options: {
@@ -47,13 +46,12 @@ export default function showPaymentCardConfirmationPopup(options: {
   onInput();
 
   createPopup(() => {
-    onMount(() => placeCaretAtEnd(passwordInputField.input));
-
     return (
       <PopupElement
         class="popup-payment popup-payment-card-confirmation"
         closable
         show
+        initialFocus={() => passwordInputField.input}
       >
         <PopupElement.Header>
           <PopupElement.CloseButton />

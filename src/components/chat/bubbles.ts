@@ -364,6 +364,25 @@ function isDrawnAsService(message: Message.message | Message.messageService) {
   return isStoryMentionMessage(message) || (isSelfDestructingMediaMessage(message) && !canSeeMessageMedia(message));
 }
 
+/** Whether a message is not drawn at all: a service line the chat leaves out (a cleared history, a sign-up) */
+function isNeverDrawn(message: Message.message | Message.messageService) {
+  if(!isDrawnAsService(message)) {
+    return false;
+  }
+
+  const action = (message as Message.messageService).action;
+  if(!action) {
+    return false;
+  }
+
+  const ignoreAction = IGNORE_ACTIONS.get(action._);
+  if(ignoreAction && (ignoreAction === true || ignoreAction(message as Message.messageService))) {
+    return true;
+  }
+
+  return langPack.hasOwnProperty(action._) && !langPack[action._];
+}
+
 // Service actions whose inline photo (suggested profile photo, or a group/channel
 // avatar change) is shown via wrapServiceMediaBubble. `filter`/`useSearch` drive
 // the media-viewer opened on click; `suggest` adds the receiving-side accept flow.
@@ -1126,6 +1145,7 @@ export default class ChatBubbles {
     this.changedMids = new Map();
     this.sendFlights = new SendFlights({
       container: () => this.chat.container,
+      composer: () => this.chat.input.chatInput,
       canFly: () => this.scrolledDown &&
         this.scrollable.loadedAll.bottom &&
         !this.chat.isPreview &&
@@ -9101,20 +9121,12 @@ export default class ChatBubbles {
       return;
     }
 
+    if(isNeverDrawn(message)) {
+      return;
+    }
+
     if(isDrawnAsService(message)) {
       const action = (message as Message.messageService).action;
-      if(action) {
-        const _ = action._;
-
-        const ignoreAction = IGNORE_ACTIONS.get(_);
-        if(ignoreAction && (ignoreAction === true || ignoreAction(message as Message.messageService))) {
-          return;
-        }
-
-        if(langPack.hasOwnProperty(_) && !langPack[_]) {
-          return;
-        }
-      }
 
       // * resetting the class name drops what the skeleton put on the bubble — `is-ephemeral`
       // * has to come back, the selection reads it to keep both groups apart
@@ -14262,6 +14274,15 @@ export default class ChatBubbles {
     });
   }
 
+  // * a history of nothing but lines the chat leaves out (a cleared history) is empty to look at
+  private isHistoryNeverDrawn() {
+    const {history} = this.chat.getHistoryStorage();
+    return !!history.length && history.slice.every((mid) => {
+      const message = this.chat.getMessage(mid);
+      return !!message && isNeverDrawn(message);
+    });
+  }
+
   public async checkIfEmptyPlaceholderNeeded() {
     if(this.scrollable.loadedAll.top &&
       this.scrollable.loadedAll.bottom &&
@@ -14278,7 +14299,8 @@ export default class ChatBubbles {
           !this.getRenderedLength()
         ) ||
         ((this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Welcome) && !this.getRenderedLength()) ||
-        !this.chat.getHistoryStorage().count
+        !this.chat.getHistoryStorage().count ||
+        (!this.getRenderedLength() && this.isHistoryNeverDrawn())
       )
     ) {
       this.log('inject empty peer placeholder');

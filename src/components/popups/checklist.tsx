@@ -39,6 +39,9 @@ export default function showChecklistPopup(options: ChecklistPopupOptions): void
 
   type Item = {id: number, existing: boolean, field: InputField, editor: ChatInputEditor};
 
+  // * the task it opens on: a field of a popup not shown yet takes no focus, the popup gives it once it shows
+  let openFocusField: HTMLElement;
+
   function Inner() {
     const context = useContext(PopupContext);
     const middleware = untrack(() => context.middlewareHelper).get();
@@ -133,9 +136,13 @@ export default function showChecklistPopup(options: ChecklistPopupOptions): void
         });
         updateConfirmButton();
         if(!existing || existing.id === focusItemId) {
-          fastRaf(() => {
-            field.input.focus();
-          });
+          if(context.shown()) {
+            fastRaf(() => {
+              field.input.focus();
+            });
+          } else {
+            openFocusField = field.input;
+          }
         }
       };
 
@@ -348,7 +355,7 @@ export default function showChecklistPopup(options: ChecklistPopupOptions): void
   }
 
   createPopup(() => (
-    <PopupElement class={`${css.popup} popup-new-media`}>
+    <PopupElement class={`${css.popup} popup-new-media`} initialFocus={() => openFocusField}>
       <Inner />
     </PopupElement>
   ));

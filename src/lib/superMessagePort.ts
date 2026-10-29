@@ -277,7 +277,8 @@ class SuperMessagePort<
           return promise;
         });
       } else {
-        window.addEventListener('beforeunload', () => {
+        // * not on beforeunload: the page can ask there to be stayed on (a call), and stays with its ports closed
+        window.addEventListener('pagehide', () => {
           const task = this.createTask('close', undefined);
           this.postMessage(undefined, task);
         });
