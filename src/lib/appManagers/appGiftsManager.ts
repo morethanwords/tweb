@@ -419,6 +419,24 @@ export default class AppGiftsManager extends AppManager {
     await this.apiManager.invokeApiSingle('payments.convertStarGift', {
       stargift: gift
     });
+
+    // * the server does not edit the gift's message, so it is marked here for its bubble to say so
+    if(gift._ !== 'inputSavedStarGiftUser') return;
+    const mid = this.appMessagesIdsManager.generateMessageId(gift.msg_id);
+    const message = this.appMessagesManager.getMessageById(mid) as Message.messageService;
+    if(message?._ !== 'messageService' || message.action._ !== 'messageActionStarGift') return;
+
+    const storage = this.appMessagesManager.getHistoryMessagesStorage(message.peerId);
+    this.appMessagesManager.modifyMessage(message, (message) => {
+      (message.action as MessageAction.messageActionStarGift).pFlags.converted = true;
+    }, storage);
+
+    this.rootScope.dispatchEvent('message_edit', {
+      storageKey: storage.key,
+      peerId: message.peerId,
+      mid: message.mid,
+      message
+    });
   }
 
   public async getPremiumGiftOptions(): Promise<MyPremiumGiftOption[]> {

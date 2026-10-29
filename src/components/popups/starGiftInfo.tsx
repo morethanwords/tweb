@@ -876,6 +876,7 @@ export default function showStarGiftInfoPopup(options: {
                 try {
                   await managers.appGiftsManager.convertGift(input);
                   context.hide();
+                  toastNew({langPackKey: 'StarGiftGotStars', langPackArguments: [+saved.convert_stars]});
                 } catch(err) {
                   toastNew({langPackKey: 'Error.AnError'});
                 }

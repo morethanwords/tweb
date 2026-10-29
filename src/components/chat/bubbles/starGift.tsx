@@ -76,6 +76,15 @@ export function StarGiftBubble(props: {
       return <I18nTsx key="StarGiftDefaultMessageUpgrade" />
     }
 
+    if(props.gift.isConverted && props.gift.isIncoming) {
+      return (
+        <I18nTsx
+          key="StarGiftGotStars"
+          args={`${props.gift.raw.convert_stars}`}
+        />
+      );
+    }
+
     if(props.gift.raw.convert_stars !== undefined && !props.gift.isUpgraded) {
       return props.gift.isIncoming ? (
         <I18nTsx
