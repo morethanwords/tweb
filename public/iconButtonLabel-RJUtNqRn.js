@@ -1,3 +1,0 @@
-//# allFunctionsCalledOnLoad
-import{u as e}from"./langPack-1UiOluhK.js";var t={close:`Close`,cross:`Close`,back:`AccDescr.Back`,left:`AccDescr.Back`,arrow_prev:`AccDescr.Back`,more:`MultiAccount.More`,search:`Search`,edit:`Edit`,delete:`Delete`,bin_filled:`Delete`,check:`Done`,play_filled:`Play`,pause_filled:`Pause`,forward:`Forward`,download:`MediaViewer.Context.Download`,copy:`Copy`,attach:`Chat.Input.Attach`,smile:`Emoji`,select:`Message.Context.Select`,settings_filled:`Settings`,fullscreen:`ConferenceCall.Controls.EnterFullscreen`,smallscreen:`ConferenceCall.Controls.ExitFullscreen`};function n(e){return t[e]}function r(t){let r=n(t);return r?e.format(r,!0):void 0}export{r as n,n as t};
-//# sourceMappingURL=iconButtonLabel-RJUtNqRn.js.map

@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{r as e}from"./toast-Btk59n0K.js";import{n as t}from"./clipboard-DspPI_So.js";var n=`https://t.me/`;function r(n){t(`@`+n),e({langPackKey:`UsernameCopied`})}function i(r){t(n+r),e({langPackKey:`LinkCopied`})}function a(n){t(n.replace(/\s/g,``)),e({langPackKey:`PhoneCopied`})}function o(n){t(n),e({langPackKey:`IdCopied`})}export{r as a,i,o as n,a as r,n as t};
+//# sourceMappingURL=copyContact-BnN7Iu4v.js.map

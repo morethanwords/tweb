@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{f as e,s as t}from"./solid-Beq2bZCx.js";import{n}from"./sticker-Br4ZMNVB.js";import{j as r}from"./openEditors-Bl5OXwpT.js";function i(i){return e(r.Media,{size:`small`,get children(){return e(t,{get when(){return i.sticker},children:t=>e(n,{get sticker(){return t()},width:32,height:32})})}})}export{i as t};
+//# sourceMappingURL=reactionStickerPreview-D-BFf2-o.js.map

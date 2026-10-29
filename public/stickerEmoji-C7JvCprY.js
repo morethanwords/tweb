@@ -1,3 +1,0 @@
-//# allFunctionsCalledOnLoad
-import{n as e}from"./rootScope-CH5D98Tl.js";import{i as t}from"./sticker-WDqb_V35.js";async function n(n){let{emoji:r,div:i,managers:a=e.managers}=n,o=await a.appStickersManager.getAnimatedEmojiSticker(r);if(!o)throw i.classList.add(`media-sticker-wrapper`),Error(`no sticker`);return t({doc:o,play:!0,loop:!1,...n})}export{n as t};
-//# sourceMappingURL=stickerEmoji-C7JvCprY.js.map

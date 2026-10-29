@@ -2963,7 +2963,7 @@
 "BoostingFromOtherChannel_other" = "%d other channels";
 "BoostingAvailableIn" = "available in %1$s";
 "HideReadTime" = "Hide Read Time";
-"HideReadTimeInfo" = "Hide the time when you read messages from people who can’t see your last seen. If you turn this on, their read time will also be hidden from you (unless you are a Premium user).\n\nThis setting does not affect group chats.";
+"HideReadTimeInfo" = "Hide the time when you read messages from people who can't see your last seen. If you turn this on, their read time will also be hidden from you (unless you are a Premium user).\n\nThis setting does not affect group chats.";
 "PrivacyLastSeenPremium" = "Subscribe to Telegram Premium";
 "PrivacyLastSeenPremiumInfo" = "If you subscribe to Premium, you will see other users’ last seen and read time even if you hid yours from them (unless they specifically restricted it).";
 "PrivacyLastSeenPremiumForPremium" = "Subscribed to Telegram Premium";
