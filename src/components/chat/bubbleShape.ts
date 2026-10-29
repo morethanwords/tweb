@@ -9,6 +9,7 @@
  */
 
 import {getAppWindow} from '@helpers/appWindow';
+import {getOutgoingMessageGradientColorAt, readOutgoingMessageGradient} from '@helpers/outgoingMessageGradient';
 import styles from '@components/chat/bubbleShape.module.scss';
 
 export type Box = {left: number, top: number, right: number, bottom: number};
@@ -204,9 +205,17 @@ export function toDropShadow(boxShadow: string) {
   }).join(' ');
 }
 
-/** how a bubble's content box draws its background */
-export function getBubbleBackground(style: CSSStyleDeclaration, rect: DOMRect): BubbleBackground {
-  return {color: style.backgroundColor, shadow: toDropShadow(style.boxShadow), radii: getRadii(style, rect)};
+/**
+ * How a bubble's content box draws its background: a bubble of a gradient is seen (nearly) all of its colour where it
+ * stands, not of its own under it, which it does not paint itself (`message-out-gradient`)
+ */
+export function getBubbleBackground(content: Element, style: CSSStyleDeclaration, rect: DOMRect): BubbleBackground {
+  const gradient = readOutgoingMessageGradient(content);
+  return {
+    color: gradient ? getOutgoingMessageGradientColorAt(gradient, rect) : style.backgroundColor,
+    shadow: toDropShadow(style.boxShadow),
+    radii: getRadii(style, rect)
+  };
 }
 
 // the quarter of a circle in each corner, in the order `getShape` has them

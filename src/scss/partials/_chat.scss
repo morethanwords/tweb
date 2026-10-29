@@ -1432,18 +1432,22 @@
 .bubbles-remover {
   position: absolute;
   // * as tall as the frame, which its transform stands in for to the gradient of an outgoing bubble being deleted
-  // * (`message-out-gradient`)
+  // * (`message-out-gradient`); and a freeform one's piece is placed across where the frame is, which its container
+  // * fills (`cqw`), as it is narrower, in the middle
   top: 0;
   bottom: 0;
   left: 50%;
   transform: translateX(-50%) !important;
   z-index: 0;
+  --message-out-gradient-left: calc(50% - 50cqw);
+  --message-out-gradient-width: 100cqw;
 
   &-container {
     position: absolute;
     inset: 0;
     pointer-events: none;
     overflow: hidden;
+    container-type: size;
   }
 
   &:after {

@@ -34,7 +34,7 @@ import copyElement, {CopyPairs, keepStyle, paintPlayerFrame} from '@components/c
 import drawMediaToCanvas from '@helpers/canvas/drawMediaToCanvas';
 import type CustomEmojiElement from '@lib/customEmoji/element';
 import {settleSendingStatusIconCopy} from '@components/sendingStatusIcon';
-import {getOutgoingMessageGradientColorAt, markOutgoingMessageGradientHeld, measureOutgoingMessageGradientHold, readOutgoingMessageGradient} from '@helpers/outgoingMessageGradient';
+import {markOutgoingMessageGradientHeld, measureOutgoingMessageGradientHold, readOutgoingMessageGradient} from '@helpers/outgoingMessageGradient';
 import type ReactionElement from '@components/chat/reaction';
 import {
   animateTracks,
@@ -480,7 +480,7 @@ function captureBubble(
     bubble,
     content,
     box: toBox(rect),
-    filled: isFilled(getBubbleBackground(style, rect)),
+    filled: isFilled(getBubbleBackground(content, style, rect)),
     parts: [],
     backgrounds: [],
     hadText: false
@@ -502,12 +502,7 @@ function captureBubble(
   if(motion) {
     // a box that cuts what it holds (media) cannot be drawn bigger or smaller than it is
     if(style.overflow === 'visible') {
-      capture.background = getBubbleBackground(style, rect);
-      // a bubble of a gradient is seen (nearly) all of its colour where it stands, not of its own under it
-      const gradient = readOutgoingMessageGradient(content);
-      if(gradient) {
-        capture.background.color = getOutgoingMessageGradientColorAt(gradient, rect);
-      }
+      capture.background = getBubbleBackground(content, style, rect);
       capture.tail = copyTail(content, rect);
     }
 
@@ -1225,7 +1220,7 @@ export class BubbleTransition {
     const ways = this.motion ? motionTracks : reducedTracks;
     const style = getComputedStyle(content);
     if(this.motion && capture.background && style.overflow === 'visible') {
-      const toBackground = getBubbleBackground(style, rect);
+      const toBackground = getBubbleBackground(content, style, rect);
       const [fromFilled, toFilled] = [isFilled(capture.background), isFilled(toBackground)];
       const background = fromFilled ? capture.background : toBackground;
       const radii = toFilled ? toBackground.radii : capture.background.radii;
@@ -1244,8 +1239,7 @@ export class BubbleTransition {
       if((fromFilled || toFilled) && (isResized || fades)) {
         // a bubble of a gradient is (nearly) all of its colour where it ends up: the shape is of that, over its piece
         // of the gradient, which gives way (`.morphing`); one that has no background any more keeps the colour it was
-        const gradient = readOutgoingMessageGradient(content);
-        const color = gradient ? getOutgoingMessageGradientColorAt(gradient, toBox(rect)) : background.color;
+        const color = readOutgoingMessageGradient(content) ? toBackground.color : background.color;
         const parts = createShapeParts({...background, color, radii}, tail?.element);
         const under = createLayer();
         under.classList.add(styles.under);

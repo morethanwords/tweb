@@ -5,11 +5,12 @@
 import {animateSingle, cancelAnimationByKey} from '@helpers/animation';
 import {hexToRgb} from '@helpers/color';
 import {easeOutQuadApply} from '@helpers/easing/easeOutQuad';
+import {getGradientPixels, GRADIENT_PHASES, GRADIENT_POSITIONS, GRADIENT_SIZE, GradientPoint} from '@helpers/freeformGradient';
 
-const WIDTH = 50;
+const WIDTH = GRADIENT_SIZE;
 const HEIGHT = WIDTH;
 
-type Point = {x: number, y: number};
+type Point = GradientPoint;
 
 export default class ChatBackgroundGradientRenderer {
   private readonly _width = WIDTH;
@@ -27,17 +28,8 @@ export default class ChatBackgroundGradientRenderer {
     24.9, 25.2, 25.5, 25.8, 26.1, 26.3, 26.4, 26.5, 26.6, 26.7, 26.8, 26.9, 27
   ];
   private readonly _incrementalCurve: number[];
-  private readonly _positions: Point[] = [
-    {x: 0.80, y: 0.10},
-    {x: 0.60, y: 0.20},
-    {x: 0.35, y: 0.25},
-    {x: 0.25, y: 0.60},
-    {x: 0.20, y: 0.90},
-    {x: 0.40, y: 0.80},
-    {x: 0.65, y: 0.75},
-    {x: 0.75, y: 0.40}
-  ];
-  private readonly _phases = this._positions.length;
+  private readonly _positions = GRADIENT_POSITIONS;
+  private readonly _phases = GRADIENT_PHASES;
   // private _onWheelRAF: number;
   // private _scrollDelta: number;
 
@@ -199,66 +191,7 @@ export default class ChatBackgroundGradientRenderer {
 
   private getGradientImageData(positions: Point[], phase = this._phase, progress = 1 - this._tail / this._tails) {
     const id = this._hctx.createImageData(this._width, this._height);
-    const pixels = id.data;
-    const colorsLength = this._colors.length;
-
-    const positionsForPhase = (phase: number) => {
-      const result: typeof positions = [];
-      for(let i = 0; i != 4; ++i) {
-        result[i] = {...this._positions[(phase + i * 2) % this._positions.length]};
-        result[i].y = 1.0 - result[i].y;
-      }
-      return result;
-    };
-
-    const previousPhase = (phase + 1) % this._positions.length;
-    const previous = positionsForPhase(previousPhase);
-    const current = positionsForPhase(phase);
-
-    let offset = 0;
-    for(let y = 0; y < this._height; ++y) {
-      const directPixelY = y / this._height;
-      const centerDistanceY = directPixelY - 0.5;
-      const centerDistanceY2 = centerDistanceY * centerDistanceY;
-      for(let x = 0; x < this._width; ++x) {
-        const directPixelX = x / this._width;
-        const centerDistanceX = directPixelX - 0.5;
-        const centerDistance = Math.sqrt(centerDistanceX * centerDistanceX + centerDistanceY2);
-
-        const swirlFactor = 0.35 * centerDistance;
-        const theta = swirlFactor * swirlFactor * 0.8 * 8.0;
-        const sinTheta = Math.sin(theta);
-        const cosTheta = Math.cos(theta);
-
-        const pixelX = Math.max(0.0, Math.min(1.0, 0.5 + centerDistanceX * cosTheta - centerDistanceY * sinTheta));
-        const pixelY = Math.max(0.0, Math.min(1.0, 0.5 + centerDistanceX * sinTheta + centerDistanceY * cosTheta));
-
-        let distanceSum = 0.0;
-        let r = 0.0;
-        let g = 0.0;
-        let b = 0.0;
-        for(let i = 0; i < colorsLength; ++i) {
-          const colorX = previous[i].x + (current[i].x - previous[i].x) * progress;
-          const colorY = previous[i].y + (current[i].y - previous[i].y) * progress;
-
-          const distanceX = pixelX - colorX;
-          const distanceY = pixelY - colorY;
-
-          let distance = Math.max(0.0, 0.9 - Math.sqrt(distanceX * distanceX + distanceY * distanceY));
-          distance = distance * distance * distance * distance;
-          distanceSum += distance;
-
-          r += distance * this._colors[i].r;
-          g += distance * this._colors[i].g;
-          b += distance * this._colors[i].b;
-        }
-
-        pixels[offset++] = r / distanceSum;
-        pixels[offset++] = g / distanceSum;
-        pixels[offset++] = b / distanceSum;
-        pixels[offset++] = 0xFF;
-      }
-    }
+    getGradientPixels(this._colors, phase, progress, this._width, this._height, id.data);
     return id;
   }
 

@@ -17,29 +17,76 @@
   }
 }
 
-// * the gradient of the outgoing bubbles (`--message-out-gradient-image`, `none` when the theme gives them one colour)
+// * the gradient of the outgoing bubbles (`--message-out-gradient-image-<phase>`, `none` when the theme gives them one colour)
 // * over a part of one that clips it: a piece of it fixed to the chat's frame (`.bubbles`, whose transform makes it the
-// * box what is fixed in it is laid out in) and stretched across that from its column a pixel wide. The compositor
-// * keeps it in place as the chat scrolls and draws it from the column, so a scroll restyles and repaints nothing more.
-// * A transform on the bubble or its wrapper takes the piece in, and it is placed there where the frame is (below)
+// * box what is fixed in it is laid out in), the vertical one stretched across that from its column a pixel wide, the
+// * freeform one (`--message-out-gradient-freeform: 1`) as wide as the frame. The compositor keeps it in place as the
+// * chat scrolls and draws it from its picture, so a scroll restyles and repaints nothing more. A transform on the
+// * bubble or its wrapper takes the piece in, and it is placed there where the frame is (below)
+@mixin message-out-gradient-piece {
+  content: "";
+  position: fixed;
+  // * where the frame is, against what took the piece in (below)
+  inset: var(--message-out-gradient-top, 0) auto auto var(--message-out-gradient-left, 0);
+  width: calc(1px + (var(--message-out-gradient-width, 100%) - 1px) * var(--message-out-gradient-freeform, 0));
+  height: var(--message-out-gradient-height, 100%);
+  border-radius: 0;
+  background-size: 100% 100%;
+  // * the column across both ways: what took it in may start inside the bubble's tail
+  transform: scaleX(calc(20000 - 19999 * var(--message-out-gradient-freeform, 0)));
+  transform-origin: 50% 0;
+  pointer-events: none;
+}
+
 @mixin message-out-gradient {
   @supports (clip-path: border-box) {
     &::before {
-      content: "";
-      position: fixed;
-      // * where the frame is, against what took the piece in (below)
-      inset: var(--message-out-gradient-top, 0) auto auto 0;
-      width: 1px;
-      height: var(--message-out-gradient-height, 100%);
-      border-radius: 0;
+      @include message-out-gradient-piece;
       // * longhands: a shorthand of a `var()` next to one is serialized empty, and the Picture-in-Picture window gets
       // * the app's styles as text (`mirrorDocumentStyles`)
-      background-image: var(--message-out-gradient-image);
-      background-size: 100% 100%;
-      // * across both ways: what took it in may start inside the bubble's tail
-      transform: scaleX(20000);
-      transform-origin: 50% 0;
-      pointer-events: none;
+      background-image: var(--message-out-gradient-phase-image, var(--message-out-gradient-image-0));
+    }
+
+    // * the freeform gradient's next phase, which comes up over this one as a message is sent and then takes its place
+    // * (`advanceOutgoingMessageGradient`): there from the start, as an opacity changed with the display set is not
+    // * animated
+    &::after {
+      @include message-out-gradient-piece;
+      display: var(--message-out-gradient-next-display, none);
+      background-image: var(--message-out-gradient-next-image, var(--message-out-gradient-image-7));
+      opacity: var(--message-out-gradient-next-opacity, 0);
+      // * the wallpaper's easing (`ChatBackgroundGradientRenderer`, easeOutQuad)
+      transition: opacity var(--message-out-gradient-next-duration, 0ms) cubic-bezier(.25, .46, .45, .94);
+    }
+  }
+}
+
+// * the freeform gradient's phase and its move to the next one, classes of the chat's frame
+// * (`advanceOutgoingMessageGradient`), set on its pieces, not there: a property changed there restyles every message.
+// * The pictures are the nearest theme's, the same one at every phase but the freeform gradient's
+@each $phase in 0, 1, 2, 3, 4, 5, 6, 7 {
+  .message-out-gradient-phase-#{$phase} {
+    .bubble-gradient,
+    .bubble-gradient ~ .bubble-tail {
+      --message-out-gradient-phase-image: var(--message-out-gradient-image-#{$phase});
+      --message-out-gradient-next-image: var(--message-out-gradient-image-#{($phase + 7) % 8});
+    }
+  }
+}
+
+.is-message-out-gradient-advancing {
+  .bubble-gradient,
+  .bubble-gradient ~ .bubble-tail {
+    --message-out-gradient-next-opacity: 1;
+  }
+}
+
+// * as long as the scroll the wallpaper moves with, in steps of 50ms
+@for $step from 5 through 12 {
+  .message-out-gradient-advance-#{$step * 50} {
+    .bubble-gradient,
+    .bubble-gradient ~ .bubble-tail {
+      --message-out-gradient-next-duration: #{$step * 50}ms;
     }
   }
 }
@@ -2267,7 +2314,8 @@
         & ~ .bubble-tail {
           background-color: var(--light-filled-message-primary-color);
 
-          &::before {
+          &::before,
+          &::after {
             content: none;
           }
         }
@@ -2343,6 +2391,12 @@
         .stacked-avatars {
           --border-color: var(--background-color);
         }
+      }
+
+      // * of the bubble's colour where the accent it stands on is white (an outgoing one of a theme's colours at night),
+      // * as a tag's is
+      &.is-chosen.forwards {
+        --counter-color: var(--message-icon-text-color);
       }
     }
 
@@ -3720,12 +3774,59 @@
     @include message-out-gradient;
   }
 
+  // * with a gradient the bubble's colour is painted under its piece, in the piece's clip, and not by the bubble
+  // * (`--message-out-gradient-content-background`): the compositor may cut the piece a pixel short of the bubble's edge
+  @supports (clip-path: border-box) {
+    &:not(.just-media) {
+      // * one the chat rendered with its piece (`has-gradient`): elsewhere a bubble is drawn without one (a message
+      // * prepared to be sent, an entry of the recent actions), and keeps its colour
+      .bubble-content.has-gradient {
+        background-color: var(--message-out-gradient-content-background, var(--message-background-color));
+      }
+
+      .bubble-gradient {
+        background-color: var(--message-out-gradient-under, var(--message-background-color));
+      }
+    }
+  }
+
+  // * a reaction over a gradient is a see-through tint of the accent, as on iOS and Android
+  // * (`--message-out-gradient-light-primary-color`), and its avatars are cut out of each other rather than parted by a
+  // * ring of its colour: each is cut where the next one, on its inline start, lies over it with its ring
+  .message .reaction {
+    // * a chosen one is of its own colour, a tag's included
+    &:not(.is-chosen),
+    &.is-chosen.backwards {
+      --background-color: var(--message-out-gradient-light-primary-color, var(--light-filled-message-primary-color));
+
+      .stacked-avatars {
+        --border-color: var(--message-out-gradient-content-background, var(--background-color));
+      }
+    }
+
+    .stacked-avatars-avatar-container:not(.is-last) {
+      --cut-radius: calc(var(--avatar-total-size) / 2);
+      --cut-x: calc(-1 * var(--margin-right) - var(--cut-radius));
+      mask-image: radial-gradient(
+        circle at var(--cut-x) 50%,
+        var(--message-out-gradient-content-background, #000) var(--cut-radius),
+        #000 calc(var(--cut-radius) + .5px)
+      );
+
+      .is-rtl & {
+        --cut-x: calc(100% + var(--margin-right) + var(--cut-radius));
+      }
+    }
+  }
+
   // * a transform on it takes the pieces of its gradient in, which are placed where the frame was read to be before
   // * it (`holdOutgoingMessageGradient`): a swipe, a ladder's zoom, a move aside for a change of another
   &.is-gesturing-reply,
   &.is-gradient-held,
   .can-zoom-fade {
+    --message-out-gradient-left: var(--message-out-gradient-held-left);
     --message-out-gradient-top: var(--message-out-gradient-held-top);
+    --message-out-gradient-width: var(--message-out-gradient-held-width);
     --message-out-gradient-height: var(--message-out-gradient-held-height);
   }
 

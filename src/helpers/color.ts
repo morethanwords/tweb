@@ -323,11 +323,17 @@ export function calculateLuminance(rgb: ColorRgb) {
  * @param rgb r, g, b in [0, 255]
  */
 export function relativeLuminance(rgb: ColorRgb): number {
-  const lin = (c: number) => {
-    c /= 255;
-    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  };
-  return 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2]);
+  return channelsLuminance(rgb[0], rgb[1], rgb[2]);
+}
+
+/** `relativeLuminance` of a colour given by its channels, for a loop over many colours */
+export function channelsLuminance(r: number, g: number, b: number) {
+  return 0.2126 * linearize(r) + 0.7152 * linearize(g) + 0.0722 * linearize(b);
+}
+
+function linearize(c: number) {
+  c /= 255;
+  return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
 }
 
 /** WCAG contrast ratio of two colours, from 1 to 21 */

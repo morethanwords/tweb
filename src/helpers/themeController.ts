@@ -4,7 +4,7 @@ import type {BaseTheme, Theme, ThemeSettings} from '@layer';
 import {blendWallpaperForTinted, presetThemeId, presetToThemeSettings} from '@config/themePresets';
 import type {AppBackgroundTab} from '@components/sidebarLeft/tabs/background';
 import type {AppChatBackground} from '@components/chat/bubbles/chatBackground';
-import {getOutgoingMessageGradientColors, keepReadableOnOutgoingMessageGradient, makeOutgoingMessageGradient, makeOutgoingMessageGradientImage, MESSAGE_OUT_GRADIENT_IMAGE_PROPERTY, MESSAGE_OUT_GRADIENT_PROPERTY} from '@helpers/outgoingMessageGradient';
+import {applyOutgoingMessageGradient, getOutgoingMessageGradient, keepReadableOnOutgoingMessageGradient, MESSAGE_OUT_TINT} from '@helpers/outgoingMessageGradient';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import rootScope from '@lib/rootScope';
 import {changeColorAccent, ColorRgb, ensureTextContrast, getAccentColor, getAverageColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hslaStringToRgba, hslaToRgba, hsvToRgb, mixColors, relativeLuminance, rgbaToHexa, rgbaToHsla, rgbToHsv} from '@helpers/color';
@@ -53,6 +53,8 @@ const appColorMap: {[name in AppColorName]: AppColor} = {
     darkRgb: true
   },
   'message-out-primary-color': {
+    // * the tint, over a gradient of the bubbles (`--message-out-gradient-light-primary-color`)
+    light: true,
     lightFilled: true,
     rgb: true
   },
@@ -881,9 +883,8 @@ export class ThemeController {
 
     // * increased contrast keeps the bubbles of the one colour it adjusts for the text
     const outgoingTextColor = hexToRgb(baseColors['primary-text-color']);
-    const outgoingGradient = this.isHighContrast() ? undefined : getOutgoingMessageGradientColors(themeSettings.message_colors, outgoingTextColor);
-    element.style.setProperty(MESSAGE_OUT_GRADIENT_PROPERTY, makeOutgoingMessageGradient(outgoingGradient));
-    element.style.setProperty(MESSAGE_OUT_GRADIENT_IMAGE_PROPERTY, makeOutgoingMessageGradientImage(outgoingGradient));
+    const outgoingGradient = this.isHighContrast() ? undefined : getOutgoingMessageGradient(themeSettings.message_colors, !!themeSettings.pFlags?.message_colors_animated, outgoingTextColor);
+    applyOutgoingMessageGradient(element, outgoingGradient);
 
     if(!themeSettings.message_colors?.length) {
       return;
@@ -944,7 +945,9 @@ export class ThemeController {
       name: 'message-out-primary-color',
       // * the time, the ticks and the links of a bubble of a gradient are read on all of it
       hex: isNight ? '#ffffff' : outgoingGradient ? keepReadableOnOutgoingMessageGradient(outgoingAccent, outgoingGradient) : outgoingAccent,
-      mixColor: newMessageOutBackgroundColor
+      mixColor: newMessageOutBackgroundColor,
+      // * a reaction's tint, which the colour is read on over a gradient
+      lightenAlpha: MESSAGE_OUT_TINT
     });
 
     // if(accentColor2) {

@@ -58,8 +58,7 @@ import {lerp} from '@helpers/lerp';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import type LottiePlayer from '@lib/lottie/lottiePlayer';
 import {getSendingStatusIconState, setSendingStatusIconState, settleSendingStatusIconCopy} from '@components/sendingStatusIcon';
-import {getOutgoingMessageGradientColorAt, readOutgoingMessageGradient} from '@helpers/outgoingMessageGradient';
-import type {ColorRgb} from '@helpers/color';
+import {getOutgoingMessageGradientColorAt, OutgoingMessageGradientPlace, readOutgoingMessageGradient} from '@helpers/outgoingMessageGradient';
 import {
   Axes,
   bubbleShapeStyles,
@@ -868,7 +867,7 @@ export abstract class SendFlight {
     }
 
     const now = this.sinceHeld(atEnd(this.target.getBoundingClientRect(), this.flights.host.scrollToEnd()));
-    const end = this.followedEnd || this.end;
+    const end = this.getLanding();
     const delta: Box = {
       left: now.left - end.left,
       top: now.top - end.top,
@@ -940,6 +939,14 @@ export abstract class SendFlight {
 
   /** the place the copy lands on has moved to `end` */
   protected followLanding(end: Box) {}
+
+  /** where the copy lands now: a move of the list it goes with is followed apart from its own way (`end`) */
+  protected getLanding() {
+    return this.followedEnd || this.end;
+  }
+
+  /** the outgoing bubbles' gradient moves on to its next phase (`advanceOutgoingMessageGradient`) */
+  public followGradient() {}
 
   // the way is over: the copy goes once the list is at its end, where the message is under it
   private settle = () => {
@@ -1094,7 +1101,7 @@ class TextFlight extends SendFlight {
   private keepFieldText: boolean;
   private background: BubbleBackground;
   // the gradient an outgoing bubble shows the part of where it stands, and the box it spans; and what is of the colour
-  private gradient: {colors: ColorRgb[], frame: Box};
+  private gradient: OutgoingMessageGradientPlace;
   private fill: HTMLElement;
   // the bubble's corners and tail change as it joins a group or leaves one, on the way too
   private shapeObserver: MutationObserver;
@@ -1219,13 +1226,14 @@ class TextFlight extends SendFlight {
     }
 
     const contentStyle = getComputedStyle(content);
-    if(!hasBackground(contentStyle.backgroundColor)) {
+    const contentRect = content.getBoundingClientRect();
+    const background = getBubbleBackground(content, contentStyle, contentRect);
+    if(!hasBackground(background.color)) {
       return this.prepareEmoji(bubble, wrapper);
     }
 
     this.hidden.push(wrapper);
     const bubbleRect = bubble.getBoundingClientRect();
-    const contentRect = content.getBoundingClientRect();
     this.target = content;
     this.fixedWidth = true;
     this.contentOffset = {x: contentRect.left - bubbleRect.left, y: contentRect.top - bubbleRect.top};
@@ -1258,9 +1266,9 @@ class TextFlight extends SendFlight {
       };
     }
 
-    this.background = getBubbleBackground(contentStyle, contentRect);
+    this.background = background;
     const gradient = readOutgoingMessageGradient(content);
-    this.gradient = gradient && {colors: gradient.colors, frame: this.sinceHeld(toBox(gradient.frame))};
+    this.gradient = gradient && {picture: gradient.picture, frame: this.sinceHeld(toBox(gradient.frame))};
     // the tail goes with the background's corner
     const tail = copyTail(content, contentRect);
     this.tail = tail?.element;
@@ -1405,6 +1413,19 @@ class TextFlight extends SendFlight {
 
   protected followLanding(end: Box) {
     this.paint(end);
+  }
+
+  // * the copy lands in the colour of the phase the gradient moves on to, as the bubbles around it come to it. The move
+  // * starts with the scroll the copy flies with, while its background is still coming in (`BACKGROUND_IN`): changed at
+  // * once, the colour is not seen changing, and nothing of the copy is restyled on every frame for it
+  public followGradient() {
+    const gradient = this.gradient && readOutgoingMessageGradient(this.target);
+    if(!gradient || gradient.picture === this.gradient.picture) {
+      return;
+    }
+
+    this.gradient = {...this.gradient, picture: gradient.picture};
+    this.paint(this.getLanding());
   }
 
   /**
@@ -1861,6 +1882,15 @@ export default class SendFlights {
     .filter((flight) => flight !== launched && flight.launched && !flight.done)
     .map((flight) => flight.measureFollow(true));
     updates.forEach((update) => update?.());
+  }
+
+  /** the outgoing bubbles' gradient moves on to its next phase as the chat sends */
+  public followGradient() {
+    for(const flight of this.shown) {
+      if(flight.launched && !flight.done) {
+        flight.followGradient();
+      }
+    }
   }
 
   /** every copy goes at once: the chat it is drawn over changes, or moves to another window */

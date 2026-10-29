@@ -221,7 +221,7 @@ import {
 import isSuspiciousPeer from '@appManagers/utils/peers/isSuspiciousPeer';
 import ejectBubble from '@components/chat/bubbles/ejectBubble';
 import {generateGradient, generateTail, getGuestChatViaFromId, getMid, isGuestChatMessage, isMessage, isMessageForVerificationBot, isVerificationBot} from '@components/chat/utils';
-import {holdOutgoingMessageGradient} from '@helpers/outgoingMessageGradient';
+import {advanceOutgoingMessageGradient, holdOutgoingMessageGradient} from '@helpers/outgoingMessageGradient';
 import {ChecklistBubble} from '@components/chat/bubbles/checklist';
 import {getRestrictionReason} from '@helpers/restrictions';
 import {isMessageSensitive} from '@appManagers/utils/messages/isMessageRestricted';
@@ -5952,6 +5952,10 @@ export default class ChatBubbles {
         if(this.updateGradient) {
           const {gradientRenderer} = this.chat;
           gradientRenderer?.toNextPosition(dimensions.getProgress);
+          // * the outgoing bubbles' freeform gradient moves with it, and a copy flying into it lands in its new colour
+          if(advanceOutgoingMessageGradient(this.container, dimensions.duration)) {
+            this.sendFlights?.followGradient();
+          }
           this.updateGradient = undefined;
         }
       }
@@ -12246,6 +12250,7 @@ export default class ChatBubbles {
     // * after what it covers that is drawn at its level, a background or a document's selection, and before the tail,
     // * which takes the gradient where it follows it (`.bubble-gradient`)
     if(isOut) {
+      bubbleContainer.classList.add('has-gradient');
       bubbleContainer.append(generateGradient());
     }
     if(context.canHaveTail || isRound) {

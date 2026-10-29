@@ -1,5 +1,7 @@
 import {unwrapEasing} from '@helpers/easings';
 import themeController from '@helpers/themeController';
+import {hexToRgb} from '@helpers/color';
+import {getOutgoingMessageGradientColorAt, readOutgoingMessageGradient} from '@helpers/outgoingMessageGradient';
 
 export const UnwrapEasing = unwrapEasing;
 
@@ -111,11 +113,12 @@ function blendColors(base: RGBA, overlay: RGBA): RGBA {
   };
 }
 
-export function computeFinalBackgroundColor(element: HTMLElement) {
-  let color = {r: 0, g: 0, b: 0, a: 0};
+// * what the element and its ancestors paint, one over another, up to `until` (not included)
+function blendBackgrounds(element: HTMLElement, until?: Element) {
+  let color: RGBA = {r: 0, g: 0, b: 0, a: 0};
   let maxDepth = 10;
 
-  while(element && color.a < 1 && maxDepth--) {
+  while(element && element !== until && color.a < 1 && maxDepth--) {
     const bgColor = window.getComputedStyle(element).backgroundColor;
     if(bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
       const rgba = parseRgba(bgColor);
@@ -124,7 +127,14 @@ export function computeFinalBackgroundColor(element: HTMLElement) {
     element = element.parentElement;
   }
 
-  return color.a === 1 ? `rgb(${color.r}, ${color.g}, ${color.b})` : undefined;
+  return color;
+}
+
+const toRgb = (color: RGBA) => `rgb(${color.r}, ${color.g}, ${color.b})`;
+
+export function computeFinalBackgroundColor(element: HTMLElement) {
+  const color = blendBackgrounds(element);
+  return color.a === 1 ? toRgb(color) : undefined;
 }
 
 /**
@@ -150,7 +160,22 @@ function getSpoilerClipRect(el: HTMLElement, root: HTMLElement) {
 }
 
 export function getCustomDOMRectsForSpoilerSpan(el: HTMLElement, parentRect: DOMRect, root: HTMLElement): CustomDOMRect[] {
-  const color = computeFinalBackgroundColor(el);
+  // * a bubble of a gradient paints no colour of its own (`message-out-gradient`): the mask is of what is over the
+  // * gradient (a quote's tint), over the gradient's colour where the spoiler is
+  const content = el.closest('.bubble-content');
+  const gradient = content && readOutgoingMessageGradient(content);
+  const over = gradient && blendBackgrounds(el, content);
+  const color = gradient ? undefined : computeFinalBackgroundColor(el);
+  const getColor = (rect: CustomDOMRect) => {
+    if(!gradient) {
+      return color;
+    }
+
+    const box = {left: rect.left, top: rect.top, right: rect.left + rect.width, bottom: rect.top + rect.height};
+    const [r, g, b] = hexToRgb(getOutgoingMessageGradientColorAt(gradient, box));
+    return toRgb(blendColors({r, g, b, a: 1}, over));
+  };
+
   const clip = getSpoilerClipRect(el, root);
 
   return toDOMRectArray(el.getClientRects())
@@ -160,7 +185,7 @@ export function getCustomDOMRectsForSpoilerSpan(el: HTMLElement, parentRect: DOM
     return {left, top, width: Math.min(rect.right, clip.right) - left, height: Math.min(rect.bottom, clip.bottom) - top};
   })
   .filter((rect) => rect.width > 0 && rect.height > 0)
-  .map((spoilerRect) => ({...getInnerCustomRect(parentRect, spoilerRect), color}));
+  .map((spoilerRect) => ({...getInnerCustomRect(parentRect, spoilerRect), color: getColor(spoilerRect)}));
 }
 
 export function adjustSpaceBetweenCloseRects(rects: CustomDOMRect[]): CustomDOMRect[] {

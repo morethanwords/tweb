@@ -13,6 +13,7 @@ import {hideToast, toastNew} from '@components/toast';
 import wrapDocument from '@components/wrappers/document';
 import {SpinnerElement} from '@components/spinner';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {getBubbleBackground} from '@components/chat/bubbleShape';
 
 
 type WrapRoundVideoBubbleOptions = {
@@ -96,6 +97,8 @@ export function wrapRoundVideoBubble({
     const initialThumbSize = initialThumbBcr.width;
 
     const contentStyle = window.getComputedStyle(content);
+    // * what is seen: a bubble of a gradient paints no colour of its own, and its piece goes with `.just-media` below
+    const background = getBubbleBackground(content, contentStyle, content.getBoundingClientRect()).color;
 
     const initialRadiuses = [
       contentStyle.borderStartStartRadius,
@@ -121,7 +124,7 @@ export function wrapRoundVideoBubble({
     content.style.height = initialHeight + 'px';
     content.style.width = initialWidth + 'px';
     content.style.overflow = 'hidden';
-    content.style.setProperty('background', contentStyle.background, 'important');
+    content.style.setProperty('background', background, 'important');
 
     audioMessageContainer.style.width = audioMessageContainer.clientWidth + 'px';
     audioMessageContainer.style.height = audioMessageContainer.clientHeight + 'px';
