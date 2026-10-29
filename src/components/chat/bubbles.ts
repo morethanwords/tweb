@@ -42,7 +42,7 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import {countFirstScreen, estimateBubbleHeight, FirstScreenPlace, getAlbumBubbleMessage, getBubbleHeightAtLeast, joinHistories, keepFrom, keepRange, measureTextWidth, MessageTextMetrics} from '@components/chat/firstScreenHistory';
 import findUpTag from '@helpers/dom/findUpTag';
 import {hideToast, toastNew} from '@components/toast';
-import {getMiddleware, Middleware} from '@helpers/middleware';
+import {getMiddleware, Middleware, MiddlewareHelper} from '@helpers/middleware';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent, CLICK_EVENT_NAME, simulateClickEvent} from '@helpers/dom/clickEvent';
 import htmlToDocumentFragment from '@helpers/dom/htmlToDocumentFragment';
@@ -461,6 +461,13 @@ export function setBubbleHiddenLinksPending(bubble: HTMLElement, pending: boolea
   }
 
   bubble.removeAttribute(HIDDEN_LINKS_PENDING_ATTRIBUTE);
+}
+
+// * the peer's middleware outlives every bubble a slice or a deletion takes off, so what it keeps for one holds the
+// * bubble weakly - and is bound, not a closure, which would keep the whole render's scope with the bubble in it:
+// * every bubble scrolled past stayed in memory, its DOM with it, until the chat was left
+function destroyDetachedBubble(bubble: WeakRef<HTMLElement>, middlewareHelper: MiddlewareHelper) {
+  if(!bubble.deref()?.isConnected) middlewareHelper.destroy();
 }
 
 function setBubbleHiddenLinksFallback(bubble: HTMLElement, guarded: boolean) {
@@ -8167,9 +8174,7 @@ export default class ChatBubbles {
       newBubble.dataset.mid = '' + (isMessage(message) ? message.mid : message.id);
       newBubble.dataset.peerId = '' + (isMessage(message) ? message.peerId : this.chat.peerId);
       newBubble.dataset.timestamp = '' + message.date;
-      realMiddleware.onClean(() => {
-        if(!newBubble.isConnected) middlewareHelper.destroy();
-      });
+      realMiddleware.onClean(destroyDetachedBubble.bind(null, new WeakRef(newBubble), middlewareHelper));
 
       // const bubbleNew: Bubble = this.bubblesNew[message.mid] ??= {
       //   bubble: newBubble,

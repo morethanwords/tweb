@@ -500,7 +500,10 @@ export const AvatarNew = (props: {
   onCleanup(() => {
     lastRenderPromise = undefined;
     middlewareHelper.destroy();
+    // * gone, it has nothing more to wait for: a load it started stops here, and whoever awaits its thumb (a chat's
+    // * batch, for a group emptied before its mount) would wait for it until its timeout
     readyPromise.resolve();
+    readyThumbPromise.resolve();
     cleanLastKey();
 
     (props.lazyLoadQueue as LazyLoadQueue)?.delete({div: node});

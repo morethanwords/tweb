@@ -369,6 +369,8 @@ export class BubbleGroup {
 
   onItemUnmount() {
     if(!this.mounted) {
+      // * emptied before it was ever mounted: it has left the list for good all the same (removeItem)
+      if(!this.items.length) this.middlewareHelper.destroy();
       return;
     }
 
@@ -378,7 +380,9 @@ export class BubbleGroup {
       this.dateContainer = undefined;
       this.chat.bubbles.deleteEmptyDateGroups();
       this.mounted = false;
-      this.middlewareHelper.clean();
+      // * destroyed, not cleaned: an empty group has left the list for good (removeItem, and nothing puts a bubble
+      // * into it again), and what it owns - its avatar's root - goes now rather than when the chat is left
+      this.middlewareHelper.destroy();
       this.groups?.updateGroupsClassNames();
     } else {
       this.updateClassNames();
