@@ -23,7 +23,7 @@ import {IS_APPLE, IS_MOBILE_SAFARI} from '@environment/userAgent';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import findUpTag from '@helpers/dom/findUpTag';
-import App from '@config/app';
+import App, {getAppVersionText} from '@config/app';
 import Modes from '@config/modes';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import sessionStorage from '@lib/sessionStorage';
@@ -1984,7 +1984,7 @@ function getVersionLink() {
   });
   const t = document.createElement('span');
   t.classList.add('btn-menu-footer-text');
-  t.textContent = `Telegram Web${App.suffix} ${App.version} (${App.build})`;
+  t.textContent = getAppVersionText();
   btnMenuFooter.append(t);
 
   return btnMenuFooter;

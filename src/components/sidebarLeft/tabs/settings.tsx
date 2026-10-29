@@ -32,6 +32,10 @@ import {openSettingsSearchItem} from '@lib/settingsSearch/navigate';
 import {ROOT_SECTION_ID} from '@lib/settingsSearch/registry';
 import {bumpRecentSettingsSearch} from '@lib/settingsSearch/recent';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import A11yButton from '@components/a11yButton';
+import {getAppVersionText} from '@config/app';
+import {getKeptFlags} from '@config/modes';
+import styles from '@components/sidebarLeft/tabs/settings.module.scss';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper — wraps a sub-tab declaration. If the tab has a static `getInitArgs`,
@@ -358,6 +362,17 @@ const Settings = () => {
   // Lottie workers preload — fire and forget.
   lottieLoader.loadLottieWorkers();
 
+  // ── The version at the bottom opens Settings → Experimental, and says so while
+  //    something there stays on for the whole site.
+  const [experimentalOn, setExperimentalOn] = createSignal(getKeptFlags().size > 0);
+  const openExperimental = () => {
+    const experimentalTab = tab.slider.createTab(hotReloadGuard.tabs.AppExperimentalTab);
+    experimentalTab.eventListener.addEventListener('close', () => {
+      setExperimentalOn(getKeptFlags().size > 0);
+    }, {once: true});
+    experimentalTab.open(hotReloadGuard.tabs.getExperimentalInitArgs());
+  };
+
   return (
     <>
       <InlinePortal mount={searchLayer}>
@@ -434,6 +449,12 @@ const Settings = () => {
           </Row>
         </Section>
       </Show>
+      <A11yButton class={styles.version} onClick={openExperimental}>
+        <span dir="ltr">{getAppVersionText()}</span>
+        <Show when={experimentalOn()}>
+          <span class={styles.versionOn}>{i18n('Experimental.OnNotice')}</span>
+        </Show>
+      </A11yButton>
     </>
   );
 };

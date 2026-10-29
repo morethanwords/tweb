@@ -10,6 +10,7 @@ import type {AppAvatarsManager, PeerPhotoSize} from '@appManagers/appAvatarsMana
 import rootScope, {BroadcastEvents} from '@lib/rootScope';
 import webpWorkerController from '@lib/webp/webpWorkerController';
 import DEBUG, {MOUNT_CLASS_TO} from '@config/debug';
+import {isLogBufferEnabled} from '@lib/debug/logsBuffer';
 import sessionStorage from '@lib/sessionStorage';
 import {writeEncryptionKeyHandoff} from '@lib/passcode/keyHandoff';
 import webPushApiManager from '@lib/webPushApiManager';
@@ -75,7 +76,7 @@ import {
 import SlicedArray, {SliceEnd} from '@helpers/slicedArray';
 import {createHistoryStorageSearchSlicedArray} from '@appManagers/utils/messages/createHistoryStorage';
 import tabId from '@config/tabId';
-import Modes from '@config/modes';
+import Modes, {getURLWithoutFlags} from '@config/modes';
 import appNavigationController from '@components/appNavigationController';
 import {BroadcastChannelWrapper, createBroadcastChannelWrapper} from './broadcastChannelWrapper';
 import {MainBroadcastChannelEvents, unversionedMainBroadcastChannelName} from '@config/broadcastChannel';
@@ -547,8 +548,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
     this.mainBroadcastChannel = createBroadcastChannelWrapper<MainBroadcastChannelEvents>(unversionedMainBroadcastChannelName);
 
-    this.mainBroadcastChannel.on('reload', () => {
-      appNavigationController.reload();
+    this.mainBroadcastChannel.on('reload', (payload) => {
+      appNavigationController.reload(payload ? getURLWithoutFlags(payload.dropFlags) : undefined);
     });
 
     this.cacheStorageThreadedControls = createCacheStorageThreadedControls({apiManagerProxy: this});
@@ -718,9 +719,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.log('Passing environment:', ENVIRONMENT);
     this.invoke('environment', ENVIRONMENT);
     // The worker's own location.search has no ?debug=1, so DEBUG is false there
-    // in production. Mirror the page's debug state so the worker records logs
-    // too. Fire-and-forget; re-applied on every (re)connect.
-    this.invokeVoid('setLogBufferEnabled', DEBUG);
+    // in production. Mirror the page's state - debug, or logs collected from
+    // Settings → Experimental - so the worker records logs too. Fire-and-forget;
+    // re-applied on every (re)connect.
+    this.invokeVoid('setLogBufferEnabled', isLogBufferEnabled());
   }
 
   public pingServiceWorkerWithIframe() {
@@ -768,7 +770,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.serviceMessagePort.attachSendPort(this.lastServiceWorker = serviceWorker);
     this.serviceMessagePort.invokeVoid('hello', undefined);
     this.serviceMessagePort.invokeVoid('environment', ENVIRONMENT);
-    this.serviceMessagePort.invokeVoid('setLogBufferEnabled', DEBUG);
+    this.serviceMessagePort.invokeVoid('setLogBufferEnabled', isLogBufferEnabled());
     this.sendPasscodeStateToServiceWorker();
   }
 
@@ -1528,9 +1530,18 @@ class ApiManagerProxy extends MTProtoMessagePort {
   }
 
   public lock() {
+    this.reloadEveryTab();
+  }
+
+  /**
+   * Every tab of the site starts again. The worker they share goes first, so none of them comes back to it: the
+   * next one starts with what has changed. `dropFlags` leave every tab's URL; `url` is where this tab goes, when its
+   * own query string changes more than that
+   */
+  public reloadEveryTab(dropFlags: string[] = [], url?: URL) {
     this.invokeVoid('terminate', undefined);
-    this.mainBroadcastChannel.emitVoid('reload');
-    appNavigationController.reload();
+    this.mainBroadcastChannel.emit('reload', dropFlags.length ? {dropFlags} : undefined);
+    appNavigationController.reload(url ?? getURLWithoutFlags(dropFlags));
   }
 
   public async clearCacheStoragesByNames(names: CacheStorageDbName[]) {

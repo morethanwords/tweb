@@ -1,3 +1,4 @@
+import {getLoadedWorkerFlags, isPageOnlyFlag} from '@config/modes';
 import {CURRENT_ACCOUNT_QUERY_PARAM} from '@lib/accounts/constants';
 import {THREADED_WORKER_PROTOCOL_QUERY_PARAM} from '@lib/threadedWorkerTypes';
 
@@ -6,11 +7,16 @@ export function makeWorkerURL(url: string | URL) {
     url = new URL(url + '', location.href);
   }
 
-  if(location.search && url.protocol !== 'blob:') {
+  if(url.protocol !== 'blob:') {
     const params = new URLSearchParams(location.search);
     params.forEach((value, key) => {
-      if(key === CURRENT_ACCOUNT_QUERY_PARAM || key === THREADED_WORKER_PROTOCOL_QUERY_PARAM) return;
+      if(key === CURRENT_ACCOUNT_QUERY_PARAM || key === THREADED_WORKER_PROTOCOL_QUERY_PARAM || isPageOnlyFlag(key)) return;
       (url as URL).searchParams.set(key, value);
+    });
+
+    // * and the flags kept on for the site, which the worker cannot read itself
+    getLoadedWorkerFlags().forEach((flag) => {
+      (url as URL).searchParams.set(flag, '1');
     });
   }
 

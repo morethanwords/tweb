@@ -1,0 +1,19 @@
+// "Test DC" (src/index.ts, while Modes.test): the preview badge's look (scripts/preview-switcher.js), in the opposite
+// corner, where it does not cover that one; a corner of the screen, so a physical one, in either direction. Nothing to
+// press: clicks go through to the app
+.test-dc-badge {
+  position: fixed;
+  z-index: 2147483000;
+  right: env(safe-area-inset-right, 0px);
+  bottom: env(safe-area-inset-bottom, 0px);
+  height: 16px;
+  padding: 0 6px 0 8px;
+  border-radius: 8px 0 0 0;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  color: #fff;
+  background: rgba(0, 0, 0, .6);
+  white-space: nowrap;
+  pointer-events: none;
+}

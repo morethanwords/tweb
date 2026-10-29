@@ -10,6 +10,7 @@
  */
 
 import DEBUG, {MOUNT_CLASS_TO} from '@config/debug';
+import Modes from '@config/modes';
 import {IS_SERVICE_WORKER, IS_WEB_WORKER} from '@helpers/context';
 import type {LogTypes} from '@lib/logger';
 
@@ -49,7 +50,8 @@ const MAX_STRING = 2048;
 const MAX_ARRAY = 64;
 const MAX_KEYS = 64;
 
-let enabled = DEBUG;
+// * or on its own (Modes.logs, Settings → Experimental); a worker follows what its page tells it (setLogBufferEnabled)
+let enabled = DEBUG || Modes.logs;
 
 type Ring = {entries: LogEntry[], head: number, count: number};
 const createRing = (): Ring => ({entries: new Array(RING_SIZE), head: 0, count: 0});
@@ -198,8 +200,8 @@ function getRingEntries(ring: Ring): LogEntry[] {
 /**
  * Hot path: called from every logger() invocation. Returns immediately (one
  * boolean check) unless buffering is enabled. Enabled === DEBUG by default, so
- * normal production users pay nothing; under dev / ?debug=1 it records the full
- * timeline. Never throws.
+ * normal production users pay nothing; under dev / ?debug=1, or with logs
+ * collected from Settings → Experimental, it records the full timeline. Never throws.
  */
 export function capture(level: LogTypes, prefix: string, args: any[]): void {
   if(!enabled) return;

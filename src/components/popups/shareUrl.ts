@@ -3,12 +3,13 @@ import {LangPackKey} from '@lib/langPack';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import {toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
-import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
-import {createCopyLinkFooter, showSharingPickerPopup} from '@components/popups/pickUser';
+import PaidMessagesInterceptor, {ConfirmedPaymentResult, PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
+import {createCopyLinkFooter, PopupPickUserOptions, showSharingPickerPopup} from '@components/popups/pickUser';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import type {AppManagers} from '@lib/managers';
 
-// Shared "send a URL via the standard sharing picker" helper. Subsumes the
+// Shared "send something via the standard sharing picker" helper. Subsumes the
 // near-identical onSelect handlers in giftLink.tsx, appMediaViewerRtmp.ts
 // (forward), sharedFolder.ts, and call/settingsPopup.tsx — each used to
 // open the picker, prep stars-payment for the single chosen peer, fire
@@ -37,38 +38,32 @@ export type ShareUrlOptions = {
   toastKeyForMany?: LangPackKey
 };
 
-export default function shareUrlToPeers(options: ShareUrlOptions): void {
-  // Only in multi-select: a single-select picker sends on the row click and has
-  // no footer of its own to take over.
-  const copyFooter = options.multiSelect && createCopyLinkFooter({
-    confirmLangKey: 'Send',
-    copy: () => {
-      copyTextToClipboard(options.url);
-      toastNew({langPackKey: 'LinkCopied'});
-    },
-    confirm: () => popup.finalize()
-  });
+export type ShareTarget = {peerId: PeerId, threadId?: number, monoforumThreadId?: PeerId};
 
-  const popup = showSharingPickerPopup({
+export type ShareToPeersOptions = Omit<ShareUrlOptions, 'url'> & Pick<PopupPickUserOptions, 'footer' | 'onChange'> & {
+  // Sends to one chosen chat, its stars paid for when it asks for them.
+  send: (managers: AppManagers, target: ShareTarget, confirmedPaymentResult: ConfirmedPaymentResult) => void,
+  // What the chats must let the user send — plain text when omitted.
+  chatRightsActions?: PopupPickUserOptions['chatRightsActions']
+};
+
+export function shareToPeers(options: ShareToPeersOptions) {
+  return showSharingPickerPopup({
     multiSelect: options.multiSelect,
-    ...(copyFooter || {}),
+    chatRightsActions: options.chatRightsActions,
+    footer: options.footer,
+    onChange: options.onChange,
     onSelect: async(chosen) => {
       const managers = bindManagersToSession(rootScope.managers);
       let sent = 0;
-      for(const {peerId, threadId, monoforumThreadId} of chosen) {
+      for(const target of chosen) {
         const preparedPayment = await PaidMessagesInterceptor.prepareStarsForPayment({
           messageCount: 1,
-          peerId
+          peerId: target.peerId
         });
         if(preparedPayment === PAYMENT_REJECTED) continue;
 
-        managers.appMessagesManager.sendText({
-          peerId,
-          threadId,
-          text: options.url,
-          replyToMonoforumPeerId: monoforumThreadId,
-          confirmedPaymentResult: preparedPayment
-        });
+        options.send(managers, target, preparedPayment);
 
         ++sent;
       }
@@ -98,6 +93,33 @@ export default function shareUrlToPeers(options: ShareUrlOptions): void {
           });
         }
       }
+    }
+  });
+}
+
+export default function shareUrlToPeers(options: ShareUrlOptions): void {
+  // Only in multi-select: a single-select picker sends on the row click and has
+  // no footer of its own to take over.
+  const copyFooter = options.multiSelect && createCopyLinkFooter({
+    confirmLangKey: 'Send',
+    copy: () => {
+      copyTextToClipboard(options.url);
+      toastNew({langPackKey: 'LinkCopied'});
+    },
+    confirm: () => popup.finalize()
+  });
+
+  const popup = shareToPeers({
+    ...options,
+    ...(copyFooter || {}),
+    send: (managers, {peerId, threadId, monoforumThreadId}, confirmedPaymentResult) => {
+      managers.appMessagesManager.sendText({
+        peerId,
+        threadId,
+        text: options.url,
+        replyToMonoforumPeerId: monoforumThreadId,
+        confirmedPaymentResult
+      });
     }
   });
 }

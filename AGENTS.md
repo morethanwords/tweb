@@ -37,6 +37,14 @@ pnpm lint:fix       # Same, with auto-fix
 
 Debug query params: `?test=1` (test DCs), `?debug=1` (verbose logging), `?noSharedWorker=1` (disable shared worker), `?noPfs=1` (turns off Perfect Forward Secrecy — temporary auth keys, `src/lib/mtproto/tempAuthKeys.ts`; on by default), `?a11y=1` (the keyboard and screen-reader layer — see "Accessibility"; off by default), `?rtl=1` (lays the app out right to left in whatever language is loaded — see "Right-to-left"), `?memoryWatch=1` (keeps a memory history of the tab — see "Memory").
 
+**Settings → Experimental** (a click on the version line at the bottom of Settings) switches the same flags without
+editing a URL, and keeps them on for the whole site: `localStorage['experimental_flags']`, read by `@config/modes`
+as the page starts and handed to the workers in their URLs (`makeWorkerURL`). Most apply after a restart, which
+reloads every tab of the site; `?test=1` stays the URL's, since the test servers have storage of their own (a page
+on them says "Test DC" in its bottom-right corner, `mountTestDcBadge` in `src/index.ts`). The
+tab also collects logs without the rest of debug mode (`Modes.logs`), and sends them to a chat, shares or downloads
+them (`@lib/debug/exportLogs`). A new flag goes into `KEPT_FLAGS` and gets a row there.
+
 ### Preview
 
 Launch an authorized local preview with `bash scripts/start-preview.sh` (never
@@ -76,7 +84,9 @@ Every popup, opened by click with mock data and **no Telegram traffic**. Two way
   `tweb-popups` server for it — a plain vite server is enough, no auth needed).
   `src/index.ts` hands over before the session is restored, so nothing but the
   sandbox ever runs.
-- `showPopupSandbox()` from the console of a running app, signed in or not. The
+- `showPopupSandbox()` from the console of a running app, signed in or not, or
+  Settings → Experimental → Popup Sandbox (a dev server, and the bundle a preview
+  builds for a remote device; a production build has neither sandbox). The
   panel opens over the app and closing it (×) puts the real managers back. The
   fixture peers/messages are merged into the mirrors key by key rather than
   replacing them, so a live session's own cache survives. While it is open, an
@@ -134,7 +144,8 @@ Either way every `rootScope.managers` call is answered from
 
 A bubble of the open chat put in any state by click, as many times as it takes
 to watch the change between two states: `showBubbleSandbox()` from the console
-of a signed-in dev server (`?static=0` through the tunnel). Its panel
+of a signed-in dev server or preview bundle, or Settings → Experimental → Bubble
+Sandbox, with the chat open first (switching chats closes it). Its panel
 (`src/components/bubbleSandbox/`) acts on the last bubble in view, or on the
 ones picked (Pick, then a click; Shift adds). A state is the message as it is
 with parts of it changed, axis by axis (`states.ts`: text of every kind, media

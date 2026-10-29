@@ -9,7 +9,7 @@ import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import appManagersManager from '@appManagers/appManagersManager';
 import listenMessagePort from '@helpers/listenMessagePort';
 import {logger} from '@lib/logger';
-import {getLogEntries, setLogBufferEnabled} from '@lib/debug/logsBuffer';
+import {clearLogBuffer, getLogEntries, setLogBufferEnabled} from '@lib/debug/logsBuffer';
 import {readThreadMemory} from '@lib/debug/memoryStats';
 import {getMemoryWriterStats} from '@lib/files/memoryWriter';
 import toggleStorages from '@helpers/toggleStorages';
@@ -75,6 +75,8 @@ port.addMultipleEventsListeners({
   },
 
   getLogs: () => getLogEntries(),
+
+  clearLogs: () => clearLogBuffer(),
 
   getMemoryStats: async() => {
     const urls = objectUrlRegistry.getStats();

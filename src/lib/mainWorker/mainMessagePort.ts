@@ -76,6 +76,7 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   // visible to the worker's own location.search).
   getLogs: (payload: void) => LogEntry[],
   setLogBufferEnabled: (enabled: boolean) => void,
+  clearLogs: (payload: void) => void,
   // The worker shares the tab's renderer process (Chrome hosts a same-origin SharedWorker in an
   // existing renderer for that site), so its heap is charged to the tab - see @lib/debug/memoryStats.
   getMemoryStats: (payload: void) => Promise<ThreadMemoryStats>

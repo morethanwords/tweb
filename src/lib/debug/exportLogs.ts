@@ -7,11 +7,13 @@
  * Offline symbolication of the captured stacks: src/scripts/symbolicate-logs.js
  */
 
-import Modes from '@config/modes';
+import DEBUG from '@config/debug';
+import Modes, {setKeptFlag} from '@config/modes';
+import createDownloadAnchor from '@helpers/dom/createDownloadAnchor';
 import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import apiManagerProxy from '@lib/apiManagerProxy';
-import {getLogEntries, LogEntry} from './logsBuffer';
-import {getMemoryLogEntries} from './memoryWatch';
+import {clearLogBuffer, getLogEntries, LogEntry, setLogBufferEnabled} from './logsBuffer';
+import {clearMemoryWatch, getMemoryLogEntries} from './memoryWatch';
 
 const WORKER_TIMEOUT = 5000;
 
@@ -81,27 +83,61 @@ export function buildExportMeta(count: number, extra?: Record<string, any>): Log
   };
 }
 
-/** Build the NDJSON payload (meta line first, then one entry per line). */
-export async function serializeLogs(): Promise<string> {
+/**
+ * The export as an NDJSON file (meta line first, then one entry per line), to download or to send; `count` is how
+ * many entries it holds.
+ */
+export async function createLogsFile(filename?: string): Promise<{file: File, count: number}> {
   const entries = await collectLogs();
   const lines = [JSON.stringify(buildExportMeta(entries.length))];
   for(const e of entries) {
     lines.push(JSON.stringify(e));
   }
-  return lines.join('\n');
+
+  const file = new File(
+    [lines.join('\n')],
+    filename || `tweb-logs-${new Date().toISOString().replace(/[:.]/g, '-')}.ndjson`,
+    {type: 'application/x-ndjson'}
+  );
+  return {file, count: entries.length};
+}
+
+export function downloadLogsFile(file: File) {
+  const url = URL.createObjectURL(file);
+  createDownloadAnchor(url, file.name, () => setTimeout(() => URL.revokeObjectURL(url), 10000));
 }
 
 export async function downloadLogs(filename?: string): Promise<void> {
-  const payload = await serializeLogs();
-  const blob = new Blob([payload], {type: 'application/x-ndjson'});
-  const url = URL.createObjectURL(blob);
+  const {file} = await createLogsFile(filename);
+  downloadLogsFile(file);
+}
 
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename || `tweb-logs-${new Date().toISOString().replace(/[:.]/g, '-')}.ndjson`;
-  document.body.append(a);
-  a.click();
-  a.remove();
+/**
+ * Logs collected without the rest of debug mode, in every thread of this tab and from now on in every tab of the
+ * site (Modes.logs). Debug mode collects them whatever this says.
+ */
+export function setLogsCollected(collected: boolean) {
+  setKeptFlag('logs', collected);
 
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  const enabled = DEBUG || collected;
+  setLogBufferEnabled(enabled);
+  if(!Modes.noWorker) {
+    MTProtoMessagePort.getMasterInstance()?.invokeVoid('setLogBufferEnabled', enabled);
+  }
+
+  apiManagerProxy.serviceMessagePort?.invokeVoid('setLogBufferEnabled', enabled);
+}
+
+/**
+ * Drops what every thread of this tab has collected, and the memory watch's history the export carries with it, so
+ * the next export holds only what happens after.
+ */
+export function clearLogs() {
+  clearLogBuffer();
+  if(!Modes.noWorker) {
+    MTProtoMessagePort.getMasterInstance()?.invokeVoid('clearLogs', undefined);
+  }
+
+  apiManagerProxy.serviceMessagePort?.invokeVoid('clearLogs', undefined);
+  clearMemoryWatch();
 }

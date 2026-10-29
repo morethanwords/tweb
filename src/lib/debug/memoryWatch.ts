@@ -21,6 +21,7 @@
  *
  * Console API (main thread only): memoryWatch(minutes) to start, memoryWatchSummary() to read what
  * moved, downloadMemoryWatch() to hand the samples over, memoryWatchStop() / clearMemoryWatch().
+ * Settings → Experimental starts and stops it too.
  */
 
 import {MOUNT_CLASS_TO} from '@config/debug';
@@ -111,7 +112,7 @@ function writeLog(log: WatchLog) {
       return true;
     } catch(e2) {
       console.error('[memoryWatch] cannot persist samples, stopping the watch', e2);
-      stop();
+      stopMemoryWatch();
       return false;
     }
   }
@@ -193,7 +194,7 @@ function onVisibilityChange() {
 }
 
 // * `byFlag`: started by ?memoryWatch=1 - the URL is what keeps it going, so nothing is persisted
-function start(intervalMinutes = DEFAULT_INTERVAL_MINUTES, byFlag?: boolean) {
+export function startMemoryWatch(intervalMinutes = DEFAULT_INTERVAL_MINUTES, byFlag?: boolean) {
   stopTimer();
 
   if(!byFlag) {
@@ -234,12 +235,16 @@ function stopTimer() {
   document.removeEventListener('visibilitychange', onVisibilityChange);
 }
 
-function stop() {
+export function stopMemoryWatch() {
   stopTimer();
   try {
     localStorage.removeItem(CONFIG_KEY);
   } catch(e) {}
   console.log('[memoryWatch] stopped. The samples are kept - clearMemoryWatch() to drop them.');
+}
+
+export function isMemoryWatchOn() {
+  return !!interval;
 }
 
 // * first / last / delta per metric, ordered by what grew most, which is the whole point of keeping
@@ -302,7 +307,7 @@ async function download(filename?: string) {
   createDownloadAnchor(url, name, () => setTimeout(() => URL.revokeObjectURL(url), 10000));
 }
 
-function clear() {
+export function clearMemoryWatch() {
   try {
     localStorage.removeItem(LOG_KEY);
     localStorage.removeItem(EVENTS_KEY);
@@ -319,19 +324,19 @@ export function getMemoryLogEntries(): LogEntry[] {
 }
 
 if(MOUNT_CLASS_TO) {
-  MOUNT_CLASS_TO.memoryWatch = start;
-  MOUNT_CLASS_TO.memoryWatchStop = stop;
+  MOUNT_CLASS_TO.memoryWatch = startMemoryWatch;
+  MOUNT_CLASS_TO.memoryWatchStop = stopMemoryWatch;
   MOUNT_CLASS_TO.memoryWatchSummary = summary;
   MOUNT_CLASS_TO.memoryWatchLog = readLog;
   MOUNT_CLASS_TO.downloadMemoryWatch = download;
-  MOUNT_CLASS_TO.clearMemoryWatch = clear;
+  MOUNT_CLASS_TO.clearMemoryWatch = clearMemoryWatch;
 
   // * resume by itself, otherwise the series ends at the first reload - which is exactly when a tab
   // * that has been observed for days is most likely to be restarted
   const config = readJSON<WatchConfig>(CONFIG_KEY);
   if(config?.intervalMinutes) {
-    start(config.intervalMinutes);
+    startMemoryWatch(config.intervalMinutes);
   } else if(Modes.memoryWatch) {
-    start(DEFAULT_INTERVAL_MINUTES, true);
+    startMemoryWatch(DEFAULT_INTERVAL_MINUTES, true);
   }
 }

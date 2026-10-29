@@ -348,20 +348,6 @@ const TimeFormatSection = () => {
 // Tab root
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PeerIdsSection = () => {
-  return (
-    <Section>
-      <Row>
-        <Row.CheckboxFieldToggle>
-          <CheckboxFieldTsx stateKey={joinDeepPath('settings', 'showPeerIds')} toggle />
-        </Row.CheckboxFieldToggle>
-        <Row.Title>{i18n('GeneralSettings.ShowPeerIds')}</Row.Title>
-        <Row.Subtitle>{i18n('GeneralSettings.ShowPeerIdsInfo')}</Row.Subtitle>
-      </Row>
-    </Section>
-  );
-};
-
 const GeneralSettings = () => {
   return (
     <>
@@ -369,7 +355,6 @@ const GeneralSettings = () => {
       <ThemeSection />
       {IS_GEOLOCATION_SUPPORTED && <DistanceUnitsSection />}
       <TimeFormatSection />
-      <PeerIdsSection />
     </>
   );
 };

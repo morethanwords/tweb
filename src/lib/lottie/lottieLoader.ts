@@ -73,6 +73,7 @@ export type LottieAssetName =
   | 'hand_stop'
   | 'collectible_username'
   | 'collectible_phone'
+  | 'Experimental'
 ;
 
 /**

@@ -81,7 +81,8 @@ export default class ServiceMessagePort<Master extends boolean = false> extends 
   // SW's ring buffer on export and propagates the enabled flag (the SW's
   // location.search has no ?debug=1).
   getLogs: (payload: void) => LogEntry[],
-  setLogBufferEnabled: (enabled: boolean) => void
+  setLogBufferEnabled: (enabled: boolean) => void,
+  clearLogs: (payload: void) => void
 
   // from mtproto worker
   download: (payload: ServiceDownloadTaskPayload) => void,

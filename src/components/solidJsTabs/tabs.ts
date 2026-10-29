@@ -19,7 +19,7 @@ import type {BusinessPeriod} from '@components/sidebarLeft/tabs/businessHoursSha
 import type {StoriesSearch} from '@components/stories/store';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {ChatInvite, ChatInviteActions, getChatInviteLinksInitArgs} from '@components/sidebarRight/tabs/chatInviteLinkShared';
-import lottieLoader from '@lib/lottie/lottieLoader';
+import lottieLoader, {type PreloadedLottieAsset} from '@lib/lottie/lottieLoader';
 import {deleteFolder as deleteEditFolder, getEditFolderInitArgs} from '@components/sidebarLeft/tabs/editFolderShared';
 import type {
   FilterPeerTypeByFunc,
@@ -321,6 +321,28 @@ export const AppSettingsTab =
     title: 'Settings',
     getComponentModule: () => import('../sidebarLeft/tabs/settings')
   });
+
+
+export type ExperimentalTabPayload = {
+  animationData: PreloadedLottieAsset
+};
+
+export function getExperimentalInitArgs(): ExperimentalTabPayload {
+  return {
+    animationData: lottieLoader.loadAnimationFromURLManually('Experimental')
+  };
+}
+
+// * opened by the version under Settings, the way the other clients keep their debug menus out of the way;
+// * eventable, so Settings hears when it closes
+export const AppExperimentalTab = Object.assign(
+  scaffoldSolidJSTabEventable<ExperimentalTabPayload>({
+    title: 'Experimental.Title',
+    getComponentModule: () => import('../sidebarLeft/tabs/experimental')
+  }),
+  {getInitArgs: getExperimentalInitArgs}
+);
+(AppExperimentalTab as any).noSame = true;
 
 
 export const AppQuickReactionTab =

@@ -409,6 +409,19 @@ function onInstanceDeactivated(reason: InstanceDeactivateReason) {
 
 const TIME_LABEL = 'Elapsed time since unlocked';
 
+/**
+ * The test servers have accounts and chats of their own (Modes.test, `?test=1`), and nothing else on the screen tells
+ * them from the real ones: the corner says so for as long as the page runs on them, the sign-in screens too. Here and
+ * not in a module of its own, which would be one more module whose edit reloads the page (importGraphBudget).
+ */
+function mountTestDcBadge() {
+  const badge = document.createElement('div');
+  badge.classList.add('test-dc-badge');
+  badge.dir = 'ltr';
+  badge.textContent = 'Test DC';
+  document.body.append(badge);
+}
+
 (window as any)['showIconLibrary'] = async() => {
   const {showIconLibrary} = await import('./components/iconLibrary/trigger');
   showIconLibrary();
@@ -416,8 +429,10 @@ const TIME_LABEL = 'Elapsed time since unlocked';
 
 // The popup sandbox, over a running app (`?popups=1` boots straight into it instead). The bare
 // `import.meta.env.DEV` is deliberate: only a `false` literal at the call site makes rolldown drop
-// the dynamic import before chunking. The authorized preview is a dev server, so it is covered.
-if(import.meta.env.DEV) {
+// the dynamic import before chunking. The authorized preview is a dev server, so it is covered, and
+// the bundle it builds for a remote device (`VITE_PREVIEW`, a literal too) keeps both sandboxes for
+// Settings → Experimental; a production build has neither.
+if(import.meta.env.DEV || import.meta.env.VITE_PREVIEW) {
   (window as any)['showPopupSandbox'] = async() => {
     const {showPopupSandbox} = await import('@components/popupSandbox');
     await showPopupSandbox();
@@ -446,6 +461,7 @@ if(import.meta.env.DEV) {
   cancelImageEvents();
   listenForLinkPress();
   setRootClasses();
+  if(Modes.test) mountTestDcBadge();
 
   // ?popups=1 — the popup sandbox: every popup, opened by click with mock data and no session.
   // It has to take over here, before the session is restored and the auth flow starts.
