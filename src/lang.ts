@@ -219,8 +219,8 @@ const lang = {
   'Chat.Input.Editor.Placeholder.PullquoteAuthor': 'Add author',
   'Chat.Input.Editor.Placeholder.Caption': 'Add caption...',
   'Chat.Input.Editor.Placeholder.Footer': 'Footer',
-  'Chat.Input.Editor.Placeholder.DetailsHeader': 'Details Header',
-  'Chat.Input.Editor.Placeholder.DetailsText': 'Details Text',
+  'Chat.Input.Editor.Placeholder.DetailsHeader': 'Header Details',
+  'Chat.Input.Editor.Placeholder.DetailsText': 'Text Details',
   'Chat.Input.Editor.Toolbar.ShowAsCollage': 'Show as collage',
   'Chat.Input.Editor.Toolbar.ShowAsSlideshow': 'Show as slideshow',
   'Chat.Input.Editor.Media.Previous': 'Previous media',
@@ -2893,7 +2893,7 @@ const lang = {
   'StorySettingsPrivacyInfo': '[Select people]() who will never see your stories.',
   'StorySettingsHiddenPeople': '[%s]() will never see your stories.',
   'StorySettingsHideFrom': 'Hide My Stories From',
-  'StorySettingsKeepInfo': 'Keep this story on your page even after it expires in %s. Privacy settings will apply.',
+  'StorySettingsKeepInfo': 'Keep this story on your profile even after it expires in %s. Privacy settings will apply.',
   'StorySettingsSaveError': 'Could not save settings. Please try again.',
   'StorySettingsLoadError': 'Could not load story settings. Please try again.',
   'StoryPrivacyOptionCloseFriends': 'Close Friends',
@@ -2913,7 +2913,7 @@ const lang = {
     'other_value': 'except %d people'
   },
   'StoryAllowScreenshots': 'Allow Screenshots',
-  'StoryKeep': 'Keep on My Profile',
+  'StoryKeep': 'Post to My Profile',
   'StoryKeepGroup': 'Post to Group Page',
   'StoryKeepChannel': 'Post to Channel Page',
   'StorySettingsKeepGroupInfo': 'Keep this story on the group page after it expires.',
@@ -3039,7 +3039,7 @@ const lang = {
   'PremiumNeededForBoosting': 'Only **Telegram Premium** subscribers can boost channels. Do you want to subscribe to **Telegram Premium**?',
   // 'ReplaceBoostChannelDescription': 'You currently boost **%1$s**. Do you want to boost **%2$s** instead?',
   'CantBoostTooOften': 'Can\'t boost too often!',
-  'CantBoostTooOftenDescription': 'You can only change the channel you boost once a day. You will be able to boost in **%s.**',
+  'CantBoostTooOftenDescription': 'You can only change the channel you boost once a day. You will be able to boost in **%s**.',
   'CantBoostWithGiftedPremium': 'Can\'t boost with gifted Premium!',
   'CantBoostWithGiftedPremiumDescription': 'Because your **Telegram Premium** subscription was gifted to you, you can\'t use it to boost channels.',
   'MoreBoosts': {
@@ -3685,7 +3685,7 @@ const lang = {
 
   // ── Telegram Business: setting up business hours ──
   'BusinessHours': 'Business Hours',
-  'BusinessHours.SearchKeywords': 'opening hours,working hours,schedule,timetable,open,closed',
+  'BusinessHours.SearchKeywords': 'opening hours, working hours, schedule, timetable, open, closed',
   'BusinessHoursInfo': 'Turn this on to show your opening hours schedule to your customers.',
   'BusinessHoursShow': 'Show Business Hours',
   'BusinessHoursTimezone': 'Time Zone',

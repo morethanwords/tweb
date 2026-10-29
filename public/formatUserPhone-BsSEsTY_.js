@@ -1,3 +1,0 @@
-//# allFunctionsCalledOnLoad
-import{i as e}from"./telInputField-Dv8tSAZy.js";function t(t){return`+`+e(t).formatted}function n(t,n){let{formatted:r,code:i}=e(t,{defaultCountryCode:n});return(i?`+`:``)+r}function r(e,r){let i=e=>e.replace(/\D/g,``),a=e.filter(Boolean).map(i);return e=>a.includes(i(e))&&!e.trimStart().startsWith(`0`)?t(e):n(e,r)}export{r as n,t};
-//# sourceMappingURL=formatUserPhone-BsSEsTY_.js.map

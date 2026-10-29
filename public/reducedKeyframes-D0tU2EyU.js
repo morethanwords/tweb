@@ -1,3 +1,0 @@
-//# allFunctionsCalledOnLoad
-import{t as e}from"./liteMode-D2tXS7Tg.js";var t=new Set(`opacity.visibility.color.backgroundColor.background.borderColor.borderTopColor.borderRightColor.borderBottomColor.borderLeftColor.outlineColor.boxShadow.fill.stroke.strokeDasharray.strokeWidth.filter.backdropFilter.fontWeight.width.height.minWidth.minHeight.maxWidth.maxHeight.flexBasis.gridTemplateRows.gridTemplateColumns`.split(`.`)),n=e=>t.has(e)||e.startsWith(`margin`),r=new Set([`offset`,`easing`,`composite`]);function i(e){let t=!1,i=e.map(e=>{let i={};for(let a in e)(r.has(a)||n(a))&&(i[a]=e[a],t||(t=!r.has(a)));return i});return t?i:void 0}function a(t,n=e.getAnimationLevel()){return n===2?t:n?i(t):void 0}export{a as t};
-//# sourceMappingURL=reducedKeyframes-D0tU2EyU.js.map

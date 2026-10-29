@@ -1,3 +1,0 @@
-//# allFunctionsCalledOnLoad
-import{m as e}from"./userAgent-BxgZpe58.js";function t(t){e.a11y?t.matches(`button, input, select, textarea, a[href]`)?t.tagName===`BUTTON`&&!t.hasAttribute(`type`)&&(t.type=`button`):(t.hasAttribute(`role`)||t.setAttribute(`role`,`button`),t.hasAttribute(`tabindex`)||(t.tabIndex=0)):t.matches(`button, input, select, textarea, a[href], [role]`)||t.setAttribute(`role`,`button`)}export{t};
-//# sourceMappingURL=ensureButtonSemantics-BO72M4vT.js.map

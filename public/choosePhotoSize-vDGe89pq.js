@@ -1,3 +1,0 @@
-//# allFunctionsCalledOnLoad
-import"./rootScope-CH5D98Tl.js";import{o as e}from"./mediaSizes-BCsKj9Ll.js";function t(t,n=0,r=0,i=!1,a=!1){window.devicePixelRatio>1&&(n*=2,r*=2);let o=t.sizes||t.thumbs,s={_:`photoSizeEmpty`,type:``};if(a&&o&&t._!==`photo`&&(o=o.concat({_:`photoSize`,w:t.w,h:t.h,size:t.size,type:``})),o?.length){for(let t=0,i=o.length;t<i;++t){let i=o[t];if(!(`w`in i)&&!(`h`in i))continue;s=i;let a=e(i.w,i.h,n,r);if(a.width>=n||a.height>=r)break}i&&s._===`photoSizeEmpty`&&o[0]._===`photoStrippedSize`&&(s=o[0])}return s}export{t};
-//# sourceMappingURL=choosePhotoSize-vDGe89pq.js.map
