@@ -128,7 +128,7 @@ import {BatchProcessor} from '@helpers/sortedList';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 import {isMaskedUrlTrusted} from '@lib/richTextProcessor/isWhitelistedUrl';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
-import wrapMediaSpoiler, {hasMediaSpoiler, onMediaSpoilerClick} from '@components/wrappers/mediaSpoiler';
+import wrapMediaSpoiler, {attachLinkSpoilerRevealButton, hasMediaSpoiler, onMediaSpoilerClick, wrapSensitiveStickerSpoiler} from '@components/wrappers/mediaSpoiler';
 import liteMode from '@helpers/liteMode';
 import getSelectionElementFromTarget from '@components/chat/getSelectionElementFromTarget';
 import getMediaDurationFromMessage from '@appManagers/utils/messages/getMediaDurationFromMessage';
@@ -4140,6 +4140,11 @@ export default class ChatBubbles {
         event: e,
         mediaSpoiler
       });
+      // * one in a web page's preview lies inside its link, which the click after a touch would follow
+      if(findUpClassName(mediaSpoiler, 'webpage')) {
+        cancelWebPageLink(e);
+      }
+
       return;
     }
 
@@ -7842,15 +7847,20 @@ export default class ChatBubbles {
     promise,
     middleware,
     attachmentDiv,
-    sensitive
+    sensitive,
+    inLink
   }: {
     media: Photo.photo | MyDocument,
     promise: Promise<any>,
     middleware: Middleware,
     attachmentDiv: HTMLElement,
-    sensitive?: boolean
+    sensitive?: boolean,
+    inLink?: boolean
   }) {
-    await promise;
+    // * out of sight until it is covered: what shows a message before its promises settle (a poll's link preview)
+    // * would show the media first; and covered even if it failed to load
+    attachmentDiv.classList.add('is-spoiler-pending');
+    const result = await promise.catch(noop);
     if(!middleware()) {
       return;
     }
@@ -7862,6 +7872,8 @@ export default class ChatBubbles {
       height: parseInt(height),
       middleware,
       sensitive,
+      inLink,
+      video: result?.video instanceof HTMLVideoElement ? result.video : undefined,
       animationGroup: this.chat.animationGroup
     });
 
@@ -7870,6 +7882,7 @@ export default class ChatBubbles {
     }
 
     attachmentDiv.append(container);
+    attachmentDiv.classList.remove('is-spoiler-pending');
   }
 
   public wrapSticker(
@@ -7888,7 +7901,8 @@ export default class ChatBubbles {
       eager?: boolean,
       noFadeIn?: boolean,
       width?: number,
-      height?: number
+      height?: number,
+      sensitive?: boolean
     }
   ) {
     const {
@@ -7902,7 +7916,8 @@ export default class ChatBubbles {
       noFadeIn,
       doc,
       width,
-      height
+      height,
+      sensitive
     } = options;
     let {boxSize} = options;
     context.bubble.classList.add('sticker');
@@ -7927,6 +7942,10 @@ export default class ChatBubbles {
     });
     context.bubbleContainer.style.minWidth = container.style.width;
     context.bubbleContainer.style.minHeight = container.style.height;
+    if(sensitive) {
+      this.coverSensitiveSticker(container, context.middleware);
+    }
+
     const noPremium = (context.messageMedia as MessageMedia.messageMediaDocument)?.pFlags?.nopremium;
     return callbackify(doc, (doc) => {
       if(!context.middleware()) {
@@ -7966,12 +7985,31 @@ export default class ChatBubbles {
       });
 
       const effectThumb = getStickerEffectThumb(doc);
-      if((effectThumb || isEmoji) && (context.isInUnread || context.isOutgoing)/*  || true */) {
+      // * a premium one's effect would play it over the chat, out of its cover
+      if((effectThumb || isEmoji) && !sensitive && (context.isInUnread || context.isOutgoing)/*  || true */) {
         this.observer.observe(context.bubble, this.stickerEffectObserverCallback);
       }
 
       return ret;
     });
+  }
+
+  // * it stands blurred and still until it is revealed
+  private coverSensitiveSticker(container: HTMLElement, middleware: Middleware) {
+    container.classList.add('is-sensitive-sticker', 'is-blurred');
+    let release = animationIntersector.holdUnder(container);
+    const letGo = () => {
+      release?.();
+      release = undefined;
+    };
+    middleware.onClean(letGo);
+    container.append(wrapSensitiveStickerSpoiler({
+      middleware,
+      onReveal: () => {
+        container.classList.remove('is-blurred');
+        letGo();
+      }
+    }));
   }
 
   public getBubble(peerId: PeerId | string, mid?: number) {
@@ -8060,6 +8098,14 @@ export default class ChatBubbles {
   /** Dispatch the same webpage action used by the chat's delegated listener. */
   public dispatchWebPageClick(webPageContainer: HTMLAnchorElement, event: MouseEvent) {
     const target = event.target instanceof Element ? event.target : undefined;
+    // * as in the chat, which sees it first: a spoiler over the preview's media is revealed, the link is not followed
+    const mediaSpoiler = target?.closest<HTMLElement>('.media-spoiler-container');
+    if(mediaSpoiler) {
+      onMediaSpoilerClick({mediaSpoiler, event});
+      cancelWebPageLink(event);
+      return false;
+    }
+
     if(target?.closest('.webpage-name-tip')) return false;
     if(target?.closest('.webpage-preview-resizer')) {
       event.preventDefault();
@@ -10651,6 +10697,8 @@ export default class ChatBubbles {
           }
 
           const lazyLoadQueue = sponsoredMedia ? undefined : this.lazyLoadQueue;
+          // * its photo or video is under a sensitive spoiler
+          let coversMedia = false;
 
           if(doc) {
             if(doc.type === 'gif' || doc.type === 'video' || doc.type === 'round') {
@@ -10662,7 +10710,7 @@ export default class ChatBubbles {
                 bubble.classList.add('video');
               }
 
-              wrapVideo({
+              const p = wrapVideo({
                 doc,
                 container: preview,
                 message: message as Message.message,
@@ -10675,10 +10723,23 @@ export default class ChatBubbles {
                 loadPromises,
                 autoDownload: this.chat.autoDownload,
                 noInfo: message.mid < 0 && !sponsoredMedia,
+                noAutoplayAttribute: sensitive,
                 observer: this.observer,
                 onLoad: this.onVideoLoad,
                 setShowControlsOn: bubble
               });
+
+              if(sensitive) {
+                loadPromises.push(this.wrapMediaSpoiler({
+                  media: doc,
+                  promise: p,
+                  middleware,
+                  attachmentDiv: preview,
+                  sensitive,
+                  inLink: true
+                }));
+                coversMedia = true;
+              }
             } else {
               const docDiv = await wrapDocument({
                 message: message as Message.message,
@@ -10779,7 +10840,7 @@ export default class ChatBubbles {
               node.classList.add('avatar-full');
               preview.append(node);
               readyThumbPromise && loadPromises.push(readyThumbPromise);
-            } else  */wrapPhoto({
+            } else  */const p = wrapPhoto({
               photo/* : p */,
               message,
               container: preview,
@@ -10792,6 +10853,18 @@ export default class ChatBubbles {
               withoutPreloader: isSquare,
               autoDownloadSize: this.chat.autoDownload.photo
             });
+
+            if(sensitive) {
+              loadPromises.push(this.wrapMediaSpoiler({
+                media: photo,
+                promise: p,
+                middleware,
+                attachmentDiv: preview,
+                sensitive,
+                inLink: true
+              }));
+              coversMedia = true;
+            }
           }
 
           if(storyAttribute) {
@@ -10918,6 +10991,10 @@ export default class ChatBubbles {
                   } else timeSpan.before(box);
                 } else {
                   messageDiv.append(box);
+                }
+
+                if(coversMedia) {
+                  attachLinkSpoilerRevealButton(box, middleware);
                 }
 
                 // * peer-color background-emoji pattern behind the box (like replies/quotes).
@@ -11075,7 +11152,8 @@ export default class ChatBubbles {
               container: context.attachmentDiv,
               // a sticker sent from the panel starts where the one it flies from was
               initFrame: flight?.startFrame,
-              eager: !!flight
+              eager: !!flight,
+              sensitive
             });
           } else if(doc.type === 'video' || doc.type === 'gif' || doc.type === 'round'/*  && doc.size <= 20e6 */) {
             // this.log('never get free 2', doc);
@@ -11108,7 +11186,7 @@ export default class ChatBubbles {
                 chat: this.chat,
                 loadPromises,
                 autoDownload: this.chat.autoDownload,
-                spoilered: sensitive
+                sensitive
               });
             } else {
               const withTail = !IS_ANDROID && !IS_APPLE && !isRound && context.canHaveTail && !withReplies && USE_MEDIA_TAILS;
@@ -11136,7 +11214,7 @@ export default class ChatBubbles {
                   isScheduled: (message as Message.message).pFlags.is_scheduled
                 } : undefined,
                 noInfo: message.mid <= 0,
-                noAutoplayAttribute: !!context.messageMedia.pFlags.spoiler,
+                noAutoplayAttribute: !!context.messageMedia.pFlags.spoiler || sensitive,
                 observer: this.observer,
                 onLoad: this.onVideoLoad,
                 setShowControlsOn: bubble,
@@ -11145,12 +11223,13 @@ export default class ChatBubbles {
                 }
               });
 
-              if(context.messageMedia.pFlags.spoiler) {
+              if(context.messageMedia.pFlags.spoiler || sensitive) {
                 loadPromises.push(this.wrapMediaSpoiler({
                   media: doc,
                   promise: p,
                   middleware,
-                  attachmentDiv: context.attachmentDiv
+                  attachmentDiv: context.attachmentDiv,
+                  sensitive
                 }));
               }
             }
@@ -11448,6 +11527,9 @@ export default class ChatBubbles {
 
           if(innerMedia) {
             const mediaSize = extendedMedia.length ? mediaSizes.active.extendedInvoice : mediaSizes.active.invoice;
+            // * what is not paid for is only a blurred preview, under its price
+            const paidSensitive = !isInvoice && isAlreadyPaid && sensitive;
+            let innerMediaPromise: Promise<any>;
             if(Array.isArray(innerMedia)) {
               bubble.classList.add('is-album', 'photo');
               wrapAlbum({
@@ -11459,12 +11541,13 @@ export default class ChatBubbles {
                 chat: this.chat,
                 loadPromises,
                 autoDownload: this.chat.autoDownload,
-                spoilered: !isAlreadyPaid || sensitive,
+                spoilered: !isAlreadyPaid,
+                sensitive: paidSensitive,
                 videoTimes,
                 uploadingFileName: (message as Message.message).uploadingFileName
               });
             } else if(innerMedia._ === 'document') {
-              wrapVideo({
+              innerMediaPromise = wrapVideo({
                 doc: innerMedia,
                 container: context.attachmentDiv,
                 withTail: false,
@@ -11479,11 +11562,12 @@ export default class ChatBubbles {
                 observer: this.observer,
                 onLoad: this.onVideoLoad,
                 setShowControlsOn: bubble,
+                noAutoplayAttribute: paidSensitive,
                 uploadingFileName: (message as Message.message).uploadingFileName?.[0]
               });
               bubble.classList.add('video');
             } else {
-              wrapPhoto({
+              innerMediaPromise = wrapPhoto({
                 photo: innerMedia,
                 container: context.attachmentDiv,
                 withTail: false,
@@ -11496,6 +11580,16 @@ export default class ChatBubbles {
                 message: isAlreadyPaid ? message : undefined
               });
               bubble.classList.add('photo');
+            }
+
+            if(innerMediaPromise && paidSensitive) {
+              loadPromises.push(this.wrapMediaSpoiler({
+                media: innerMedia as Photo.photo | MyDocument,
+                promise: innerMediaPromise,
+                middleware,
+                attachmentDiv: context.attachmentDiv,
+                sensitive
+              }));
             }
 
             if(priceEl) {

@@ -1,4 +1,5 @@
 import createMiddleware from '@helpers/solid/createMiddleware';
+import {getLinkSpoilerRevealButton} from '@components/wrappers/mediaSpoiler';
 import {Message, MessageMedia, WebPage} from '@layer';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createEffect, createSignal, onCleanup} from 'solid-js';
@@ -66,7 +67,8 @@ export default function PollLinkWebPagePreview(props: {
       box = renderedBox;
       makeWebPagePreviewMediaResponsive(box);
       box.addEventListener('click', handleClick);
-      container.replaceChildren(box);
+      // * with the button that reveals a spoiler over its media from the keyboard, which stands beside the link
+      container.replaceChildren(...[box, getLinkSpoilerRevealButton(box)].filter(Boolean));
       setRendered(true);
     }).catch((): undefined => undefined);
 

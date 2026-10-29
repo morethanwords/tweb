@@ -14,6 +14,7 @@ import wrapDocument from '@components/wrappers/document';
 import {SpinnerElement} from '@components/spinner';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {getBubbleBackground} from '@components/chat/bubbleShape';
+import {onMediaSpoilerClick} from '@components/wrappers/mediaSpoiler';
 
 
 type WrapRoundVideoBubbleOptions = {
@@ -394,7 +395,14 @@ export function wrapRoundVideoBubble({
       );
   }
 
-  transcribe.addEventListener('click', () => {
+  transcribe.addEventListener('click', (event) => {
+    // * the text shows the video's frames: one still under its spoiler is revealed first
+    const mediaSpoiler = mediaContainer.querySelector<HTMLElement>('.media-spoiler-container');
+    if(mediaSpoiler) {
+      onMediaSpoilerClick({mediaSpoiler, event});
+      return;
+    }
+
     showAudio();
   });
 

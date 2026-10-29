@@ -7,6 +7,7 @@ import deferredPromise from '@helpers/cancellablePromise';
 import computeLockColor from '@helpers/computeLockColor';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {hasMediaSpoiler} from '@components/wrappers/mediaSpoiler';
 import createVideo from '@helpers/dom/createVideo';
 import isDocumentRTL from '@helpers/dom/isDocumentRTL';
 import renderImageFromUrl, {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
@@ -55,9 +56,10 @@ const locksUrls: {[docId: string]: string} = {};
 
 export const videosCache: {[key: string]: Promise<any>} = {};
 
+// * neither the premium lock nor a spoiler over the sticker is its thumbnail
 const getThumbFromContainer = (container: HTMLElement) => {
   let element = container.firstElementChild as HTMLElement;
-  if(element && element.classList.contains('premium-sticker-lock')) {
+  while(element && (element.classList.contains('premium-sticker-lock') || element.classList.contains('media-spoiler-container'))) {
     element = element.nextElementSibling as HTMLElement;
   }
 
@@ -829,6 +831,8 @@ function attachStickerEffectHandler(options: Omit<Parameters<typeof fireStickerE
   options.managers.appStickersManager.preloadSticker(options.doc.id, true);
 
   const detach = attachClickEvent(options.container, (e) => {
+    // * one still under its spoiler is revealed first, by the chat's own click
+    if(hasMediaSpoiler(options.container)) return;
     fireStickerEffect({...options, e});
   });
 

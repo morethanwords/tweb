@@ -3108,7 +3108,7 @@ export default class AppSearchSuper {
   }
 
   private isMessageSensitive(message: Message.message) {
-    return isSensitive((usePeer(message.peerId) as User.user).restriction_reason || []) || isMessageSensitive(message);
+    return isSensitive((usePeer(message.peerId) as User.user)?.restriction_reason || []) || isMessageSensitive(message);
   }
 
   public getSearchCounters(filters: MessagesFilter[], canCache = true) {

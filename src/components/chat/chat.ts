@@ -940,7 +940,8 @@ export default class Chat extends EventListenerBase<{
   }
 
   public get isSensitive() {
-    return isSensitive((this.peer as User.user).restriction_reason || []);
+    // * read when asked: a peer the page does not know yet as the chat opens (its own user) comes later
+    return isSensitive((usePeer(this.peerId) as User.user)?.restriction_reason || []);
   }
 
   public async onChangePeer(options: ChatSetPeerOptions, m: ReturnType<typeof middlewarePromise>) {

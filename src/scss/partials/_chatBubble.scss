@@ -959,6 +959,40 @@
       position: absolute;
       border-radius: 0;
       z-index: 1;
+
+      // * a sensitive one stands blurred under its warning until it is revealed
+      &.is-sensitive-sticker {
+        > img,
+        > canvas,
+        > video,
+        > svg {
+          @include animation-level(1) {
+            transition: filter var(--transition-standard-out);
+          }
+        }
+      }
+
+      &.is-blurred {
+        > img,
+        > canvas,
+        > video,
+        > svg {
+          filter: blur(1.25rem);
+        }
+      }
+
+      // * a premium one's art faces the middle of the chat (reflect-x-at-*), its warning reads as it is
+      &.reflect-x-at-start .sensitive-content-warning {
+        transform: translate(-50%, -50%) scaleX(-1);
+
+        .is-rtl & {
+          transform: translate(-50%, -50%);
+        }
+      }
+
+      .is-rtl &.reflect-x-at-end .sensitive-content-warning {
+        transform: translate(-50%, -50%) scaleX(-1);
+      }
     }
   }
 
@@ -975,6 +1009,12 @@
     .media-video {
       border-radius: 50% !important;
       pointer-events: none;
+    }
+
+    // * a sensitive one is covered as round as it is
+    .media-spoiler-container {
+      border-radius: 50%;
+      overflow: hidden;
     }
   }
 
@@ -2948,6 +2988,15 @@
           width: auto;
           height: auto;
         }
+      }
+    }
+
+    // * too small for the words: the eye alone
+    .sensitive-content-warning {
+      padding: .375rem;
+
+      .i18n {
+        display: none;
       }
     }
   }

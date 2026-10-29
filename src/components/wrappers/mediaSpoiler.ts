@@ -15,16 +15,29 @@ import makeMediaPreviewsAccessible, {MEDIA_PREVIEW_SELECTOR} from '@helpers/dom/
 import {doubleRaf} from '@helpers/schedulers';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import {getAccountSession} from '@lib/accounts/getCurrentAccount';
+import {Middleware} from '@helpers/middleware';
+import noop from '@helpers/noop';
+import animationIntersector from '@components/animationIntersector';
 
 // * the dot canvas is decoration on top of an already-covering blurred thumbnail; never let it
 // * hold up the message batch for longer than this
 const SPOILER_READY_TIMEOUT = 2000;
 
+// * nothing to blur under the dots: the colour of a dim photo
+const SPOILER_FALLBACK_COLOR = '#4b4f55';
+
 const sensitiveSpoilers = new Set<HTMLElement>();
+const revealCallbacks = new WeakMap<HTMLElement, () => void>();
+// * a video that joins the page only once it has loaded, after its spoiler
+const spoilerVideos = new WeakMap<HTMLElement, HTMLVideoElement>();
+// * a link with a spoiler in it: the button beside it that reveals the spoiler from the keyboard
+const linkRevealButtons = new WeakMap<HTMLElement, HTMLElement>();
 
 function removeSpoiler(mediaSpoiler: HTMLElement) {
   const restoreFocus = Modes.a11y && mediaSpoiler.contains(mediaSpoiler.ownerDocument.activeElement);
   const preview = mediaSpoiler.closest<HTMLElement>(MEDIA_PREVIEW_SELECTOR);
+  const link = mediaSpoiler.closest<HTMLElement>('a');
+  if(link) linkRevealButtons.get(link)?.remove();
   mediaSpoiler.remove();
   mediaSpoiler.middlewareHelper?.destroy();
   if(preview) {
@@ -35,8 +48,31 @@ function removeSpoiler(mediaSpoiler: HTMLElement) {
   }
 }
 
+// * as a spoiler starts to reveal, what waited under it goes on: its own callback, or a video that plays by itself -
+// * as the intersector lets it, in sight and once loaded, and at once for the one a click revealed
+function onSpoilerReveal(mediaSpoiler: HTMLElement, clicked?: boolean) {
+  const callback = revealCallbacks.get(mediaSpoiler);
+  if(callback) {
+    revealCallbacks.delete(mediaSpoiler);
+    callback();
+    return;
+  }
+
+  const parent = mediaSpoiler.parentElement;
+  const video = spoilerVideos.get(mediaSpoiler) || parent?.querySelector('video');
+  if(!video || parent?.querySelector('.video-play')) {
+    return;
+  }
+
+  video.autoplay = true;
+  const animation = animationIntersector.getAnimations(video)[0];
+  if(animation) animationIntersector.checkAnimation(animation);
+  else if(clicked && video.isConnected) safePlay(video);
+}
+
 export function clearSensitiveSpoilers() {
   for(const spoiler of sensitiveSpoilers) {
+    onSpoilerReveal(spoiler);
     toggleMediaSpoiler({
       mediaSpoiler: spoiler,
       reveal: true,
@@ -94,9 +130,15 @@ function revealSpoilerWithAnimation(options: {
 
   const controls = DotRenderer.getImageSpoilerByElement(canvas);
 
-  if(!controls || !thumbnailCanvas) return false;
+  if(!controls || !thumbnailCanvas || !('clientX' in event)) return false;
 
-  const result = controls.revealWithAnimation(event, thumbnailCanvas);
+  // * from where it was clicked; a keyboard's click comes at no point of it (at 0, 0, from which the reveal never
+  // * ended), and the reveal starts at its middle
+  const {clientX, clientY} = event as MouseEvent;
+  const rect = canvas.getBoundingClientRect();
+  const isInside = clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
+  const from = isInside ? event : {clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2} as MouseEvent;
+  const result = controls.revealWithAnimation(from, thumbnailCanvas);
   if(!result) return false;
 
   return result.then(() => {
@@ -122,11 +164,7 @@ export function onMediaSpoilerClick(options: {
     return;
   }
 
-  const video = mediaSpoiler.parentElement.querySelector('video');
-  if(video && !mediaSpoiler.parentElement.querySelector('.video-play')) {
-    video.autoplay = true;
-    safePlay(video);
-  }
+  onSpoilerReveal(mediaSpoiler, true);
 
   if(revealSpoilerWithAnimation({mediaSpoiler, event})) {
     mediaSpoiler.dataset.isRevealing = 'true';
@@ -220,18 +258,33 @@ function wrapMediaSpoilerWithImage(options: {
   image: Awaited<ReturnType<typeof getImageFromStrippedThumb>>['image'],
   // only covers the media, never reveals it: the composer shows where a spoiler will be and has
   // its own control to take it off
-  decorative?: boolean
+  decorative?: boolean,
+  // in a link (a web page's preview), which may hold no control of its own: a plain box, revealed by
+  // its owner's delegated click, while the keyboard has the link
+  inLink?: boolean
 } & Parameters<typeof DotRenderer['create']>[0]) {
-  const {middleware, image, decorative} = options;
+  const {middleware, image, decorative, inLink} = options;
   if(!middleware()) {
     return;
   }
 
   image.classList.add('media-spoiler-thumbnail');
 
+  const container = createSpoilerContainer(middleware, decorative || inLink);
+  const {canvas, readyResult} = DotRenderer.create({
+    ...options,
+    middleware: container.middlewareHelper.get()
+  });
+
+  container.append(image, canvas);
+
+  return {container, readyResult};
+}
+
+function createSpoilerContainer(middleware: Middleware, plain?: boolean) {
   let container: HTMLElement;
   // without the a11y layer the spoiler is a plain box again, revealed by its owner's delegated click
-  if(decorative || !Modes.a11y) {
+  if(plain || !Modes.a11y) {
     container = document.createElement('div');
     container.classList.add('media-spoiler-container');
     container.middlewareHelper = middleware.create();
@@ -243,14 +296,67 @@ function wrapMediaSpoilerWithImage(options: {
     }));
   }
 
-  const {canvas, readyResult} = DotRenderer.create({
-    ...options,
-    middleware: container.middlewareHelper.get()
+  return container;
+}
+
+function markSensitive(container: HTMLElement, middleware: Middleware) {
+  const div = document.createElement('div');
+  div.classList.add('sensitive-content-warning');
+  div.replaceChildren(Icon('eyecross'), i18n('18Plus'));
+  container.prepend(div);
+  container.dataset.isSensitive = 'true';
+  sensitiveSpoilers.add(container);
+  middleware.onClean(() => {
+    sensitiveSpoilers.delete(container);
   });
+}
 
-  container.append(image, canvas);
+/**
+ * A sticker has no box to hide it in: it stands blurred and still where it is, as in tdesktop, under the warning
+ * alone, and `onReveal` lets it go
+ */
+export function wrapSensitiveStickerSpoiler(options: {
+  middleware: Middleware,
+  onReveal: () => void
+}) {
+  const container = createSpoilerContainer(options.middleware);
+  container.classList.add('is-sticker');
+  markSensitive(container, options.middleware);
+  revealCallbacks.set(container, options.onReveal);
+  return container;
+}
 
-  return {container, readyResult};
+/**
+ * A spoiler in a link is a plain box, the link being the one control there (WebPageBox): with the a11y layer a button
+ * beside the link, out of sight until it has the focus, reveals it from the keyboard, and goes with it
+ */
+export function attachLinkSpoilerRevealButton(link: HTMLElement, middleware: Middleware) {
+  if(!Modes.a11y) {
+    return;
+  }
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.classList.add('sr-only', 'sr-only-focusable');
+  button.append(i18n('AccDescr.RevealMedia'));
+  middleware.onClean(attachClickEvent(button, (event) => {
+    const mediaSpoiler = link.querySelector<HTMLElement>('.media-spoiler-container');
+    if(!mediaSpoiler) {
+      return;
+    }
+
+    // * the confirmation gives the focus back to the link: this button goes with the spoiler
+    link.focus({preventScroll: true});
+    onMediaSpoilerClick({mediaSpoiler, event});
+  }));
+  middleware.onClean(() => button.remove());
+  linkRevealButtons.set(link, button);
+  link.after(button);
+}
+
+// * for whoever takes the link elsewhere (a poll's link preview), to take the button along
+export function getLinkSpoilerRevealButton(link: HTMLElement) {
+  return linkRevealButtons.get(link);
 }
 
 // * still hidden behind a spoiler: a revealed one is removed
@@ -267,28 +373,43 @@ export default async function wrapMediaSpoiler(
     media?: Document.document | Photo.photo,
     previewUrl?: string,
     sensitive?: boolean,
-    waitForReady?: boolean
+    waitForReady?: boolean,
+    // * the video it covers: it may join the page only once loaded
+    video?: HTMLVideoElement
   }
 ) {
-  const {media, previewUrl, sensitive, waitForReady = true} = options;
+  const {media, previewUrl, sensitive, waitForReady = true, video} = options;
   const sizes = media && (
     (media as Photo.photo).sizes ||
     (media as Document.document).thumbs
   );
-  const thumb = sizes?.find((size) => (
-    size._ === 'photoStrippedSize'
-  )) as PhotoSize.photoStrippedSize;
+  // * what the media carries in itself, to draw the cover at once
+  const thumb = (
+    sizes?.find((size) => size._ === 'photoStrippedSize') ||
+    sizes?.find((size) => size._ === 'photoCachedSize')
+  ) as PhotoSize.photoStrippedSize | PhotoSize.photoCachedSize;
   let image: HTMLCanvasElement | HTMLImageElement;
-  if(thumb) {
-    const result = getImageFromStrippedThumb(media, thumb, true);
-    image = result.image;
-    await result.loadPromise;
-  } else if(previewUrl) {
-    image = new Image();
-    image.classList.add('thumbnail', 'media-spoiler-thumbnail-preview');
-    await renderImageFromUrlPromise(image, previewUrl);
-  } else {
-    return;
+  try {
+    if(thumb) {
+      const result = getImageFromStrippedThumb(media, thumb, true);
+      image = result.image;
+      await result.loadPromise;
+    } else if(previewUrl) {
+      image = new Image();
+      image.classList.add('thumbnail', 'media-spoiler-thumbnail-preview');
+      await renderImageFromUrlPromise(image, previewUrl);
+    }
+  } catch(err) {
+    image = undefined;
+  }
+
+  if(!image) {
+    // * with nothing to blur, or what there was failed to load, it still covers the media: the dots over a plain fill
+    image = document.createElement('canvas');
+    image.width = image.height = 1;
+    const context = image.getContext('2d');
+    context.fillStyle = SPOILER_FALLBACK_COLOR;
+    context.fillRect(0, 0, 1, 1);
   }
 
   const result = wrapMediaSpoilerWithImage({
@@ -299,15 +420,11 @@ export default async function wrapMediaSpoiler(
   const {container, readyResult} = result;
 
   if(sensitive) {
-    const div = document.createElement('div');
-    div.classList.add('sensitive-content-warning');
-    div.replaceChildren(Icon('eyecross'), i18n('18Plus'));
-    container.prepend(div);
-    container.dataset.isSensitive = 'true';
-    sensitiveSpoilers.add(container);
-    options.middleware.onClean(() => {
-      sensitiveSpoilers.delete(container);
-    });
+    markSensitive(container, options.middleware);
+  }
+
+  if(video) {
+    spoilerVideos.set(container, video);
   }
 
   if(waitForReady && readyResult instanceof Promise) {
@@ -315,7 +432,8 @@ export default async function wrapMediaSpoiler(
     // by the blurred thumbnail underneath. The bubble's render promise is awaited by the message
     // batch processor, so blocking on this indefinitely stalls the whole chat: bail out after a
     // deadline and let the dots appear late if the renderer wakes up later.
-    await withTimeout<unknown>(readyResult, SPOILER_READY_TIMEOUT);
+    // * and the thumbnail covers it whether the dots come or fail
+    await withTimeout<unknown>(readyResult, SPOILER_READY_TIMEOUT).catch(noop);
   }
 
   return container;

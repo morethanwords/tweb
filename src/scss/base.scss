@@ -1800,6 +1800,11 @@ hr {
   }
 }
 
+// * media whose spoiler is still being made: out of sight until the spoiler covers it
+.is-spoiler-pending {
+  visibility: hidden;
+}
+
 .media-spoiler {
   &-container {
     position: absolute;

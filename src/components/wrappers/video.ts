@@ -4,6 +4,7 @@ import {animateSingle} from '@helpers/animation';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {hasMediaSpoiler} from '@components/wrappers/mediaSpoiler';
 import createVideo from '@helpers/dom/createVideo';
 import handleVideoLeak from '@helpers/dom/handleVideoLeak';
 import isInDOM from '@helpers/dom/isInDOM';
@@ -857,11 +858,16 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   container && ((container as any).preloader = preloader);
 
   if(doc.type === 'gif' && !canAutoplay) {
-    attachClickEvent(container, (e) => {
+    const detach = attachClickEvent(container, (e) => {
+      // * one under a spoiler is revealed first, by its owner's click
+      if(hasMediaSpoiler(container)) return;
+      detach();
       cancelEvent(e);
       spanPlay?.remove();
+      // * asked for by this click: it plays once loaded, the one that waited under a spoiler too
+      video.autoplay = true;
       load();
-    }, {capture: true, once: true});
+    }, {capture: true});
   } else {
     res.loadPromise = !lazyLoadQueue ?
       (await load()).render :
