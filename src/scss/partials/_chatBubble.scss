@@ -2518,17 +2518,19 @@
     }
   }
 
+  // * the plate of a message this client cannot show, drawn as Android draws it (`UnsupportedBlockDrawable`): on the
+  // * wallpaper in the service lines' colours, in a bubble with no background of its own (`.just-media`)
   &-unsupported {
-    &-wrapper {
-      display: flex !important;
-      align-items: center;
-      gap: .5rem;
-      width: 25rem;
-      max-width: 100%;
-      padding: .4375rem .6875rem .4375rem .375rem !important;
-      border-radius: 1.125rem !important;
-      text-align: start;
-    }
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    width: 25rem;
+    max-width: 100%;
+    padding: .4375rem .6875rem .4375rem .375rem;
+    border-radius: 1.125rem;
+    background-color: var(--message-highlighting-color);
+    color: #fff;
+    user-select: none;
 
     &-icon {
       flex: 0 0 auto;
@@ -2550,7 +2552,6 @@
       display: flex;
       flex-direction: column;
       gap: .125rem;
-      text-align: start;
     }
 
     &-title {
@@ -2565,6 +2566,11 @@
       line-height: var(--line-height-13);
       opacity: .7;
     }
+  }
+
+  // * its width gives way to a column narrower than it, with an avatars' margin beside it too, as text would wrap
+  &.is-unsupported .bubble-content-wrapper {
+    min-width: 0;
   }
 
   // Generic "media + caption + button" service bubble (e.g. suggested profile
@@ -3466,20 +3472,6 @@
     &-wrapper {
       max-width: 100%;
       padding: 0 2rem;
-    }
-  }
-
-  &.is-unsupported {
-    .bubble-content-wrapper {
-      padding: 0;
-    }
-
-    &-in {
-      justify-content: flex-start;
-    }
-
-    &-out {
-      justify-content: flex-end;
     }
   }
 }

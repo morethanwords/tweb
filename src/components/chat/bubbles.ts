@@ -148,9 +148,9 @@ import {modifyAckedPromise} from '@helpers/modifyAckedResult';
 import callbackify from '@helpers/callbackify';
 import {avatarNew, findUpAvatar} from '@components/avatarNew';
 import Icon from '@components/icon';
-import wrapUnsupportedMessagePlate from '@components/chat/bubbleParts/unsupportedMessagePlate';
 import SendingStatusIcon, {SendingStatusIconState, setSendingStatusIconState} from '@components/sendingStatusIcon';
 import wrapCallBubble from '@components/wrappers/callBubble';
+import wrapUnsupportedMessagePlate from '@components/chat/bubbleParts/unsupportedMessagePlate';
 import {FullMid, makeFullMid, splitFullMid} from '@appManagers/utils/messages/fullMid';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
@@ -348,11 +348,12 @@ if(IS_GROUP_CALL_SUPPORTED) {
 
 const isStoryMentionMessage = (message: Message.message) => !!(message.media as MessageMedia.messageMediaStory)?.pFlags?.via_mention;
 const isSelfDestructingMediaMessage = (message: Message.message) => !!(message.media as MessageMedia.messageMediaPhoto)?.ttl_seconds;
-const isUnsupportedMessage = (message: Message.message) => message.media?._ === 'messageMediaUnsupported';
+// * a rich message keeps its content when its media is one this client cannot show
+const isUnsupportedMessage = (message: Message.message) => message.media?._ === 'messageMediaUnsupported' && !message.rich_message;
 
 /**
  * Whether a message is drawn as a service line, neither incoming nor outgoing: a service message but a call, a
- * story mention, self-destructing media that cannot be seen, a message this client cannot show
+ * story mention, self-destructing media that cannot be seen
  */
 function isDrawnAsService(message: Message.message | Message.messageService) {
   if(message._ !== 'message') {
@@ -360,9 +361,7 @@ function isDrawnAsService(message: Message.message | Message.messageService) {
     return !action || !SERVICE_AS_REGULAR.has(action._);
   }
 
-  return isStoryMentionMessage(message) ||
-    (isSelfDestructingMediaMessage(message) && !canSeeMessageMedia(message)) ||
-    isUnsupportedMessage(message);
+  return isStoryMentionMessage(message) || (isSelfDestructingMediaMessage(message) && !canSeeMessageMedia(message));
 }
 
 // Service actions whose inline photo (suggested profile photo, or a group/channel
@@ -9092,7 +9091,6 @@ export default class ChatBubbles {
 
     const isStoryMention = isMessage && isStoryMentionMessage(message);
     const isSelfDestructingMedia = isMessage && isSelfDestructingMediaMessage(message);
-    const isUnsupported = isMessage && isUnsupportedMessage(message);
     let returnService: boolean;
 
     if(
@@ -9708,9 +9706,6 @@ export default class ChatBubbles {
 
           s.append(avatarContainer, text, button);
         }
-      } else if(isUnsupported) {
-        bubble.classList.add('is-unsupported', this.chat.isOutMessage(message) ? 'is-unsupported-out' : 'is-unsupported-in');
-        wrapUnsupportedMessagePlate(s);
       } else if(isSelfDestructingMedia) {
         const promise = wrapMessageForReply({
           message,
@@ -10145,9 +10140,13 @@ export default class ChatBubbles {
     // message-info block at all, rather than one parked in a corner.
     // A welcome template is sent whenever someone joins, so its own date means nothing (Android
     // draws no time there either).
+    // A message this client cannot show is a plate and nothing else, as Android draws it: no time,
+    // no name, no forward header, no quote.
+    const isUnsupported = isMessage && isUnsupportedMessage(message);
     const noMessageInfo = isSponsored ||
       context.messageMedia?._ === 'messageMediaCall' ||
-      this.chat.type === ChatType.Welcome;
+      this.chat.type === ChatType.Welcome ||
+      isUnsupported;
 
     let timeSpan: HTMLElement, _clearfix: HTMLElement;
     if(!noMessageInfo) {
@@ -10174,6 +10173,9 @@ export default class ChatBubbles {
       }
     } else if(isSponsored) {
       bubble.classList.add('is-sponsored');
+    } else if(isBroadcast) {
+      // * a post with no time to be read by is read by itself
+      setUnreadObserver?.();
     }
 
     bubbleContainer.prepend(messageDiv);
@@ -11722,8 +11724,19 @@ export default class ChatBubbles {
           }
 
           context.attachmentDiv = undefined;
-          context.mediaRequiresMessageDiv = true;
           noAttachmentDivNeeded = true;
+
+          // * a plate on the message's side with no bubble around it, as a sticker stands, and with all a message has
+          // * the way a sticker has it: the buttons beside a post, its side, a selection, a swipe to reply
+          if(isUnsupported) {
+            bubble.classList.add('is-unsupported');
+            context.isStandaloneMedia = true;
+            context.canHaveTail = false;
+            messageDiv.before(wrapUnsupportedMessagePlate());
+            break;
+          }
+
+          context.mediaRequiresMessageDiv = true;
           messageDiv.replaceChildren(i18n(UNSUPPORTED_LANG_PACK_KEY));
           bubble.timeAppenders[0].callback();
           this.log.warn('unrecognized media type:', context.messageMedia._, message);
@@ -11827,7 +11840,11 @@ export default class ChatBubbles {
       (showNameForVerificationCodes && !replyTo);
 
     let nameDiv: HTMLElement;
-    if(needName || fwdFrom || replyTo) { // chat
+    if(isUnsupported) {
+      bubble.classList.add('hide-name');
+      // * the plate is all it shows, but a saved copy still leads to where it was saved from
+      savedFrom = (message as Message.message).savedFrom || savedFrom;
+    } else if(needName || fwdFrom || replyTo) { // chat
       let title: HTMLElement;
       let titleVia: typeof title;
       let noColor: boolean;
@@ -12419,7 +12436,13 @@ export default class ChatBubbles {
     });
     reactionsElement.render(changedResults, waitPromise);
 
-    if(bubble.classList.contains('has-floating-time') || bubble.classList.contains('service')) {
+    // * a bubble with no text to hold them (its time floats over its media, or it is the plate of a message this client
+    // * cannot show, which has no time at all) and a service line take them under their content
+    if(
+      bubble.classList.contains('has-floating-time') ||
+      bubble.classList.contains('service') ||
+      bubble.classList.contains('is-unsupported')
+    ) {
       bubble.querySelector('.bubble-content-wrapper').append(reactionsElement);
     } else {
       const timeSpan = bubble.timeSpan;
