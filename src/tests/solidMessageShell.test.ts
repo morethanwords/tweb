@@ -53,6 +53,26 @@ describe('Solid message legacy-shell compatibility', () => {
     expect(getSolidMessageBodyStructure(final)).toEqual(getSolidMessageBodyStructure(draft));
   });
 
+  test('ignores what comes in by its own way: reactions, views, shares, comments, a pin', () => {
+    const before = message({
+      views: 10,
+      replies: {_: 'messageReplies', pFlags: {comments: true}, replies: 1, replies_pts: 5, channel_id: 2}
+    });
+    const after = message({
+      pFlags: {pinned: true},
+      views: 11,
+      forwards: 3,
+      reactions: {_: 'messageReactions', pFlags: {}, results: [{_: 'reactionCount', reaction: {_: 'reactionEmoji', emoticon: '👍'}, count: 1}]},
+      replies: {_: 'messageReplies', pFlags: {comments: true}, replies: 2, replies_pts: 6, channel_id: 2, max_id: 9}
+    });
+
+    expect(getSolidMessageBodyStructure(after)).toEqual(getSolidMessageBodyStructure(before));
+    // * but whether it has them at all: a post with views, a message that opens a thread, is made otherwise
+    expect(getSolidMessageBodyStructure(message({replies: {_: 'messageReplies', pFlags: {}, replies: 0, replies_pts: 0}})))
+    .not.toEqual(getSolidMessageBodyStructure(message()));
+    expect(getSolidMessageBodyStructure(message({views: 1}))).not.toEqual(getSolidMessageBodyStructure(message({views: 0})));
+  });
+
   test('keeps shell-affecting media and reply markup structural', () => {
     const source = message();
     const withMedia = message({media: {_: 'messageMediaEmpty'}});

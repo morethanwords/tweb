@@ -124,6 +124,12 @@ export default class ReactionsElement extends HTMLElement {
   }
 
   connectedCallback() {
+    // * a row made for no message (a picture of one, `copyElement`, put in the page while a bubble changes) is
+    // * no row of any: not registered, nor raising a bubble for an effect
+    if(this.key === undefined) {
+      return;
+    }
+
     let set = REACTIONS_ELEMENTS.get(this.key);
     if(!set) {
       REACTIONS_ELEMENTS.set(this.key, set = new Set());
@@ -151,6 +157,10 @@ export default class ReactionsElement extends HTMLElement {
   }
 
   disconnectedCallback() {
+    if(this.key === undefined) {
+      return;
+    }
+
     const set = REACTIONS_ELEMENTS.get(this.key);
     set.delete(this);
     if(!set.size) {
@@ -462,11 +472,12 @@ export default class ReactionsElement extends HTMLElement {
 
   private async handleChangedResults(changedResults: ReactionCount[], waitPromise?: Promise<any>, withDelay?: boolean) {
     await getHeavyAnimationPromise();
+    // the reactions stand where they end first (the bubble is shown changing till then): an effect takes its place
+    // from its reaction as it loads, before it plays
+    await waitPromise;
     // ! temp
     if(this.context.peerId !== hotReloadGuard.appImManager.chat.peerId) return;
-    if(withDelay) {
-      waitPromise = (waitPromise || Promise.resolve()).then(() => pause(150));
-    }
+    waitPromise = withDelay ? pause(150) : undefined;
 
     changedResults.forEach((reactionCount) => {
       const reactionElement = this.sorted.find((reactionElement) => {

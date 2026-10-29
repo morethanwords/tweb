@@ -11,6 +11,7 @@ import {hideToast, toastNew} from '@components/toast';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import A11yButton from '@components/a11yButton';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import changeBubble from '@components/chat/changeBubble';
 
 
 /**
@@ -172,12 +173,13 @@ export default function createAudioTranscription(options: {
       return;
     }
 
-    setState((prev) => reduceTranscribed(prev, {text, pending}));
+    // the text comes, grows or goes as its bubble makes room for it
+    changeBubble(options.getRow(), () => setState((prev) => reduceTranscribed(prev, {text, pending})));
   });
 
   const onClick = () => {
     if(state.status === 'transcribed') {
-      setState('expanded', (expanded) => !expanded);
+      changeBubble(options.getRow(), () => setState('expanded', (expanded) => !expanded));
       return;
     }
 

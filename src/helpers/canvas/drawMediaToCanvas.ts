@@ -2,8 +2,9 @@ export type DrawableMedia = HTMLImageElement | HTMLCanvasElement | HTMLVideoElem
 
 /**
  * What the media shows right now — a video's or an animation's current frame — on a canvas of its own,
- * at its natural size. Nothing when it has no size yet. A canvas handed over to an OffscreenCanvas
- * (`data-offscreen`) comes out blank: its pixels live in a worker.
+ * at its natural size. Nothing when it has no size yet, or no frame to show (a video still loading or
+ * seeking). A canvas handed over to an OffscreenCanvas (`data-offscreen`) comes out blank: its pixels
+ * live in a worker.
  */
 export default function drawMediaToCanvas(media: DrawableMedia) {
   let width: number, height: number;
@@ -25,6 +26,11 @@ export default function drawMediaToCanvas(media: DrawableMedia) {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
-  canvas.getContext('2d').drawImage(media, 0, 0);
+  try {
+    canvas.getContext('2d').drawImage(media, 0, 0);
+  } catch{
+    return;
+  }
+
   return canvas;
 }

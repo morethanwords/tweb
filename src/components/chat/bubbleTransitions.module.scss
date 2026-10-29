@@ -1,0 +1,162 @@
+// What a message changed where it stands is drawn with while it changes (`bubbleTransitions.ts`)
+
+// its own background, shadow and tail give way to the shape that changes its size
+.morphing {
+  background: none !important;
+  box-shadow: none !important;
+
+  :global(.bubble-tail) {
+    visibility: hidden !important;
+  }
+}
+
+// what a change is drawn with, from the content box's corner: of no size of its own, it is where a layout of its
+// parts starts and stops, and what of them stands out of the bubble (a background as big as it was, what cuts the
+// old text) is drawn, but does not make the list longer
+.layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  contain: size layout style;
+  pointer-events: none;
+}
+
+// the shape, under what the message shows
+.under {
+  z-index: -1;
+}
+
+// what stands out of the content box, going over it (`.bubble-content`'s own z-index is 2)
+.over {
+  z-index: 3;
+}
+
+// a quote's mark going with its end, as a picture of it (`::after` cannot be moved but by a restyle of the whole page),
+// the mark itself hidden till it is there
+.mark {
+  position: absolute;
+  pointer-events: none;
+}
+
+.markGoing::after {
+  visibility: hidden !important;
+}
+
+// a quote's border as tall as its background as that changes: from the top it is laid from
+.border {
+  position: absolute;
+  pointer-events: none;
+  transform-origin: top;
+}
+
+.borderGoing::before {
+  visibility: hidden !important;
+}
+
+// a reaction drawn by the shape as it changes its size: so is its colour when it is chosen (`::before`)
+.reactionMorphing {
+  background-color: transparent !important;
+  overflow: visible !important;
+  isolation: isolate;
+
+  &::before {
+    display: none !important;
+  }
+}
+
+// a reaction's count as it read, where the new one stands
+.counterCopy {
+  position: absolute !important;
+  margin: 0 !important;
+  // in one line, as it was: the reaction may be narrower now
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+// a quote drawn by the shape as it changes its size: its own background gives way, it does not cut the shape, and
+// the shape stays under its text, in it
+.quoteMorphing {
+  background-color: transparent !important;
+  overflow: visible !important;
+  isolation: isolate;
+}
+
+// a custom emoji as the canvas next to it drew it, on a picture of what shows it: over its room, from its corner
+.emoji {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+
+// a count rolling: a letter at a time, each cut by the line it stands in
+.counterRoll {
+  overflow: hidden;
+
+  > span {
+    display: inline-block;
+  }
+}
+
+// a part as it was (the text, or what is gone), laid out as it was, over the new ones
+.copy {
+  position: absolute !important;
+  // from its wrapper's corner, in either direction (with none, its place in a right-to-left one is to the left)
+  left: 0 !important;
+  top: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box;
+  // as big as it was, though the bubble is smaller now (and what it is put in is of no size, a share of which some
+  // parts take as their most: media's `max-height: min(400px, 100%)`)
+  max-width: none !important;
+  max-height: none !important;
+  pointer-events: none;
+  user-select: none;
+
+  // the time goes by itself (what shows it: its box only keeps its room in the line)
+  :global(.time-inner) {
+    visibility: hidden !important;
+  }
+}
+
+// a bubble as it was, as a whole, giving way to one of another kind: what it showed, but for its background and
+// tail, which the shape draws
+.ghost {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  margin: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  pointer-events: none;
+  user-select: none;
+
+  :global(.bubble-content) {
+    background: none !important;
+    box-shadow: none !important;
+  }
+
+  :global(.bubble-tail) {
+    visibility: hidden !important;
+  }
+
+  // nor what its row shows around it: its highlight, its selection, the line over the first unread
+  &::before,
+  &::after {
+    display: none !important;
+  }
+}
+
+// the text as it was: nothing but its text
+.textCopy {
+  :global(.reactions) {
+    visibility: hidden !important;
+  }
+}
+
+// the time as it was, where the new one stands
+.timeCopy {
+  pointer-events: none !important;
+}

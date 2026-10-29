@@ -130,6 +130,28 @@ Either way every `rootScope.managers` call is answered from
   fixture without being marked `fixtureOnly` — that mark is what keeps live mode
   from quietly showing made-up data.
 
+### Bubble sandbox
+
+A bubble of the open chat put in any state by click, as many times as it takes
+to watch the change between two states: `showBubbleSandbox()` from the console
+of a signed-in dev server (`?static=0` through the tunnel). Its panel
+(`src/components/bubbleSandbox/`) acts on the last bubble in view, or on the
+ones picked (Pick, then a click; Shift adds). A state is the message as it is
+with parts of it changed, axis by axis (`states.ts`: text of every kind, media
+of the chat's own, edited, views, a pin, a forward, a reply (a quoting one, one
+whose quote comes late), buttons, reactions (their counts, custom emoji, stars),
+a voice message's text — a change of a new kind is a new axis or option there),
+and showing one hands the chat the events the worker would hand it for that
+change, in that tab only (`dispatchEventSingle`): nothing reaches Telegram.
+Stream has a bot's answer come in pieces at the chat's end the same way, and go
+when pressed again. After every
+change it says whether the chat changed the bubble in place or rendered it
+anew, and for what. Shuffle and Auto go through the ticked axes, Back returns
+to the state before (Space on a focused button repeats it); the animation
+level, the speed every WAAPI animation plays at, the direction and how an edit
+shows in the time are switched there too. Closing it, or leaving the chat, puts
+everything back. `window.bubbleSandbox` drives it from a script while it is open.
+
 ### Memory
 
 What a tab costs, and where it went. Chrome charges a tab for every SharedWorker
@@ -634,7 +656,10 @@ import {Message, Chat, User, InputPeer} from '@layer';
   the hold-to-peek on photos (`components/mediaPeek`), `test:idle:app` the profile
   column (`components/sidebarRight`), `test:viewer:app` the
   media viewer's paging (`components/mediaViewer`), `test:send:app` a message
-  flying out of the composer (`components/chat/sendFlights`), `test:calls` the calls'
+  flying out of the composer (`components/chat/sendFlights`), `test:edit:app` a
+  message changing where it stands as it is edited or reacted to, and the list keeping up with a streamed answer (`components/chat/bubbleTransitions`,
+  and the shape it shares with the flight, `components/chat/bubbleShape`, and the bubble
+  sandbox, `components/bubbleSandbox`), `test:calls` the calls'
   noise suppressor (`lib/calls/noiseSuppression`), `test:memory:app` what a long
   session leaves in memory (caches, players, registries, the workers), `test:hot:app` (with `test:popups`, and
   `test:calls`, whose worklet runs the registry) the dev server's hot updates (`scripts/hot-*.mjs`,
@@ -866,6 +891,7 @@ pnpm test:a11y:app   # Axe past the login screen (needs PLAYWRIGHT_BASE_URL)
 pnpm test:idle:app   # the profile sidebar goes idle once open, and slides in with its profile filled (needs PLAYWRIGHT_BASE_URL)
 pnpm test:peek:app   # holding a photo peeks at it: chat, rich message, shared media (needs PLAYWRIGHT_BASE_URL)
 pnpm test:viewer:app # the media viewer: its place and header, a step pressed mid-step, paging right to left, a dead picture URL, a video's stand-in (needs PLAYWRIGHT_BASE_URL)
+pnpm test:edit:app   # an edited message changes where it stands: its background goes from its old box to its new one, the old text gives way to the new one (cut by the background as it shrinks), the messages it moves go there without a step, all moved by the compositor and nothing left after; at the reduced level the text only gives way where it stands; a message out of sight just changes; a streamed answer moves the list up a line at a time without a step; the bubble sandbox walks a message through every state it has — its reactions coming and going (none shown twice), their counts, a reply (a quoting one stretching with its mark, one whose quote comes late), buttons, a forward, media, a photo's caption going and coming and a pin shown changing too — and puts it back (sends to Saved Messages, edits and deletes; needs PLAYWRIGHT_BASE_URL)
 pnpm test:send:app   # a sent message flies out of the composer and lands on its bubble, on the very pixels it is drawn on, moved by the compositor (nothing of it restyled while it flies) while the list makes room smoothly; its custom emoji fly with it, drawn where they stand; a sticker or a GIF from the panel and the big emoji fly themselves, held still on the frame they were chosen at; nothing flies at the reduced level (sends to Saved Messages and deletes; needs PLAYWRIGHT_BASE_URL)
 pnpm test:calls      # the calls' noise suppressor: RNNoise in its AudioWorklet, in Chromium (~30 s)
 pnpm test:memory:app # a session played several times: no isolate's heap, DOM or renderer allocator keeps growing, idle lottie heaps go back (needs PLAYWRIGHT_BASE_URL of a --static preview; ~7 min)

@@ -1,0 +1,169 @@
+// Dev furniture over the app: in the corner of the chat list, out of the way of the bubbles it acts on.
+.panel {
+  position: fixed;
+  inset-inline-start: 1rem;
+  bottom: 1rem;
+  z-index: 10000;
+  width: 21rem;
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100% - 2rem);
+  overflow-y: auto;
+  padding: .5rem .75rem .75rem;
+  border-radius: .75rem;
+  border: 1px solid var(--border-color);
+  background-color: var(--surface-color);
+  box-shadow: 0 .25rem 1rem rgba(0, 0, 0, .2);
+  color: var(--primary-text-color);
+  font-size: .8125rem;
+  line-height: 1.25;
+
+  &.collapsed {
+    width: auto;
+    padding-bottom: .5rem;
+  }
+
+  // the app draws its own chrome over every raw checkbox and hides it: this panel has none, so it takes the native one
+  input[type="checkbox"] {
+    appearance: auto;
+    opacity: 1;
+    position: static;
+    z-index: auto;
+    margin: 0;
+    cursor: pointer;
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.title,
+.close {
+  padding: .25rem 0;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.title {
+  font-weight: 500;
+  font-size: .875rem;
+}
+
+.close {
+  margin-inline-start: auto;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: var(--secondary-text-color);
+
+  &:hover {
+    color: var(--primary-text-color);
+  }
+}
+
+.target {
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+  margin: .25rem 0 .5rem;
+}
+
+.targetName {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--secondary-text-color);
+}
+
+.dimension {
+  margin-bottom: .5rem;
+}
+
+.dimensionLabel {
+  display: flex;
+  align-items: center;
+  gap: .375rem;
+  margin-bottom: .25rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.options,
+.setting,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem;
+}
+
+.option,
+.action {
+  padding: .25rem .5rem;
+  border-radius: .375rem;
+  border: 1px solid var(--border-color);
+  background-color: var(--background-color);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+
+  &[aria-pressed="true"] {
+    border-color: var(--primary-color);
+    background-color: var(--primary-color);
+    color: var(--surface-color);
+  }
+
+  &:disabled {
+    opacity: .4;
+    cursor: default;
+  }
+}
+
+.action {
+  flex: 1 1 0;
+  font-weight: 500;
+}
+
+.customText {
+  display: block;
+  width: 100%;
+  margin-top: .25rem;
+  padding: .25rem .5rem;
+  border-radius: .375rem;
+  border: 1px solid var(--border-color);
+  background-color: var(--background-color);
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+
+.report {
+  min-height: 1.25em;
+  margin: .375rem 0 .5rem;
+  color: var(--secondary-text-color);
+}
+
+.setting {
+  align-items: center;
+  margin-bottom: .25rem;
+}
+
+.settingLabel {
+  width: 4.5rem;
+  color: var(--secondary-text-color);
+}
+
+.note {
+  margin-top: .5rem;
+  color: var(--secondary-text-color);
+  font-size: .75rem;
+}
+
+// picking: a click on a bubble picks it
+.picking :global(.bubble) {
+  cursor: crosshair;
+}

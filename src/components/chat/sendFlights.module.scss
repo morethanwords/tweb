@@ -14,12 +14,8 @@
   contain: size layout style;
 }
 
-// a part moves across in a wrapper (`.part`) and up in itself, each on its own curve
+// laid out from their corner, as the parts of a background are (`bubbleShape.module.scss`)
 .flight,
-.part,
-.piece,
-.tail,
-.clip,
 .window,
 .box {
   position: absolute;
@@ -28,12 +24,6 @@
   transform-origin: 0 0;
 }
 
-// a text bubble's background: bands and corners in its colour, stretched and moved to their places
-.piece {
-  background-color: currentColor;
-}
-
-.clip,
 .window,
 .box {
   overflow: hidden;

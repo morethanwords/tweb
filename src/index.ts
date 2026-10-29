@@ -422,6 +422,15 @@ if(import.meta.env.DEV) {
     const {showPopupSandbox} = await import('@components/popupSandbox');
     await showPopupSandbox();
   };
+
+  // the bubbles of the open chat, put in any state by click: the module, once loaded, puts its own opener in place of
+  // this one (`@components/bubbleSandbox`)
+  const loadBubbleSandbox = async() => {
+    await import('@components/bubbleSandbox');
+    const show = (window as any)['showBubbleSandbox'];
+    if(show !== loadBubbleSandbox) show();
+  };
+  (window as any)['showBubbleSandbox'] = loadBubbleSandbox;
 }
 
 /* false &&  */document.addEventListener('DOMContentLoaded', async() => {

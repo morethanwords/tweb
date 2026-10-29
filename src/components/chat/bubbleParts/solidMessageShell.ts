@@ -6,6 +6,11 @@ import {hasRichMessageSpoilers} from '@lib/richMessage';
  * Legacy-shell fields that must remain compatible while a Solid message body is updated in place.
  * Identity, time, text/rich content, translation metadata and read-delivery flags are reconciled
  * separately; everything left here requires a shell render until the complete bubble is Solid.
+ * So are the counters that change on their own and have a way of their own into the bubble: the
+ * reactions (`messages_reactions`), the views and shares (in the time, made anew with every edit)
+ * and the comments' count (`replies_updated`) - as part of the shell, an edit made after any of them
+ * changed would render the whole bubble anew. A pin shows in the time too (`peer_pinned_messages`).
+ * Whether there are views at all is the shell's still: a post that has them is made as one.
  */
 export function getSolidMessageBodyStructure(message: Message.message) {
   const bigEmoji = getBigEmojiShellSignature(message);
@@ -27,6 +32,10 @@ export function getSolidMessageBodyStructure(message: Message.message) {
     rich_message: _richMessage,
     summary_from_language: _summaryFromLanguage,
     edit_date: _editDate,
+    reactions: _reactions,
+    views,
+    forwards: _forwards,
+    replies,
     pFlags,
     ...structure
   } = message;
@@ -38,9 +47,22 @@ export function getSolidMessageBodyStructure(message: Message.message) {
     media_unread: _mediaUnread,
     silent: _silent,
     offline: _offline,
+    pinned: _pinned,
     ...structuralFlags
   } = pFlags;
-  return copy({...structure, pFlags: structuralFlags, bigEmoji, hasBodyContent});
+  return copy({
+    ...structure,
+    pFlags: structuralFlags,
+    bigEmoji,
+    hasBodyContent,
+    hasViews: !!views,
+    replies: replies && getRepliesShellSignature(replies)
+  });
+}
+
+// what kind of a thread the message opens, not how much is in it
+function getRepliesShellSignature({pFlags, channel_id}: Message.message['replies']) {
+  return {pFlags, channel_id};
 }
 
 function getBigEmojiShellSignature(message: Message.message) {

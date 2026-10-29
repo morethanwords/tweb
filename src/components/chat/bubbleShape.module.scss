@@ -1,0 +1,20 @@
+// A bubble's shape in pieces that only move and stretch (`bubbleShape.ts`): a part moves across in a
+// wrapper (`.part`) and up in itself, each on its own curve
+.part,
+.piece,
+.tail,
+.clip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+
+// a bubble's background: bands and corners in its colour, stretched and moved to their places
+.piece {
+  background-color: currentColor;
+}
+
+.clip {
+  overflow: hidden;
+}

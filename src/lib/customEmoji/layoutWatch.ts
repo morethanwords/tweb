@@ -7,10 +7,11 @@
  * in a chat with paid reactions their sparkles alone made each read 2-3 ms, sixty times a second, for
  * as long as the chat was open. So the tick measures only after something that can move an emoji: a
  * change of the document, a scroll, a resize, a transition of something that moves or a keyframe
- * animation where an emoji is (for as long as it runs, a second at most: an endless one is decoration), or a change in
+ * animation where an emoji is (for as long as it runs, a second at most: an endless one is decoration), Web Animations
+ * that say they move something (`markEmojiLayoutMoving`, for as long as they run), or a change in
  * the renderer's own state (`CustomEmojiRendererElement.stateSignature`) - and it does that at the
  * start of the next frame, where the read is the frame's own work. What moves without any of these
- * (Web Animations, an image or a font changing the layout) is caught by a measurement once a second.
+ * (other Web Animations, an image or a font changing the layout) is caught by a measurement once a second.
  * Nothing here reads the page: asking an element for its animations would work its style out too.
  * It watches the document the app is in, which moves into a Document PiP window and back.
  */
@@ -142,6 +143,25 @@ export function unwatchEmojiLayout() {
   observer.disconnect();
   moving.clear();
   changed = true;
+}
+
+/**
+ * Web Animations that move what emoji are drawn over (a bubble shown changing, its reactions moving): measured every
+ * frame till `over` settles, and once more then
+ */
+export function markEmojiLayoutMoving(over: Promise<unknown>) {
+  if(!watching) {
+    return;
+  }
+
+  const token = {};
+  moving.set(token as EventTarget, new Map([['animation', Infinity]]));
+  markEmojiLayoutChanged();
+  over.finally(() => {
+    if(moving.delete(token as EventTarget)) {
+      markEmojiLayoutChanged();
+    }
+  });
 }
 
 /** Whether something that moves is running, waited out for a second at most */

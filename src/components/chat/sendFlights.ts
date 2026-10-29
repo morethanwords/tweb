@@ -52,23 +52,55 @@ import noop from '@helpers/noop';
 import deferredPromise from '@helpers/cancellablePromise';
 import animationIntersector from '@components/animationIntersector';
 import drawMediaToCanvas, {DrawableMedia} from '@helpers/canvas/drawMediaToCanvas';
-import shouldSnapshotImage from '@components/mediaViewer/shouldSnapshotImage';
 import clamp from '@helpers/number/clamp';
 import {lerp} from '@helpers/lerp';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import type LottiePlayer from '@lib/lottie/lottiePlayer';
 import {getSendingStatusIconState, setSendingStatusIconState, settleSendingStatusIconCopy} from '@components/sendingStatusIcon';
+import {
+  Axes,
+  bubbleShapeStyles,
+  BubbleBackground,
+  Box,
+  boxHeight,
+  boxWidth,
+  centerX,
+  centerY,
+  copyTail,
+  createAxes,
+  createPart,
+  createShapeParts,
+  createTracks,
+  CURVE_X,
+  CURVE_Y,
+  EASING_X,
+  EASING_Y,
+  fromOrigin,
+  getBubbleBackground,
+  getRadii,
+  getShapePlaces,
+  getShapeTracks,
+  isVisible,
+  layOut,
+  makeBox,
+  moveBox,
+  Point,
+  setShapeRadii,
+  ShapeParts,
+  snapBox,
+  startOnNextFrame,
+  TailOffset,
+  toBox,
+  Track
+} from '@components/chat/bubbleShape';
+import copyElement, {CopyPairs, dropIdentity, keepContext, keepStyle, paintPlayerFrame} from '@components/chat/copyElement';
 import {Message, MessageMedia} from '@layer';
 import type {MyDocument} from '@appManagers/appDocsManager';
 import styles from '@components/chat/sendFlights.module.scss';
 
 const DURATION = 300;
-const CURVE_X = [.23, 1, .32, 1] as const;
-const CURVE_Y = [.1992, .0106, .2792, .9103] as const;
 const EASE_X = BezierEasing(...CURVE_X);
 const EASE_Y = BezierEasing(...CURVE_Y);
-const EASING_X = `cubic-bezier(${CURVE_X.join(', ')})`;
-const EASING_Y = `cubic-bezier(${CURVE_Y.join(', ')})`;
 // how long the message may take to come out after its source was let go
 const HOLD_TIMEOUT = 1500;
 // how long the copy may stay on a message the list is still scrolling to, after its way is over
@@ -104,14 +136,7 @@ const BEND_UNTIL = .98;
 /** the list's scroll to a message that flies in: in the time and the curve of its way up, as on iOS */
 export const SEND_FLIGHT_SCROLL = {duration: DURATION, transition: EASE_Y};
 
-type Box = {left: number, top: number, right: number, bottom: number};
-type Point = {x: number, y: number};
 type Glyphs = {first: DOMRect, last: DOMRect, text: string, color: string};
-type Radii = {topLeft: number, topRight: number, bottomRight: number, bottomLeft: number};
-/** an animation of a part of a copy: its keyframes over the whole way, and the curve between them */
-type Track = {element: HTMLElement, keyframes: Keyframe[], easing: string};
-/** a part that moves across in a wrapper, and up in itself */
-type Axes = {across: HTMLElement, part: HTMLElement};
 
 export type SendFlightsHost = {
   /** the chat's element: the copies are drawn in it */
@@ -149,44 +174,12 @@ type FlightTarget = {
   layers?: Layer[]
 };
 
-const toBox = (rect: DOMRect | Box): Box => ({left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom});
-const boxWidth = (box: Box) => box.right - box.left;
-const boxHeight = (box: Box) => box.bottom - box.top;
-const centerX = (box: Box) => (box.left + box.right) / 2;
-const centerY = (box: Box) => (box.top + box.bottom) / 2;
-
-// a box, empty rather than turned inside out
-const makeBox = (left: number, top: number, right: number, bottom: number): Box => ({
-  left,
-  top,
-  right: Math.max(left, right),
-  bottom: Math.max(top, bottom)
-});
-
-const moveBox = (box: Box, by: Box): Box => ({
-  left: box.left + by.left,
-  top: box.top + by.top,
-  right: box.right + by.right,
-  bottom: box.bottom + by.bottom
-});
-
 const boxAround = (boxes: Box[]) => makeBox(
   Math.min(...boxes.map((box) => box.left)),
   Math.min(...boxes.map((box) => box.top)),
   Math.max(...boxes.map((box) => box.right)),
   Math.max(...boxes.map((box) => box.bottom))
 );
-
-// a box from the overlay's corner
-const fromOrigin = (box: Box, {x, y}: Point) => makeBox(box.left - x, box.top - y, box.right - x, box.bottom - y);
-
-// where the page draws a box, a picture, a background: on whole device pixels (of the window the chat is in). The
-// copy lands where its message is drawn, not a fraction of a pixel off it
-const snap = (value: number) => {
-  const {devicePixelRatio} = getAppWindow();
-  return Math.round(value * devicePixelRatio) / devicePixelRatio;
-};
-const snapBox = (box: Box): Box => ({left: snap(box.left), top: snap(box.top), right: snap(box.right), bottom: snap(box.bottom)});
 
 // where an element of the list will be once the list has scrolled the rest of the way to its end
 const atEnd = (rect: DOMRect, scrollToEnd: number): Box => ({
@@ -220,39 +213,9 @@ function fitInto(box: Box, aspect: number): Box {
 
 const translate = (x: number, y: number) => `translate(${x}px, ${y}px)`;
 
-// the way of a part across, on its curve, in its wrapper, and up, on its own, in itself
-function across(element: HTMLElement, from: string, to: string): Track {
-  return {element, keyframes: [{transform: from}, {transform: to}], easing: EASING_X};
-}
-
-function up(element: HTMLElement, from: string, to: string): Track {
-  return {element, keyframes: [{transform: from}, {transform: to}], easing: EASING_Y};
-}
-
-// an element of a copied message, which cannot be wrapped without changing how it is laid out, going from one
-// offset to another: across by its own `translate`, up by its `transform`, each on its curve
-function shift(element: HTMLElement, from: Point, to: Point): Track[] {
-  return [
-    {element, keyframes: [{translate: `${from.x}px 0px`}, {translate: `${to.x}px 0px`}], easing: EASING_X},
-    up(element, `translateY(${from.y}px)`, `translateY(${to.y}px)`)
-  ];
-}
-
-// a part going from one point to another, across and up
-function move({across: wrapper, part}: Axes, from: Point, to: Point): Track[] {
-  return [
-    across(wrapper, `translateX(${from.x}px)`, `translateX(${to.x}px)`),
-    up(part, `translateY(${from.y}px)`, `translateY(${to.y}px)`)
-  ];
-}
-
-// a part laid out as `base` (from the corner of what it is in) going from one box to another: moved and
-// stretched from its top left corner
-function stretch({across: wrapper, part}: Axes, base: Box, from: Box, to: Box): Track[] {
-  const alongX = (box: Box) => `translateX(${box.left - base.left}px) scaleX(${boxWidth(box) / boxWidth(base)})`;
-  const alongY = (box: Box) => `translateY(${box.top - base.top}px) scaleY(${boxHeight(box) / boxHeight(base)})`;
-  return [across(wrapper, alongX(from), alongX(to)), up(part, alongY(from), alongY(to))];
-}
+// the ways of the parts of a copy: across on its curve, in a wrapper, and up on its own, in itself
+const flightTracks = createTracks({x: EASING_X, y: EASING_Y, duration: DURATION});
+const {across, up, shift, move, fade} = flightTracks;
 
 // a picture laid out as `base` going from one box to another: its middle across and up, and its size, from
 // its middle, on the across curve, as on iOS. Here the part moves across and its wrapper up
@@ -264,114 +227,8 @@ function grow(wrapper: HTMLElement, part: HTMLElement, base: Box, from: Box, to:
   return [across(part, alongX(from), alongX(to)), up(wrapper, alongY(from), alongY(to))];
 }
 
-// a fade in time: its opacity at moments of the way, straight between them
-function fade(element: HTMLElement, ...stops: [opacity: number, at: number][]): Track {
-  return {
-    element,
-    keyframes: stops.map(([opacity, at]) => ({opacity, offset: at / DURATION})),
-    easing: 'linear'
-  };
-}
-
-function layOut(element: HTMLElement, box: Box) {
-  element.style.left = `${box.left}px`;
-  element.style.top = `${box.top}px`;
-  element.style.width = `${boxWidth(box)}px`;
-  element.style.height = `${boxHeight(box)}px`;
-}
-
-function createPart(className: string) {
-  const element = document.createElement('div');
-  element.classList.add(className);
-  return element;
-}
-
-function createAxes(part: HTMLElement): Axes {
-  const wrapper = createPart(styles.part);
-  wrapper.append(part);
-  return {across: wrapper, part};
-}
-
-function isVisible(element: Element) {
-  return !!element?.isConnected && element.getClientRects().length > 0;
-}
-
 function hasBackground(color: string) {
   return color !== 'transparent' && !/,\s*0\)$/.test(color);
-}
-
-/** an element's corners as they are drawn: CSS makes them all smaller together when two are more than a side */
-function getRadii(style: CSSStyleDeclaration, rect: DOMRect): Radii {
-  const toLength = (value: string, size: number) => value.endsWith('%') ? parseFloat(value) * size / 100 : parseFloat(value) || 0;
-  const radii: Radii = {
-    topLeft: toLength(style.borderTopLeftRadius, rect.width),
-    topRight: toLength(style.borderTopRightRadius, rect.width),
-    bottomRight: toLength(style.borderBottomRightRadius, rect.width),
-    bottomLeft: toLength(style.borderBottomLeftRadius, rect.width)
-  };
-  const {topLeft, topRight, bottomRight, bottomLeft} = radii;
-  const factor = Math.min(
-    1,
-    rect.width / (topLeft + topRight),
-    rect.width / (bottomLeft + bottomRight),
-    rect.height / (topLeft + bottomLeft),
-    rect.height / (topRight + bottomRight)
-  );
-  for(const key in radii) {
-    radii[key as keyof Radii] *= factor;
-  }
-
-  return radii;
-}
-
-// a box's shadow as the shadow of whatever is drawn: the shape is made of pieces, and casts one shadow. A
-// box's blur is twice the deviation of its Gaussian, a drop shadow's is the deviation itself
-function toDropShadow(boxShadow: string) {
-  return boxShadow.split(/,(?![^(]*\))/).map((shadow) => {
-    const color = shadow.match(/[a-z-]+\([^)]*\)|#[\da-f]+/i)?.[0];
-    const lengths = color && shadow.replace(color, '').match(/-?[\d.]+px/g);
-    return lengths?.length >= 2 && !shadow.includes('inset') ?
-      `drop-shadow(${lengths[0]} ${lengths[1]} ${(parseFloat(lengths[2]) || 0) / 2}px ${color})` :
-      '';
-  }).join(' ');
-}
-
-// the quarter of a circle in each corner, in the order `getShape` has them
-const CORNERS: {radius: keyof Radii, corner: 'TopLeft' | 'TopRight' | 'BottomRight' | 'BottomLeft'}[] = [
-  {radius: 'topLeft', corner: 'TopLeft'},
-  {radius: 'topRight', corner: 'TopRight'},
-  {radius: 'bottomRight', corner: 'BottomRight'},
-  {radius: 'bottomLeft', corner: 'BottomLeft'}
-];
-
-// a band of the background is laid out as this, and stretched to its place
-const PIECE_SIZE = 100;
-const PIECE_BOX: Box = {left: 0, top: 0, right: PIECE_SIZE, bottom: PIECE_SIZE};
-
-/**
- * A rounded box in pieces that only move and stretch, so that it changes its size and its corners do not:
- * the four bands between the corners, from one side to past the middle (each a pixel into the corners it
- * meets, where they are round, so that no seam shows), and where each corner's quarter of a circle stands.
- * What is across of each depends only on the box's sides across, and what is up only on its top and bottom.
- */
-function getShape(box: Box, radii: Radii): {bands: Box[], corners: Point[]} {
-  const {left, top, right, bottom} = box;
-  const {topLeft, topRight, bottomRight, bottomLeft} = radii;
-  const into = (radius: number) => Math.min(1, radius);
-  return {
-    bands: [
-      makeBox(left + topLeft - into(topLeft), top, right - topRight + into(topRight), bottom - Math.max(bottomLeft, bottomRight)),
-      makeBox(left + bottomLeft - into(bottomLeft), top + Math.max(topLeft, topRight), right - bottomRight + into(bottomRight), bottom),
-      makeBox(left, top + topLeft - into(topLeft), right - Math.max(topRight, bottomRight), bottom - bottomLeft + into(bottomLeft)),
-      makeBox(left + Math.max(topLeft, bottomLeft), top + topRight - into(topRight), right, bottom - bottomRight + into(bottomRight))
-    ],
-    corners: [
-      {x: left, y: top},
-      {x: right - topRight, y: top},
-      {x: right - bottomRight, y: bottom - bottomRight},
-      {x: left, y: bottom - bottomLeft}
-    ]
-  };
 }
 
 /** the first and the last letter of a text, the text itself with its spaces collapsed, and its colour */
@@ -466,81 +323,6 @@ function putEmoji(copy: HTMLElement, picture: HTMLCanvasElement, box: Box, from:
 }
 
 /**
- * A copy of an element that shows what it shows: its canvases have their pixels drawn in, its videos (and its
- * images whose object URL may be gone) are pictures of what they show, and what is not shown in it (hidden by a
- * rule through its ancestors, which the copy, drawn elsewhere, would not get) is left out. A copy is no message,
- * field or button: ids and keys are dropped.
- */
-function copyElement<T extends HTMLElement>(source: T, pairs: CopyPairs = new Map()): T {
-  const copy = cloneWithPairs(source, pairs);
-  const hidden: Element[] = [];
-  pairs.forEach((element, original) => {
-    if(original === source) {
-      return;
-    }
-
-    if(
-      original instanceof HTMLElement &&
-      !original.getClientRects().length &&
-      getComputedStyle(original).display !== 'contents'
-    ) {
-      hidden.push(element);
-      pairs.delete(original);
-    } else if(original instanceof HTMLCanvasElement) {
-      // a sticker drawn by a worker (a reply's thumbnail) has its frame asked for
-      const player = original.dataset.offscreen ? lottieLoader.getAnimation(original.parentElement) : undefined;
-      if(player?.offscreen) {
-        paintPlayerFrame(player, element as HTMLCanvasElement, player.curFrame);
-      } else if(original.width && original.height) try {
-        (element as HTMLCanvasElement).getContext('2d').drawImage(original, 0, 0);
-      } catch{}
-    } else if(
-      original instanceof HTMLVideoElement ||
-      // a picture by a worker's object URL that may be revoked by now: the original shows what it decoded, a copy
-      // would load the URL anew
-      (original instanceof HTMLImageElement && shouldSnapshotImage(original))
-    ) {
-      const frame = drawMediaToCanvas(original) || document.createElement('canvas');
-      frame.className = original.className;
-      frame.style.cssText = original.style.cssText;
-      // laid out and cropped as it was, by rules of its tag too (`.reply-media > img`), which a canvas does not get
-      keepStyle(original, frame, ['width', 'height', 'object-fit', 'object-position']);
-      element.replaceWith(frame);
-      pairs.set(original, frame);
-    }
-  });
-  hidden.forEach((element) => element.remove());
-
-  dropIdentity(copy);
-  return copy;
-}
-
-// which element of a copy is which of its source's
-type CopyPairs = Map<Element, Element>;
-
-/**
- * A deep copy, and which of its elements is which of the source's. Not by their order: an element of the page's
- * own may add children as it is made (a custom emoji renderer, its canvas), and its copy does it again.
- */
-function cloneWithPairs<T extends Element>(source: T, pairs: CopyPairs): T {
-  const copy = source.cloneNode(false) as T;
-  pairs.set(source, copy);
-  source.childNodes.forEach((child) => {
-    copy.appendChild(child instanceof Element ? cloneWithPairs(child, pairs) : child.cloneNode(true));
-  });
-  return copy;
-}
-
-// a copy is no message, field or button: its ids and keys go
-function dropIdentity(copy: HTMLElement) {
-  for(const element of [copy, ...Array.from(copy.querySelectorAll<HTMLElement>('*'))]) {
-    for(const name of ['id', 'data-mid', 'data-peer-id', 'data-doc-id', 'contenteditable', 'tabindex', 'role', 'aria-label']) {
-      element.removeAttribute(name);
-    }
-  }
-}
-
-/**
  * A copy of a control (a button, a play button): small, and styled by rules through its ancestors, which a
  * copy drawn elsewhere would not get — so how each of its elements looks is put on it.
  */
@@ -559,47 +341,6 @@ function copyControl(original: HTMLElement) {
   });
 
   return copy;
-}
-
-// puts on an element of a copy how its original's properties came out, which rules it no longer gets gave it
-function keepStyle(original: Element, copy: HTMLElement, properties: string[]) {
-  const style = getComputedStyle(original);
-  for(const property of properties) {
-    copy.style.setProperty(property, style.getPropertyValue(property));
-  }
-}
-
-/**
- * A copy is drawn out of its original's place: the custom properties the original gets there (set on it by
- * a selector through its ancestors, or inherited from them) and the copy would not, are put on the copy.
- */
-function keepContext(original: Element, copy: HTMLElement, context: Element) {
-  const originalStyle = getComputedStyle(original);
-  const contextStyle = getComputedStyle(context);
-  for(let i = 0, length = originalStyle.length; i < length; ++i) {
-    const property = originalStyle[i];
-    if(!property.startsWith('--')) {
-      continue;
-    }
-
-    const value = originalStyle.getPropertyValue(property);
-    if(value !== contextStyle.getPropertyValue(property)) {
-      copy.style.setProperty(property, value);
-    }
-  }
-}
-
-/**
- * Paints a frame of a sticker drawn by a worker on a canvas, once it arrives: the sticker's own canvas, handed
- * over to the worker, cannot be drawn from
- */
-function paintPlayerFrame(player: LottiePlayer, canvas: HTMLCanvasElement, frameNo?: number) {
-  player.exportFrame(frameNo).then(({frame}) => {
-    canvas.width = frame.width;
-    canvas.height = frame.height;
-    canvas.getContext('2d').drawImage(frame, 0, 0);
-    frame.close?.();
-  }).catch(noop);
 }
 
 /**
@@ -1086,15 +827,7 @@ export abstract class SendFlight {
     const animations = this.animations = tracks.map(({element, keyframes, easing}) => {
       return element.animate(keyframes, {duration: DURATION, easing, fill: 'forwards'});
     });
-    // the frames and the clock of the window the chat is in: a Document PiP window has its own, which start later
-    getAppWindow().requestAnimationFrame(() => {
-      for(const animation of animations) {
-        const time = animation.timeline?.currentTime;
-        if(animation.startTime === null && time !== null) {
-          animation.startTime = time;
-        }
-      }
-    });
+    startOnNextFrame(animations);
   }
 
   // what may move the message's place is watched, rather than its place read every frame
@@ -1344,11 +1077,11 @@ class TextFlight extends SendFlight {
   private contentFrom: Point;
   // the field's text is the bubble's all the way
   private keepFieldText: boolean;
-  private background: {color: string, shadow: string, radii: Radii};
+  private background: BubbleBackground;
   // the bubble's corners and tail change as it joins a group or leaves one, on the way too
   private shapeObserver: MutationObserver;
   private tail: HTMLElement;
-  private tailOffset: Point & {end: boolean};
+  private tailOffset: TailOffset;
   private bubbleCopy: HTMLElement;
   // the clip is two boxes as big as the chat that only move: one cuts what is before the background's top
   // left corner, the other one what is after its bottom right one
@@ -1371,11 +1104,7 @@ class TextFlight extends SendFlight {
   private emoji: HTMLElement;
   private emojiFrom: Box;
   // what moves, put together: a bubble's, or the emoji's
-  private parts: Partial<{
-    background: HTMLElement,
-    bands: Axes[],
-    corners: Axes[],
-    tail: Axes,
+  private parts: Partial<ShapeParts & {
     clipStart: Axes,
     clipEnd: Axes,
     bubble: Axes,
@@ -1511,9 +1240,11 @@ class TextFlight extends SendFlight {
       };
     }
 
-    const radii = getRadii(contentStyle, contentRect);
-    this.background = {color: contentStyle.backgroundColor, shadow: toDropShadow(contentStyle.boxShadow), radii};
-    this.prepareTail(content, contentRect);
+    this.background = getBubbleBackground(contentStyle, contentRect);
+    // the tail goes with the background's corner
+    const tail = copyTail(content, contentRect);
+    this.tail = tail?.element;
+    this.tailOffset = tail?.offset;
 
     // the bubble as it is, without its background: the one under it is it
     const bubbleCopy = this.bubbleCopy = copyElement(bubble);
@@ -1563,33 +1294,6 @@ class TextFlight extends SendFlight {
     return contentRect;
   }
 
-  // the tail goes with the background's corner, reflected as it is
-  private prepareTail(content: HTMLElement, contentRect: DOMRect) {
-    const tail = content.querySelector<SVGElement>('.bubble-tail');
-    if(!isVisible(tail)) {
-      return;
-    }
-
-    const tailRect = tail.getBoundingClientRect();
-    const tailStyle = getComputedStyle(tail);
-    const end = tailRect.left + tailRect.width / 2 > contentRect.left + contentRect.width / 2;
-    this.tailOffset = {
-      end,
-      x: tailRect.left - (end ? contentRect.right : contentRect.left),
-      y: tailRect.top - contentRect.bottom
-    };
-
-    const matrix = new DOMMatrix(tailStyle.transform === 'none' ? undefined : tailStyle.transform);
-    matrix.e = matrix.f = 0;
-    const tailCopy = tail.cloneNode(true) as SVGElement;
-    tailCopy.removeAttribute('class');
-    tailCopy.style.cssText = `display: block; width: 100%; height: 100%; fill: ${tailStyle.fill}; transform: ${matrix}`;
-    const wrapper = this.tail = createPart(styles.tail);
-    wrapper.style.width = `${tailRect.width}px`;
-    wrapper.style.height = `${tailRect.height}px`;
-    wrapper.append(tailCopy);
-  }
-
   // the big emoji (or the dice) grow out of the field's: their line there into their line in the message, the
   // media around it alike; the message's time comes late, where it stands, as on iOS
   private prepareEmoji(bubble: HTMLElement, wrapper: HTMLElement) {
@@ -1623,12 +1327,12 @@ class TextFlight extends SendFlight {
     const {origin} = this;
     this.fieldCopy.style.transform = '';
     if(this.emoji) {
-      const wrapper = createPart(styles.part);
+      const wrapper = createPart();
       wrapper.append(this.emoji);
       layOut(this.emoji, fromOrigin(snapBox(this.base), origin));
 
       // the field's text grows with them, from their middle: it goes up in a wrapper, across and bigger in itself
-      const fieldWrapper = createPart(styles.part);
+      const fieldWrapper = createPart();
       fieldWrapper.append(this.fieldCopy);
       this.fieldCopy.style.left = `${this.fieldText.left - origin.x}px`;
       this.fieldCopy.style.top = `${this.fieldText.top - origin.y}px`;
@@ -1641,30 +1345,10 @@ class TextFlight extends SendFlight {
     }
 
     const field = createAxes(this.fieldCopy);
-
-    const background = createPart(styles.part);
-    const shape = createPart(styles.part);
-    shape.style.color = this.background.color;
-    shape.style.filter = this.background.shadow;
-    const bands = Array.from({length: 4}, () => {
-      const band = createPart(styles.piece);
-      band.style.width = band.style.height = `${PIECE_SIZE}px`;
-      return createAxes(band);
-    });
-    // every corner, a square one too (of no size): it may round on the way
-    const corners = CORNERS.map(({radius, corner}) => {
-      const element = createPart(styles.piece);
-      element.style.width = element.style.height = `${this.background.radii[radius]}px`;
-      element.style[`border${corner}Radius`] = '100%';
-      return createAxes(element);
-    });
-    shape.append(...[...bands, ...corners].map(({across}) => across));
-    const tail = this.tail && createAxes(this.tail);
-    // over the background and its shadow, as the bubble's is: drawn in it, after its background
-    background.append(...[shape, tail?.across].filter(Boolean));
+    const {background, bands, corners, tail} = createShapeParts(this.background, this.tail);
 
     const [clipStart, clipEnd] = [0, 1].map(() => {
-      const clip = createPart(styles.clip);
+      const clip = createPart(bubbleShapeStyles.clip);
       clip.style.width = `${this.clipSize.x}px`;
       clip.style.height = `${this.clipSize.y}px`;
       return createAxes(clip);
@@ -1698,9 +1382,7 @@ class TextFlight extends SendFlight {
 
       const content = this.target;
       const radii = this.background.radii = getRadii(getComputedStyle(content), content.getBoundingClientRect());
-      this.parts.corners.forEach(({part}, index) => {
-        part.style.width = part.style.height = `${radii[CORNERS[index].radius]}px`;
-      });
+      setShapeRadii(this.parts.corners, radii);
       this.parts.tail?.across.classList.toggle(styles.hidden, !isVisible(content.querySelector('.bubble-tail')));
       this.animate();
     });
@@ -1738,7 +1420,7 @@ class TextFlight extends SendFlight {
     const progress = +atEnd;
     // the background and the tail on whole pixels, as the bubble's are drawn
     const page = snapBox(lerpBox(this.getSource(this.field), this.end, progress));
-    const box = fromOrigin(page, origin);
+    const {box, shape, tail} = getShapePlaces(page, origin, this.background.radii, this.tailOffset);
     // the content box: from where its text stands on the field's to its place in the bubble
     const content = {
       x: lerp(this.contentFrom.x + this.shift.left, this.end.left, progress) - origin.x,
@@ -1746,10 +1428,6 @@ class TextFlight extends SendFlight {
     };
     // what the clip's second box holds is placed from its corner, which is the background's bottom right one
     const clip = {x: box.right - this.clipSize.x, y: box.bottom - this.clipSize.y};
-    const tail = this.tailOffset && {
-      x: snap((this.tailOffset.end ? page.right : page.left) + this.tailOffset.x) - origin.x,
-      y: snap(page.bottom + this.tailOffset.y) - origin.y
-    };
     // the reply's quote, by its title: from the panel's to the bubble's; with none in the bubble, where it was
     const replyFrom = this.panelReplyFrom;
     const titleFrom = replyFrom && {x: replyFrom.left + this.panelTitleOffset.x, y: replyFrom.top + this.panelTitleOffset.y};
@@ -1764,7 +1442,7 @@ class TextFlight extends SendFlight {
 
     return {
       box,
-      shape: getShape(box, this.background.radii),
+      shape,
       tail,
       clipStart: {x: box.left, y: box.top},
       clipEnd: {x: clip.x - box.left, y: clip.y - box.top},
@@ -1795,9 +1473,7 @@ class TextFlight extends SendFlight {
     const backgroundIn: [number, number][] = [[0, 0], [1, BACKGROUND_IN], [1, DURATION]];
     const tracks = [
       fade(parts.background, ...backgroundIn),
-      ...parts.bands.flatMap((band, index) => stretch(band, PIECE_BOX, from.shape.bands[index], to.shape.bands[index])),
-      ...parts.corners.flatMap((corner, index) => move(corner, from.shape.corners[index], to.shape.corners[index])),
-      ...(parts.tail ? move(parts.tail, from.tail, to.tail) : []),
+      ...getShapeTracks(flightTracks, parts as ShapeParts, from, to),
       ...move(parts.clipStart, from.clipStart, to.clipStart),
       ...move(parts.clipEnd, from.clipEnd, to.clipEnd),
       ...move(parts.bubble, from.bubble, to.bubble),
@@ -1935,7 +1611,7 @@ class BoxFlight extends SendFlight {
     }
 
     // laid out as the message's media, and stretched to wherever it is on the way
-    const wrapper = createPart(styles.part);
+    const wrapper = createPart();
     wrapper.append(box);
     layOut(box, fromOrigin(snapBox(this.base), this.origin));
     this.root.append(wrapper);

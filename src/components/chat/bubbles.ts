@@ -31,7 +31,7 @@ import {FocusDirection, ScrollStartCallbackDimensions} from '@helpers/fastSmooth
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '@hooks/useHeavyAnimationCheck';
 import {doubleRaf, fastRaf, fastRafPromise} from '@helpers/schedulers';
 import withTimeout from '@helpers/schedulers/withTimeout';
-import deferredPromise from '@helpers/cancellablePromise';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import memoizeAsyncWithTTL from '@helpers/memoizeAsyncWithTTL';
 import RepliesElement from '@components/chat/replies';
 import DEBUG from '@config/debug';
@@ -279,6 +279,13 @@ import wheelDeltaToPixels from '@helpers/dom/wheelDeltaToPixels';
 import {TEXT_LINK_ATTRIBUTE} from '@helpers/dom/linkPress';
 import {EMOJI_TEXT_COLOR} from '@components/emoticonsDropdown/constants';
 import SendFlights, {SEND_FLIGHT_SCROLL, type SendFlight} from '@components/chat/sendFlights';
+import captureBubbleTransition, {
+  BubbleChange,
+  BubbleTransition,
+  finishGrowth,
+  followGrowth,
+  noteGrowth
+} from '@components/chat/bubbleTransitions';
 
 // TODO: fix new message won't be rendered if an old one is rendering in the moment
 
@@ -832,6 +839,8 @@ export default class ChatBubbles {
   private pendingSolidMessageBodyLayouts = new Set<SolidMessageBodyEntry>();
   private laidOutSolidMessageBodies = new WeakSet<SolidMessageBodyEntry>();
   private solidMessageBodyLayoutFrame: {win: Window, id: number};
+  // the list keeping up with a body that grew, before the frame it grew in is drawn (`followSolidMessageBodies`)
+  private solidMessageBodyFollow: object;
   private spoilerOverlayPromises = new WeakMap<HTMLElement, Promise<void>>();
 
   private scrolledDown = true;
@@ -1003,6 +1012,13 @@ export default class ChatBubbles {
   private lastPlayingVideo: HTMLVideoElement;
 
   private batchingModifying: Array<() => void>;
+  // the batch made and shown to its end (`modifyBubble`)
+  private batchingModified: CancellablePromise<void>;
+  // the bubbles of the batch whose change is shown (`bubbleTransitions`), by what changes in them, and the last
+  // change still being shown
+  private batchingTransitions: Map<HTMLElement, BubbleChange>;
+  private bubbleTransitionPromise: Promise<void>;
+  private bubbleTransition: BubbleTransition;
 
   /** a send's temporary id → its server id; used when message is sent faster than temporary one was rendered */
   public changedMids: Map<number, number>;
@@ -1051,6 +1067,11 @@ export default class ChatBubbles {
     this.appWindowUnsubs.push(onBeforeAppWindowChange(this.saveReflowScroll));
     // a flight is drawn in one window, on its frames and its clock: one on its way does not go along
     this.appWindowUnsubs.push(onBeforeAppWindowChange(() => this.sendFlights?.abortAll()));
+    // the clock of a window the chat leaves may never tick again: a change shown there is over at once
+    this.appWindowUnsubs.push(onBeforeAppWindowChange(() => {
+      this.bubbleTransition?.finish();
+      finishGrowth();
+    }));
     this.appWindowUnsubs.push(onAppWindowChange(() => {
       const win = getAppWindow();
       win.requestAnimationFrame(() => win.requestAnimationFrame(() => {
@@ -1548,7 +1569,8 @@ export default class ChatBubbles {
       if(this.peerId !== message.peerId) return;
       const bubble = this.getBubble(makeFullMid(message));
       if(!bubble) return;
-      this.setBubbleRepliesCount(bubble, message.replies.replies);
+      // the count in the time gives way to the new one, the bubble making room for it
+      this.modifyBubble(() => this.setBubbleRepliesCount(bubble, message.replies.replies), bubble, 'meta');
     });
 
     this.listenerSetter.add(rootScope)('grouped_edit', ({peerId, messages, deletedMids}) => {
@@ -1588,8 +1610,6 @@ export default class ChatBubbles {
           return;
         }
 
-        let scrollSaver: ScrollSaver;
-
         const a = arr.map(async({message, changedResults}) => {
           if(this.peerId !== message.peerId && !GLOBAL_MIDS) {
             return;
@@ -1604,60 +1624,58 @@ export default class ChatBubbles {
           return {bubble: findUpClassName(result.bubble, 'bubble'), message, changedResults};
         });
 
+        // in the batch the bubbles are kept in place around and shown changing in (`modifyBubble`); the effects of the
+        // reactions that changed start once those stand where they end
         const waitPromise = deferredPromise<void>();
-        (await Promise.all(a)).filter(Boolean).forEach(({bubble, message, changedResults}) => {
-          if(!scrollSaver) {
-            scrollSaver = this.createScrollSaver(false);
-            scrollSaver.save();
-          }
+        const modified = (await Promise.all(a)).filter(Boolean).map(({bubble, message, changedResults}) => {
+          return this.modifyBubble(() => {
+            if(bubble.dataset.ignoreReactions) {
+              delete bubble.dataset.ignoreReactions;
+              changedResults = [];
+            }
 
-          if(bubble.dataset.ignoreReactions) {
-            delete bubble.dataset.ignoreReactions;
-            changedResults = [];
-          }
+            const unreadReactions = getUnreadReactions(message);
+            if(unreadReactions) {
+              changedResults = [];
+            }
 
-          const unreadReactions = getUnreadReactions(message);
-          if(unreadReactions) {
-            changedResults = [];
-          }
+            const key = message.peerId + '_' + message.mid;
+            const set = REACTIONS_ELEMENTS.get(key);
+            if(set) {
+              for(const element of set) {
+                element.update(message, changedResults, waitPromise);
+                if(!message.reactions || !message.reactions.results.length) {
+                  const parentElement = element.parentElement;
+                  element.remove();
 
-          const key = message.peerId + '_' + message.mid;
-          const set = REACTIONS_ELEMENTS.get(key);
-          if(set) {
-            for(const element of set) {
-              element.update(message, changedResults, waitPromise);
-              if(!message.reactions || !message.reactions.results.length) {
-                const parentElement = element.parentElement;
-                element.remove();
+                  const timeSpan = element.querySelector('.time');
+                  if(timeSpan) {
+                    findAndSplice(bubble.timeAppenders, ({element: el}) => el === element);
+                    bubble.timeAppenders[0].callback();
+                  }
 
-                const timeSpan = element.querySelector('.time');
-                if(timeSpan) {
-                  findAndSplice(bubble.timeAppenders, ({element: el}) => el === element);
-                  bubble.timeAppenders[0].callback();
-                }
-
-                if(
-                  parentElement &&
-                  parentElement.classList.contains('document-message') &&
-                  !parentElement.childNodes.length
-                ) {
-                  parentElement.remove();
+                  if(
+                    parentElement &&
+                    parentElement.classList.contains('document-message') &&
+                    !parentElement.childNodes.length
+                  ) {
+                    parentElement.remove();
+                  }
                 }
               }
+            } else if(!message.reactions || !message.reactions.results.length) {
+              return;
+            } else {
+              this.appendReactionsElementToBubble(bubble, message, message, changedResults, undefined, waitPromise);
             }
-          } else if(!message.reactions || !message.reactions.results.length) {
-            return;
-          } else {
-            this.appendReactionsElementToBubble(bubble, message, message, changedResults);
-          }
 
-          if(unreadReactions) {
-            this.setUnreadObserver('content', bubble, message.mid);
-          }
+            if(unreadReactions) {
+              this.setUnreadObserver('content', bubble, message.mid);
+            }
+          }, bubble, 'meta');
         });
 
-        scrollSaver?.restore();
-        waitPromise.resolve();
+        Promise.all(modified).then(() => waitPromise.resolve());
       });
     }
 
@@ -2636,34 +2654,20 @@ export default class ChatBubbles {
     !DO_NOT_UPDATE_MESSAGE_VIEWS && this.listenerSetter.add(rootScope)('messages_views', (arr) => {
       if(this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Welcome) return;
 
-      fastRaf(() => {
-        let scrollSaver: ScrollSaver;
-        for(const {peerId, views, mid} of arr) {
-          if(this.peerId !== peerId && !GLOBAL_MIDS) continue;
+      // in the batch the bubbles are kept in place around and shown changing in: the count gives way to the new one
+      for(const {peerId, views, mid} of arr) {
+        if(this.peerId !== peerId && !GLOBAL_MIDS) continue;
 
-          const bubble = this.getBubble(peerId, mid);
-          if(!bubble) continue;
+        const bubble = this.getBubble(peerId, mid);
+        const str = formatNumber(views, 1);
+        const postViewsElements = bubble ? Array.from(bubble.querySelectorAll<HTMLElement>('.post-views')) : [];
+        if(!postViewsElements.some((postViews) => postViews.textContent !== str)) continue;
 
-          const postViewsElements = Array.from(bubble.querySelectorAll('.post-views')) as HTMLElement[];
-          if(!postViewsElements.length) continue;
-
-          const str = formatNumber(views, 1);
-          let different = false;
-          postViewsElements.forEach((postViews) => {
-            if(different || postViews.textContent !== str) {
-              if(!scrollSaver) {
-                scrollSaver = this.createScrollSaver(true);
-                scrollSaver.save();
-              }
-
-              different = true;
-              postViews.textContent = str;
-            }
-          });
-        }
-
-        scrollSaver?.restore();
-      });
+        // the count as the time shows it by then: an edit before it in the batch makes the time anew
+        this.modifyBubble(() => {
+          bubble.querySelectorAll<HTMLElement>('.post-views').forEach((postViews) => postViews.textContent = str);
+        }, bubble, 'meta');
+      }
     });
 
     this.observer = new SuperIntersectionObserver({root: this.scrollable.container});
@@ -2691,8 +2695,40 @@ export default class ChatBubbles {
     this.setupReadMetrics();
 
     // * pinned part start
-    this.listenerSetter.add(rootScope)('peer_pinned_messages', ({peerId, mids, pinned}) => {
-      if(this.chat.type !== ChatType.Pinned || peerId !== this.peerId) {
+    this.listenerSetter.add(rootScope)('peer_pinned_messages', ({peerId, threadId, mids, pinned, unpinAll}) => {
+      if(peerId !== this.peerId) {
+        return;
+      }
+
+      // a pin shows in the time: it comes or goes there, shown changing. Every pin taken off a topic is taken off its
+      // messages only; scheduled messages are none of the history's (their ids may be the same)
+      if(this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Welcome) {
+        return;
+      }
+
+      if(this.chat.type !== ChatType.Pinned) {
+        const isInThread = (bubble: HTMLElement) => {
+          const message = threadId && this.chat.getMessageByPeer(peerId, +bubble.dataset.mid);
+          return !threadId || (!!message && getMessageThreadId(message, {isForum: this.chat.isForum}) === threadId);
+        };
+        const getPinned = () => new Set(
+          Array.from(this.chatInner.querySelectorAll<HTMLElement>('.bubble .time-pinned'))
+          .map((icon) => findUpClassName(icon, 'bubble'))
+          .filter(isInThread)
+        );
+        if(unpinAll) {
+          // the pins shown as the batch runs, in this chat still: one put in by it before this is taken out too
+          const middleware = this.getMiddleware();
+          this.modifyBubble(() => middleware() && getPinned().forEach((bubble) => this.setBubblePinned(bubble, false)));
+          getPinned().forEach((bubble) => this.modifyBubble(noop, bubble, 'meta'));
+          return;
+        }
+
+        for(const bubble of new Set((mids || []).map((mid) => this.getBubble(peerId, mid)))) {
+          if(!bubble?.timeSpan) continue;
+          this.modifyBubble(() => this.setBubblePinned(bubble, pinned), bubble, 'meta');
+        }
+
         return;
       }
 
@@ -3486,7 +3522,9 @@ export default class ChatBubbles {
             needUpdate: this.needUpdate,
             isStandaloneMedia: bubble.classList.contains('just-media'),
             isOut: bubble.classList.contains('is-out'),
-            fromUpdate: true
+            fromUpdate: true,
+            // the quote that came is shown changing, in the batch that keeps the view in place around it
+            swap: (callback) => this.modifyBubble(callback, bubble, 'meta')
           });
 
           if(!originalMessage) {
@@ -3516,10 +3554,7 @@ export default class ChatBubbles {
     await Promise.all(promises);
     if(!middleware() || !callbacks.length) return;
 
-    const scrollSaver = this.createScrollSaver(true);
-    scrollSaver.save();
     await Promise.all(callbacks.map((callback) => callback()));
-    scrollSaver.restore();
   };
 
   private onBubblesMouseMove = async(e: MouseEvent) => {
@@ -6337,6 +6372,13 @@ export default class ChatBubbles {
       this.solidMessageBodyLayoutFrame.win.cancelAnimationFrame(this.solidMessageBodyLayoutFrame.id);
       this.solidMessageBodyLayoutFrame = undefined;
     }
+    this.solidMessageBodyFollow = undefined;
+    // a change of a bubble still being shown goes on in the chat it leaves: the new one does not wait for it; nor are the
+    // changes still to be made to its bubbles made (they would act on the new one: its unread messages, its pins)
+    this.bubbleTransitionPromise = this.bubbleTransition = undefined;
+    this.batchingModifying = this.batchingTransitions = undefined;
+    this.batchingModified?.resolve();
+    this.batchingModified = undefined;
 
     this.onAnimateLadder = undefined;
     this.resolveLadderAnimation = undefined;
@@ -7462,6 +7504,8 @@ export default class ChatBubbles {
     // * если добавить этот промис - в таком случае нужно сделать, чтобы скроллило к последнему сообщению после рендера
     // * например, к рекламе
     promises.push(getHeavyAnimationPromise());
+    // a change still being shown goes to its end first: a bubble rendered anew goes from there
+    if(this.bubbleTransitionPromise) promises.push(this.bubbleTransitionPromise);
 
     log('media promises to call', promises, loadQueue, this.isHeavyAnimationInProgress);
     // * `.catch(noop)` only covers a rejection — a promise that simply never settles slips straight
@@ -7490,11 +7534,12 @@ export default class ChatBubbles {
       this.messagesQueueOnRenderAdditional?.();
     }
 
-    this.commitBubbleReplacements(
-      new Set(loadQueue.map(({bubble}) => bubble)),
-      scrollSaver,
-      groups
-    );
+    const renderedBubbles = new Set(loadQueue.map(({bubble}) => bubble));
+    const replacementTransition = this.captureReplacementTransition(renderedBubbles);
+    // what it is shown changing from lives on till it is shown: its pictures may still be on their way (a sticker's
+    // frame, asked of the worker that draws it)
+    const replacedSources: HTMLElement[] = [];
+    this.commitBubbleReplacements(renderedBubbles, scrollSaver, groups, replacementTransition && replacedSources);
 
     if(this.chat.selection.isSelecting) {
       loadQueue.forEach(({bubble}) => {
@@ -7518,6 +7563,12 @@ export default class ChatBubbles {
     this.updatePlaceholderPosition?.();
 
     restoreScroll?.();
+    this.showBubbleTransition(replacementTransition);
+    if(replacedSources.length) {
+      (this.bubbleTransitionPromise || Promise.resolve()).then(() => {
+        replacedSources.forEach((bubble) => bubble.middlewareHelper.destroy());
+      });
+    }
 
     m(pause(!this.chat.setPeerPromise ? 0 : 1000))
     .then(() => m(getHeavyAnimationPromise()))
@@ -7532,10 +7583,49 @@ export default class ChatBubbles {
     return this.batchProcessor.addToQueue(options);
   }
 
+  /**
+   * Bubbles rendered anew in place of ones that can be seen (an edit that changed what a bubble is made of: a reply)
+   * are shown changing into them (`bubbleTransitions`) — when that is all the batch does, as what it adds moves the
+   * list by itself, and no other change is being shown: what is moving cannot be read where it stands
+   */
+  private captureReplacementTransition(renderedBubbles: ReadonlySet<HTMLElement>) {
+    if(this.bubbleTransitionPromise) {
+      return;
+    }
+
+    const replaced = new Map<HTMLElement, HTMLElement>();
+    for(const [bubble, transaction] of this.bubblesToReplace) {
+      if(
+        renderedBubbles.has(bubble) &&
+        this.getBubble(transaction.fullMid) === bubble &&
+        transaction.source.isConnected
+      ) {
+        replaced.set(transaction.source, bubble);
+      }
+    }
+
+    if(!replaced.size || replaced.size !== renderedBubbles.size) {
+      return;
+    }
+
+    const transition = captureBubbleTransition({
+      bubbles: replaced.keys(),
+      container: this.scrollable.container,
+      busy: (bubble) => !!this.sendFlights?.whenLanded(bubble),
+      replacing: true
+    });
+    replaced.forEach((bubble, source) => transition?.replace(source, bubble));
+    return transition;
+  }
+
+  /**
+   * @param keptSources where to put the bubbles replaced, taken out but not torn down: the caller does that later
+   */
   private commitBubbleReplacements(
     renderedBubbles: ReadonlySet<HTMLElement>,
     scrollSaver: ScrollSaver,
-    groups: ReturnType<ChatBubbles['groupBubbles']>['groups']
+    groups: ReturnType<ChatBubbles['groupBubbles']>['groups'],
+    keptSources?: HTMLElement[]
   ) {
     for(const [bubble, transaction] of this.bubblesToReplace) {
       if(!renderedBubbles.has(bubble)) {
@@ -7557,7 +7647,12 @@ export default class ChatBubbles {
       }
 
       this.hiddenLinksPendingBubbles.delete(transaction.source);
-      ejectBubble(transaction.source);
+      if(keptSources) {
+        transaction.source.remove();
+        keptSources.push(transaction.source);
+      } else {
+        ejectBubble(transaction.source);
+      }
 
       const regroupMessage = transaction.regroupMessage;
       if(regroupMessage) {
@@ -8245,6 +8340,24 @@ export default class ChatBubbles {
     });
   }
 
+  // the pin in a bubble's time (`MessageRender.setTime`), put in or taken out by itself: the rest of the time stays as it
+  // was laid out (over a picture, in a line)
+  private setBubblePinned(bubble: HTMLElement, pinned: boolean) {
+    bubble.querySelectorAll('.time, .time-inner').forEach((element) => {
+      const icon = element.querySelector(':scope > .time-pinned');
+      if(!pinned || icon) {
+        if(!pinned) icon?.remove();
+        return;
+      }
+
+      // after the count of replies, which is put in before everything (`setBubbleRepliesCount`)
+      const pin = Icon('pinnedchat_filled', 'time-icon', 'time-pinned', 'time-part');
+      const replies = element.querySelector(':scope > .time-replies');
+      if(replies) replies.after(pin);
+      else element.prepend(pin);
+    });
+  }
+
   private setBubbleRepliesCount(bubble: HTMLElement, count: number) {
     if(this.chat.threadId) return;
     bubble.querySelectorAll('.time, .time-inner').forEach((element) => {
@@ -8302,10 +8415,25 @@ export default class ChatBubbles {
     // scheduled, so a callback that throws — or a callback that queues another modification —
     // would otherwise leave every later Solid body update in this chat queued forever.
     this.batchingModifying = undefined;
-    if(!callbacks?.length) return;
+    const transitions = this.batchingTransitions;
+    this.batchingTransitions = undefined;
+    const modified = this.batchingModified;
+    this.batchingModified = undefined;
+    if(!callbacks?.length) {
+      modified?.resolve();
+      return;
+    }
 
     const scrollSaver = this.createScrollSaver(false);
     scrollSaver.save();
+    // read where the layout is read anyway: before the changes, and after the view is kept in place
+    const transition = transitions && captureBubbleTransition({
+      bubbles: transitions.keys(),
+      container: this.scrollable.container,
+      busy: (bubble) => !!this.sendFlights?.whenLanded(bubble),
+      // what its text is is read only where it may change
+      textOf: (bubble) => transitions.get(bubble) === 'edit'
+    });
     batch(() => callbacks.forEach((callback) => {
       try {
         callback();
@@ -8314,17 +8442,60 @@ export default class ChatBubbles {
       }
     }));
     scrollSaver.restore();
+    // a rich text puts its leaves in a microtask of its own (`createMessageTextRevealCoordinator`): what changed is
+    // measured once that is done
+    queueMicrotask(() => {
+      this.showBubbleTransition(transition);
+      (this.bubbleTransitionPromise || Promise.resolve()).then(() => modified?.resolve());
+    });
   }
 
-  private modifyBubble = async(callback: () => void) => {
+  /** what an element of a bubble shows changes the bubble's size (`changeBubble`): made in the batch, shown changing */
+  public changeBubble(element: HTMLElement, callback: () => void) {
+    const bubble = findUpClassName(element, 'bubble');
+    return this.modifyBubble(callback, bubble && this.chatInner.contains(bubble) ? bubble : undefined, 'meta');
+  }
+
+  // a change shown to its end before the next one is made: it goes from there
+  private showBubbleTransition(transition: BubbleTransition) {
+    const promise = transition?.play();
+    if(promise) {
+      this.bubbleTransition = transition;
+      this.bubbleTransitionPromise = promise;
+      promise.then(() => {
+        if(this.bubbleTransitionPromise !== promise) return;
+        this.bubbleTransitionPromise = this.bubbleTransition = undefined;
+      });
+    }
+  }
+
+  /**
+   * @param transition the bubble the change is to a message shown in it (an edit, its reactions, its views): shown
+   * as it changes rather than at once (`bubbleTransitions`)
+   * @param change what of it changes: its text may (an edit), or only what is around it
+   * @returns the change made, and shown to its end
+   */
+  private modifyBubble = (callback: () => void, transition?: HTMLElement, change: BubbleChange = 'edit'): Promise<void> => {
     const setBatch = !this.batchingModifying;
     (this.batchingModifying ??= []).push(callback);
+    if(transition) {
+      const transitions = this.batchingTransitions ??= new Map();
+      if(transitions.get(transition) !== 'edit') transitions.set(transition, change);
+    }
+
+    const modified = this.batchingModified ??= deferredPromise<void>();
     if(setBatch) {
-      const flush = () => this.flushBubbleModifications();
+      // this batch's, not one after a chat it was for was left (`cleanup`), which waits for its own way
+      const batch = this.batchingModifying;
+      const flush = () => this.batchingModifying === batch && this.flushBubbleModifications();
+      // a change being shown goes to its end first: the next one goes from there
       pause(0)
       .then(() => getHeavyAnimationPromise())
+      .then(() => this.bubbleTransitionPromise)
       .then(flush, flush);
     }
+
+    return modified;
   };
 
   private getSolidMessageBody(bubble: HTMLElement, mid?: number) {
@@ -8374,6 +8545,14 @@ export default class ChatBubbles {
     entry.structure = nextStructure;
     this.modifyBubble(() => {
       if(!this.isSolidMessageBodyRegistered(bubble, entry) || entry.revision !== revision) return;
+      // its comments (a footer, beside it), which are no part of what it is made of: an edit may bring them too
+      bubble.querySelectorAll<RepliesElement>('replies-element').forEach((element) => {
+        if(!deepEqual(element.message?.replies, message.replies)) {
+          element.message = message;
+          element.render();
+        }
+      });
+
       entry.controller.update(makeSolidMessageBodySnapshot(
         message,
         revision,
@@ -8382,7 +8561,7 @@ export default class ChatBubbles {
       this.updateSolidMessageBodyContext(bubble, entry, message, false);
       entry.reconcileShell?.(message);
       if(!streaming && entry.ownsTime) this.updateSolidMessageBodyTime(bubble, message);
-    });
+    }, streaming ? undefined : bubble);
     return true;
   }
 
@@ -8552,6 +8731,8 @@ export default class ChatBubbles {
 
     const status = (['error', 'sending', 'sent', 'read'] as const)
     .find((status) => bubble.classList.contains('is-' + status));
+    // the count of the replies it shows in its time is put there by itself (`setBubbleRepliesCount`)
+    const hadReplies = !!previous.querySelector('.time-replies');
     const next = MessageRender.setTime({
       chat: this.chat,
       chatType: this.chat.type,
@@ -8571,10 +8752,26 @@ export default class ChatBubbles {
     previous.replaceChildren(...Array.from(next.childNodes));
     placeBubbleTime(previous, message.message || '');
     if(status) this.setBubbleSendingStatus(bubble, status);
+    // as in a group the bubble shows them when it is rendered, if not as a footer of comments: an edit may bring the
+    // first of them, the count being no part of what it is made of
+    if(hadReplies || (message.replies && this.chat.isAnyGroup && !bubble.querySelector('replies-element'))) {
+      this.setBubbleRepliesCount(bubble, message.replies?.replies);
+    }
   }
 
   private onSolidMessageBodyLayout = (entry: SolidMessageBodyEntry) => {
     this.pendingSolidMessageBodyLayouts.add(entry);
+    // a body laid out again may have grown (a streamed draft, late resources): the list keeps up with it before the
+    // frame is drawn, or that frame would show what it pushed where it went, for the way there to start a frame later
+    if(this.laidOutSolidMessageBodies.has(entry) && !this.solidMessageBodyFollow) {
+      const follow = this.solidMessageBodyFollow = {};
+      queueMicrotask(() => {
+        if(this.solidMessageBodyFollow !== follow) return;
+        this.solidMessageBodyFollow = undefined;
+        this.followSolidMessageBodies();
+      });
+    }
+
     if(this.solidMessageBodyLayoutFrame) return;
 
     const container = this.scrollable?.container;
@@ -8585,30 +8782,56 @@ export default class ChatBubbles {
       this.solidMessageBodyLayoutFrame = undefined;
       const entries = Array.from(this.pendingSolidMessageBodyLayouts);
       this.pendingSolidMessageBodyLayouts.clear();
-      let grew = false;
       entries.forEach((entry) => {
         if(!this.isSolidMessageBodyRegistered(entry.bubble, entry)) return;
         if(hasMessageTextSpoilers(entry.controller.getSnapshot().message)) entry.ensureSpoilers?.();
         entry.updateSpoilers?.();
-        grew ||= this.laidOutSolidMessageBodies.has(entry);
+        // a streamed draft laid out first: its first growth is followed from here (only such a one: the bodies of a
+        // chat being opened are laid out by the dozen)
+        if(!this.laidOutSolidMessageBodies.has(entry) && entry.controller.getSnapshot().phase === 'streaming') {
+          noteGrowth(container, entry.bubble);
+        }
+
         this.laidOutSolidMessageBodies.add(entry);
       });
-
-      // Following is for a body that GROWS at the bottom — a streamed draft, late resources. A
-      // body's first layout is its bubble arriving, and whoever rendered it owns the scroll:
-      // renderNewMessage animates to the end, and a jump from here lands first and leaves that
-      // animation nothing to do, so every message of a burst snapped instead of gliding. Nor
-      // does it cut into a smooth scroll that is already on its way, or about to start: in a
-      // burst an earlier body lays out again (its send confirmed) while the next bubble is
-      // still rendering, or waits a frame for its scroll.
-      if(!grew || getAnimationInstance(container) || this.renderNewPromises.size || this.scrollingToBubble) return;
-      if(!this.scrolledDown || Date.now() < this.streamFollowInvalidatedUntil) return;
-      if(container.scrollTop + container.clientHeight > container.scrollHeight - 120) {
-        container.scrollTop = container.scrollHeight;
-      }
     });
     this.solidMessageBodyLayoutFrame = {win, id};
   };
+
+  /**
+   * Following is for a body that GROWS at the bottom — a streamed draft, late resources. A
+   * body's first layout is its bubble arriving, and whoever rendered it owns the scroll:
+   * renderNewMessage animates to the end, and a jump from here lands first and leaves that
+   * animation nothing to do, so every message of a burst snapped instead of gliding. Nor
+   * does it cut into a smooth scroll that is already on its way, or about to start: in a
+   * burst an earlier body lays out again (its send confirmed) while the next bubble is
+   * still rendering, or waits a frame for its scroll. Growing, the lowest of them pushes what is above it up where the
+   * list is shorter than the screen: that is shown going there too (`followGrowth`).
+   */
+  private followSolidMessageBodies() {
+    const container = this.scrollable?.container;
+    if(!container) return;
+
+    let grown: HTMLElement;
+    for(const entry of this.pendingSolidMessageBodyLayouts) {
+      if(
+        this.laidOutSolidMessageBodies.has(entry) &&
+        this.isSolidMessageBodyRegistered(entry.bubble, entry) &&
+        (!grown || grown.compareDocumentPosition(entry.bubble) & Node.DOCUMENT_POSITION_FOLLOWING)
+      ) {
+        grown = entry.bubble;
+      }
+    }
+
+    if(!grown || getAnimationInstance(container) || this.renderNewPromises.size || this.scrollingToBubble) return;
+    followGrowth(
+      container,
+      grown,
+      this.scrolledDown &&
+        Date.now() >= this.streamFollowInvalidatedUntil &&
+        container.scrollTop + container.clientHeight > container.scrollHeight - 120
+    );
+  }
 
   private async renderLog({log, reverse = false, bubble, middleware}: RenderLogArgs) {
     const promises: Promise<any>[] = [];
@@ -9702,6 +9925,7 @@ export default class ChatBubbles {
     const commitTranslation = (set: () => void) => {
       if(!ownsCurrentBubble()) return;
 
+      // the translation (or the text back) gives way to the other as an edit does
       this.modifyBubble(() => {
         if(!ownsCurrentBubble()) return;
         set();
@@ -9709,7 +9933,7 @@ export default class ChatBubbles {
           if(!ownsCurrentBubble()) return;
           this.scrollToBubble(bubble, 'start');
         });
-      });
+      }, bubble);
     };
     const translatableParams: Parameters<typeof TranslatableMessage>[0] = canTranslate ? {
       peerId: message.peerId,
@@ -12150,7 +12374,9 @@ export default class ChatBubbles {
     message: Message.message | Message.messageService,
     reactionsMessage: Message.message | Message.messageService,
     changedResults?: ReactionCount[],
-    loadPromises?: Promise<any>[]
+    loadPromises?: Promise<any>[],
+    // when the effects of the reactions that changed start
+    waitPromise?: Promise<void>
   ) {
     if(this.peerId.isUser() && USER_REACTIONS_INLINE/*  || true */) {
       return;
@@ -12170,7 +12396,7 @@ export default class ChatBubbles {
       animationGroup: this.chat.animationGroup,
       lazyLoadQueue: this.lazyLoadQueue
     });
-    reactionsElement.render(changedResults);
+    reactionsElement.render(changedResults, waitPromise);
 
     if(bubble.classList.contains('has-floating-time') || bubble.classList.contains('service')) {
       bubble.querySelector('.bubble-content-wrapper').append(reactionsElement);

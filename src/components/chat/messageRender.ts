@@ -215,6 +215,9 @@ export const fireMessageEffectByBubble = ({timeEffect, bubble, e, scrollable}: {
 
 // const makeSponsored = () => i18n('SponsoredMessage');
 
+// * the refreshes of a bubble's reply quote asked for: the one put in is the one asked for last, whichever comes first
+const replyRefreshes: WeakMap<HTMLElement, number> = new WeakMap();
+
 export namespace MessageRender {
   /* export const setText = () => {
 
@@ -444,7 +447,7 @@ export namespace MessageRender {
     return isFooter;
   };
 
-  export const setReply = async({chat, bubble, bubbleContainer, message, logId, appendCallback, middleware, lazyLoadQueue, needUpdate, isStandaloneMedia, isOut, fromUpdate}: {
+  export const setReply = async({chat, bubble, bubbleContainer, message, logId, appendCallback, middleware, lazyLoadQueue, needUpdate, isStandaloneMedia, isOut, fromUpdate, swap = (callback) => callback()}: {
     chat: Chat,
     bubble: HTMLElement,
     bubbleContainer?: HTMLElement,
@@ -456,7 +459,9 @@ export namespace MessageRender {
     needUpdate: ChatBubbles['needUpdate'],
     isStandaloneMedia: boolean,
     isOut: boolean,
-    fromUpdate?: boolean
+    fromUpdate?: boolean,
+    /** puts the quote made in place of the one shown: at once, or as a change of the bubble the caller shows */
+    swap?: (callback: () => void) => void
   }) => {
     const managers = bindManagersToSession(rootScope.managers);
     const isReplacing = !bubbleContainer;
@@ -465,6 +470,8 @@ export namespace MessageRender {
     }
 
     const currentReplyDiv = isReplacing ? bubbleContainer.querySelector('.reply') as HTMLElement : null;
+    const refresh = (replyRefreshes.get(bubble) ?? 0) + 1;
+    if(currentReplyDiv) replyRefreshes.set(bubble, refresh);
     const replyTo = message.reply_to;
     if(!replyTo) {
       currentReplyDiv?.remove();
@@ -605,19 +612,26 @@ export namespace MessageRender {
 
     await fillPromise;
     if(currentReplyDiv) {
-      const saveClassNames = ['floating-part', 'mb-shorter'];
-      const classList = currentReplyDiv.classList;
-      saveClassNames.forEach((className) => {
-        if(classList.contains(className)) {
-          container.classList.add(className);
-        }
+      swap(() => {
+        // * the quote shown by then: another refresh, asked for earlier, put in its own in place of the one this one
+        // * started from; one asked for later puts in its own
+        if(replyRefreshes.get(bubble) !== refresh) return;
+        const shown = bubbleContainer.querySelector<HTMLElement>('.reply') ?? currentReplyDiv;
+        const saveClassNames = ['floating-part', 'mb-shorter'];
+        const classList = shown.classList;
+        saveClassNames.forEach((className) => {
+          if(classList.contains(className)) {
+            container.classList.add(className);
+          }
+        });
+        shown.replaceWith(container);
+        bubble.classList.add('is-reply');
       });
-      currentReplyDiv.replaceWith(container);
     } else {
       appendCallback(container);
+      // bubbleContainer.insertBefore(, nameContainer);
+      bubble.classList.add('is-reply');
     }
-    // bubbleContainer.insertBefore(, nameContainer);
-    bubble.classList.add('is-reply');
 
     return container;
   };
