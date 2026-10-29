@@ -34,6 +34,7 @@ import copyElement, {CopyPairs, keepStyle, paintPlayerFrame} from '@components/c
 import drawMediaToCanvas from '@helpers/canvas/drawMediaToCanvas';
 import type CustomEmojiElement from '@lib/customEmoji/element';
 import {settleSendingStatusIconCopy} from '@components/sendingStatusIcon';
+import {getOutgoingMessageGradientColorAt, markOutgoingMessageGradientHeld, measureOutgoingMessageGradientHold, readOutgoingMessageGradient} from '@helpers/outgoingMessageGradient';
 import type ReactionElement from '@components/chat/reaction';
 import {
   animateTracks,
@@ -302,8 +303,9 @@ const isFilled = (background: BubbleBackground) => !!background && splitAlpha(ba
 function getParts(content: HTMLElement) {
   const elements: HTMLElement[] = [];
   const add = (element: Element) => {
-    // the time stands by itself over a big emoji: it goes by itself all the same
-    if(element instanceof HTMLElement && isVisible(element) && !element.classList.contains('time')) {
+    // the time stands by itself over a big emoji: it goes by itself all the same; the outgoing bubbles' gradient is
+    // the background's, and gives way to the shape with it (`.morphing`)
+    if(element instanceof HTMLElement && isVisible(element) && !element.classList.contains('time') && !isGradient(element)) {
       elements.push(element);
     }
   };
@@ -315,6 +317,8 @@ function getParts(content: HTMLElement) {
   wrapper.querySelectorAll('reactions-element > reaction-element').forEach(add);
   return elements;
 }
+
+const isGradient = (element: Element) => element.classList.contains('bubble-gradient');
 
 // the part an element is in: the nearest of those holding it, the last of them as the parts go from the outside in
 function getHolder<T>(parts: T[], elementOf: (part: T) => HTMLElement, element: HTMLElement) {
@@ -499,6 +503,11 @@ function captureBubble(
     // a box that cuts what it holds (media) cannot be drawn bigger or smaller than it is
     if(style.overflow === 'visible') {
       capture.background = getBubbleBackground(style, rect);
+      // a bubble of a gradient is seen (nearly) all of its colour where it stands, not of its own under it
+      const gradient = readOutgoingMessageGradient(content);
+      if(gradient) {
+        capture.background.color = getOutgoingMessageGradientColorAt(gradient, rect);
+      }
       capture.tail = copyTail(content, rect);
     }
 
@@ -645,7 +654,7 @@ export class BubbleTransition {
     }
 
     if(this.motion) {
-      this.playNeighbours(tracks);
+      this.playNeighbours(tracks, cleanups);
     }
 
     this.writes.forEach((write) => write());
@@ -1139,7 +1148,7 @@ export class BubbleTransition {
     const shows = [
       ...Array.from(content.children),
       ...Array.from(content.parentElement.children).filter((element) => element !== content)
-    ].filter((element): element is HTMLElement => element instanceof HTMLElement && isVisible(element));
+    ].filter((element): element is HTMLElement => element instanceof HTMLElement && isVisible(element) && !isGradient(element));
 
     // the old one is put in the list, not in the new one: a rule through the new one's kind (`.emoji-big ...`) would lay
     // it out as that one is; from the corner of the list's content, where its layer stands — read once more, as a
@@ -1233,7 +1242,11 @@ export class BubbleTransition {
       });
       const fades = fromFilled !== toFilled;
       if((fromFilled || toFilled) && (isResized || fades)) {
-        const parts = createShapeParts({...background, radii}, tail?.element);
+        // a bubble of a gradient is (nearly) all of its colour where it ends up: the shape is of that, over its piece
+        // of the gradient, which gives way (`.morphing`); one that has no background any more keeps the colour it was
+        const gradient = readOutgoingMessageGradient(content);
+        const color = gradient ? getOutgoingMessageGradientColorAt(gradient, toBox(rect)) : background.color;
+        const parts = createShapeParts({...background, color, radii}, tail?.element);
         const under = createLayer();
         under.classList.add(styles.under);
         under.append(parts.background);
@@ -1351,9 +1364,10 @@ export class BubbleTransition {
   }
 
   // the other messages a change moved go there from where they were: only what can be seen, before or after
-  private playNeighbours(tracks: Track[]) {
+  private playNeighbours(tracks: Track[], cleanups: VoidFunction[]) {
     const containerRect = this.container.getBoundingClientRect();
     const isSeen = (top: number, bottom: number) => bottom > containerRect.top && top < containerRect.bottom;
+    const moved: HTMLElement[] = [];
     this.neighbours.forEach((top, element) => {
       if(!element.isConnected) {
         return;
@@ -1372,7 +1386,17 @@ export class BubbleTransition {
         easing: EASING_Y,
         composite: 'add'
       });
+      moved.push(element);
     });
+
+    // the move takes the pieces of an outgoing bubble's gradient in (`holdOutgoingMessageGradient`)
+    const hold = measureOutgoingMessageGradientHold(moved);
+    if(hold) {
+      this.writes.push(() => {
+        hold();
+        cleanups.push(markOutgoingMessageGradientHeld(moved));
+      });
+    }
   }
 
   private get duration() {
@@ -1466,10 +1490,18 @@ export function followGrowth(container: HTMLElement, bubble: HTMLElement, follow
     return {element, moved};
   });
 
-  const animations = ways.filter(({moved}) => Math.abs(moved) >= .5).map(({element, moved}) => element.animate(
+  const going = ways.filter(({moved}) => Math.abs(moved) >= .5);
+  // the move takes the pieces of an outgoing bubble's gradient in (`holdOutgoingMessageGradient`)
+  const hold = measureOutgoingMessageGradientHold(going.map(({element}) => element));
+  hold?.();
+  const animations = going.map(({element, moved}) => element.animate(
     [{translate: `0px ${moved}px`}, {translate: '0px 0px'}],
     {duration: DURATION, easing: EASING_Y, composite: 'add'}
   ));
+  if(hold) {
+    const release = markOutgoingMessageGradientHeld(going.map(({element}) => element));
+    Promise.allSettled(animations.map((animation) => animation.finished)).then(release);
+  }
 
   startOnNextFrame(animations);
   // custom emoji are drawn by canvases over what moves

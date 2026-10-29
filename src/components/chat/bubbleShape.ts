@@ -253,8 +253,9 @@ export function getShape(box: Box, radii: Radii): ShapePlaces['shape'] {
  */
 export function createShapeParts(background: BubbleBackground, tail?: HTMLElement): ShapeParts {
   const root = createPart(styles.part);
+  // the tail's copy is of it too (`copyTail`)
+  root.style.color = background.color;
   const shape = createPart(styles.part);
-  shape.style.color = background.color;
   shape.style.filter = background.shadow;
   const bands = Array.from({length: 4}, () => {
     const band = createPart(styles.piece);
@@ -304,7 +305,7 @@ export function getShapeTracks(tracks: Tracks, parts: ShapeParts, from: ShapePla
 }
 
 function getTail(content: HTMLElement) {
-  const tail = content.querySelector<SVGElement>('.bubble-tail');
+  const tail = content.querySelector<HTMLElement>('.bubble-tail');
   return isVisible(tail) ? tail : undefined;
 }
 
@@ -334,11 +335,14 @@ export function copyTail(content: HTMLElement, contentRect: DOMRect): {offset: T
   const tailStyle = getComputedStyle(tail);
   const offset = getOffset(tailRect, contentRect);
 
-  const matrix = new DOMMatrix(tailStyle.transform === 'none' ? undefined : tailStyle.transform);
-  matrix.e = matrix.f = 0;
-  const tailCopy = tail.cloneNode(true) as SVGElement;
-  tailCopy.removeAttribute('class');
-  tailCopy.style.cssText = `display: block; width: 100%; height: 100%; fill: ${tailStyle.fill}; transform: ${matrix}`;
+  // reflected by a transform (an incoming tail) or by its shape alone (an outgoing one), and drawn so
+  const matrix = tailStyle.transform !== 'none' && new DOMMatrix(tailStyle.transform);
+  if(matrix) {
+    matrix.e = matrix.f = 0;
+  }
+  // of the background's colour (`createShapeParts`)
+  const tailCopy = document.createElement('span');
+  tailCopy.style.cssText = `display: block; width: 100%; height: 100%; background-color: currentColor; clip-path: ${tailStyle.clipPath}; transform: ${matrix || 'none'}`;
   const element = createPart(styles.tail);
   element.style.width = `${tailRect.width}px`;
   element.style.height = `${tailRect.height}px`;

@@ -5,7 +5,9 @@
   background: none !important;
   box-shadow: none !important;
 
-  :global(.bubble-tail) {
+  // the outgoing bubbles' gradient too (`message-out-gradient`): the shape is of its colour where the bubble ends up
+  :global(.bubble-tail),
+  :global(.bubble-gradient) {
     visibility: hidden !important;
   }
 }
@@ -138,7 +140,9 @@
     box-shadow: none !important;
   }
 
-  :global(.bubble-tail) {
+  // the outgoing bubbles' gradient is the background's (`message-out-gradient`)
+  :global(.bubble-tail),
+  :global(.bubble-gradient) {
     visibility: hidden !important;
   }
 

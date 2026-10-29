@@ -1,300 +1,183 @@
-import ChatBackgroundGradientRenderer from '@components/chat/gradientRenderer';
+import {ColorRgb, darkenToMaxLuminance, ensureTextContrast, getContrastRatio, getHexColorFromTelegramColor, hexToRgb, mixColors, relativeLuminance, rgbaToHexa} from '@helpers/color';
+import clamp from '@helpers/number/clamp';
 
-const CSS_VAR = '--message-out-gradient-image';
-const POS_VAR = '--out-grad-pos';
-const SIZE_VAR = '--out-grad-size';
-const HOST_CLASS = 'has-outgoing-message-gradient';
+// * the outgoing bubbles' fill when the theme gives them more than one colour: a vertical gradient over the chat's
+// * frame (`.bubbles`), of which every bubble shows the part it stands over, as on Android, iOS and Desktop
+// * (`message-out-gradient` in _chatBubble.scss). Properties of the element the theme is applied on, so a chat's theme
+// * covers the app's, `none` included: the gradient, and the picture of it the bubbles are filled with
+export const MESSAGE_OUT_GRADIENT_PROPERTY = '--message-out-gradient';
+export const MESSAGE_OUT_GRADIENT_IMAGE_PROPERTY = '--message-out-gradient-image';
 
-const SELECTOR = [
-  '.bubble.is-out .bubble-content',
-  '.bubble.is-out .bubble-content-background',
-  '.bubble.is-out .bubble-tail',
-  '.bubble.is-out.photo .attachment',
-  '.bubble.is-out.video .attachment',
-  // dog ear
-  '.bubble.is-out .document-ico'
-].join(',');
+// * the picture is a column a pixel wide, which every part of a bubble stretches across: the compositor draws it from
+// * that column, where a gradient as wide as the frame would be painted again in full for every part
+const IMAGE_HEIGHT = 256;
+const images = new Map<string, string>();
 
-let liveRenderer: ChatBackgroundGradientRenderer | undefined;
-let liveCanvas: HTMLCanvasElement | undefined;
-let liveAnimated = false;
+// * what the text is read on (WCAG's for text), and how far under it a moved colour may land, rounded to whole channels
+const READABLE_CONTRAST = 4.5;
+const ROUNDING = .05;
+// * how many colours are put between two of the theme's, at first and at most: where they mix the text has to be read
+// * too, and a mix of two colours can be darker or lighter than both
+const STEPS_BETWEEN = 4;
+const MAX_STEPS_BETWEEN = 32;
 
-const activeHosts = new Set<HTMLElement>();
+/**
+ * The gradient's colours for the theme's ones under the outgoing text of this colour: from the bottom up, evenly
+ * spaced; nothing for one colour. Each is moved as far from the text as it takes to read it - darker under white text,
+ * as on Desktop, lighter under dark text - and more are put between the theme's until every mix of two that stand
+ * side by side reads as well
+ */
+export function getOutgoingMessageGradientColors(colors: number[] | undefined, textColor: ColorRgb): ColorRgb[] | undefined {
+  const hexes = (colors || []).map(getHexColorFromTelegramColor);
+  if(new Set(hexes).size < 2) {
+    return;
+  }
 
-function setCssImage(host: HTMLElement, value: string | undefined) {
-  if(value) {
-    host.style.setProperty(CSS_VAR, value);
-    host.classList.add(HOST_CLASS);
-    activeHosts.add(host);
-  } else {
-    host.style.removeProperty(CSS_VAR);
-    host.classList.remove(HOST_CLASS);
-    activeHosts.delete(host);
+  const theme = hexes.map(hexToRgb);
+  for(let steps = STEPS_BETWEEN; ; steps *= 2) {
+    const gradient = theme.flatMap((color, index) => {
+      const next = theme[index + 1];
+      return Array.from({length: next ? steps : 1}, (_, step) => {
+        const mixed = next ? mixColors(next, color, step / steps) : color;
+        // * ensureTextContrast moves its first colour against the second, which is the text here
+        return hexToRgb(ensureTextContrast(rgbaToHexa(mixed), textColor, READABLE_CONTRAST));
+      });
+    });
+
+    const readable = getPainted(gradient).every((color) => getContrastRatio(color, textColor) >= READABLE_CONTRAST - ROUNDING);
+    if(readable || steps >= MAX_STEPS_BETWEEN) {
+      return gradient;
+    }
   }
 }
 
-function pushCanvasToCss() {
-  if(!liveCanvas) return;
-  const url = `url(${liveCanvas.toDataURL()})`;
-  for(const host of activeHosts) {
-    if(!host.isConnected) continue;
-    host.style.setProperty(CSS_VAR, url);
+// * the colours the gradient is painted in: its own and the mixes of each two that stand side by side
+function getPainted(colors: ColorRgb[]) {
+  return colors.flatMap((color, index) => index ? [.25, .5, .75].map((t) => mixColors(color, colors[index - 1], t)).concat([color]) : [color]);
+}
+
+export function makeOutgoingMessageGradient(colors: ColorRgb[] | undefined) {
+  // the first colour at the bottom, by the newest messages (Android)
+  return colors ? `linear-gradient(to top, ${colors.map(rgbaToHexa).join(', ')})` : 'none';
+}
+
+export function makeOutgoingMessageGradientImage(colors: ColorRgb[] | undefined) {
+  const hexes = colors?.map(rgbaToHexa);
+  const key = hexes?.join();
+  if(!key) {
+    return 'none';
   }
-}
 
-function destroyLive() {
-  liveRenderer?.cleanup();
-  liveRenderer = undefined;
-  liveCanvas = undefined;
-  liveAnimated = false;
-}
+  let image = images.get(key);
+  if(!image) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = IMAGE_HEIGHT;
+    const context = canvas.getContext('2d');
+    if(!context) {
+      return 'none';
+    }
 
-function clearElementGradientStyles(el: HTMLElement) {
-  el.style.removeProperty(POS_VAR);
-  el.style.removeProperty(SIZE_VAR);
-  el.style.removeProperty('background-size');
-  el.style.removeProperty('background-position');
-}
-
-function hasSharedGradient() {
-  for(const host of activeHosts) {
-    if(!host.isConnected) continue;
-    const v = host.style.getPropertyValue(CSS_VAR).trim();
-    if(v && v !== 'none') return true;
+    const gradient = context.createLinearGradient(0, IMAGE_HEIGHT, 0, 0);
+    hexes.forEach((hex, index) => gradient.addColorStop(index / (hexes.length - 1), hex));
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, 1, IMAGE_HEIGHT);
+    images.set(key, image = `url("${canvas.toDataURL()}")`);
   }
-  const v = document.documentElement.style.getPropertyValue(CSS_VAR).trim();
-  return !!v && v !== 'none';
+
+  return image;
 }
 
-export function syncOutgoingMessageGradient(root: ParentNode = document) {
-  const enabled = hasSharedGradient();
-  const vw = window.innerWidth || document.documentElement.clientWidth;
-  const vh = window.innerHeight || document.documentElement.clientHeight;
-  const size = `${vw}px ${vh}px`;
+// * a colour of the bubbles' own under dark text (the time, the ticks, the links), darkened to be read all over their
+// * gradient: the darkest it is painted in decides
+export function keepReadableOnOutgoingMessageGradient(hex: string, colors: ColorRgb[]) {
+  const darkest = Math.min(...getPainted(colors).map(relativeLuminance));
+  return darkenToMaxLuminance(hex, (darkest + .05) / READABLE_CONTRAST - .05);
+}
 
-  root.querySelectorAll<HTMLElement>(SELECTOR).forEach((el) => {
-    if(!enabled) {
-      clearElementGradientStyles(el);
-      return;
-    }
+/**
+ * The gradient the content of an outgoing bubble shows: its colours from the bottom up, and the box it spans (the
+ * chat's frame). Nothing where the bubble is of one colour, which it is too where its piece is not drawn (no picture
+ * of the gradient, no clip for a fixed piece)
+ */
+export function readOutgoingMessageGradient(content: Element): {colors: ColorRgb[], frame: DOMRect} | undefined {
+  const frame = content.closest('.bubbles');
+  const piece = frame && content.querySelector(':scope > .bubble-gradient');
+  const drawn = piece && getComputedStyle(piece, '::before').backgroundImage !== 'none';
+  const hexes = drawn && getComputedStyle(content).getPropertyValue(MESSAGE_OUT_GRADIENT_PROPERTY).match(/#[0-9a-f]{6}/gi);
+  if(!hexes) {
+    return;
+  }
 
-    const rect = el.getBoundingClientRect();
+  return {colors: hexes.map(hexToRgb), frame: frame.getBoundingClientRect()};
+}
 
-    if(rect.bottom < -64 || rect.top > vh + 64) return;
+/**
+ * The pieces of the gradient are fixed to the frame, until a transform on what they are in (a bubble swiped or moved
+ * aside by a change of another, its wrapper zoomed in by a ladder) takes them in, and they are laid out in that instead:
+ * placed there where the frame is, against where the element is laid out (past a transform of its own, which may be on
+ * already), they keep their colours while it lasts (`--message-out-gradient-held-top`, `-height`, which only the moving
+ * states read). The reads are made now; what is returned writes
+ */
+export function measureOutgoingMessageGradientHold(elements: HTMLElement[]): VoidFunction | undefined {
+  const held = elements.filter((element) => element.closest('.bubble.is-out'));
+  const frame = held[0]?.closest('.bubbles');
+  const image = frame && getComputedStyle(frame).getPropertyValue(MESSAGE_OUT_GRADIENT_IMAGE_PROPERTY).trim();
+  if(!image || image === 'none') {
+    return;
+  }
 
-    // thumb files have no dog ear
-    if(el.classList.contains('document-ico') && el.closest('.document-with-thumb')) {
-      clearElementGradientStyles(el);
-      return;
-    }
-
-    let left = rect.left;
-    let top = rect.top;
-    if(el.classList.contains('document-ico')) {
-      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-      const half = (1.125 * rem) / 2;
-      left = rect.right - half;
-      top = rect.top - half;
-    }
-    const pos = `${-left}px ${-top}px`;
-    // Custom props
-    el.style.setProperty(SIZE_VAR, size);
-    el.style.setProperty(POS_VAR, pos);
-
-    if(
-      el.classList.contains('bubble-content') ||
-      el.classList.contains('bubble-content-background') ||
-      el.classList.contains('bubble-tail')
-    ) {
-      el.style.backgroundSize = size;
-      el.style.backgroundPosition = pos;
-    }
+  const frameRect = frame.getBoundingClientRect();
+  const tops = held.map((element) => {
+    const parent = element.offsetParent as HTMLElement;
+    return parent.getBoundingClientRect().top + parent.clientTop + element.offsetTop;
+  });
+  return () => held.forEach((element, index) => {
+    element.style.setProperty('--message-out-gradient-held-top', `${frameRect.top - tops[index]}px`);
+    element.style.setProperty('--message-out-gradient-held-height', `${frameRect.height}px`);
   });
 }
 
-export function getOutgoingMessageGradientImage(): string | undefined {
-  for(const host of activeHosts) {
-    if(!host.isConnected) continue;
-    const v = host.style.getPropertyValue(CSS_VAR).trim();
-    if(v && v !== 'none') return v;
-  }
-  const v = document.documentElement.style.getPropertyValue(CSS_VAR).trim();
-  return v && v !== 'none' ? v : undefined;
+export function holdOutgoingMessageGradient(elements: HTMLElement[]) {
+  measureOutgoingMessageGradientHold(elements)?.();
 }
 
-export function paintViewportOutgoingGradient(
-  el: HTMLElement,
-  pageLeft: number,
-  pageTop: number,
-  image = getOutgoingMessageGradientImage()
-) {
-  if(!image) return false;
-  const vw = window.innerWidth || document.documentElement.clientWidth;
-  const vh = window.innerHeight || document.documentElement.clientHeight;
-  el.style.backgroundImage = image;
-  el.style.backgroundRepeat = 'no-repeat';
-  el.style.backgroundSize = `${vw}px ${vh}px`;
-  el.style.backgroundPosition = `${-pageLeft}px ${-pageTop}px`;
-  el.style.backgroundColor = 'transparent';
-  return true;
-}
+// * a move with no class of its own to be told by (a change's): the elements are marked while any of theirs lasts
+const MESSAGE_OUT_GRADIENT_HELD_CLASS = 'is-gradient-held';
+const heldBy = new WeakMap<HTMLElement, number>();
 
-export function createOutgoingMessageGradientSync(getRoot: () => ParentNode | null | undefined) {
-  let raf = 0;
-
-  const schedule = () => {
-    if(raf) return;
-    raf = requestAnimationFrame(() => {
-      raf = 0;
-      const root = getRoot();
-      if(root) syncOutgoingMessageGradient(root);
-    });
-  };
-
-  return {
-    schedule,
-    syncNow: () => {
-      const root = getRoot();
-      if(root) syncOutgoingMessageGradient(root);
-    },
-    destroy: () => {
-      if(raf) cancelAnimationFrame(raf);
-      raf = 0;
-    }
-  };
-}
-
-export type OutgoingMessageGradientOptions = {
-  hexColors: string[],
-  animated?: boolean,
-  element?: HTMLElement
-};
-
-export function paintThemeOutBubble(
-  bubble: HTMLElement | null | undefined,
-  options: {hexColors: string[], animated?: boolean, host?: HTMLElement | null}
-) {
-  if(!bubble) return;
-
-  const colors = options.hexColors.filter(Boolean);
-  if(!colors.length) {
-    bubble.style.removeProperty('background-image');
-    bubble.style.removeProperty('background-color');
-    return;
+/** marks the elements as moved (a write); what is returned unmarks them, once the last of their moves is over */
+export function markOutgoingMessageGradientHeld(elements: HTMLElement[]): VoidFunction {
+  for(const element of elements) {
+    heldBy.set(element, (heldBy.get(element) || 0) + 1);
+    element.classList.add(MESSAGE_OUT_GRADIENT_HELD_CLASS);
   }
 
-  const solid = colors.length === 1 || (colors.length === 2 && colors[0] === colors[1]);
-  // Freeform only message_colors_animated is true
-  const useFreeform = !!options.animated && !solid;
-
-  if(solid) {
-    bubble.style.backgroundImage = 'none';
-    bubble.style.backgroundColor = colors[0];
-    return;
-  }
-
-  if(useFreeform) {
-    let image = options.host?.style.getPropertyValue(CSS_VAR).trim();
-    if(!image || image === 'none') {
-      try {
-        const {gradientRenderer, canvas} = ChatBackgroundGradientRenderer.create(colors.join(','));
-        image = `url(${canvas.toDataURL()})`;
-        gradientRenderer.cleanup();
-      } catch(e) {
-        image = '';
+  return () => {
+    for(const element of elements) {
+      const count = heldBy.get(element) - 1;
+      if(count > 0) {
+        heldBy.set(element, count);
+      } else {
+        heldBy.delete(element);
+        element.classList.remove(MESSAGE_OUT_GRADIENT_HELD_CLASS);
       }
     }
-    if(image) {
-      bubble.style.backgroundImage = image;
-    } else {
-      bubble.style.removeProperty('background-image');
-    }
-    bubble.style.backgroundColor = colors[0];
-    bubble.style.backgroundSize = '100% 100%';
-    bubble.style.backgroundPosition = 'center';
-    bubble.style.backgroundRepeat = 'no-repeat';
-    return;
-  }
-
-  // Apply vertical gradient from bottom to top vertically like on tga
-  const stops = colors.slice().reverse();
-  bubble.style.backgroundImage = `linear-gradient(180deg, ${stops.join(', ')})`;
-  bubble.style.backgroundColor = colors[0];
-  bubble.style.backgroundSize = '100% 100%';
-  bubble.style.backgroundPosition = 'center';
-  bubble.style.backgroundRepeat = 'no-repeat';
+  };
 }
 
-function syncRootFor(host: HTMLElement) {
-  return host === document.documentElement ? document : host;
+// * the gradient's colour at a height of its frame, from 0 at its bottom to 1 at its top
+export function getOutgoingMessageGradientColor(colors: ColorRgb[], fromBottom: number) {
+  const at = clamp(fromBottom, 0, 1) * (colors.length - 1);
+  const index = Math.min(Math.floor(at), colors.length - 2);
+  return rgbaToHexa(mixColors(colors[index + 1], colors[index], at - index));
 }
 
-function isLiveHost(host: HTMLElement) {
-  return host === document.documentElement || host.classList.contains('chat');
-}
-
-export function setOutgoingMessageGradient(options: OutgoingMessageGradientOptions) {
-  const host = options.element ?? document.documentElement;
-  const live = isLiveHost(host);
-
-  if(live) {
-    destroyLive();
-  }
-
-  const colors = options.hexColors.filter(Boolean);
-  if(!colors.length) {
-    setCssImage(host, undefined);
-    if(host === document.documentElement || host.isConnected) {
-      syncOutgoingMessageGradient(syncRootFor(host));
-    }
-    return;
-  }
-
-  const solid = colors.length === 1 || (colors.length === 2 && colors[0] === colors[1]);
-  if(solid) {
-    setCssImage(host, undefined);
-    syncOutgoingMessageGradient(syncRootFor(host));
-    return;
-  }
-
-  // message_colors_animated otherwise use
-  // vertical gradient not freeform
-  const useFreeform = !!options.animated;
-
-  if(!useFreeform) {
-    const stops = colors.slice().reverse();
-    setCssImage(host, `linear-gradient(180deg, ${stops.join(', ')})`);
-    syncOutgoingMessageGradient(syncRootFor(host));
-    return;
-  }
-
-  const {gradientRenderer, canvas} = ChatBackgroundGradientRenderer.create(colors.join(','));
-  const url = `url(${canvas.toDataURL()})`;
-  if(live) {
-    liveRenderer = gradientRenderer;
-    liveCanvas = canvas;
-    liveAnimated = true;
-    setCssImage(host, url);
-  } else {
-    setCssImage(host, url);
-    gradientRenderer.cleanup();
-  }
-
-  syncOutgoingMessageGradient(syncRootFor(host));
-}
-
-export function isOutgoingMessageGradientAnimated() {
-  return liveAnimated && !!liveRenderer;
-}
-
-export function animateOutgoingMessageGradient(getProgress: () => number) {
-  if(!liveRenderer || !liveAnimated) return;
-  liveRenderer.toNextPosition(() => {
-    const progress = getProgress();
-    requestAnimationFrame(() => {
-      pushCanvasToCss();
-      syncOutgoingMessageGradient();
-    });
-    return progress;
-  });
+// * the colour a bubble of the gradient is (nearly) all of where it stands (`box`, on the page as the frame is): the
+// * gradient's at its middle
+export function getOutgoingMessageGradientColorAt(
+  {colors, frame}: {colors: ColorRgb[], frame: {top: number, bottom: number}},
+  box: {top: number, bottom: number}
+) {
+  return getOutgoingMessageGradientColor(colors, (frame.bottom - (box.top + box.bottom) / 2) / (frame.bottom - frame.top));
 }

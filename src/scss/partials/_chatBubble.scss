@@ -17,6 +17,33 @@
   }
 }
 
+// * the gradient of the outgoing bubbles (`--message-out-gradient-image`, `none` when the theme gives them one colour)
+// * over a part of one that clips it: a piece of it fixed to the chat's frame (`.bubbles`, whose transform makes it the
+// * box what is fixed in it is laid out in) and stretched across that from its column a pixel wide. The compositor
+// * keeps it in place as the chat scrolls and draws it from the column, so a scroll restyles and repaints nothing more.
+// * A transform on the bubble or its wrapper takes the piece in, and it is placed there where the frame is (below)
+@mixin message-out-gradient {
+  @supports (clip-path: border-box) {
+    &::before {
+      content: "";
+      position: fixed;
+      // * where the frame is, against what took the piece in (below)
+      inset: var(--message-out-gradient-top, 0) auto auto 0;
+      width: 1px;
+      height: var(--message-out-gradient-height, 100%);
+      border-radius: 0;
+      // * longhands: a shorthand of a `var()` next to one is serialized empty, and the Picture-in-Picture window gets
+      // * the app's styles as text (`mirrorDocumentStyles`)
+      background-image: var(--message-out-gradient-image);
+      background-size: 100% 100%;
+      // * across both ways: what took it in may start inside the bubble's tail
+      transform: scaleX(20000);
+      transform-origin: 50% 0;
+      pointer-events: none;
+    }
+  }
+}
+
 // * the flash a bubble gets when a jump lands on it: the highlight colour comes up and fades away,
 // * over an overlay that is painted with that colour and is taken away afterwards, by the timeout in
 // * `highlightBubble` (BUBBLE_HIGHLIGHT_DURATION, the same 2s). `forwards` is what holds the faded-out
@@ -463,16 +490,6 @@
     z-index: 2;
     user-select: none;
     background-color: var(--message-background-color);
-
-    isolation: isolate;
-
-    &-background {
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      pointer-events: none;
-      z-index: -1;
-    }
 
     body.animation-level-0 & {
       transition: none;
@@ -2173,13 +2190,8 @@
         z-index: -2;
         display: block;
         background-color: var(--message-background-color);
-        background-repeat: no-repeat;
-        -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2011%2020%22%3E%3Cg%20transform%3D%22translate%289%20-14%29%22%20fill-rule%3D%22evenodd%22%3E%3Cpath%20fill%3D%22black%22%20d%3D%22M-6%2016h6v17c-.193-2.84-.876-5.767-2.05-8.782-.904-2.325-2.446-4.485-4.625-6.48A1%201%200%2001-6%2016z%22%20transform%3D%22matrix%281%200%200%20-1%200%2049%29%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
-        -webkit-mask-size: 100% 100%;
-        -webkit-mask-repeat: no-repeat;
-        mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2011%2020%22%3E%3Cg%20transform%3D%22translate%289%20-14%29%22%20fill-rule%3D%22evenodd%22%3E%3Cpath%20fill%3D%22black%22%20d%3D%22M-6%2016h6v17c-.193-2.84-.876-5.767-2.05-8.782-.904-2.325-2.446-4.485-4.625-6.48A1%201%200%2001-6%2016z%22%20transform%3D%22matrix%281%200%200%20-1%200%2049%29%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
-        mask-size: 100% 100%;
-        mask-repeat: no-repeat;
+        // * the tail's shape (11×20), cut out of an element so that it can take the gradient of the outgoing bubbles
+        clip-path: path("M3 19h6V2c-.193 2.84-.876 5.767-2.05 8.782-.904 2.325-2.446 4.485-4.625 6.48A1 1 0 0 0 3 19z");
         transform: translateY(1px) scaleX(var(--reflect));
       }
     }
@@ -2254,7 +2266,10 @@
 
         & ~ .bubble-tail {
           background-color: var(--light-filled-message-primary-color);
-          background-image: none;
+
+          &::before {
+            content: none;
+          }
         }
 
         // .tgico-next {
@@ -3615,18 +3630,7 @@
   --border-end-start-radius: #{$bubble-border-radius-big};
 
   .bubble-content {
-    margin-left: auto;
-    background-image: var(--message-out-gradient-image, none);
-    background-size: var(--out-grad-size, 100vw 100vh);
-    background-repeat: no-repeat;
-    background-position: var(--out-grad-pos, 0 0);
-
-    &-background {
-      background-image: var(--message-out-gradient-image, none);
-      background-size: var(--out-grad-size, 100vw 100vh);
-      background-position: var(--out-grad-pos, 0 0);
-      background-repeat: no-repeat;
-    }
+    margin-inline-start: auto;
 
     &,
     .poll-footer-button {
@@ -3647,14 +3651,27 @@
     }
   }
 
-  &.document-message,
-  &.is-single-document,
-  &.audio-message,
-  &.voice-message {
-    .bubble-content:has(> .bubble-content-background) {
-      background-color: transparent;
-      background-image: none;
-    }
+  // * over what the bubble lays under its content (a background of its own, a document's selection), under the content
+  .bubble-gradient {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    clip-path: border-box;
+    pointer-events: none;
+  }
+
+  &:not(.just-media) .bubble-gradient {
+    @include message-out-gradient;
+  }
+
+  // * a transform on it takes the pieces of its gradient in, which are placed where the frame was read to be before
+  // * it (`holdOutgoingMessageGradient`): a swipe, a ladder's zoom, a move aside for a change of another
+  &.is-gesturing-reply,
+  &.is-gradient-held,
+  .can-zoom-fade {
+    --message-out-gradient-top: var(--message-out-gradient-held-top);
+    --message-out-gradient-height: var(--message-out-gradient-held-height);
   }
 
   /* .bubble-content-wrapper {
@@ -3672,12 +3689,23 @@
     &.can-have-tail {
       --border-end-end-radius: 0 !important;
 
+      // * reflected by its shape, not by a transform, which would take its piece of the gradient in; at the whole pixel
+      // * the transform drew it at from its -8.4px, as what is not transformed is drawn where it lies (and a send
+      // * flight's copy lands on its pixels)
       .bubble-tail {
-        inset-inline-end: -8.4px;
-        transform: translateY(1px) scaleX(calc(var(--reflect) * -1));
-        background-image: var(--message-out-gradient-image, none);
-        background-size: var(--out-grad-size, 100vw 100vh);
-        background-position: var(--out-grad-pos, 0 0);
+        inset-inline-end: -8px;
+        bottom: -1px;
+        transform: none;
+        clip-path: path("M8 19H2V2c.193 2.84.876 5.767 2.05 8.782.904 2.325 2.446 4.485 4.625 6.48A1 1 0 0 1 8 19z");
+
+        .is-rtl & {
+          clip-path: path("M3 19h6V2c-.193 2.84-.876 5.767-2.05 8.782-.904 2.325-2.446 4.485-4.625 6.48A1 1 0 0 0 3 19z");
+        }
+      }
+
+      // * of the gradient where the body is (a bubble of the chat's, not a layout of its own elsewhere)
+      .bubble-gradient ~ .bubble-tail {
+        @include message-out-gradient;
       }
 
       &.has-plain-media-tail {
@@ -3695,19 +3723,6 @@
     &:not(.can-have-tail) {
       --border-end-end-radius: #{$bubble-border-radius-big};
     }
-  }
-
-  &.photo .attachment,
-  &.video .attachment {
-    border-color: transparent;
-    background-image:
-      linear-gradient(#000, #000),
-      var(--message-out-gradient-image, linear-gradient(var(--message-background-color), var(--message-background-color)));
-    background-origin: padding-box, border-box;
-    background-clip: padding-box, border-box;
-    background-size: auto auto, var(--out-grad-size, 100vw 100vh);
-    background-position: 0 0, var(--out-grad-pos, 0 0);
-    background-repeat: no-repeat;
   }
 
   &.just-media {
@@ -3731,6 +3746,43 @@
   &.is-error {
     .time-sending-status {
       color: var(--message-error-color);
+    }
+  }
+
+  // * the dog-ear's corner is cut off the icon instead of being painted over in the bubble's colour, which a gradient is
+  // * not, and the cut opens with the ear
+  .document:not(.document-with-thumb) .document-ico {
+    --dog-ear: 1.125rem;
+    clip-path: polygon(0 0, calc(100% - var(--dog-ear)) 0, 100% var(--dog-ear), 100% 100%, 0 100%);
+
+    @include animation-level(2) {
+      transition: clip-path .2s ease-in-out;
+    }
+
+    &:after {
+      border-top-color: transparent;
+      border-right-color: transparent;
+    }
+  }
+
+  .document:not(.downloaded) {
+    @include hover() {
+      .document-ico {
+        --dog-ear: 0px;
+      }
+    }
+  }
+
+  .document.downloading .document-ico {
+    --dog-ear: 0px;
+  }
+
+  // * the media's frame shows the bubble's own background, a gradient's part included
+  &.photo,
+  &.video {
+    .attachment {
+      border-color: transparent;
+      background-clip: padding-box;
     }
   }
 
@@ -4152,7 +4204,8 @@
     }
 
     .has-service-before {
-      margin-top: .5rem;
+      // `.bubble.service .bubble-content` outranks this and sets `margin: 0 auto`
+      margin-top: .5rem !important;
       border-radius: .875rem !important;
 
       .service-msg {

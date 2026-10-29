@@ -153,6 +153,8 @@
       top: .5rem;
       inset-inline-end: .375rem;
       background-color: var(--light-filled-message-out-primary-color);
+      // * the theme's gradient of the outgoing bubbles, whole (`message-out-gradient`)
+      background-image: var(--message-out-gradient);
     }
 
     &.is-in {

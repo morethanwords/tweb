@@ -57,6 +57,8 @@ import {lerp} from '@helpers/lerp';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import type LottiePlayer from '@lib/lottie/lottiePlayer';
 import {getSendingStatusIconState, setSendingStatusIconState, settleSendingStatusIconCopy} from '@components/sendingStatusIcon';
+import {getOutgoingMessageGradientColorAt, readOutgoingMessageGradient} from '@helpers/outgoingMessageGradient';
+import type {ColorRgb} from '@helpers/color';
 import {
   Axes,
   bubbleShapeStyles,
@@ -795,7 +797,7 @@ export abstract class SendFlight {
   }
 
   /** a box measured now, in the page as it was when the copy was put in: the chat may have moved since */
-  private sinceHeld(box: Box) {
+  protected sinceHeld(box: Box) {
     const now = this.flights.readOrigin();
     const x = this.origin.x - now.x, y = this.origin.y - now.y;
     return moveBox(box, {left: x, right: x, top: y, bottom: y});
@@ -907,6 +909,7 @@ export abstract class SendFlight {
         this.listMovement = {animation, from, to};
         this.followedEnd = now;
         this.arrivedAt = undefined;
+        this.followLanding(now);
         return;
       }
 
@@ -922,9 +925,13 @@ export abstract class SendFlight {
         bottom: -middleDelta * y - heightDelta * height / 2
       });
       this.end = now;
+      this.followLanding(now);
       this.animate();
     };
   }
+
+  /** the place the copy lands on has moved to `end` */
+  protected followLanding(end: Box) {}
 
   // the way is over: the copy goes once the list is at its end, where the message is under it
   private settle = () => {
@@ -1078,6 +1085,9 @@ class TextFlight extends SendFlight {
   // the field's text is the bubble's all the way
   private keepFieldText: boolean;
   private background: BubbleBackground;
+  // the gradient an outgoing bubble shows the part of where it stands, and the box it spans; and what is of the colour
+  private gradient: {colors: ColorRgb[], frame: Box};
+  private fill: HTMLElement;
   // the bubble's corners and tail change as it joins a group or leaves one, on the way too
   private shapeObserver: MutationObserver;
   private tail: HTMLElement;
@@ -1241,6 +1251,8 @@ class TextFlight extends SendFlight {
     }
 
     this.background = getBubbleBackground(contentStyle, contentRect);
+    const gradient = readOutgoingMessageGradient(content);
+    this.gradient = gradient && {colors: gradient.colors, frame: this.sinceHeld(toBox(gradient.frame))};
     // the tail goes with the background's corner
     const tail = copyTail(content, contentRect);
     this.tail = tail?.element;
@@ -1345,7 +1357,9 @@ class TextFlight extends SendFlight {
     }
 
     const field = createAxes(this.fieldCopy);
+    this.paint(this.end);
     const {background, bands, corners, tail} = createShapeParts(this.background, this.tail);
+    this.fill = background;
 
     const [clipStart, clipEnd] = [0, 1].map(() => {
       const clip = createPart(bubbleShapeStyles.clip);
@@ -1366,6 +1380,23 @@ class TextFlight extends SendFlight {
     this.parts = {background, bands, corners, tail, clipStart, clipEnd, bubble, field, panelReply};
     this.followStatus();
     this.followShape();
+  }
+
+  // * a bubble of a gradient is (nearly) all of the gradient's colour where it lands: the copy flies in that, and in
+  // * the new one when its place moves (a message sent right after it)
+  private paint(end: Box) {
+    if(!this.gradient) {
+      return;
+    }
+
+    this.background.color = getOutgoingMessageGradientColorAt(this.gradient, end);
+    if(this.fill) {
+      this.fill.style.color = this.background.color;
+    }
+  }
+
+  protected followLanding(end: Box) {
+    this.paint(end);
   }
 
   /**

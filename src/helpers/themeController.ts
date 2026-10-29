@@ -4,7 +4,7 @@ import type {BaseTheme, Theme, ThemeSettings} from '@layer';
 import {blendWallpaperForTinted, presetThemeId, presetToThemeSettings} from '@config/themePresets';
 import type {AppBackgroundTab} from '@components/sidebarLeft/tabs/background';
 import type {AppChatBackground} from '@components/chat/bubbles/chatBackground';
-import {setOutgoingMessageGradient} from '@helpers/outgoingMessageGradient';
+import {getOutgoingMessageGradientColors, keepReadableOnOutgoingMessageGradient, makeOutgoingMessageGradient, makeOutgoingMessageGradientImage, MESSAGE_OUT_GRADIENT_IMAGE_PROPERTY, MESSAGE_OUT_GRADIENT_PROPERTY} from '@helpers/outgoingMessageGradient';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import rootScope from '@lib/rootScope';
 import {changeColorAccent, ColorRgb, ensureTextContrast, getAccentColor, getAverageColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hslaStringToRgba, hslaToRgba, hsvToRgb, mixColors, relativeLuminance, rgbaToHexa, rgbaToHsla, rgbToHsv} from '@helpers/color';
@@ -879,9 +879,13 @@ export class ThemeController {
       applyAppColor({name: 'secondary-text-color', hex: mainSecondaryTextColor!});
     }
 
+    // * increased contrast keeps the bubbles of the one colour it adjusts for the text
+    const outgoingTextColor = hexToRgb(baseColors['primary-text-color']);
+    const outgoingGradient = this.isHighContrast() ? undefined : getOutgoingMessageGradientColors(themeSettings.message_colors, outgoingTextColor);
+    element.style.setProperty(MESSAGE_OUT_GRADIENT_PROPERTY, makeOutgoingMessageGradient(outgoingGradient));
+    element.style.setProperty(MESSAGE_OUT_GRADIENT_IMAGE_PROPERTY, makeOutgoingMessageGradientImage(outgoingGradient));
+
     if(!themeSettings.message_colors?.length) {
-      setOutgoingMessageGradient({hexColors: [], element});
-      finalize();
       return;
     }
 
@@ -935,24 +939,12 @@ export class ThemeController {
       lightenAlpha: messageLightenAlpha
     });
 
+    const outgoingAccent = rgbaToHexa(accentColor2 ? hsvToRgb(...accentColor2) : myMessagesAccent);
     applyAppColor({
       name: 'message-out-primary-color',
-      hex: isNight ? '#ffffff' : rgbaToHexa(accentColor2 ? hsvToRgb(...accentColor2) : myMessagesAccent),
+      // * the time, the ticks and the links of a bubble of a gradient are read on all of it
+      hex: isNight ? '#ffffff' : outgoingGradient ? keepReadableOnOutgoingMessageGradient(outgoingAccent, outgoingGradient) : outgoingAccent,
       mixColor: newMessageOutBackgroundColor
-    });
-
-    const messageColorHexes = themeSettings.message_colors.map((color) =>
-      rgbaToHexa(getRgbColorFromTelegramColor(color))
-    );
-
-    const messageColorsAnimated = !!(
-      themeSettings.pFlags?.message_colors_animated ||
-      ((themeSettings.flags ?? 0) & (1 << 2))
-    );
-    setOutgoingMessageGradient({
-      hexColors: messageColorHexes,
-      animated: messageColorsAnimated,
-      element
     });
 
     // if(accentColor2) {

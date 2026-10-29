@@ -321,9 +321,15 @@ export function wrapRoundVideoBubble({
 
     const bubbleStyle = window.getComputedStyle(bubbleTail);
     const initialTailTransform = bubbleStyle.transform;
-    // * the computed transform already holds the tail's mirroring (`scaleX`), so the shift is along the
-    // * tail's own axis: into the bubble on either side, in either direction
-    bubbleTail.style.transform = `${initialTailTransform !== 'none' ? initialTailTransform : ''} translateX(100%)`;
+    if(initialTailTransform !== 'none') {
+      // * the computed transform already holds the tail's mirroring (`scaleX`), so the shift is along the
+      // * tail's own axis: into the bubble on either side, in either direction
+      bubbleTail.style.transform = `${initialTailTransform} translateX(100%)`;
+    } else {
+      // * an outgoing tail is mirrored by its shape, and a transform would take its piece of the gradient in: into
+      // * the bubble by its margin instead
+      bubbleTail.style.marginInlineEnd = bubbleStyle.width;
+    }
     bubbleTail.style.transition = '.2s';
 
     if(true)
@@ -364,6 +370,7 @@ export function wrapRoundVideoBubble({
 
             content.style.removeProperty('overflow');
             bubbleTail?.style.removeProperty('transform');
+            bubbleTail?.style.removeProperty('margin-inline-end');
 
             await doubleRaf();
             animatedCanvas.style.opacity = '0';

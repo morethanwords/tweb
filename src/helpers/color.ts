@@ -330,6 +330,12 @@ export function relativeLuminance(rgb: ColorRgb): number {
   return 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2]);
 }
 
+/** WCAG contrast ratio of two colours, from 1 to 21 */
+export function getContrastRatio(a: ColorRgb, b: ColorRgb) {
+  const [x, y] = [relativeLuminance(a), relativeLuminance(b)];
+  return (Math.max(x, y) + .05) / (Math.min(x, y) + .05);
+}
+
 /**
  * Scales a `#rrggbb` colour toward black until its WCAG relative luminance is
  * ≤ `maxL`, preserving hue (the r:g:b ratios). Colours already at/below `maxL`
@@ -354,10 +360,8 @@ export function darkenToMaxLuminance(hex: string, maxL: number): string {
 /** Adjust only colours that fail text contrast, retaining the original hue. */
 export function ensureTextContrast(hex: string, background: ColorRgb, ratio = 4.9): string {
   const rgb = hexToRgb(hex);
-  const foregroundLuminance = relativeLuminance(rgb);
   const backgroundLuminance = relativeLuminance(background);
-  if((Math.max(foregroundLuminance, backgroundLuminance) + .05) /
-    (Math.min(foregroundLuminance, backgroundLuminance) + .05) >= ratio) return hex;
+  if(getContrastRatio(rgb, background) >= ratio) return hex;
   if(backgroundLuminance > .179) {
     return darkenToMaxLuminance(hex, (backgroundLuminance + .05) / ratio - .05);
   }

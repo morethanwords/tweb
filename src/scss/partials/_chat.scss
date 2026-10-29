@@ -1425,6 +1425,10 @@
 
 .bubbles-remover {
   position: absolute;
+  // * as tall as the frame, which its transform stands in for to the gradient of an outgoing bubble being deleted
+  // * (`message-out-gradient`)
+  top: 0;
+  bottom: 0;
   left: 50%;
   transform: translateX(-50%) !important;
   z-index: 0;
@@ -1466,13 +1470,13 @@
 	min-height: calc(100% - var(--chat-padding-top) - var(--chat-padding-bottom) - var(--chat-input-height-surplus, 0px));
 	justify-content: flex-end;
 	max-width: calc(var(--chat-width) - var(--chat-bubbles-padding) * 2);
-	transition: transform var(--transition-standard-out);
-	transform: translateY(0);
   box-sizing: content-box;
 
-	@include animation-level-below(2) {
-		transition: none !important;
-	}
+  // * what is laid out against it (no messages' placeholder), without a transform: one would take the outgoing
+  // * bubbles' gradient in, which is fixed to the frame (`message-out-gradient`)
+  &:not(.bubbles-remover) {
+    position: relative;
+  }
 
 	// (No right-column subtraction here: .bubbles spans the full middle zone and
 	// the inner is centred within it via max-width + margin:auto, which keeps the

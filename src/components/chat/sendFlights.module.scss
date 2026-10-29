@@ -71,6 +71,8 @@
   background: none !important;
   box-shadow: none !important;
 
+  // the gradient of an outgoing bubble (`message-out-gradient`), out of the frame it is fixed to
+  :global(.bubble-gradient),
   :global(.bubble-tail) {
     display: none !important;
   }

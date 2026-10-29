@@ -40,11 +40,19 @@ export function makeTime(date: Date, includeDate?: boolean) {
   return includeDate ? formatFullSentTimeRaw(date.getTime() / 1000 | 0, {combined: true}).dateEl : formatTime(date);
 };
 
-// Bubble tail as a masked HTML element
-export function generateTail(_asSpan?: boolean) {
+// * a plain element, so that it takes the bubble's background, the gradient of an outgoing one included; its shape is a
+// * clip of it (`.bubble-tail`)
+export function generateTail() {
   const span = document.createElement('span');
   span.classList.add('bubble-tail');
   return span;
+}
+
+// * what clips the outgoing bubbles' gradient to the bubble (`message-out-gradient`)
+export function generateGradient() {
+  const div = document.createElement('div');
+  div.classList.add('bubble-gradient');
+  return div;
 }
 
 export function linkColor(el: string | Node) {

@@ -45,6 +45,16 @@
   &:hover {
     --item-background-color: color-mix(in srgb, var(--message-primary-color) 8%, var(--message-background-color));
   }
+
+  // over an outgoing bubble's gradient (`message-out-gradient`), which a row of one colour would cover: the bubble's
+  // own colour shows through where there is none
+  :global(.bubble.is-out) & {
+    background-color: transparent;
+
+    &:hover {
+      background-color: color-mix(in srgb, var(--message-primary-color) 8%, transparent);
+    }
+  }
 }
 
 .itemCompleted {
