@@ -25,13 +25,17 @@
 }
 
 .btn-send-stars-badge {
+  // * over the middle of the send button while no wider than it, flush with its end past that:
+  // * the composer ends right after the button (1.25rem is half the button)
+  --shift: min(50%, 1.25rem);
   top: 0;
-  left: 50%;
+  inset-inline-end: 50%;
 
   --scale: 0;
 
-  transform: translate(-50%, -11px) scale(var(--scale));
-  transform-origin: center 50px;
+  transform: translate(calc(var(--shift) * var(--reflect)), -11px) scale(var(--scale));
+  // * grows out of the button's middle
+  transform-origin: calc(50% + (50% - var(--shift)) * var(--reflect)) 50px;
   transition: transform 0.2s, opacity 0.2s;
 
   z-index: 4;

@@ -9,6 +9,12 @@ import classNames from '@helpers/string/classNames';
 export const CHAT_INPUT_PLATE_CLASS = 'chat-input-plate';
 
 /**
+ * A plate with nothing on either side for now: the side slots go and the centre
+ * spans the whole plate — they are kept only to balance an icon on one side.
+ */
+export const CHAT_INPUT_PLATE_SINGLE_CLASS = 'is-single';
+
+/**
  * Unified chat-input control plate.
  *
  * Every non-typing state of the chat-input footer — join channel, unblock,
@@ -19,9 +25,10 @@ export const CHAT_INPUT_PLATE_CLASS = 'chat-input-plate';
  * The layout mirrors the topbar translation plate (`translation.tsx`): an
  * optional icon button on each side and a centered main button —
  * `Button.Icon + Button + Button.Icon`. The side slots reserve symmetric
- * space even when empty so the centre button always stays centred, which
+ * space even when one is empty so the centre button always stays centred, which
  * makes every plate exactly the same width as the message-input row. Plates
  * therefore cross-fade in place (opacity only) instead of morphing width.
+ * With both sides empty the plate takes `CHAT_INPUT_PLATE_SINGLE_CLASS`.
  */
 export default function ChatInputPlate(props: {
   class?: string,

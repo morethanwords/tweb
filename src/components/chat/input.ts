@@ -35,7 +35,7 @@ import {
   InputMedia
 } from '@layer';
 import StickersHelper from '@components/chat/stickersHelper';
-import ChatInputPlate from '@components/chat/controlPlate';
+import ChatInputPlate, {CHAT_INPUT_PLATE_SINGLE_CLASS} from '@components/chat/controlPlate';
 import showSendGiftPopup from '@components/popups/sendGift';
 import ButtonIcon from '@components/buttonIcon';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
@@ -556,6 +556,7 @@ export default class ChatInput {
   private channelMuteBtn: HTMLButtonElement;
   private directControlBtn: HTMLButtonElement;
   private giftControlBtn: HTMLButtonElement;
+  private controlPlate: HTMLElement;
   private rowsWrapperWrapper: HTMLDivElement;
   private controlContainer: HTMLElement;
   private fakeSelectionWrapper: HTMLDivElement;
@@ -1857,7 +1858,9 @@ export default class ChatInput {
     // The control container is now a single uniform-width plate:
     // Button.Icon + Button + Button.Icon (see controlPlate.tsx). All the
     // single-button states share the centre slot — only one is ever visible.
-    const controlPlate = ChatInputPlate({
+    // Both side buttons start hidden, so the centre one spans the plate.
+    const controlPlate = this.controlPlate = ChatInputPlate({
+      class: CHAT_INPUT_PLATE_SINGLE_CLASS,
       left: this.directControlBtn,
       right: this.giftControlBtn,
       center: [
@@ -3089,8 +3092,11 @@ export default class ChatInput {
         // has a linked direct-messages chat) on the left, gift on the right.
         // Both are channel-only — a gigagroup or megagroup join just shows the
         // centre button.
-        this.directControlBtn.classList.toggle('hide', !(good && channel?.linked_monoforum_id));
-        this.giftControlBtn.classList.toggle('hide', !(good && isBroadcast));
+        const hasDirect = !!(good && channel?.linked_monoforum_id);
+        const hasGift = good && isBroadcast;
+        this.directControlBtn.classList.toggle('hide', !hasDirect);
+        this.giftControlBtn.classList.toggle('hide', !hasGift);
+        this.controlPlate.classList.toggle(CHAT_INPUT_PLATE_SINGLE_CLASS, !hasDirect && !hasGift);
       }
 
       if(this.chat && this.welcomeLimitPlate) {

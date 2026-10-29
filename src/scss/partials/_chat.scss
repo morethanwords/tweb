@@ -746,6 +746,11 @@
     justify-content: center;
   }
 
+  // * nothing on either side (CHAT_INPUT_PLATE_SINGLE_CLASS): the centre spans the plate
+  &.is-single &-side {
+    display: none;
+  }
+
   &-button {
     width: 100%;
     max-width: 100%;
@@ -1014,7 +1019,8 @@
     --offset-translateX: 0px;
 		align-items: flex-end;
 		min-height: var(--chat-input-height);
-		overflow: hidden;
+		// * only across: the send price stands above the composer's top edge
+		overflow-x: clip;
 
     .new-message-bot-commands,
     .new-message-send-as-container {
