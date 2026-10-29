@@ -7,6 +7,7 @@ import {PromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {SuperTabProvider} from '@components/solidJsTabs/superTabProvider';
 import type {ChatSetPeerOptions} from '@lib/appImManager';
 import noop from '@helpers/noop';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 
 export type SharedMediaImpl = {
   setQuery: () => void;
@@ -46,6 +47,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   private _destroyed = false;
   /** the profile of the current peer is built and filled (fillProfileElements' apply): the column can show it */
   public isLoaded = false;
+  private _loadedPromise: CancellablePromise<void>;
 
   private _render() {
     if(this._renderPromise) return this._renderPromise;
@@ -101,6 +103,12 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     });
   }
 
+  /** Settles once the profile of the current peer is filled - without starting that, as `ensureLoaded` does */
+  public whenLoaded(): Promise<void> {
+    if(this.isLoaded) return Promise.resolve();
+    return this._loadedPromise ??= deferredPromise<void>();
+  }
+
   public setPeer(peerId: PeerId, threadId?: number) {
     if(this.peerId === peerId && this.threadId === threadId) return false;
 
@@ -112,6 +120,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     this._readyPromise = undefined;
     this._mediaPromise = undefined;
     this.isLoaded = false;
+    this._loadedPromise = undefined;
 
     this._impl?.setQuery();
 
@@ -130,6 +139,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         applied = true;
         apply?.();
         this.isLoaded = true;
+        this._loadedPromise?.resolve();
       };
     });
   }

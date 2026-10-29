@@ -91,6 +91,26 @@ describe('shared media is loaded when it becomes visible', () => {
     tab.destroy();
   });
 
+  it('waits for its profile to be filled without building it, and only for the current peer', async() => {
+    const tab = createTab();
+    let filled = false;
+    tab.whenLoaded().then(() => filled = true);
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(mocks.render).not.toHaveBeenCalled();
+    expect(filled).toBe(false);
+
+    await tab.ensureLoaded();
+    await Promise.resolve();
+    expect(filled).toBe(true);
+
+    let filledAgain = false;
+    tab.setPeer(3 as PeerId);
+    tab.whenLoaded().then(() => filledAgain = true);
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(filledAgain, 'the last peer\'s profile counted for the next one').toBe(false);
+    tab.destroy();
+  });
+
   it('applies an already prepared visible profile once when the chat installs it', async() => {
     const tab = createTab();
     const apply = await tab.fillProfileElements();

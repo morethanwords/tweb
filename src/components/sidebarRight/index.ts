@@ -15,9 +15,14 @@ import noop from '@helpers/noop';
 
 
 export class AppSidebarRight extends SidebarSlider {
+  /** the profile of the chat on screen, from the moment the chat puts it up - filled or not */
   public sharedMediaTab: AppSharedMediaTab;
+  // * the profile mounted in the column: the one above, or the one it replaces standing in until it is filled
+  // * (`replaceSharedMediaTab`). Known to the mounting alone, so nothing that asks for the chat's profile gets another's
+  private shownSharedMediaTab: AppSharedMediaTab;
+  // * the stand-in, let go of by its chat meanwhile: it goes once the profile above is in, or the column would stand empty
+  private retiredSharedMediaTab: AppSharedMediaTab;
   private pendingOpening: object;
-  private pendingSharedMediaTab: {tab: AppSharedMediaTab};
   // public rect: DOMRect;
 
   constructor() {
@@ -51,26 +56,32 @@ export class AppSidebarRight extends SidebarSlider {
   }
 
   public replaceSharedMediaTab(tab?: AppSharedMediaTab) {
-    const pending = this.pendingSharedMediaTab = {tab};
+    this.sharedMediaTab = tab;
     const shown = document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME);
-    // * a profile on screen gives its place only to a filled one, not to an empty column for as long as that takes:
-    // * one whose chat got ready while the column was hidden, or one a chat below left unbuilt. Whatever is put up
-    // * next overtakes it
-    if(shown && tab && !tab.isLoaded && this.sharedMediaTab && this.sharedMediaTab !== tab) {
-      tab.ensureLoaded().catch(noop).then(() => {
-        if(this.pendingSharedMediaTab === pending) this.swapSharedMediaTab(tab);
-      });
-      return;
+    // * the column holds a filled profile only: one not filled yet - its chat got ready while the column was hidden,
+    // * or a chat below left it unbuilt - is mounted once it is, the last one standing in until then. Shown, sliding
+    // * out or hidden alike, so that no move of the column shows it empty. Whatever is put up next overtakes it
+    if(tab && !tab.isLoaded && this.shownSharedMediaTab && this.shownSharedMediaTab !== tab) {
+      // * filled by whoever needs it: the column shown here, or its chat after its first frame
+      tab.whenLoaded().then(() => this.mountCurrentSharedMediaTab(tab));
+    } else {
+      this.mountSharedMediaTab(tab);
     }
 
-    this.swapSharedMediaTab(tab);
     if(tab && shown) {
-      tab.ensureLoaded();
+      // * one that fails to fill goes up as it is: the column would keep another chat's profile otherwise
+      tab.ensureLoaded().catch(() => this.mountCurrentSharedMediaTab(tab));
     }
   }
 
-  private swapSharedMediaTab(tab?: AppSharedMediaTab) {
-    const previousTab = this.sharedMediaTab;
+  private mountCurrentSharedMediaTab(tab: AppSharedMediaTab) {
+    if(this.sharedMediaTab === tab && this.shownSharedMediaTab !== tab) {
+      this.mountSharedMediaTab(tab);
+    }
+  }
+
+  private mountSharedMediaTab(tab?: AppSharedMediaTab) {
+    const previousTab = this.shownSharedMediaTab;
     if(previousTab) {
       const idx = this.historyTabIds.indexOf(previousTab);
 
@@ -109,7 +120,22 @@ export class AppSidebarRight extends SidebarSlider {
       this.tabsContainer.prepend(tab.container);
     }
 
-    this.sharedMediaTab = tab;
+    this.shownSharedMediaTab = tab;
+
+    if(previousTab && previousTab !== tab && previousTab === this.retiredSharedMediaTab) {
+      this.retiredSharedMediaTab = undefined;
+      previousTab.destroy();
+    }
+  }
+
+  /** Destroys a chat's profile tab - once it is off the column, if it stands in there for a profile being filled */
+  public destroySharedMediaTab(tab: AppSharedMediaTab) {
+    if(tab === this.shownSharedMediaTab && tab !== this.sharedMediaTab) {
+      this.retiredSharedMediaTab = tab;
+      return;
+    }
+
+    tab.destroy();
   }
 
   /** the column is shown, or an opening of it waits for its profile */
@@ -127,8 +153,7 @@ export class AppSidebarRight extends SidebarSlider {
 
   public hide() {
     // * hidden by anything (an account switch hides it directly): an opening still waiting for its profile is off.
-    // * A profile waiting to be filled before it takes a shown one's place still does that once filled: unseen by
-    // * then, while swapping it now would show it empty in the column on its way out
+    // * A profile waiting to be filled before it is mounted still waits: the column on its way out keeps the one it has
     this.pendingOpening = undefined;
 
     this.sidebarEl.inert = true;
@@ -184,8 +209,15 @@ export class AppSidebarRight extends SidebarSlider {
   }
 
   private applySidebarToggle(active: boolean, enable: boolean, animate: boolean): Promise<any> {
-    if(!active && !this.historyTabIds.length) {
-      this.sharedMediaTab.open();
+    if(!active) {
+      // * it opens on the chat's own profile, filled by now: another chat's standing in for it gives way here
+      if(this.sharedMediaTab) {
+        this.mountCurrentSharedMediaTab(this.sharedMediaTab);
+      }
+
+      if(!this.historyTabIds.length) {
+        this.sharedMediaTab.open();
+      }
     }
 
     const animationPromise = appImManager.selectTab(active ? APP_TABS.CHAT : APP_TABS.PROFILE, animate);

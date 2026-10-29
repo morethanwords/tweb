@@ -1268,7 +1268,8 @@ export default class Chat extends EventListenerBase<{
     }
 
     indexOfAndSplice(this.sharedMediaTabs, tab);
-    tab.destroy();
+    // * a returned-to chat's profile may still be filling while this one stands in for it (`replaceSharedMediaTab`)
+    hotReloadGuard.appSidebarRight.destroySharedMediaTab(tab);
   }
 
   public setMessageId(options: Partial<Pick<ChatSetPeerOptions,
@@ -1338,13 +1339,18 @@ export default class Chat extends EventListenerBase<{
       });
 
       if(sharedMediaTab) {
-        // * a shown profile gets its shared media from here (the sidebar's ensureLoaded)
         hotReloadGuard.appSidebarRight.replaceSharedMediaTab(sharedMediaTab);
         const destroyOthers = () => {
           this.sharedMediaTabs.filter((tab) => tab !== sharedMediaTab).forEach((tab) => this.destroySharedMediaTab(tab));
         };
-        if(sharedMediaShown) destroyOthers();
-        else this.loadHiddenSharedMedia(sharedMediaTab, destroyOthers);
+        if(sharedMediaShown) {
+          // * built with the chat, so its shared media start loading now - also when the column was closed meanwhile:
+          // * nothing else would start them then, not even the column opened again over its history
+          sharedMediaTab.ensureLoaded().catch(noop);
+          destroyOthers();
+        } else {
+          this.loadHiddenSharedMedia(sharedMediaTab, destroyOthers);
+        }
       }
 
       if(this.container) {
