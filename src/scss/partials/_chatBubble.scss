@@ -42,6 +42,8 @@
   @supports (clip-path: border-box) {
     &::before {
       @include message-out-gradient-piece;
+      // * none without a gradient: a piece is a layer of the compositor's even when it draws nothing
+      display: var(--message-out-gradient-display, none);
       // * longhands: a shorthand of a `var()` next to one is serialized empty, and the Picture-in-Picture window gets
       // * the app's styles as text (`mirrorDocumentStyles`)
       background-image: var(--message-out-gradient-phase-image, var(--message-out-gradient-image-0));
@@ -66,6 +68,7 @@
 // * The pictures are the nearest theme's, the same one at every phase but the freeform gradient's
 @each $phase in 0, 1, 2, 3, 4, 5, 6, 7 {
   .message-out-gradient-phase-#{$phase} {
+    .bubbles-gradient,
     .bubble-gradient,
     .bubble-gradient ~ .bubble-tail {
       --message-out-gradient-phase-image: var(--message-out-gradient-image-#{$phase});
@@ -75,6 +78,7 @@
 }
 
 .is-message-out-gradient-advancing {
+  .bubbles-gradient,
   .bubble-gradient,
   .bubble-gradient ~ .bubble-tail {
     --message-out-gradient-next-opacity: 1;
@@ -84,10 +88,38 @@
 // * as long as the scroll the wallpaper moves with, in steps of 50ms
 @for $step from 5 through 12 {
   .message-out-gradient-advance-#{$step * 50} {
+    .bubbles-gradient,
     .bubble-gradient,
     .bubble-gradient ~ .bubble-tail {
       --message-out-gradient-next-duration: #{$step * 50}ms;
     }
+  }
+}
+
+// * the outgoing bubbles' gradient drawn for a whole chat at once (`OutgoingGradientUnion`): under the list, cut out by
+// * the shapes of the bubbles it is drawn for, which show a piece of their own when they are not cut out
+.bubbles-gradient {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  // * the bubbles' colour under it, as a bubble paints it under its own piece
+  background-color: var(--message-out-gradient-under, var(--message-out-background-color));
+  @include message-out-gradient;
+
+  &.is-empty {
+    --message-out-gradient-display: none;
+    --message-out-gradient-next-display: none;
+    background: none;
+  }
+
+  // * resized to have the shapes read after the next layout
+  &-sentinel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 0;
+    visibility: hidden;
   }
 }
 
@@ -3809,11 +3841,14 @@
     }
   }
 
-  // * over what the bubble lays under its content (a background of its own, a document's selection), under the content
+  // * over what the bubble lays under its content (a background of its own, a document's selection's band), under the
+  // * content and what it lays under its text in turn (a custom emoji's canvas, under a spoiler; a found text's
+  // * highlight), which are a level up: they come before it, and were drawn over at the same level
   .bubble-gradient {
+    display: var(--message-out-gradient-display, none);
     position: absolute;
     inset: 0;
-    z-index: -1;
+    z-index: -2;
     border-radius: inherit;
     clip-path: border-box;
     pointer-events: none;
@@ -3821,6 +3856,27 @@
 
   &:not(.just-media) .bubble-gradient {
     @include message-out-gradient;
+  }
+
+  // * a bubble's own pieces are layers of their own from the start: one the main thread makes only as it comes into
+  // * sight was not there for a bubble a scroll of the compositor's brought in, which stood of one colour until the next
+  // * scroll. They are of the few bubbles not cut out of the chat's piece (`OutgoingGradientUnion`)
+  .bubble-gradient,
+  .bubble-gradient ~ .bubble-tail {
+    &::before,
+    &::after {
+      will-change: transform;
+    }
+  }
+
+  // * cut out of the chat's piece (`OutgoingGradientUnion`), which is the bubble's gradient, its colour and its tail's
+  &.is-gradient-joined {
+    --message-out-gradient-display: none;
+    --message-out-gradient-next-display: none;
+
+    .bubble-tail {
+      background-color: transparent;
+    }
   }
 
   // * with a gradient the bubble's colour is painted under its piece, in the piece's clip, and not by the bubble
@@ -3835,6 +3891,11 @@
 
       .bubble-gradient {
         background-color: var(--message-out-gradient-under, var(--message-background-color));
+      }
+
+      // * a selected document's cover of its band, which is under the piece already and would cover the piece now
+      .bubble-content.has-gradient .document-wrapper::before {
+        background-color: var(--message-out-gradient-content-background, var(--message-background-color));
       }
     }
   }

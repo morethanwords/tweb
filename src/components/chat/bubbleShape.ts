@@ -170,7 +170,7 @@ export function startOnNextFrame(animations: Animation[]) {
 }
 
 /** an element's corners as they are drawn: CSS makes them all smaller together when two are more than a side */
-export function getRadii(style: CSSStyleDeclaration, rect: DOMRect): Radii {
+export function getRadii(style: CSSStyleDeclaration, rect: {width: number, height: number}): Radii {
   const toLength = (value: string, size: number) => value.endsWith('%') ? parseFloat(value) * size / 100 : parseFloat(value) || 0;
   const radii: Radii = {
     topLeft: toLength(style.borderTopLeftRadius, rect.width),

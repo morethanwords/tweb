@@ -13,6 +13,9 @@ const IMAGE_PROPERTY = '--message-out-gradient-image';
 export const MESSAGE_OUT_GRADIENT_IMAGE_PROPERTY = `${IMAGE_PROPERTY}-0`;
 // * 1 for the freeform gradient: its picture is stretched over the whole frame, not from a column
 const FREEFORM_PROPERTY = '--message-out-gradient-freeform';
+// * whether the theme has a gradient, for what draws it to be laid out (`display`): a piece is a layer of the
+// * compositor's even when it draws nothing
+const DISPLAY_PROPERTY = '--message-out-gradient-display';
 // * the freeform gradient's next phase is drawn by a piece of its own, which comes up over the current one
 const NEXT_DISPLAY_PROPERTY = '--message-out-gradient-next-display';
 // * a bubble of a gradient paints its own colour under its piece of it, in the piece's clip, and not itself: the
@@ -315,6 +318,20 @@ function setClasses(frame: HTMLElement, phase: number, advance?: number) {
   frame.classList.toggle(ADVANCING_CLASS, advance !== undefined);
 }
 
+// * what draws the gradient for a whole chat (`OutgoingGradientUnion`), told of a theme applied: it may give the chat a
+// * gradient or take it away
+const appliedListeners = new Set<VoidFunction>();
+export function subscribeOutgoingMessageGradient(callback: VoidFunction) {
+  appliedListeners.add(callback);
+  return (): void => void appliedListeners.delete(callback);
+}
+
+/** whether the outgoing bubbles where the element is are of a gradient (a read of its computed style) */
+export function hasOutgoingMessageGradient(element: Element) {
+  const image = getComputedStyle(element).getPropertyValue(MESSAGE_OUT_GRADIENT_IMAGE_PROPERTY).trim();
+  return !!image && image !== 'none';
+}
+
 /** the outgoing bubbles' gradient of a theme on the element it is applied on (`themeController`) */
 export function applyOutgoingMessageGradient(element: HTMLElement, gradient: OutgoingMessageGradient | undefined) {
   let background = 'none';
@@ -330,11 +347,13 @@ export function applyOutgoingMessageGradient(element: HTMLElement, gradient: Out
   element.style.setProperty(MESSAGE_OUT_GRADIENT_PROPERTY, background);
   images.forEach((image, index) => element.style.setProperty(`${IMAGE_PROPERTY}-${index}`, image));
   element.style.setProperty(FREEFORM_PROPERTY, gradient?.freeform ? '1' : '0');
+  element.style.setProperty(DISPLAY_PROPERTY, gradient ? 'block' : 'none');
   element.style.setProperty(NEXT_DISPLAY_PROPERTY, gradient?.freeform ? 'block' : 'none');
   // * `initial` is no value, and the bubble's own colour is taken instead
   element.style.setProperty(CONTENT_BACKGROUND_PROPERTY, gradient ? 'transparent' : 'initial');
   element.style.setProperty(UNDER_PROPERTY, gradient ? 'initial' : 'transparent');
   element.style.setProperty(LIGHT_PRIMARY_PROPERTY, gradient ? 'var(--light-message-out-primary-color)' : 'initial');
+  appliedListeners.forEach((callback) => callback());
 }
 
 /**
@@ -414,8 +433,7 @@ export function readOutgoingMessageGradient(content: Element): OutgoingMessageGr
 export function measureOutgoingMessageGradientHold(elements: HTMLElement[]): VoidFunction | undefined {
   const held = elements.filter((element) => element.closest('.bubble.is-out'));
   const frame = held[0]?.closest('.bubbles');
-  const image = frame && getComputedStyle(frame).getPropertyValue(MESSAGE_OUT_GRADIENT_IMAGE_PROPERTY).trim();
-  if(!image || image === 'none') {
+  if(!frame || !hasOutgoingMessageGradient(frame)) {
     return;
   }
 

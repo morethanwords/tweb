@@ -1,4 +1,5 @@
 import {expect, Page, test} from '@playwright/test';
+import {PNG} from 'pngjs';
 import {openChatList} from './chatList.helpers';
 
 /*
@@ -271,6 +272,251 @@ test.describe('a message edited where it stands', () => {
     const steps = tops.slice(1).map((top, index) => tops[index] - top);
     expect(Math.max(...steps), 'no line moves the list at once').toBeLessThan(6);
     expect(Math.min(...steps), 'it only goes up').toBeGreaterThan(-.5);
+  });
+
+  // * the outgoing bubbles' gradient (`components/chat/outgoingGradientUnion`): in a theme of one the bubbles at rest are
+  // * cut out of one piece of it drawn for the chat, which draws what a bubble's own piece would, and is no layer of the
+  // * compositor's for each; a message that changes where it stands has its own piece while it does; custom emoji are
+  // * seen over either; a bubble a scroll brings into sight is of the gradient at once (a theme of this tab only: the
+  // * chat's own, its colours far apart)
+  test('in a theme of a gradient, the bubbles at rest are drawn by one piece for the chat', async({page}) => {
+    await openSavedMessages(page);
+    await page.evaluate(async() => {
+      const {appImManager} = window as any;
+      const chat = appImManager.chat;
+      const themes = await appImManager.managers.appThemesManager.getThemes();
+      const theme = JSON.parse(JSON.stringify(themes.find((theme: any) => theme.settings?.length)));
+      for(const settings of theme.settings) {
+        settings.message_colors = [0xff8080, 0x80ff80, 0x8080ff];
+        if(settings.pFlags) delete settings.pFlags.message_colors_animated;
+      }
+
+      // * the chat sets its theme again when its peer's full info comes
+      (window as any).__chatTheme = Object.getOwnPropertyDescriptor(chat, 'currentTheme');
+      Object.defineProperty(chat, 'currentTheme', {configurable: true, get: () => theme, set: () => {}});
+      chat.applyContainerTheme();
+    });
+
+    try {
+      const stamp = Date.now();
+      const mid = await sendText(page, `gradient ${stamp}: long enough to take the whole width of the bubble and to wrap`);
+      const selector = `#column-center .bubble[data-mid="${mid}"]`;
+      const state = () => page.evaluate((selector) => {
+        const container: HTMLElement = (window as any).appImManager.chat.bubbles.scrollable.container;
+        const box = container.getBoundingClientRect();
+        const union = container.querySelector<HTMLElement>('.bubbles-inner > .bubbles-gradient');
+        const inSight = Array.from(container.querySelectorAll<HTMLElement>('.bubbles-inner .bubble.is-out:not(.just-media)')).filter((bubble) => {
+          const rect = bubble.getBoundingClientRect();
+          return rect.bottom > box.top && rect.top < box.bottom;
+        });
+        return {
+          drawn: !!union && !union.classList.contains('is-empty') && union.style.clipPath.startsWith('path('),
+          inSight: inSight.length,
+          joined: inSight.filter((bubble) => bubble.classList.contains('is-gradient-joined')).length,
+          ownPieces: inSight.filter((bubble) => getComputedStyle(bubble.querySelector('.bubble-gradient')).display !== 'none').length,
+          message: document.querySelector(selector).classList.contains('is-gradient-joined')
+        };
+      }, selector);
+
+      let now = await state();
+      expect(now.drawn, 'the chat\'s piece is drawn').toBe(true);
+      expect(now.inSight).toBeGreaterThan(0);
+      expect(now.joined, 'every bubble in sight is cut out of it').toBe(now.inSight);
+      expect(now.ownPieces, 'and lays out no piece of its own').toBe(0);
+
+      // * the bubble as the chat's piece draws it, and as its own piece does (a bubble moved aside has its own)
+      const clip = await page.evaluate((selector) => {
+        const rect = document.querySelector(`${selector} .bubble-content`).getBoundingClientRect();
+        return {x: Math.floor(rect.left) - 2, y: Math.floor(rect.top) - 2, width: Math.ceil(rect.width) + 14, height: Math.ceil(rect.height) + 4};
+      }, selector);
+      const frames = (count: number) => page.evaluate((count) => new Promise<void>((resolve) => {
+        const tick = () => --count ? requestAnimationFrame(tick) : resolve();
+        requestAnimationFrame(tick);
+      }), count);
+      const cut = PNG.sync.read(await page.screenshot({clip}));
+      await page.evaluate((selector) => document.querySelector(selector).classList.add('is-gradient-held'), selector);
+      await frames(3);
+      now = await state();
+      expect(now.message, 'a bubble moved aside is not cut out').toBe(false);
+      const own = PNG.sync.read(await page.screenshot({clip}));
+      let different = 0;
+      for(let i = 0; i < cut.data.length; i += 4) {
+        if(Math.max(...[0, 1, 2].map((channel) => Math.abs(cut.data[i + channel] - own.data[i + channel]))) > 12) ++different;
+      }
+
+      expect(different / (cut.data.length / 4), `the same pixels (${different} differ)`).toBeLessThan(.002);
+
+      // * the compositor's layers: those of the bubbles' own pieces and of what lies over them, and none of the chat's
+      const cdp = await page.context().newCDPSession(page);
+      let tree: unknown[] = [];
+      cdp.on('LayerTree.layerTreeDidChange', (event: {layers?: unknown[]}) => event.layers && (tree = event.layers));
+      await cdp.send('LayerTree.enable');
+      const countLayers = async() => {
+        tree = [];
+        // * a layer that comes and goes, for the tree to be sent again
+        await page.evaluate(async() => {
+          const probe = document.createElement('div');
+          probe.style.cssText = 'position: fixed; width: 1px; height: 1px; will-change: transform; top: 0; left: 0';
+          document.body.append(probe);
+          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          probe.remove();
+          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        });
+        await page.waitForTimeout(300);
+        return tree.length;
+      };
+      const held = await page.evaluate(() => {
+        const bubbles = Array.from(document.querySelectorAll('#column-center .bubbles-inner .bubble.is-gradient-joined'));
+        bubbles.forEach((bubble) => bubble.classList.add('is-gradient-held'));
+        return bubbles.length;
+      });
+      await frames(3);
+      const ownLayers = await countLayers();
+      await page.evaluate(() => {
+        document.querySelectorAll('#column-center .is-gradient-held').forEach((bubble) => bubble.classList.remove('is-gradient-held'));
+      });
+      await frames(3);
+      const cutLayers = await countLayers();
+      await cdp.detach();
+      expect(held).toBeGreaterThan(0);
+      expect(ownLayers - cutLayers, `no layer for each bubble (${cutLayers} vs ${ownLayers} with their own pieces)`).toBeGreaterThanOrEqual(Math.min(held, now.inSight));
+
+      // * a message edited where it stands leaves it while it changes, and is cut out again once it is done
+      const joinedWhileEdited: boolean[] = await page.evaluate(async([selector, mid, text]) => {
+        const w = window as any;
+        const bubble = document.querySelector(selector);
+        const seen: boolean[] = [];
+        let run = true;
+        const tick = () => {
+          seen.push(bubble.classList.contains('is-gradient-joined'));
+          if(run) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+        const manager = w.appImManager.managers.appMessagesManager;
+        manager.editMessage(await manager.getMessageByPeer(w.rootScope.myId, mid), text);
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        run = false;
+        return seen;
+      }, [selector, mid, `gradient ${stamp}`] as const);
+      expect(joinedWhileEdited.some((joined) => !joined), 'it has its own piece while it changes').toBe(true);
+      expect(joinedWhileEdited[joinedWhileEdited.length - 1], 'and is cut out again').toBe(true);
+
+      // * its custom emoji (in this tab only, as the bubble sandbox shows a state), drawn on a canvas under its text,
+      // * which a spoiler covers: over the chat's piece, and over its own one too
+      const inserted: number = await page.evaluate(async(mid) => {
+        const {appImManager, rootScope, apiManagerProxy} = window as any;
+        const chat = appImManager.chat;
+        const set = await rootScope.managers.appStickersManager.getLocalStickerSet('inputStickerSetEmojiDefaultStatuses').catch((): any => undefined);
+        const docs = (set?.documents || []).slice(0, 2);
+        if(!docs.length) return 0;
+        const storageKey: string = chat.messagesStorageKey;
+        // * where it is read from (`getMessageFromStorage`): a chat's history keeps the ids of the global one there
+        const key = storageKey.endsWith('history') && mid < 0x100000000 ? apiManagerProxy.getGlobalHistoryMessagesStorage() : storageKey;
+        const message = apiManagerProxy.getMessageFromStorage(storageKey, mid);
+        const entities = docs.map((doc: any, index: number) => ({_: 'messageEntityCustomEmoji', offset: 6 + index * 2, length: 2, document_id: doc.id}));
+        const edited = {...message, message: 'emoji 🙂🙂 over the gradient', entities, totalEntities: entities};
+        apiManagerProxy.onMirrorTask({name: 'messages', key: key + '\x01' + mid, value: edited, accountNumber: 1});
+        rootScope.dispatchEventSingle('message_edit', {storageKey, peerId: message.peerId, mid, message: edited});
+        return docs.length;
+      }, mid);
+      if(inserted) {
+        await page.waitForFunction(([selector, inserted]) => document.querySelectorAll(`${selector} custom-emoji-element`).length === inserted, [selector, inserted] as const, {timeout: 10_000});
+        await page.waitForTimeout(1500);
+        // * how much of where they stand they change on the screen, against them hidden
+        const emojiShown = async() => {
+          const box = await page.evaluate((selector) => {
+            const rects = Array.from(document.querySelectorAll(`${selector} custom-emoji-element`)).map((element) => element.getBoundingClientRect());
+            const [left, top] = [Math.min(...rects.map((rect) => rect.left)), Math.min(...rects.map((rect) => rect.top))];
+            const [right, bottom] = [Math.max(...rects.map((rect) => rect.right)), Math.max(...rects.map((rect) => rect.bottom))];
+            return {x: Math.floor(left), y: Math.floor(top), width: Math.ceil(right - left), height: Math.ceil(bottom - top)};
+          }, selector);
+          const setVisibility = (visibility: string) => page.evaluate(([selector, visibility]) => {
+            document.querySelectorAll<HTMLElement>(`${selector} .custom-emoji-renderer`).forEach((renderer) => renderer.style.visibility = visibility);
+          }, [selector, visibility] as const);
+          const shown = PNG.sync.read(await page.screenshot({clip: box}));
+          await setVisibility('hidden');
+          await frames(2);
+          const hidden = PNG.sync.read(await page.screenshot({clip: box}));
+          await setVisibility('');
+          await frames(2);
+          let changed = 0;
+          for(let i = 0; i < shown.data.length; i += 4) {
+            if(Math.max(...[0, 1, 2].map((channel) => Math.abs(shown.data[i + channel] - hidden.data[i + channel]))) > 40) ++changed;
+          }
+
+          return changed / (shown.data.length / 4);
+        };
+
+        expect(await emojiShown(), 'its custom emoji are seen over the chat\'s piece').toBeGreaterThan(.05);
+        await page.evaluate((selector) => document.querySelector(selector).classList.add('is-gradient-held'), selector);
+        await frames(3);
+        expect(await emojiShown(), 'and over its own one').toBeGreaterThan(.05);
+        await page.evaluate((selector) => document.querySelector(selector).classList.remove('is-gradient-held'), selector);
+      }
+
+      // * a message of ours coming at the list's end while it is scrolled far up (in this tab only, as the worker hands
+      // * it over): the list goes down to it, and every bubble that brings into sight is of the gradient at once, where
+      // * a piece the main thread made as it came was missing, the bubble of one colour until the next scroll
+      await page.evaluate(async() => {
+        const {appImManager, rootScope, apiManagerProxy} = window as any;
+        const chat = appImManager.chat;
+        const container: HTMLElement = chat.bubbles.scrollable.container;
+        const storageKey: string = chat.messagesStorageKey;
+        const last = Array.from(chat.bubbles.chatInner.querySelectorAll('.bubble.is-out[data-mid]:not(.just-media)')).pop() as HTMLElement;
+        const lastMid = +last.dataset.mid;
+        const key = storageKey.endsWith('history') && lastMid < 0x100000000 ? apiManagerProxy.getGlobalHistoryMessagesStorage() : storageKey;
+        const original = apiManagerProxy.getMessageFromStorage(storageKey, lastMid);
+        let added = 0;
+        const append = (text: string) => {
+          const mid = lastMid + ++added / 100;
+          const message = {...original, mid, id: original.id + added / 100, date: Math.floor(Date.now() / 1000), message: text, entities: [] as any[], totalEntities: [] as any[]};
+          apiManagerProxy.onMirrorTask({name: 'messages', key: key + '\x01' + mid, value: message, accountNumber: 1});
+          rootScope.dispatchEventSingle('history_append', {storageKey, message, peerId: message.peerId});
+        };
+
+        // * a list long enough to scroll far, whatever the account has
+        while(container.scrollHeight < container.clientHeight * 3 && added < 40) {
+          append(`one of many ${added}`);
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        container.scrollTop = 0;
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        append('coming at the end');
+      });
+      await page.waitForTimeout(2000);
+      const read = () => page.evaluate(() => {
+        const frame = document.querySelector('#column-center .bubbles').getBoundingClientRect();
+        const points = Array.from(document.querySelectorAll('#column-center .bubbles-inner .bubble.is-out:not(.just-media) .bubble-content'))
+        .map((content) => content.getBoundingClientRect())
+        .filter((rect) => rect.top > frame.top + 60 && rect.bottom < frame.bottom - 80)
+        .map((rect) => [Math.round(rect.left + 3), Math.round((rect.top + rect.bottom) / 2)]);
+        return {top: frame.top, bottom: frame.bottom, points};
+      });
+      const geometry = await read();
+      const screen = PNG.sync.read(await page.screenshot());
+      expect(JSON.stringify(await read()), 'the list stands still').toBe(JSON.stringify(geometry));
+      expect(geometry.points.length).toBeGreaterThan(3);
+      // * the theme's colours from the bottom of the frame up, which the text reads on as they are
+      const stops = [[0xff, 0x80, 0x80], [0x80, 0xff, 0x80], [0x80, 0x80, 0xff]];
+      const off = geometry.points.map(([x, y]) => {
+        const at = (geometry.bottom - y) / (geometry.bottom - geometry.top) * 2;
+        const from = Math.min(1, Math.floor(at)), t = at - from;
+        const offset = (y * screen.width + x) * 4;
+        return Math.max(...[0, 1, 2].map((channel) => Math.abs(screen.data[offset + channel] - (stops[from][channel] + (stops[from + 1][channel] - stops[from][channel]) * t))));
+      });
+      expect(Math.max(...off), `every bubble brought into sight is of the gradient (${off.join(', ')})`).toBeLessThan(16);
+    } finally {
+      await page.evaluate(() => {
+        const {appImManager} = window as any;
+        const chat = appImManager.chat;
+        const descriptor = (window as any).__chatTheme;
+        delete chat.currentTheme;
+        if(descriptor) Object.defineProperty(chat, 'currentTheme', descriptor);
+        chat.applyContainerTheme();
+      }).catch(() => {});
+    }
   });
 
   // * the bubble sandbox (`components/bubbleSandbox`): every state it has, one after another, in this tab only — the

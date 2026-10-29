@@ -223,6 +223,7 @@ import isSuspiciousPeer from '@appManagers/utils/peers/isSuspiciousPeer';
 import ejectBubble from '@components/chat/bubbles/ejectBubble';
 import {generateGradient, generateTail, getGuestChatViaFromId, getMid, isGuestChatMessage, isMessage, isMessageForVerificationBot, isVerificationBot} from '@components/chat/utils';
 import {advanceOutgoingMessageGradient, holdOutgoingMessageGradient} from '@helpers/outgoingMessageGradient';
+import OutgoingGradientUnion from '@components/chat/outgoingGradientUnion';
 import {ChecklistBubble} from '@components/chat/bubbles/checklist';
 import {getRestrictionReason} from '@helpers/restrictions';
 import {isMessageSensitive} from '@appManagers/utils/messages/isMessageRestricted';
@@ -994,6 +995,8 @@ export default class ChatBubbles {
   private renderNewPromises: Set<Promise<any>> = new Set();
   // what is sent flies into its message
   public sendFlights: SendFlights;
+  // * the outgoing bubbles' gradient, drawn once for the list
+  private gradientUnion: OutgoingGradientUnion;
   private updateGradient: boolean;
 
   private extendedMediaMessages: Set<number> = new Set();
@@ -1129,6 +1132,8 @@ export default class ChatBubbles {
     this.myCountryCode = myPhone ? formatPhoneNumber(myPhone).code?.country_code : undefined;
 
     this.constructBubbles();
+    this.gradientUnion = new OutgoingGradientUnion();
+    this.gradientUnion.setInner(this.chatInner);
 
     // * constructor end
 
@@ -6280,6 +6285,7 @@ export default class ChatBubbles {
     this.releaseChatInnerMiddleware();
     this.sendFlights.abortAll();
     dropReactionFlights(this.scrollable.container);
+    this.gradientUnion.destroy();
 
     this.destroyScrollable();
 
@@ -6766,6 +6772,7 @@ export default class ChatBubbles {
     }
     this.refreshTestPeerNonContactState();
     const chatInner = this.chatInner = this.createChatInner();
+    this.gradientUnion.setInner(chatInner);
     if(samePeer) {
       chatInner.className = oldChatInner.className;
       chatInner.classList.remove('disable-hover', 'is-scrolling');
