@@ -170,6 +170,7 @@ import {isSavedDialog} from '@appManagers/utils/dialogs/isDialog';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
 import isForwardOfForward from '@appManagers/utils/messages/isForwardOfForward';
 import {ReactionLayoutType, stashFlightSource} from '@components/chat/reaction';
+import {dropReactionFlights, holdReactionFlight} from '@components/chat/reactionFlight';
 import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
 import getMainGroupedMessage from '@appManagers/utils/messages/getMainGroupedMessage';
 import cancelClickOrNextIfNotClick from '@helpers/dom/cancelClickOrNextIfNotClick';
@@ -3705,6 +3706,7 @@ export default class ChatBubbles {
           // * snapshot the hovered quick-reaction (instant flight source) + the
           // * clean first-frame render that upgrades it
           stashFlightSource(reaction, hoverReaction);
+          holdReactionFlight({reaction, source: hoverReaction, message, scrollable: this.scrollable.container});
           this.chat.sendReaction({
             message: message as Message.message,
             reaction
@@ -6272,6 +6274,7 @@ export default class ChatBubbles {
     this.readMetricsTracker?.finalizeAll();
     this.releaseChatInnerMiddleware();
     this.sendFlights.abortAll();
+    dropReactionFlights(this.scrollable.container);
 
     this.destroyScrollable();
 
@@ -6394,6 +6397,7 @@ export default class ChatBubbles {
     this.middlewareHelper.clean();
     this.releaseChatInnerMiddleware();
     this.sendFlights.abortAll();
+    dropReactionFlights(this.scrollable.container);
     this.solidMessageBodies.clear();
     this.pendingStreamedMessageUpdates.clear();
     this.pendingRerenders.clear();

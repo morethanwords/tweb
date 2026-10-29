@@ -30,6 +30,7 @@
     "test:hot:app": "playwright test e2e/hotRerunApp.spec.ts",
     "test:send:app": "playwright test e2e/sendFlightApp.spec.ts",
     "test:edit:app": "playwright test e2e/bubbleEditApp.spec.ts",
+    "test:react:app": "playwright test e2e/reactionFlightApp.spec.ts",
     "whybundled": "pnpm run profile && whybundled stats.json",
     "generate-mtproto-types": "node ./src/scripts/generate_mtproto_types.js src/",
     "generate-changelog": "node ./src/scripts/generate_changelog.js",

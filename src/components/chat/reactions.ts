@@ -17,6 +17,7 @@ import pause from '@helpers/schedulers/pause';
 import {Accessor, Setter} from 'solid-js';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {hotListen} from '@helpers/hotModule';
+import {isReactionFlightHeld, launchReactionFlight} from '@components/chat/reactionFlight';
 
 
 const CLASS_NAME = 'reactions';
@@ -345,6 +346,8 @@ export default class ReactionsElement extends HTMLElement {
       totalReactions < REACTIONS_DISPLAY_COUNTER_AT[this.type];
     const customEmojiElements: ReturnType<ReactionElement['render']>[] = new Array(counts.length);
     let paidReactionElement: ReactionElement, pendingPaidReaction: PendingPaidReaction;
+    // the reactions it did not show before
+    const created: Set<ReactionElement> = new Set();
     this.sorted = counts.map((reactionCount, idx, arr) => {
       let reactionElement: ReactionElement = this.sorted.find((reactionElement) => reactionsEqual(reactionElement.reactionCount.reaction, reactionCount.reaction));
       if(!reactionElement) {
@@ -352,6 +355,7 @@ export default class ReactionsElement extends HTMLElement {
         reactionElement = ReactionElement.create();
         reactionElement.init(this.type, middlewareHelper.get());
         this.middlewareHelpers.set(reactionElement, middlewareHelper);
+        created.add(reactionElement);
       }
 
       reactionElement.classList.toggle('is-last', idx === (arr.length - 1));
@@ -396,6 +400,12 @@ export default class ReactionsElement extends HTMLElement {
     this.sorted.forEach((element, idx) => {
       positionElementByIndex(element, this, idx);
     });
+
+    // a reaction chosen for it flies to where it ends, once that is laid out: after the change it is made in, which
+    // the list is kept in place around, and before the change is shown
+    if(!this.isPlaceholder && isReactionFlightHeld(this.key)) {
+      queueMicrotask(() => this.launchFlight(created));
+    }
 
     if(pendingPaidReaction) {
       const {width} = paidReactionElement.getBoundingClientRect();
@@ -470,21 +480,73 @@ export default class ReactionsElement extends HTMLElement {
     }
   }
 
+  private launchFlight(created: Set<ReactionElement>) {
+    const element = this.isConnected && this.sorted.find(({reactionCount}) => {
+      return reactionCount.chosen_order !== undefined && isReactionFlightHeld(this.key, reactionCount.reaction);
+    });
+    if(!element) {
+      return;
+    }
+
+    const flight = element.flight = launchReactionFlight({
+      key: this.key,
+      reaction: element.reactionCount.reaction,
+      target: element.stickerContainer,
+      // one it showed before shows on as the flight lands on it (ReactionsLayoutInBubble's drawImage)
+      hide: created.has(element) ? () => this.hideSticker(element) : undefined
+    });
+    flight?.landed.then(() => {
+      if(element.flight === flight) {
+        element.flight = undefined;
+      }
+    });
+  }
+
+  // a reaction's emoji hidden, and what shows it again; a custom one is drawn by the row's canvas, which leaves out
+  // what is not laid out
+  private hideSticker(element: ReactionElement) {
+    const {stickerContainer} = element;
+    const customEmoji = stickerContainer.querySelector<HTMLElement>('custom-emoji-element');
+    stickerContainer.style.visibility = 'hidden';
+    if(customEmoji) {
+      customEmoji.style.display = 'none';
+      this.customEmojiRenderer?.forceRender();
+    }
+
+    return () => {
+      stickerContainer.style.removeProperty('visibility');
+      if(customEmoji) {
+        customEmoji.style.removeProperty('display');
+        this.customEmojiRenderer?.forceRender();
+      }
+    };
+  }
+
   private async handleChangedResults(changedResults: ReactionCount[], waitPromise?: Promise<any>, withDelay?: boolean) {
     await getHeavyAnimationPromise();
+    // ! temp
+    const isShown = () => this.context.peerId === hotReloadGuard.appImManager.chat.peerId;
+    const getElement = (reactionCount: ReactionCount) => this.sorted.find((reactionElement) => {
+      return reactionsEqual(reactionElement.reactionCount.reaction, reactionCount.reaction);
+    });
+
+    // one flown to plays as its flight comes near and lands: it loads meanwhile, and takes its place as it starts
+    const flown = changedResults.filter((reactionCount) => getElement(reactionCount)?.flight);
+    if(isShown()) flown.forEach((reactionCount) => {
+      const element = getElement(reactionCount);
+      element.fireAroundAnimation(element.flight.hit, element.flight.landed);
+    });
+
     // the reactions stand where they end first (the bubble is shown changing till then): an effect takes its place
     // from its reaction as it loads, before it plays
     await waitPromise;
-    // ! temp
-    if(this.context.peerId !== hotReloadGuard.appImManager.chat.peerId) return;
+    if(!isShown()) return;
     waitPromise = withDelay ? pause(150) : undefined;
 
     changedResults.forEach((reactionCount) => {
-      const reactionElement = this.sorted.find((reactionElement) => {
-        return reactionsEqual(reactionElement.reactionCount.reaction, reactionCount.reaction);
-      });
-
-      reactionElement?.fireAroundAnimation(waitPromise);
+      if(!flown.includes(reactionCount)) {
+        getElement(reactionCount)?.fireAroundAnimation(waitPromise);
+      }
     });
   }
 }

@@ -32,6 +32,7 @@ import {AnimatedCounter} from '@components/animatedCounter';
 import getUnsafeRandomInt from '@helpers/number/getUnsafeRandomInt';
 import {IS_MOBILE} from '@environment/userAgent';
 import drawMediaToCanvas, {DrawableMedia} from '@helpers/canvas/drawMediaToCanvas';
+import type {ReactionFlight} from '@components/chat/reactionFlight';
 
 const CLASS_NAME = 'reaction';
 const TAG_NAME = CLASS_NAME + '-element';
@@ -326,7 +327,11 @@ function mediaToCanvas(media: DrawableMedia) {
 const REACTION_SOURCE_FILL = .9;
 const REACTION_SOURCE_ALPHA_THRESHOLD = 8;
 
-function normalizeReactionSource(canvas: HTMLCanvasElement) {
+// * the square a normalized source is cut out of its canvas by (`normalizeReactionSource`): its corner may stand
+// * out of the canvas, as the square is bigger than the ink
+type SourceSquare = {left: number, top: number, size: number};
+
+function getReactionSourceSquare(canvas: HTMLCanvasElement): SourceSquare {
   const {width, height} = canvas;
   const data = canvas.getContext('2d').getImageData(0, 0, width, height).data;
   let left = width, top = height, right = -1, bottom = -1;
@@ -356,48 +361,57 @@ function normalizeReactionSource(canvas: HTMLCanvasElement) {
     Math.max(width, height),
     Math.ceil(Math.max(inkWidth, inkHeight) / REACTION_SOURCE_FILL)
   );
+  return {
+    left: left - Math.round((size - inkWidth) / 2),
+    top: top - Math.round((size - inkHeight) / 2),
+    size
+  };
+}
+
+function normalizeReactionSource(canvas: HTMLCanvasElement, square = getReactionSourceSquare(canvas)) {
   const normalized = document.createElement('canvas');
-  normalized.width = normalized.height = size;
-  normalized.getContext('2d').drawImage(
-    canvas,
-    left,
-    top,
-    inkWidth,
-    inkHeight,
-    Math.round((size - inkWidth) / 2),
-    Math.round((size - inkHeight) / 2),
-    inkWidth,
-    inkHeight
-  );
+  normalized.width = normalized.height = square.size;
+  normalized.getContext('2d').drawImage(canvas, -square.left, -square.top);
   return normalized;
 }
 
-// * snapshot the clicked element's CURRENT pixels synchronously - an INSTANT
-// * flight source so the generic copies fly from frame 0 even before the clean
-// * first-frame render is ready (a cold lottie parse can take ~1s, during which
-// * the flight would otherwise run to its end empty = "no flying emoji"). The
-// * first frame upgrades this as soon as it resolves
-function captureClickedSnapshot(container: HTMLElement): HTMLCanvasElement {
+/** A picture of a reaction where it is shown, cut to its ink (`normalizeReactionSource`), and the square it takes there */
+export type ReactionPicture = {
+  canvas: HTMLCanvasElement,
+  // where the picture stands in the window, as big as it is drawn there
+  box: {left: number, top: number, size: number},
+  // what shows it
+  media: HTMLElement
+};
+
+/**
+ * Snapshots the pixels of a reaction's emoji as they are drawn now (a sticker's frame, an emoji's picture, a custom
+ * emoji's part of its renderer's canvas), with the square it takes on the screen
+ */
+export function captureReactionPicture(container: HTMLElement): ReactionPicture {
   if(!container) {
     return;
   }
 
   try {
-    let snapshot: HTMLCanvasElement;
+    let snapshot: HTMLCanvasElement, rect: DOMRect;
     const media = container instanceof HTMLImageElement || container instanceof HTMLCanvasElement || container instanceof HTMLVideoElement ?
       container :
       Array.from(
         container.querySelectorAll<HTMLCanvasElement | HTMLImageElement | HTMLVideoElement>('canvas, img.media-sticker, video.media-sticker, img.emoji')
       ).find((media) => !media.closest('.hide'));
 
+    let customEmoji: CustomEmojiElement;
     if(media) {
       snapshot = drawMediaToCanvas(media);
       if(!snapshot) {
         return;
       }
+
+      rect = media.getBoundingClientRect();
     } else {
       // * a custom emoji is painted on the shared renderer canvas - copy its region
-      const customEmoji = container instanceof CustomEmojiElement ?
+      customEmoji = container instanceof CustomEmojiElement ?
         container :
         container.querySelector<CustomEmojiElement>('custom-emoji-element');
       const rendererCanvas = customEmoji?.renderer?.canvas;
@@ -406,7 +420,7 @@ function captureClickedSnapshot(container: HTMLElement): HTMLCanvasElement {
       }
 
       const canvasRect = rendererCanvas.getBoundingClientRect();
-      const rect = customEmoji.getBoundingClientRect();
+      rect = customEmoji.getBoundingClientRect();
       if(!rect.width || !rect.height || !canvasRect.width || !canvasRect.height) {
         return;
       }
@@ -432,10 +446,29 @@ function captureClickedSnapshot(container: HTMLElement): HTMLCanvasElement {
     // * crop the transparent document/menu padding. Both the optimistic
     // * .reaction-sticker placeholder and the generic flight draw the whole
     // * source canvas, so keeping those margins makes the emoji look too small
-    return normalizeReactionSource(snapshot);
+    const square = getReactionSourceSquare(snapshot);
+    const scale = rect.width / snapshot.width;
+    return {
+      canvas: normalizeReactionSource(snapshot, square),
+      box: {
+        left: rect.left + square.left * scale,
+        top: rect.top + square.top * (rect.height / snapshot.height),
+        size: square.size * scale
+      },
+      media: media || customEmoji
+    };
   } catch{
     return;
   }
+}
+
+// * snapshot the clicked element's CURRENT pixels synchronously - an INSTANT
+// * flight source so the generic copies fly from frame 0 even before the clean
+// * first-frame render is ready (a cold lottie parse can take ~1s, during which
+// * the flight would otherwise run to its end empty = "no flying emoji"). The
+// * first frame upgrades this as soon as it resolves
+function captureClickedSnapshot(container: HTMLElement): HTMLCanvasElement {
+  return captureReactionPicture(container)?.canvas;
 }
 
 // * render the reaction's emoji on its own and freeze it at the FIRST frame - a
@@ -704,6 +737,8 @@ export default class ReactionElement extends HTMLElement {
   public middleware: Middleware;
   private customEmojiElement: CustomEmojiElement;
   public hasAroundAnimation: Promise<void>;
+  // a picture of it flying to it, as it was chosen (`reactionFlight`)
+  public flight: ReactionFlight;
   public isUnread: boolean;
   private hasTitle: boolean;
   private paidReactionCounter: AnimatedCounter;
@@ -1072,7 +1107,8 @@ export default class ReactionElement extends HTMLElement {
     }
   }
 
-  public fireAroundAnimation(waitPromise?: Promise<any>) {
+  /** `landingPromise`: when the reaction itself plays in its place, the effect around it playing from `waitPromise` */
+  public fireAroundAnimation(waitPromise?: Promise<any>, landingPromise?: Promise<any>) {
     let add = 0;
     if(this.type === ReactionLayoutType.Inline) {
       add = 14;
@@ -1082,6 +1118,7 @@ export default class ReactionElement extends HTMLElement {
 
     return ReactionElement?.fireAroundAnimation({
       waitPromise,
+      landingPromise,
       cache: this,
       middleware: this.middleware,
       reaction: this.reactionCount?.reaction,
@@ -1098,7 +1135,9 @@ export default class ReactionElement extends HTMLElement {
   }
 
   public static fireAroundAnimation(options: {
-    waitPromise?: Promise<any>
+    waitPromise?: Promise<any>,
+    // when the reaction's own animation takes its place, if later: a picture of it flown to it lands there then
+    landingPromise?: Promise<any>,
     cache?: {
       hasAroundAnimation: ReactionElement['hasAroundAnimation'],
       wrapStickerPromise?: ReactionElement['wrapStickerPromise']
@@ -1240,7 +1279,9 @@ export default class ReactionElement extends HTMLElement {
 
         let flightSourcePlayer: LottiePlayer;
         const deferred = deferredPromise<void>();
+        let removed = false;
         const remove = () => {
+          removed = true;
           deferred.resolve();
           // return;
           // if(!isInDOM(div)) return;
@@ -1432,15 +1473,33 @@ export default class ReactionElement extends HTMLElement {
         });
 
         iconPlayer.onFirstFrame(() => {
-          // * has-animation hides the sticker (.media-sticker opacity: 0)
-          // * while the activate overlay replaces it - the generic effect has
-          // * no overlay, the sticker must stay visible under the flight
-          if(div) {
-            options.stickerContainer.append(div);
-            options.stickerContainer.classList.add('has-animation');
+          const playIcon = () => {
+            if(removed) {
+              return;
+            }
+
+            // * has-animation hides the sticker (.media-sticker opacity: 0)
+            // * while the activate overlay replaces it - the generic effect has
+            // * no overlay, the sticker must stay visible under the flight
+            if(div) {
+              options.stickerContainer.append(div);
+              options.stickerContainer.classList.add('has-animation');
+            }
+
+            iconPlayer.play();
+          };
+
+          // where the reaction stands as it starts: it may have loaded as the message was still changing
+          aroundWrap?.setPosition();
+          genericResult?.setPosition();
+
+          // the effect around starts as a reaction flown to it comes near, the reaction itself plays as it lands
+          if(div && !onlyAround && options.landingPromise) {
+            options.landingPromise.then(playIcon);
+          } else {
+            playIcon();
           }
 
-          iconPlayer.play();
           aroundPlayer.play();
         });
 

@@ -68,6 +68,7 @@ export class ChatReactionsMenu {
   private middlewareHelper: ReturnType<typeof getMiddleware>;
   private managers: ReadingManagers;
   private onFinish: (reaction?: Reaction | Promise<Reaction>) => void;
+  private onPick: (reaction: Reaction, source: HTMLElement) => void;
   private listenerSetter: ListenerSetter;
   private size: number;
   private openSide: 'top' | 'bottom';
@@ -92,6 +93,8 @@ export class ChatReactionsMenu {
     type: 'horizontal' | 'vertical',
     middleware: Middleware,
     onFinish: ChatReactionsMenu['onFinish'],
+    /** a reaction chosen, by what shows it (a reaction of the strip, an emoji of the whole choice): before it goes */
+    onPick?: ChatReactionsMenu['onPick'],
     size?: ChatReactionsMenu['size'],
     openSide?: ChatReactionsMenu['openSide'],
     /** where the whole choice opens; over the strip, its reactions where the strip has them, if not given */
@@ -107,6 +110,7 @@ export class ChatReactionsMenu {
     this.managers = options.managers;
     this.middlewareHelper = options.middleware ? options.middleware.create() : getMiddleware();
     this.onFinish = options.onFinish;
+    this.onPick = options.onPick;
     this.listenerSetter = new ListenerSetter();
     this.size = options.size ?? REACTION_SIZE;
     this.openSide = options.openSide ?? 'bottom';
@@ -189,6 +193,7 @@ export class ChatReactionsMenu {
       if(!this.isEffects) {
         stashFlightSource(players.reaction, reactionDiv);
       }
+      this.onPick?.(players.reaction, reactionDiv);
       this.onFinish(players.reaction);
     }, {listenerSetter: this.listenerSetter});
 
@@ -462,6 +467,7 @@ export class ChatReactionsMenu {
           stashFlightSource(reaction, emoji.element);
         }
 
+        this.onPick?.(reaction, emoji.element);
         deferred.resolve(reaction);
         emoticonsDropdown.hideAndDestroy();
       },

@@ -201,5 +201,7 @@ export default function wrapStickerAnimation({
     emojiAnimationContainer.append(animationDiv);
   }
 
-  return {animationDiv, stickerPromise};
+  // * `setPosition`: places it at its target again (it is placed as its first frame is drawn, which may be before its
+  // * target stands where it ends)
+  return {animationDiv, stickerPromise, setPosition};
 }

@@ -24,6 +24,7 @@ import StackedAvatars from '@components/stackedAvatars';
 import {IS_APPLE, IS_MOBILE} from '@environment/userAgent';
 import showReactedListPopup from '@components/popups/reactedList';
 import {ChatReactionsMenu, REACTION_CONTAINER_SIZE} from '@components/chat/reactionsMenu';
+import {holdReactionFlight} from '@components/chat/reactionFlight';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import {AppManagers} from '@lib/managers';
@@ -1934,6 +1935,12 @@ export default class ChatContextMenu {
           }
 
           this.chat.sendReaction({message: reactionsMessage, reaction});
+        },
+        // what is set, rather than asked to get Premium for, flies to the message
+        onPick: (reaction, source) => {
+          if(rootScope.premium || !tags) {
+            holdReactionFlight({reaction, source, message: reactionsMessage, scrollable: this.chat.bubbles.scrollable.container});
+          }
         },
         isTags: tags
       });

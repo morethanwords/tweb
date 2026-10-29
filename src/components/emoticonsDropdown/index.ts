@@ -125,6 +125,8 @@ export class EmoticonsDropdown extends DropdownHover {
 
   public animationGroup: AnimationItemGroup;
 
+  private destroyed: boolean;
+
   constructor(options: {
     customParentElement?: HTMLElement | (() => HTMLElement),
     // customAnchorElement?: HTMLElement,
@@ -738,15 +740,32 @@ export class EmoticonsDropdown extends DropdownHover {
   }
 
   public destroy() {
+    if(this.destroyed) {
+      return;
+    }
+
+    this.destroyed = true;
     this.cleanup();
     this.listenerSetter.removeAll();
     this.tabsToRender.forEach((tab) => (tab as EmojiTab).destroy?.());
     this.element.remove();
   }
 
+  /** gone once it has hidden itself (`closed`): taken away as it starts hiding, it would vanish in a frame */
   public hideAndDestroy() {
-    return this.toggle(false).then(() => {
-      return this.destroy();
+    if(!this.isDisplayed()) {
+      this.destroy();
+      return Promise.resolve();
+    }
+
+    return new Promise<void>((resolve) => {
+      // * nothing in it is chosen, focused or read out any more as it hides
+      this.element.inert = true;
+      this.addEventListener('closed', () => {
+        this.destroy();
+        resolve();
+      }, {once: true});
+      this.toggle(false);
     });
   }
 }

@@ -1,0 +1,33 @@
+// A reaction flying from where it was chosen to its place in the message (`reactionFlight.ts`): over everything, as
+// the menu it leaves goes
+.flight {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 10000;
+  pointer-events: none;
+}
+
+// what goes across and to its size, from its top left corner, as the flight goes up and down
+.path {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+}
+
+// what it was chosen as, cut to its ink (`captureReactionPicture`): as big as the flight
+.picture {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+// what it lands as: a picture of its place in the message, as big as that and scaled to the flight
+.landing {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  opacity: 0;
+}
