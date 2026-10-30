@@ -130,7 +130,7 @@ export function isIncoming(transaction: WalletTransaction) {
 /** A transfer from the wallet to itself: iOS shows it as incoming, with its amount unsigned */
 export function isSelfTransfer(transaction: WalletTransaction, walletAddress: string) {
   const peer = transaction.peer;
-  if(!walletAddress || transaction.pFlags.key_change || peer._ === 'walletTransactionPeerOnramp' || peer._ === 'walletTransactionPeerUnsupported') {
+  if(!walletAddress || transaction.pFlags.key_change || peer._ === 'walletTransactionPeerOnramp' || !('address' in peer)) {
     return false;
   }
 
@@ -203,7 +203,7 @@ export function TransactionTitle(props: {
         const p = peer();
         // * a top-up is named by how it was paid, its provider under it (iOS, Android)
         if(p?._ === 'walletTransactionPeerOnramp') return i18n(getTransactionKind(props.transaction));
-        if(p && p._ !== 'walletTransactionPeerUnsupported') return p.domain || addressTitle(p.address, props.chips);
+        if(p && 'address' in p) return p.domain || addressTitle(p.address, props.chips);
         if(props.pending) return addressTitle(props.pending.address, props.chips);
         return i18n(props.transaction?.pFlags.key_change ? 'Wallet.Row.KeyChange' : 'Wallet.Row.Withdrawal');
       })()}

@@ -31,20 +31,27 @@ let menuRequest = 0;
 type AddressOwner = {peerId?: PeerId, unlinked?: boolean};
 
 /**
- * The Telegram user whose wallet this is, if the server knows one other than us; `unlinked` when the server said the
- * address is nobody's — not when it did not answer in time, or the owner is us or no one to show
+ * The Telegram user whose wallet this is, by the profiles or the server; `unlinked` when neither knows one — not when
+ * the answer did not come in time, or the owner is no one to show
  */
-async function getAddressOwner(address: string): Promise<AddressOwner> {
+async function getAddressOwner(address: string, userIds: UserId[]): Promise<AddressOwner> {
   const managers = bindManagersToSession(rootScope.managers);
-  const myId = rootScope.myId.toUserId();
-  const lookup = managers.appWalletManager.getAddressOwner(address).then(async(owner): Promise<AddressOwner> => {
-    const userId = owner?.user_id?.toUserId();
+  const lookup = managers.appWalletManager.getKnownAddressOwner(address, userIds)
+  .then((known) => known ?? managers.appWalletManager.getAddressOwner(address).then((owner) => owner?.user_id?.toUserId()))
+  .then(async(userId): Promise<AddressOwner> => {
     if(!userId) return {unlinked: true};
-    if(userId === myId) return {};
     return await managers.appUsersManager.isRegularUser(userId) ? {peerId: userId.toPeerId(false)} : {};
-  }, (): AddressOwner => ({}));
+  }, (err: ApiError): AddressOwner => err?.type === 'WALLET_UNAVAILABLE' ? {unlinked: true} : {});
 
   return Promise.race([lookup, new Promise<AddressOwner>((resolve) => setTimeout(() => resolve({}), OWNER_TIMEOUT))]);
+}
+
+/** Who is at hand where the address was clicked: the author of its message and the user of the chat */
+function getUsersAtHand(element: HTMLElement) {
+  const chat = hotReloadGuard.appImManager?.chat;
+  const bubble = element.closest<HTMLElement>('.bubble');
+  const senderPeerId = bubble?.dataset.mid && chat?.getMessage(+bubble.dataset.mid)?.fromId;
+  return [senderPeerId, chat?.peerId].filter((peerId) => peerId && peerId.isUser()).map((peerId) => peerId.toUserId());
 }
 
 /** the explorer's page of the address: the configured explorer's base and the address as one path segment */
@@ -67,7 +74,7 @@ export default async function openTonAddressMenu(options: {
   const valid = !!parseTonAddress(address);
   const [appConfig, owner] = await Promise.all([
     apiManagerProxy.getAppConfig(),
-    valid ? getAddressOwner(address) : {} as AddressOwner
+    valid ? getAddressOwner(address, getUsersAtHand(element)) : {} as AddressOwner
   ]);
   const ownerPeerId = owner.peerId;
 

@@ -1912,7 +1912,7 @@ export default class WalletSession {
     }
 
     const peer = transaction.peer;
-    const counterparty = peer._ !== 'walletTransactionPeerUnsupported' ? peer.address : undefined;
+    const counterparty = 'address' in peer ? peer.address : undefined;
     const sender = transaction.pFlags.incoming ? counterparty : ownAddress;
     if(!sender) {
       throw walletError('WALLET_COMMENT_INVALID');
