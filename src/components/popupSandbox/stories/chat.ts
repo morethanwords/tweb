@@ -49,7 +49,8 @@ const QR_PROFILE_ANSWERS = {
 /** The emoji panel's presets are custom emoji of a set the fixtures do not have: the panel shows its own chrome only */
 const QR_EMOJI_ANSWERS = {
   appStickersManager: {getStickerSet: (): {documents: any[]} => ({documents: []})},
-  appEmojiManager: {getCustomEmojis: (): any[] => [], getCachedCustomEmojiDocuments: (): any[] => []}
+  // the installed packs as the server lists them: none
+  appEmojiManager: {getCustomEmojis: () => ({_: 'messages.allStickers', hash: 0, sets: [] as any[]}), getCachedCustomEmojiDocuments: (): any[] => []}
 };
 
 defineStories('Chat & moderation', [

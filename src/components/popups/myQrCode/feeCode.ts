@@ -20,8 +20,9 @@ const ROTATION_RETRY_MS = 3000;
  * The code that lets people who would pay to write to you write for free. The pill under the card shows its state:
  * the fee (no code), a temporary code, or a permanent one. A permanent code is kept across opens by the manager.
  *
- * Every change of the mode is a new `generation`: a code that comes back after one is dropped, a refresh that fails
- * leaves the code that was on screen, and the fee going to 0 while the screen is open takes the pill away.
+ * Every change of the mode, and every ask for a code, is a new `generation`: a code that comes back after one is
+ * dropped, a refresh that fails leaves the code that was on screen, and the fee going to 0 while the screen is open
+ * takes the pill away.
  */
 export default function createFeeCode(options: {
   managers: AppManagers,
@@ -77,13 +78,13 @@ export default function createFeeCode(options: {
     }));
   }
 
-  /** Asks for a code; what comes back is used only if nothing changed the mode meanwhile */
-  const request = async(
-    params: {revoke?: boolean, temporary?: boolean},
-    next: {freshMode: boolean, toast: LangPackKey}
-  ) => {
+  /**
+   * Asks for a code; what comes back is used only if nothing changed the mode meanwhile. Each ask is a generation of
+   * its own: a replacement of the temporary code still on its way is dropped, as a reset revokes the code it brings.
+   */
+  const request = async(params: {revoke?: boolean, temporary?: boolean}, doneToast: LangPackKey) => {
     if(busy()) return;
-    const started = next.freshMode ? ++generation : generation;
+    const started = ++generation;
     setBusy(true);
     try {
       const token = await managers.appUsersManager.exportNoPaidMessagesToken(params);
@@ -91,7 +92,7 @@ export default function createFeeCode(options: {
       setMode(token.expires ? 'temporary' : 'permanent');
       setCode({token: token.token, url: token.url, expires: token.expires});
       codeTime = Date.now();
-      toast(next.toast);
+      toast(doneToast);
     } catch{
       if(started === generation) fail();
     } finally {
@@ -131,6 +132,8 @@ export default function createFeeCode(options: {
     busy,
     /** Seconds left to a temporary code */
     left,
+    /** When a temporary code runs out (unix seconds) */
+    expires,
     /** The pill shows while there is a fee to remove or a code to manage */
     visible: () => enabled && fee() > 0,
     isExpiring: () => mode() === 'temporary' && isExpiring(left()),
@@ -141,17 +144,14 @@ export default function createFeeCode(options: {
       if(!plainUrl || mode() === 'fee' || !current) return plainUrl;
       return current.url || freeLink(plainUrl, current.token);
     },
-    removeFee: () => request({temporary: true}, {freshMode: true, toast: 'QRCode.NoPaid.Toast.Expires'}),
-    resetCode: () => request(
-      {revoke: true, temporary: mode() === 'temporary'},
-      {freshMode: false, toast: 'QRCode.NoPaid.Toast.NewCode'}
-    ),
+    removeFee: () => request({temporary: true}, 'QRCode.NoPaid.Toast.Expires'),
+    resetCode: () => request({revoke: true, temporary: mode() === 'temporary'}, 'QRCode.NoPaid.Toast.NewCode'),
     toggleTimer() {
       if(mode() === 'temporary') {
-        return request({}, {freshMode: true, toast: 'QRCode.NoPaid.Toast.NoTimeLimit'});
+        return request({}, 'QRCode.NoPaid.Toast.NoTimeLimit');
       }
 
-      return request({temporary: true}, {freshMode: true, toast: 'QRCode.NoPaid.Toast.Expires'});
+      return request({temporary: true}, 'QRCode.NoPaid.Toast.Expires');
     },
     restoreFee() {
       reset();

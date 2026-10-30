@@ -1,4 +1,5 @@
 import roundRect from '@helpers/canvas/roundRect';
+import canvasToBlob from '@helpers/canvas/canvasToBlob';
 import isRTL from '@helpers/string/isRTL';
 import {BackdropGradient, paintBackdrop} from './backdrop';
 import {Caption, captionFont, captionPlacement} from './caption';
@@ -77,7 +78,5 @@ export default function exportImage(input: ExportInput): Promise<Blob> {
     });
   }
 
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('QR code image failed')), 'image/png');
-  });
+  return canvasToBlob(canvas, 'image/png');
 }

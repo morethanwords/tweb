@@ -1,4 +1,4 @@
-import {ColorRgb, darkenToMaxLuminance, getContrastRatio, rgbIntToHex} from '@helpers/color';
+import {changeBrightness, ColorRgb, darkenToMaxLuminance, getContrastRatio, getRgbColorFromTelegramColor, hexToRgb, rgbIntToHex} from '@helpers/color';
 import clamp from '@helpers/number/clamp';
 
 /**
@@ -71,20 +71,12 @@ const lin = (v: number) => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2
 const gam = (v: number) => v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055;
 const clamp01 = (v: number) => clamp(v, 0, 1);
 
-export function intToRgb(c: number): ColorRgb {
-  return [(c >> 16) & 255, (c >> 8) & 255, c & 255];
-}
-
 function rgbToInt(rgb: ColorRgb) {
   return (rgb[0] << 16) | (rgb[1] << 8) | rgb[2];
 }
 
-function hexToRgbTriplet(hex: string): ColorRgb {
-  return intToRgb(parseInt(hex.slice(1, 7), 16));
-}
-
 export function toOkLab(c: number): [number, number, number] {
-  const [R, G, B] = intToRgb(c);
+  const [R, G, B] = getRgbColorFromTelegramColor(c);
   const r = lin(R / 255), g = lin(G / 255), b = lin(B / 255);
   const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
   const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
@@ -123,7 +115,7 @@ const labF = (t: number) => t > 216 / 24389 ? Math.cbrt(t) : (24389 / 27 * t + 1
 const labFInverse = (t: number) => t ** 3 > 216 / 24389 ? t ** 3 : (116 * t - 16) / (24389 / 27);
 
 function toLab(c: number): [number, number, number] {
-  const [R, G, B] = intToRgb(c);
+  const [R, G, B] = getRgbColorFromTelegramColor(c);
   const r = lin(R / 255), g = lin(G / 255), b = lin(B / 255);
   const x = labF((0.4124564 * r + 0.3575761 * g + 0.1804375 * b) / D65[0]);
   const y = labF(0.2126729 * r + 0.7151522 * g + 0.0721750 * b);
@@ -215,12 +207,12 @@ export function backdropColors(backdrop: BackdropInput): BackdropColors {
   const mid = mixOklab(center, edge, 0.5);
   // the tuned ink is Android's own, darkened just enough to clear the same contrast as the solved ones
   const ink = tuned ? darkenToMaxLuminance(TUNED_INK, QR_INK_MAX_LUMINANCE) : rgbIntToHex(contrastMatchedInk(center, edge));
-  const inkRgb = hexToRgbTriplet(ink);
+  const inkRgb = hexToRgb(ink);
 
   // white glyphs, unless they are lost over the backdrop's middle and the dark ones do better
-  const midRgb = intToRgb(mid);
+  const midRgb = getRgbColorFromTelegramColor(mid);
   const white = getContrastRatio(WHITE, midRgb);
-  const dark = getContrastRatio(hexToRgbTriplet(DARK_FOREGROUND), midRgb);
+  const dark = getContrastRatio(hexToRgb(DARK_FOREGROUND), midRgb);
   const light = white < MIN_GLYPH_CONTRAST && dark > white;
 
   return {
@@ -229,7 +221,7 @@ export function backdropColors(backdrop: BackdropInput): BackdropColors {
     pattern: rgbIntToHex(backdrop.pattern_color),
     mid: rgbIntToHex(mid),
     ink,
-    shadow: `rgba(${inkRgb.map((v) => Math.round(v * 0.6)).join(', ')}, ${+(0x10 / 255).toFixed(3)})`,
+    shadow: `rgba(${changeBrightness(inkRgb, 0.6).join(', ')}, ${+(0x10 / 255).toFixed(3)})`,
     foreground: light ? DARK_FOREGROUND : '#ffffff',
     // white glass vanishes on a light backdrop: a slightly dark one instead (Android: 0x12000000)
     control: light ? 'rgba(0, 0, 0, .07)' : 'rgba(255, 255, 255, .16)',

@@ -3,8 +3,8 @@ import {test} from './workerContext';
 import {openStory, preparePopupSandbox} from './popupSandbox.helpers';
 
 /*
- * The QR screen: a compact panel above everything on a desktop, the whole screen on a phone. The panel stands above
- * a context menu, the media viewer and another popup, and a menu or the share picker opened from it above the panel.
+ * The QR screen: a compact panel on a desktop, the whole screen on a phone. It stands where a popup does, so that what
+ * it opens — the fee's menu, the share picker, a toast — stands over it.
  * SHOTS_DIR (optional) takes a screenshot of each state, for looking at.
  */
 
@@ -14,13 +14,14 @@ async function shot(page: Page, name: string) {
   if(SHOTS) await page.screenshot({path: `${SHOTS}/${name}.png`});
 }
 
-/** Whether what stands at the middle of the panel is the panel's own */
-function topmostIsPanel(page: Page) {
-  return page.evaluate(() => {
-    const rect = document.querySelector('.popup-container').getBoundingClientRect();
+/** Whether what stands at the middle of the element `selector` finds last is that element's own */
+function isOnTop(page: Page, selector: string) {
+  return page.evaluate((selector) => {
+    const element = [...document.querySelectorAll<HTMLElement>(selector)].pop();
+    const rect = element.getBoundingClientRect();
     const top = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-    return !!top.closest('.popup-container');
-  });
+    return !!top && element.contains(top);
+  }, selector);
 }
 
 for(const direction of ['ltr', 'rtl'] as const) {
@@ -41,43 +42,44 @@ for(const direction of ['ltr', 'rtl'] as const) {
         await shot(page, `${name}-${direction}-${panel}`);
         // the pill steps aside for the panel, which has the room
         await expect(page.locator('.popup button:has-text("fee")')).toBeHidden();
+        // the island has grown into the sheet: it comes back once the panel is put away
+        await page.keyboard.press('Escape');
+        await expect(buttons.nth(index)).toBeVisible();
       }
     });
   }
 }
 
-test('QR screen stands above menus, the media viewer and other popups', async({page}) => {
+test('The fee menu stands over the QR screen', async({page}) => {
   await page.setViewportSize({width: 1280, height: 800});
   await preparePopupSandbox(page, false);
-  expect(await openStory(page, 'toggleReadDate/lastSeen')).toBeNull();
+  expect(await openStory(page, 'myQrCodeFee')).toBeNull();
+  await page.waitForSelector('.popup.active');
+  await page.waitForTimeout(600);
+
+  // the fee taken off, the pill opens the menu that resets the code or brings the fee back
+  await page.locator('.popup button:has-text("fee")').click();
+  // the toast that says so takes the next click anywhere for itself: it is waited out
+  await expect(page.locator('.toast.is-visible')).toHaveCount(0);
+  await page.locator('.popup button:has-text("Free")').click();
+  await page.locator('.btn-menu.active').waitFor();
+  await page.waitForTimeout(300);
+  await shot(page, 'desktop-fee-menu');
+  expect(await isOnTop(page, '.btn-menu.active')).toBe(true);
+});
+
+test('The share picker stands over the QR screen', async({page}) => {
+  await page.setViewportSize({width: 1280, height: 800});
+  await preparePopupSandbox(page, false);
   expect(await openStory(page, 'myQrCode')).toBeNull();
   await page.locator('.popup button[aria-label="Share QR Code"]').waitFor();
   await page.waitForTimeout(600);
-  expect(await topmostIsPanel(page)).toBe(true);
 
-  // a menu, the media viewer and a popup, all at the z-index they have in the app and mounted after the panel
-  await page.evaluate(() => {
-    for(const className of ['btn-menu active', 'media-viewer-whole', 'popup active']) {
-      const element = document.createElement('div');
-      element.className = className;
-      element.style.cssText = 'position:fixed;inset:0;z-index:4;opacity:1;visibility:visible;background:red';
-      document.body.append(element);
-    }
-  });
-  expect(await topmostIsPanel(page)).toBe(true);
-  await shot(page, 'desktop-over-everything');
-
-  // the picker that Share opens, and a toast, stand over the panel
   await page.locator('.popup-container button[aria-label="Share QR Code"]').click();
-  await page.waitForFunction(() => [...document.querySelectorAll<HTMLElement>('.popup')].some((popup) => popup.style.zIndex === '6'));
+  await expect(page.locator('.popup.active')).toHaveCount(2);
   await page.waitForTimeout(600);
   await shot(page, 'desktop-share-picker');
-  const pickerOnTop = await page.evaluate(() => {
-    const picker = [...document.querySelectorAll<HTMLElement>('.popup')].find((popup) => popup.style.zIndex === '6');
-    const rect = picker.querySelector('.popup-container').getBoundingClientRect();
-    return !!document.elementFromPoint(rect.left + rect.width / 2, rect.top + 30)?.closest('.popup-container') && document.elementFromPoint(rect.left + rect.width / 2, rect.top + 30).closest('.popup') === picker;
-  });
-  expect(pickerOnTop).toBe(true);
+  expect(await isOnTop(page, '.popup.active .popup-container')).toBe(true);
 });
 
 test('A toast shows over the QR screen', async({page}) => {
@@ -93,10 +95,5 @@ test('A toast shows over the QR screen', async({page}) => {
     toastNew({langPackKey: 'QRCode.Copied', duration: 10_000});
   });
   await page.waitForTimeout(500);
-  const onTop = await page.evaluate(() => {
-    const toast = [...document.querySelectorAll<HTMLElement>('.toast')].pop();
-    const rect = toast.getBoundingClientRect();
-    return !!document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)?.closest('.toast');
-  });
-  expect(onTop).toBe(true);
+  expect(await isOnTop(page, '.toast')).toBe(true);
 });

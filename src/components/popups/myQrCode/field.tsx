@@ -59,8 +59,8 @@ async function loadPicture(emoji: ThemeEmoji, middleware: Middleware): Promise<P
 
   try {
     const doc = await rootScope.managers.appEmojiManager.getCustomEmojiDocument(emoji.documentId);
-    const image = await loadEmojiStill({docId: doc, middleware, emojiSize: 96});
-    return isTextColorEmoji(doc) ? tint(image, TEXT_COLOR_EMOJI) : image;
+    const image = await loadDocument(doc, middleware, 96);
+    return image && isTextColorEmoji(doc) ? tint(image, TEXT_COLOR_EMOJI) : image;
   } catch{}
 }
 
@@ -291,7 +291,7 @@ export function PatternField(props: {
 }) {
   let host: HTMLDivElement;
   let mover: HTMLDivElement;
-  let stack: ReturnType<typeof createLayerStack>;
+  let stack: ReturnType<typeof createLayerStack<HTMLCanvasElement>>;
   let motion: ReturnType<typeof attachFieldMotion>;
   let middleware = getMiddleware();
   // what the export cuts from while the field on screen is drawn live
@@ -299,7 +299,7 @@ export function PatternField(props: {
   let settled: {source: HTMLCanvasElement, width: number, height: number, canvas: HTMLCanvasElement};
 
   onMount(() => {
-    stack = createLayerStack(mover, styles.fieldCanvas, styles.fieldShown);
+    stack = createLayerStack(mover);
     motion = attachFieldMotion(host.parentElement, mover, props.canDrag);
   });
 

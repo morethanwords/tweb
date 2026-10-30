@@ -1,8 +1,9 @@
 @use "../../scss/mixins" as *;
 @use "./myQrCode/glass" as *;
 
-// The QR screen: the whole panel is the backdrop, with the white card on it. On a desktop it is a compact panel,
-// standing in the middle of the window over everything like a big menu; on a phone it is the whole screen.
+// The QR screen: the whole panel is the backdrop, with the white card on it. On a desktop it is a compact panel in the
+// middle of the window; on a phone it is the whole screen. It stands where a popup does, so that what it opens (the
+// fee's menu, the share picker, the Premium offer, a payment's confirmation) stands over it.
 
 // A change fades over 300 ms, and over 180 ms at the reduced level; off, it is at once
 @mixin fade($properties) {
@@ -14,12 +15,6 @@
   :global(body.animation-level-1:not(.animation-level-2)) & {
     transition-duration: .18s;
   }
-}
-
-// Above every menu, popup and viewer, which stand at 4 whatever the order they were opened in: a menu of the panel's own
-// lives inside it, and the picker that Share opens is raised to 6 (exportButtons) and the toasts to 6 (toast.scss).
-.popup:global(.popup) {
-  z-index: 5;
 }
 
 .popup {
@@ -60,18 +55,24 @@
   touch-action: none;
 }
 
-// The backdrop's gradient layers, one over the other
-.backdrop {
+// The layers of the backdrop, the field and the code: a new one fades in over the old one (`layerStack`)
+.layer {
   position: absolute;
   inset: 0;
   opacity: 0;
-  pointer-events: none;
 
   @include fade(opacity);
 }
 
-.backdropShown {
+.layerShown {
   opacity: 1;
+}
+
+// The backdrop's gradient layers, one over the other
+.backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 
 // What floats on the backdrop: a canvas for the emoji, or for a gift's models and symbols
@@ -96,18 +97,6 @@
   width: 0;
   height: 0;
   will-change: transform;
-}
-
-.fieldCanvas {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-
-  @include fade(opacity);
-}
-
-.fieldShown {
-  opacity: 1;
 }
 
 // The card keeps to the left of the panel in every direction: its place is a measured coordinate
@@ -136,18 +125,10 @@
   position: absolute;
 }
 
+// a canvas takes its own size, not the one its insets give
 .qrCanvas {
-  position: absolute;
-  inset: 0;
   width: 100%;
   height: 100%;
-  opacity: 0;
-
-  @include fade(opacity);
-}
-
-.qrShown {
-  opacity: 1;
 }
 
 .caption {

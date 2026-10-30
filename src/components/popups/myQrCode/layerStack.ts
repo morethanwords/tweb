@@ -1,26 +1,33 @@
 import liteMode from '@helpers/liteMode';
+import styles from '@components/popups/myQrCode.module.scss';
 
 const FADE_OUT_MS = 350;
 
 /**
- * Canvases stacked in one host, the newest on top: a new one fades in over the old one, which goes once it is covered.
- * The fade is in the stylesheet (`shownClass`), under the animation levels; this only moves the class. With the
+ * Layers stacked in one host, the newest on top: a new one fades in over the old one, which goes once it is covered.
+ * The fade is in the stylesheet (`.layer`), under the animation levels; this only moves the class. With the
  * animations off the swap is at once.
+ *
+ * The old layer fades out as the new one fades in, unless `keepCovered`: then it stays as it is under the new one
+ * until that one is whole (an opaque backdrop would otherwise let the black under both show through for a moment).
  */
-export default function createLayerStack(host: HTMLElement, layerClass: string, shownClass: string) {
-  let current: HTMLCanvasElement | undefined;
+export default function createLayerStack<T extends HTMLElement = HTMLElement>(
+  host: HTMLElement,
+  options: {className?: string, keepCovered?: boolean} = {}
+) {
+  let current: T | undefined;
   const timers = new Set<number>();
 
-  const retire = (canvas: HTMLCanvasElement) => {
+  const retire = (layer: HTMLElement) => {
     if(!liteMode.isAvailable('animations')) {
-      canvas.remove();
+      layer.remove();
       return;
     }
 
-    canvas.classList.remove(shownClass);
+    if(!options.keepCovered) layer.classList.remove(styles.layerShown);
     const timer = window.setTimeout(() => {
       timers.delete(timer);
-      canvas.remove();
+      layer.remove();
     }, FADE_OUT_MS);
     timers.add(timer);
   };
@@ -30,18 +37,19 @@ export default function createLayerStack(host: HTMLElement, layerClass: string, 
       return current;
     },
 
-    /** Puts the canvas on top; `undefined` leaves the stack empty */
-    set(canvas: HTMLCanvasElement | undefined) {
+    /** Puts the layer on top; `undefined` leaves the stack empty. `instant` shows it without the fade */
+    set(layer: T | undefined, instant?: boolean) {
       if(current) retire(current);
-      current = canvas;
-      if(!canvas) return;
+      current = layer;
+      if(!layer) return;
 
-      canvas.classList.add(layerClass);
-      host.append(canvas);
-      if(liteMode.isAvailable('animations')) {
-        requestAnimationFrame(() => canvas.classList.add(shownClass));
+      layer.classList.add(styles.layer);
+      if(options.className) layer.classList.add(options.className);
+      host.append(layer);
+      if(!instant && liteMode.isAvailable('animations')) {
+        requestAnimationFrame(() => layer.classList.add(styles.layerShown));
       } else {
-        canvas.classList.add(shownClass);
+        layer.classList.add(styles.layerShown);
       }
     },
 

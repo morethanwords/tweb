@@ -1,4 +1,5 @@
 import {FontFamily, FontWeightBold} from '@config/font';
+import getTextWidth from '@helpers/canvas/getTextWidth';
 import {CAPTION_LINE_HEIGHT, CAPTION_MAX_LINES, CardGeometry} from './layout';
 
 /**
@@ -101,14 +102,8 @@ export function layoutCaption(text: string, width: number, fonts: number[], meas
 
 export const captionFont = (fontSize: number) => `${FontWeightBold} ${fontSize}px ${FontFamily}`;
 
-let context: CanvasRenderingContext2D;
-
-/** The width of text in the caption's font, measured on a canvas that nothing else uses */
-export const measureCaptionText: MeasureText = (text, fontSize) => {
-  context ??= document.createElement('canvas').getContext('2d');
-  context.font = captionFont(fontSize);
-  return context.measureText(text).width;
-};
+/** The width of text in the caption's font */
+export const measureCaptionText: MeasureText = (text, fontSize) => getTextWidth(text, captionFont(fontSize));
 
 export type Caption = {
   /** Already in capitals */

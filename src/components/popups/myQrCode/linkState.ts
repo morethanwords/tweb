@@ -3,11 +3,10 @@ import {User} from '@layer';
 import {AppManagers} from '@lib/managers';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {buildTelegramUserQrUrl} from '@helpers/qrCode/paintQrCode';
-import {toastNew} from '@components/toast';
 import {Caption} from './caption';
 import {createCountdown} from './countdown';
 import createFeeCode from './feeCode';
-import {buildPhoneUrl, chooseOwnLink, isExpiring, OwnLinkKind} from './link';
+import {buildPhoneUrl, chooseOwnLink, linkCaption, OwnLinkKind} from './link';
 
 const RETRY_MS = 3000;
 
@@ -28,17 +27,20 @@ export default function createQrLink(options: {
   const [contact, setContact] = createSignal<{url: string, expires: number}>();
   const temporaryOnly = () => kind() === 'contact';
 
-  let retryTimer: number;
-  onCleanup(() => clearTimeout(retryTimer));
+  let retryTimer: number, disposed = false;
+  onCleanup(() => {
+    disposed = true;
+    clearTimeout(retryTimer);
+  });
 
-  // a failed refresh keeps the link on screen; the next try is a moment later
+  // a failed refresh keeps the link on screen; the next try is a moment later, while there is a screen to show it
   const exportContact = async() => {
     try {
       const token = await managers.appUsersManager.exportContactToken();
       setContact({url: token.url, expires: token.expires});
       return true;
     } catch{
-      retryTimer = window.setTimeout(exportContact, RETRY_MS);
+      if(!disposed) retryTimer = window.setTimeout(exportContact, RETRY_MS);
       return false;
     }
   };
@@ -59,10 +61,8 @@ export default function createQrLink(options: {
     })();
   }
 
-  const left = createCountdown(
-    () => kind() === 'contact' ? contact()?.expires : undefined,
-    () => { exportContact(); }
-  );
+  const contactExpires = () => kind() === 'contact' ? contact()?.expires : undefined;
+  const left = createCountdown(contactExpires, () => { exportContact(); });
 
   const fee = createFeeCode({managers, enabled, temporaryOnly, decided: () => kind() !== undefined});
 
@@ -80,13 +80,11 @@ export default function createQrLink(options: {
 
   const caption = createMemo<Caption | undefined>(() => {
     switch(kind()) {
-      case 'username': return {text: '@' + username.toUpperCase(), kind: 'username'};
-      case 'phone': return {text: '+' + peer.phone, kind: 'phone'};
+      case 'username': return linkCaption('username', username);
+      case 'phone': return linkCaption('phone', peer.phone);
       // a contact link has no caption: the card is a square, and the time left stands in a pill under it (as on Android)
     }
   });
-
-  const linkExpiring = () => kind() === 'contact' && isExpiring(left());
 
   return {
     enabled,
@@ -97,21 +95,10 @@ export default function createQrLink(options: {
     /** Seconds left to the contact link; the pill under the square card counts them */
     left,
     caption,
-    /** Whether the code on screen ends within the cutoff: a copy, share or save would carry a dead link */
-    isExpiring: () => linkExpiring() || fee.isExpiring(),
-    /** For export: true when it may go on; else tells why not and refuses */
-    guardExport() {
-      if(fee.isExpiring()) {
-        toastNew({langPackKey: 'QRCode.NoPaid.Toast.Expiring'});
-        return false;
-      }
-
-      if(linkExpiring()) {
-        toastNew({langPackKey: 'QRCode.LinkExpiring'});
-        return false;
-      }
-
-      return true;
+    /** When the code on screen runs out (unix seconds): the contact link or the fee code, whichever goes first */
+    expires: () => {
+      const ends = [contactExpires(), fee.expires()].filter((end) => end !== undefined);
+      return ends.length ? Math.min(...ends) : undefined;
     }
   };
 }

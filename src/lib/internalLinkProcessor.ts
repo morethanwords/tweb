@@ -61,6 +61,7 @@ import parseChatSpecificTag from '@lib/richTextProcessor/parseChatSpecificTag';
 import searchByTag from '@lib/richTextProcessor/searchByTag';
 import {APP_TABS} from '@lib/appColumns';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import type {AppManagers} from '@lib/managers';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 
 /**
@@ -327,7 +328,7 @@ export class InternalLinkProcessor {
     type K5 = {story?: string};
     type K6 = {boost?: string};
     type K7 = {voicechat?: string, videochat?: string, livestream?: string};
-    type K8 = {text?: string};
+    type K8 = {text?: string, free?: string};
 
     addAnchorListener<{
     //   pathnameParams: ['c', string, string],
@@ -377,7 +378,8 @@ export class InternalLinkProcessor {
           link = {
             _: INTERNAL_LINK_TYPE.USER_PHONE_NUMBER,
             phone: pathnameParams[0],
-            text: (uriParams as K8).text
+            text: (uriParams as K8).text,
+            free: (uriParams as K8).free
           };
         } else if(pathnameParams[0] === 'c') {
           assumeType<K1>(uriParams);
@@ -1090,6 +1092,23 @@ export class InternalLinkProcessor {
     } as any as InternalLinkTypeMap[T];
   }
 
+  /** A link's `?free=<code>`, spent on the user it names: their message fee is gone for us, and their chat opens */
+  private async importNoPaidMessagesToken(managers: AppManagers, userId: UserId, token: string) {
+    try {
+      await managers.appUsersManager.importNoPaidMessagesToken(userId, token);
+    } catch(err) {
+      toastNew({langPackKey: (err as ApiError).type?.startsWith('USER_') ? 'NoPaidMessagesToken.UserInvalid' : 'NoPaidMessagesToken.Invalid'});
+      return;
+    }
+
+    const peerId = userId.toPeerId(false);
+    toastNew({
+      langPackKey: 'NoPaidMessagesToken.Imported',
+      langPackArguments: [await wrapPeerTitle({peerId})]
+    });
+    await appImManager.setInnerPeer({peerId});
+  }
+
   /**
    * `t.me/<username>?free=<code>`: the code removes the message fee of the user it names.
    * Resolves with whether the link was spent on that, and nothing is left to do; `false` for a link that does not
@@ -1109,20 +1128,7 @@ export class InternalLinkProcessor {
       return false;
     }
 
-    const userId = peer.id;
-    try {
-      await managers.appUsersManager.importNoPaidMessagesToken(userId, link.free);
-    } catch(err) {
-      toastNew({langPackKey: (err as ApiError).type?.startsWith('USER_') ? 'NoPaidMessagesToken.UserInvalid' : 'NoPaidMessagesToken.Invalid'});
-      return true;
-    }
-
-    const peerId = userId.toPeerId(false);
-    toastNew({
-      langPackKey: 'NoPaidMessagesToken.Imported',
-      langPackArguments: [await wrapPeerTitle({peerId})]
-    });
-    await appImManager.setInnerPeer({peerId});
+    await this.importNoPaidMessagesToken(managers, peer.id, link.free);
     return true;
   }
 
@@ -1353,7 +1359,13 @@ export class InternalLinkProcessor {
   };
 
   public processUserPhoneNumberLink = (link: InternalLink.InternalLinkUserPhoneNumber) => {
-    return this.managers.appUsersManager.resolvePhone(link.phone).then((user) => {
+    const managers = bindManagersToSession(this.managers);
+    return managers.appUsersManager.resolvePhone(link.phone).then((user): Promise<unknown> => {
+      // `t.me/+<phone>?free=<code>`: the code removes the message fee of the user the number names
+      if(link.free) {
+        return this.importNoPaidMessagesToken(managers, user.id, link.free);
+      }
+
       return appImManager.setInnerPeer({
         peerId: user.id.toPeerId(false),
         text: link.text

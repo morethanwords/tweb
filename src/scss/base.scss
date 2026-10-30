@@ -824,7 +824,7 @@ input:-webkit-autofill:active {
   right: 0;
   bottom: 0;
   left: 0;
-  z-index: 6; // over the QR screen, which stands over every popup (5)
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: center;

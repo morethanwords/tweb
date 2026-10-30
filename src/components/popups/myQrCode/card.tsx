@@ -22,11 +22,11 @@ export function QrCard(props: {
   qrRef?: (get: () => HTMLCanvasElement | undefined) => void
 }) {
   let qrHost: HTMLDivElement;
-  let stack: ReturnType<typeof createLayerStack>;
+  let stack: ReturnType<typeof createLayerStack<HTMLCanvasElement>>;
   let middleware = getMiddleware();
 
   onMount(() => {
-    stack = createLayerStack(qrHost, styles.qrCanvas, styles.qrShown);
+    stack = createLayerStack(qrHost, {className: styles.qrCanvas});
   });
 
   props.qrRef?.(() => stack?.current);

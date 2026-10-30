@@ -1,4 +1,6 @@
 import type {PrivacyRule} from '@layer';
+import toHHMMSS from '@helpers/string/toHHMMSS';
+import type {Caption} from './caption';
 
 /**
  * Which link the own profile's code carries, and the arithmetic of a code that expires. Pure, so it is tested alone;
@@ -45,6 +47,11 @@ export function buildPhoneUrl(phone: string) {
   return `https://t.me/+${phone}`;
 }
 
+/** What is written under the code of a username or a phone link, in the card's capitals */
+export function linkCaption(kind: 'username' | 'phone', value: string): Caption {
+  return kind === 'username' ? {text: '@' + value.toUpperCase(), kind} : {text: '+' + value, kind};
+}
+
 /** The seconds a code still has, rounded up so that the last one shows as 0:01 and 0:00 means gone */
 export function secondsLeft(expires: number, now = Date.now()) {
   return Math.max(0, Math.ceil((expires * 1000 - now) / 1000));
@@ -54,11 +61,9 @@ export function isExpiring(left: number | undefined) {
   return left !== undefined && left <= EXPIRY_CUTOFF_SECONDS;
 }
 
-/** `m:ss` */
+/** `m:ss`, and `h:mm:ss` past an hour */
 export function formatCountdown(seconds: number) {
-  const total = Math.max(0, Math.floor(seconds));
-  const s = total % 60;
-  return Math.floor(total / 60) + ':' + (s < 10 ? '0' : '') + s;
+  return toHHMMSS(Math.max(0, Math.floor(seconds)));
 }
 
 /** A kept code the server gave no `url` for: the plain link with the code on it */

@@ -1,4 +1,4 @@
-import {createEffect, createMemo, createResource, createSignal, For, Index, on, onCleanup, onMount, Show, untrack} from 'solid-js';
+import {createEffect, createMemo, createResource, createSignal, For, on, onCleanup, Show} from 'solid-js';
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import Button from '@components/buttonTsx';
 import {toastNew} from '@components/toast';
@@ -12,6 +12,7 @@ import appNavigationController, {NavigationItem} from '@components/appNavigation
 import {AppManagers} from '@lib/managers';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {buildTelegramUserQrUrl} from '@helpers/qrCode/paintQrCode';
+import {useObserveResize} from '@hooks/useObserveResize';
 import {createExportActions, ExportCopyButton, ExportShareSaveButtons} from './myQrCode/exportButtons';
 import classNames from '@helpers/string/classNames';
 import liteMode from '@helpers/liteMode';
@@ -27,6 +28,8 @@ import exportImage from './myQrCode/exportImage';
 import {PatternField} from './myQrCode/field';
 import {ExpiryPill, FeePill} from './myQrCode/feePill';
 import createQrLink from './myQrCode/linkState';
+import createLayerStack from './myQrCode/layerStack';
+import {buildPhoneUrl, linkCaption} from './myQrCode/link';
 import {Rect} from './myQrCode/fieldNodes';
 import {openLayout, PILL_GAP, SHEET_BOTTOM, SHEET_INSET, sheetHeightFor, surfaceGeometry} from './myQrCode/layout';
 import {appearanceToShareTheme, Appearance, giftToInput, isDefaultBackdrop, shareThemeToAppearance, ThemeEmoji, themeEmojiKey, withBackdrop, withEmojiToggled, withGift} from './myQrCode/theme';
@@ -38,51 +41,31 @@ import {GiftsPanel, ThemeGift} from './myQrCode/giftsPanel';
 import {showPremiumGiftsToast} from './myQrCode/premiumToast';
 import styles from './myQrCode.module.scss';
 
-const BACKDROP_FADE_MS = 350;
-
-type BackdropLayer = {id: number, key: string, css: string, shown: boolean};
-
 /** The backdrop: gradient layers one over the other, the newest fading in over the older ones */
 function Backdrop(props: {css: () => string, colorsKey: () => string}) {
-  const [layers, setLayers] = createSignal<BackdropLayer[]>([]);
-  let counter = 0;
-  const timers = new Set<number>();
-  onCleanup(() => timers.forEach((timer) => clearTimeout(timer)));
+  const host = (<div class={styles.backdrop} />) as HTMLDivElement;
+  const stack = createLayerStack(host, {keepCovered: true});
+  onCleanup(() => stack.destroy());
+  let shownKey: string;
 
   createEffect(() => {
     const css = props.css(), key = props.colorsKey();
     if(!css) return;
 
-    const all = untrack(layers);
-    const top = all[all.length - 1];
     // the same colours on another size: the layer is redrawn where it stands
-    if(top?.key === key) {
-      setLayers([...all.slice(0, -1), {...top, css}]);
+    if(stack.current && key === shownKey) {
+      stack.current.style.backgroundImage = css;
       return;
     }
 
-    if(!top || !liteMode.isAvailable('animations')) {
-      setLayers([{id: ++counter, key, css, shown: true}]);
-      return;
-    }
-
-    const layer: BackdropLayer = {id: ++counter, key, css, shown: false};
-    setLayers([...all, layer]);
-    requestAnimationFrame(() => {
-      setLayers((current) => current.map((item) => item.id === layer.id ? {...item, shown: true} : item));
-    });
-    const timer = window.setTimeout(() => {
-      timers.delete(timer);
-      setLayers((current) => current.filter((item) => item.id >= layer.id));
-    }, BACKDROP_FADE_MS);
-    timers.add(timer);
+    shownKey = key;
+    const layer = document.createElement('div');
+    layer.style.backgroundImage = css;
+    // the first one comes with the screen, at once
+    stack.set(layer, !stack.current);
   });
 
-  return (
-    <Index each={layers()}>
-      {(layer) => <div class={classNames(styles.backdrop, layer().shown && styles.backdropShown)} style={{'background-image': layer().css}} />}
-    </Index>
-  );
+  return host;
 }
 
 function MyQrCodePopup(props: {
@@ -127,27 +110,23 @@ function MyQrCodePopup(props: {
     if(props.url) return props.url;
     if(own.enabled) return own.url();
     if(username()) return buildTelegramUserQrUrl(username());
-    if(peerId.isUser()) return `https://t.me/+${peer.phone ?? ''}`;
+    if(peerId.isUser()) return buildPhoneUrl(peer.phone ?? '');
     return `https://t.me/c/${peerId.toChatId()}`;
   });
 
   const caption = createMemo<Caption | undefined>(() => {
     if(own.enabled) return own.caption();
-    if(!props.url && username()) return {text: '@' + username().toUpperCase(), kind: 'username'};
-    if(!props.url && peerId.isUser() && peer.phone) return {text: '+' + peer.phone, kind: 'phone'};
+    if(!props.url && username()) return linkCaption('username', username());
+    if(!props.url && peerId.isUser() && peer.phone) return linkCaption('phone', peer.phone);
     return {text: props.title.toUpperCase(), kind: 'name'};
   });
 
   /* The geometry, read once and on resize */
   const [size, setSize] = createSignal({width: 0, height: 0});
   let surfaceElement: HTMLDivElement;
-  onMount(() => {
-    const observer = new ResizeObserver(([entry]) => {
-      const {width, height} = entry.contentRect;
-      setSize({width: Math.round(width), height: Math.round(height)});
-    });
-    observer.observe(surfaceElement);
-    onCleanup(() => observer.disconnect());
+  useObserveResize(() => surfaceElement, (entry) => {
+    const {width, height} = entry.contentRect;
+    setSize({width: Math.round(width), height: Math.round(height)});
   });
 
   const ready = () => size().width > 0;
@@ -205,8 +184,8 @@ function MyQrCodePopup(props: {
   type PanelId = 'colors' | 'emoji' | 'gifts';
   const PANELS: {id: PanelId, icon: Icon, iconClass: string, title: LangPackKey}[] = [
     {id: 'colors', icon: 'colorize', iconClass: styles.iconColors, title: 'QRCode.Colors'},
-    {id: 'emoji', icon: 'smile', iconClass: styles.iconEmoji, title: 'QRCode.Emoji'},
-    {id: 'gifts', icon: 'gift', iconClass: styles.iconGifts, title: 'QRCode.Gift'}
+    {id: 'emoji', icon: 'smile', iconClass: styles.iconEmoji, title: 'Emoji'},
+    {id: 'gifts', icon: 'gift', iconClass: styles.iconGifts, title: 'StarGiftTitle'}
   ];
   const [panel, setPanel] = createSignal<PanelId>();
   // a panel is built when it is first opened, and kept: the emoji tab and the gifts are costly to build
@@ -332,7 +311,7 @@ function MyQrCodePopup(props: {
     makeImage,
     url,
     fileName: () => username() || props.title,
-    isExpiring: own.isExpiring,
+    expires: own.expires,
     expiringToast: () => own.fee.isExpiring() ? 'QRCode.NoPaid.Toast.Expiring' : 'QRCode.LinkExpiring'
   });
 
@@ -343,6 +322,7 @@ function MyQrCodePopup(props: {
       managers={managers}
       class={classNames(styles.popup, mediaSizes.isMobile && styles.fullscreen)}
       containerClass={styles.popupContainer}
+      containerProps={{'aria-label': I18n.format('QRCode.Title', true)}}
       closable
       show={ready()}
       onClose={() => saver.flush()}

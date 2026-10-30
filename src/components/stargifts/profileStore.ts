@@ -3,6 +3,7 @@ import {StarGiftCollection} from '@layer';
 import {batch, onMount} from 'solid-js';
 import {MyStarGift} from '@appManagers/appGiftsManager';
 import rootScope from '@lib/rootScope';
+import type {AppManagers} from '@lib/managers';
 import createListenerSetter from '@helpers/solid/createListenerSetter';
 import {updateStarGift} from '@appManagers/utils/gifts/updateStarGift';
 import {inputStarGiftEquals} from '@appManagers/utils/gifts/inputStarGiftEquals';
@@ -48,6 +49,8 @@ export function createProfileGiftsStore(props: {
   peerId: PeerId
   initialFilters?: StarGiftsFilters
   onCountChange?: (count: number) => void
+  // a screen's own, bound to its account session; the tab's by default
+  managers?: AppManagers
 }): [StarGiftsProfileStore, StarGiftsProfileActions] {
   const initialState: StarGiftsProfileStore = {
     collections: undefined,
@@ -86,7 +89,7 @@ export function createProfileGiftsStore(props: {
     const id = ++nextReqId
     const collectionId = store.chosenCollection === ALL_COLLECTIONS_ID ? undefined : store.chosenCollection
     const [res, canManageGifts] = await Promise.all([
-      rootScope.managers.appGiftsManager.getProfileGifts({
+      (props.managers ?? rootScope.managers).appGiftsManager.getProfileGifts({
         peerId: props.peerId,
         offset: currentOffset,
         sort: store.sort,

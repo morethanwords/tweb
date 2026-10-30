@@ -9,9 +9,12 @@ import styles from './feePill.module.scss';
 
 type FeeCode = ReturnType<typeof createFeeCode>;
 
-/** The time left to a temporary code: a text node of its own, the only thing that changes each second */
-function Time(props: {left: () => number | undefined}) {
-  return <span class={styles.time} dir="ltr">{formatCountdown(props.left() ?? 0)}</span>;
+/**
+ * The time left to a temporary code: a text node of its own, the only thing that changes each second. An element, not a
+ * component, as an argument of `i18n` takes nodes, and a component may come back as something else (a hot one does).
+ */
+function time(left: () => number | undefined) {
+  return (<span class={styles.time} dir="ltr">{formatCountdown(left() ?? 0)}</span>) as HTMLElement;
 }
 
 /** The time left to a contact link, where the fee pill would stand (no fee): information only, no tap */
@@ -19,7 +22,7 @@ export function ExpiryPill(props: {left: () => number | undefined, top: number, 
   return (
     <div class={classNames(styles.place, props.away && styles.away)} style={{top: props.top + 'px'}}>
       <span class={styles.pill}>
-        {props.left() === undefined ? i18n('QRCode.CreatingLink') : i18n('QRCode.NoPaid.ExpiresIn', [<Time left={props.left} /> as Node])}
+        {props.left() === undefined ? i18n('QRCode.CreatingLink') : i18n('QRCode.NoPaid.ExpiresIn', [time(props.left)])}
       </span>
     </div>
   );
@@ -88,11 +91,12 @@ export function FeePill(props: {fee: FeeCode, top: number, /** A panel stands wh
           </button>
         }
       >
+        {/* the toggle's class is in the markup: the menu opens only from a trigger that has it, and Solid sets the class after the ref */}
         {/* oxlint-disable-next-line jsx-a11y/control-has-associated-label -- the label is the Switch below, text in both states */}
-        <button ref={attachMenu} class={styles.pill} type="button">
+        <button ref={attachMenu} class={classNames(styles.pill, 'btn-menu-toggle')} type="button">
           <Switch>
             <Match when={fee.mode() === 'temporary'}>
-              {i18n('QRCode.NoPaid.Free')} · {i18n('QRCode.NoPaid.ExpiresIn', [<Time left={fee.left} /> as Node])}
+              {i18n('QRCode.NoPaid.Free')} · {i18n('QRCode.NoPaid.ExpiresIn', [time(fee.left)])}
             </Match>
             <Match when={true}>
               {i18n('QRCode.NoPaid.Free')} · {i18n('QRCode.NoPaid.NoTimeLimit')}

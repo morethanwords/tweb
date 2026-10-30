@@ -7,9 +7,7 @@ import createDownloadAnchor from '@helpers/dom/createDownloadAnchor';
 import {ObjectURLScope} from '@helpers/objectUrl';
 import classNames from '@helpers/string/classNames';
 import {onCleanup} from 'solid-js';
-
-/** How long before a code's expiry the three actions are refused */
-export const EXPORT_EXPIRY_MARGIN_MS = 3000;
+import {isExpiring, secondsLeft} from './link';
 
 export type ExportActionsOptions = {
   /** The picture, made at the call (inside the click for copy: the clipboard takes the promise) */
@@ -17,11 +15,14 @@ export type ExportActionsOptions = {
   url: () => string,
   /** The file name without extension: the username or the title */
   fileName: () => string,
-  /** True within `EXPORT_EXPIRY_MARGIN_MS` of the code's expiry; absent for a code that does not expire */
-  isExpiring?: () => boolean,
+  /** When the code on screen runs out (unix seconds); absent, or `undefined`, for a code that does not */
+  expires?: () => number | undefined,
   /** The toast of the refusal: the fee code says its own */
   expiringToast?: LangPackKey | (() => LangPackKey)
 };
+
+/** Within `EXPIRY_CUTOFF_SECONDS` of its end a code would be dead on arrival */
+const endsSoon = (expires: number | undefined) => expires !== undefined && isExpiring(secondsLeft(expires));
 
 function safeFileName(name: string) {
   return (name.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '').replace(/^[\s.@]+|[\s.]+$/g, '') || 'qr-code') + '.png';
@@ -38,24 +39,20 @@ async function imageSize(blob: Blob) {
   }
 }
 
-/** The popup is made a frame later than the call that opens it: wait for its container to stand in it */
-function raiseOverQrScreen(container: HTMLElement, tries = 20) {
-  const popup = container.closest<HTMLElement>('.popup');
-  if(popup) popup.style.zIndex = '6';
-  else if(tries) requestAnimationFrame(() => raiseOverQrScreen(container, tries - 1));
-}
-
 /** Copy, share to chats and save a PNG of the card; all three refuse a code that is about to expire */
 export function createExportActions(options: ExportActionsOptions) {
   const scope = new ObjectURLScope();
   const timers = new Set<number>();
+  // the screen has gone (closed, or another account shown): what was still being made opens nothing
+  let disposed = false;
   onCleanup(() => {
+    disposed = true;
     scope.dispose();
     timers.forEach((timer) => clearInterval(timer));
   });
 
-  const refuse = () => {
-    if(!options.isExpiring?.()) return false;
+  const refuse = (expires = options.expires?.()) => {
+    if(!endsSoon(expires)) return false;
     toastNew({langPackKey: (typeof options.expiringToast === 'function' ? options.expiringToast() : options.expiringToast) ?? 'QRCode.LinkExpiring'});
     return true;
   };
@@ -71,25 +68,31 @@ export function createExportActions(options: ExportActionsOptions) {
     const image = options.makeImage();
     if(!image) return;
 
-    const url = scope.create(await image);
+    const blob = await image;
+    if(disposed) return;
+    const url = scope.create(blob);
     createDownloadAnchor(url, safeFileName(options.fileName()), () => scope.release(url));
     toastNew({langPackKey: 'QRCode.Saved'});
   };
 
   const share = async() => {
-    if(refuse()) return;
+    // the code on screen now is what goes: its link and its end are taken with its picture, as a newer code may
+    // replace it on screen while the picker is open
+    const expires = options.expires?.();
+    if(refuse(expires)) return;
     const image = options.makeImage();
     if(!image) return;
+    const link = options.url();
 
     const blob = await image;
-    const file = new File([blob], safeFileName(options.fileName()), {type: 'image/png'});
     const size = await imageSize(blob);
-    const link = options.url();
+    if(disposed) return;
+    const file = new File([blob], safeFileName(options.fileName()), {type: 'image/png'});
 
     const popup = shareToPeers({
       chatRightsActions: ['send_photos'],
       send: (managers, {peerId, threadId, monoforumThreadId}, confirmedPaymentResult) => {
-        if(options.isExpiring?.()) return;
+        if(endsSoon(expires)) return;
         managers.appMessagesManager.sendFile({
           peerId,
           threadId,
@@ -102,13 +105,10 @@ export function createExportActions(options: ExportActionsOptions) {
       }
     });
 
-    // the picker is opened from a screen that stands over every popup: it goes over that one
-    raiseOverQrScreen(popup.selector.container);
-
-    // a code that runs out while the picker is open closes it
-    if(options.isExpiring) {
+    // the code that was taken running out while the picker is open closes it
+    if(expires !== undefined) {
       const timer = window.setInterval(() => {
-        if(!options.isExpiring()) return;
+        if(!endsSoon(expires)) return;
         clearInterval(timer);
         timers.delete(timer);
         popup.hide();

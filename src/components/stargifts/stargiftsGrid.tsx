@@ -8,6 +8,7 @@ import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import SuperStickerRenderer from '@components/emoticonsDropdown/tabs/SuperStickerRenderer';
 import rootScope from '@lib/rootScope';
+import type {ReadingManagers} from '@lib/managers';
 
 import styles from '@components/stargifts/stargiftsGrid.module.scss';
 import classNames from '@helpers/string/classNames';
@@ -361,6 +362,40 @@ function StarGiftGridItem(props: {
   );
 }
 
+/**
+ * The stickers of a grid of gifts, drawn as they come into the scrolled view (and still unless `autoplay`), and gone
+ * with the owner. `scrollParent` must be in the document: make it in `onMount`, or after the scroller's own ref.
+ */
+export function createStarGiftsRenderer(options: {
+  managers?: ReadingManagers,
+  scrollParent: HTMLElement,
+  autoplay?: boolean,
+  playOnHover?: boolean
+}) {
+  const lazyLoadQueue = new LazyLoadQueue();
+  const renderer = new SuperStickerRenderer({
+    regularLazyLoadQueue: lazyLoadQueue,
+    group: 'none',
+    managers: options.managers ?? rootScope.managers,
+    intersectionObserverInit: {root: options.scrollParent},
+    visibleRenderOptions: {
+      loop: false,
+      play: options.autoplay ?? true,
+      width: 120,
+      height: 120
+    },
+    withLock: false,
+    playOnHover: options.playOnHover
+  });
+
+  onCleanup(() => {
+    renderer.destroy();
+    lazyLoadQueue.clear();
+  });
+
+  return renderer;
+}
+
 export function StarGiftsGrid(props: {
   class?: string
   items: MyStarGift[],
@@ -373,25 +408,10 @@ export function StarGiftsGrid(props: {
   profileCollections?: StarGiftCollection[]
   scrollParent: HTMLElement
 }) {
-  const lazyLoadQueue = new LazyLoadQueue();
-  const stickerRenderer = new SuperStickerRenderer({
-    regularLazyLoadQueue: lazyLoadQueue,
-    group: 'none',
-    managers: rootScope.managers,
-    intersectionObserverInit: {root: props.scrollParent},
-    visibleRenderOptions: {
-      loop: false,
-      play: props.autoplay ?? true,
-      width: 120,
-      height: 120
-    },
-    withLock: false,
+  const stickerRenderer = createStarGiftsRenderer({
+    scrollParent: props.scrollParent,
+    autoplay: props.autoplay,
     playOnHover: true
-  });
-
-  onCleanup(() => {
-    stickerRenderer.destroy();
-    lazyLoadQueue.clear();
   });
 
   return (

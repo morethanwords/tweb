@@ -1,11 +1,10 @@
 import {describe, expect, it} from 'vitest';
-import {getContrastRatio} from '@helpers/color';
-import {backdropColors, contrastMatchedInk, deepenEdge, intToRgb, mixOklab, TUNED_BACKDROP_NAME} from '@components/popups/myQrCode/colors';
+import {getContrastRatio, getRgbColorFromTelegramColor, hexToRgb} from '@helpers/color';
+import {backdropColors, contrastMatchedInk, deepenEdge, mixOklab, TUNED_BACKDROP_NAME} from '@components/popups/myQrCode/colors';
 import {backdropGradient, backdropToCss, gradientStops} from '@components/popups/myQrCode/backdrop';
 import {surfaceGeometry} from '@components/popups/myQrCode/layout';
 
 const WHITE = [255, 255, 255] as [number, number, number];
-const hex = (value: string) => intToRgb(parseInt(value.slice(1), 16));
 
 // [name, center, edge, pattern] of the palette's lightest, darkest and most saturated backdrops (Android's table)
 const BACKDROPS: [string, number, number, number][] = [
@@ -28,7 +27,7 @@ describe('myQrCode colors', () => {
   it('keeps every ink at 4.5:1 or better on the white card', () => {
     for(const [name, center, edge, pattern] of BACKDROPS) {
       const colors = backdropColors({name, center_color: center, edge_color: edge, pattern_color: pattern});
-      expect(getContrastRatio(hex(colors.ink), WHITE), name).toBeGreaterThanOrEqual(4.5);
+      expect(getContrastRatio(hexToRgb(colors.ink), WHITE), name).toBeGreaterThanOrEqual(4.5);
     }
   });
 
@@ -38,7 +37,7 @@ describe('myQrCode colors', () => {
     for(let i = 0; i < 500; ++i) {
       const center = Math.floor(next() * 0x1000000), edge = Math.floor(next() * 0x1000000);
       const ink = backdropColors({center_color: center, edge_color: edge, pattern_color: 0}).ink;
-      expect(getContrastRatio(hex(ink), WHITE), center.toString(16) + '/' + edge.toString(16)).toBeGreaterThanOrEqual(4.5);
+      expect(getContrastRatio(hexToRgb(ink), WHITE), center.toString(16) + '/' + edge.toString(16)).toBeGreaterThanOrEqual(4.5);
     }
   });
 
@@ -47,7 +46,7 @@ describe('myQrCode colors', () => {
     expect(tuned.vertical).toBe(true);
     expect(tuned.center).toBe('#3fb1ff');
     expect(tuned.edge).toBe('#166ace');
-    expect(getContrastRatio(hex(tuned.ink), WHITE)).toBeGreaterThanOrEqual(4.5);
+    expect(getContrastRatio(hexToRgb(tuned.ink), WHITE)).toBeGreaterThanOrEqual(4.5);
     expect(backdropColors({name: 'Black', center_color: 0x363738, edge_color: 0x0E0F0F, pattern_color: 0}).vertical).toBe(false);
   });
 
@@ -55,7 +54,7 @@ describe('myQrCode colors', () => {
     const colors = backdropColors({center_color: 0x7ECB82, edge_color: 0x459E5A, pattern_color: 0});
     expect(colors.center).toBe('#7ecb82');
     expect(colors.edge).not.toBe('#459e5a');
-    const [r, g, b] = hex(colors.edge), [R, G, B] = intToRgb(0x459E5A);
+    const [r, g, b] = hexToRgb(colors.edge), [R, G, B] = getRgbColorFromTelegramColor(0x459E5A);
     expect(r + g + b).toBeLessThan(R + G + B);
     expect(deepenEdge(0x000000)).toBe(0);
   });

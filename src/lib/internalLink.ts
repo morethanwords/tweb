@@ -118,7 +118,8 @@ export namespace InternalLink {
   export interface InternalLinkUserPhoneNumber {
     _: INTERNAL_LINK_TYPE.USER_PHONE_NUMBER,
     phone: string,
-    text?: string
+    text?: string,
+    free?: string // a code that removes the owner's message fee for the one who follows the link
   }
 
   export interface InternalLinkInvoice {

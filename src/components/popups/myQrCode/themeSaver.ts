@@ -1,4 +1,5 @@
 import type {ShareTheme} from '@layer';
+import debounce from '@helpers/schedulers/debounce';
 import type {ShareThemeToSave} from './theme';
 
 /**
@@ -55,16 +56,9 @@ export function createThemeSaver(options: {
   const {account, peerId, delay = THEME_SAVE_DELAY} = options;
   const key = keyOf(account, peerId);
   let pending: ShareThemeToSave | undefined;
-  let timer: number | undefined;
-
-  const clearTimer = () => {
-    if(timer === undefined) return;
-    clearTimeout(timer);
-    timer = undefined;
-  };
 
   const send = () => {
-    clearTimer();
+    sendLater.clearTimeout();
     if(!pending) return Promise.resolve();
 
     const sending = pending;
@@ -79,19 +73,20 @@ export function createThemeSaver(options: {
     });
   };
 
+  const sendLater = debounce(send, delay, false);
+
   return {
     /** A choice: it is held at once, and sent in `delay` ms unless another comes first */
     schedule(save: ShareThemeToSave) {
       pending = save;
       localThemes.set(key, {shown: save.shown, savedAt: 0});
-      clearTimer();
-      timer = window.setTimeout(send, delay);
+      sendLater();
     },
 
     /** A choice that cannot be saved (a gift nothing names): an earlier one still waiting is outdated */
     cancel() {
       pending = undefined;
-      clearTimer();
+      sendLater.clearTimeout();
       const local = localThemes.get(key);
       if(local && !local.savedAt) localThemes.delete(key);
     },

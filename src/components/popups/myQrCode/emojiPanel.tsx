@@ -97,7 +97,7 @@ export function ChosenEmojiStrip(props: {
   const keys = createMemo(() => props.emojis().map(themeEmojiKey).join('\n'));
 
   return (
-    <div class={classNames(styles.island, styles.chosenStrip)} role="group" aria-label={I18n.format('QRCode.Emoji', true)}>
+    <div class={classNames(styles.island, styles.chosenStrip)} role="group" aria-label={I18n.format('Emoji', true)}>
       <For each={keys().split('\n')}>
         {(key) => {
           const emoji = untrack(props.emojis).find((item) => themeEmojiKey(item) === key);

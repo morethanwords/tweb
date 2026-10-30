@@ -140,6 +140,61 @@ describe('setShareTheme', () => {
     expect(getFull().share_theme).toBe(later);
   });
 
+  it('goes back to the theme the server has when two choices on their way both fail', async() => {
+    const previous: ShareTheme = {_: 'shareThemeDefault'};
+    const second: ShareTheme = {_: 'shareThemeEmojiBackdrop', flags: 1, backdrop_id: 6};
+    const fails: ((error: Error) => void)[] = [];
+    const {manager, getFull} = makeProfileManager(() => new Promise((_, reject) => fails.push(reject)));
+
+    getFull().share_theme = previous;
+    const first = manager.setShareTheme(SELF.toPeerId(false), theme);
+    const next = manager.setShareTheme(SELF.toPeerId(false), second);
+    expect(getFull().share_theme).toBe(second);
+
+    fails[0](new Error('first'));
+    await expect(first).rejects.toThrow('first');
+    expect(getFull().share_theme).toBe(second);
+
+    fails[1](new Error('second'));
+    await expect(next).rejects.toThrow('second');
+    expect(getFull().share_theme).toBe(previous);
+  });
+
+  it('goes back to an earlier choice the server took when a later one fails', async() => {
+    const second: ShareTheme = {_: 'shareThemeEmojiBackdrop', flags: 1, backdrop_id: 6};
+    const answers: {resolve: (value: boolean) => void, reject: (error: Error) => void}[] = [];
+    const {manager, getFull} = makeProfileManager(() => new Promise((resolve, reject) => answers.push({resolve, reject})));
+
+    getFull().share_theme = {_: 'shareThemeDefault'};
+    const first = manager.setShareTheme(SELF.toPeerId(false), theme);
+    const next = manager.setShareTheme(SELF.toPeerId(false), second);
+
+    answers[0].resolve(true);
+    await first;
+    answers[1].reject(new Error('second'));
+    await expect(next).rejects.toThrow('second');
+    expect(getFull().share_theme).toBe(theme);
+  });
+
+  it('shows an earlier choice the server took after a later one failed first', async() => {
+    const previous: ShareTheme = {_: 'shareThemeDefault'};
+    const second: ShareTheme = {_: 'shareThemeEmojiBackdrop', flags: 1, backdrop_id: 6};
+    const answers: {resolve: (value: boolean) => void, reject: (error: Error) => void}[] = [];
+    const {manager, getFull} = makeProfileManager(() => new Promise((resolve, reject) => answers.push({resolve, reject})));
+
+    getFull().share_theme = previous;
+    const first = manager.setShareTheme(SELF.toPeerId(false), theme);
+    const next = manager.setShareTheme(SELF.toPeerId(false), second);
+
+    answers[1].reject(new Error('second'));
+    await expect(next).rejects.toThrow('second');
+    expect(getFull().share_theme).toBe(previous);
+
+    answers[0].resolve(true);
+    await first;
+    expect(getFull().share_theme).toBe(theme);
+  });
+
   it('keeps an input gift out of the cache and shows the gift in its place', async() => {
     const gift = {_: 'starGift'} as any;
     const input: ShareTheme = {_: 'inputShareThemeGift', stargift: {_: 'inputSavedStarGiftSlug', slug: 'abc'}};
