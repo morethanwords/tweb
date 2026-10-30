@@ -322,7 +322,7 @@ export default async function showWalletTransactionPopup(options: WalletTransact
     const keyChange = () => !!transaction().pFlags.key_change;
     const peerAddress = () => {
       const peer = shownPeer();
-      return peer._ !== 'walletTransactionPeerUnsupported' ? peer.address : undefined;
+      return 'address' in peer ? peer.address : undefined;
     };
     // * a transfer to one's own address reads as incoming (iOS)
     const selfTransfer = createMemo(() => isSelfTransfer(transaction(), walletStatus?.state?.address));
@@ -397,7 +397,7 @@ export default async function showWalletTransactionPopup(options: WalletTransact
         return <TablePeer peerId={peerId} onClick={() => openChat(peerId)} />;
       }
 
-      if(peer._ === 'walletTransactionPeerUnsupported') {
+      if(!('address' in peer)) {
         return i18n('Wallet.Details.UnknownAddress');
       }
 

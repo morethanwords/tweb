@@ -52,7 +52,7 @@ export function findSettledTransfer(transactions: WalletTransaction[], pending: 
       transaction.pFlags.incoming ||
       transaction.pFlags.key_change ||
       !transaction.nft !== !pending.nft ||
-      peer._ === 'walletTransactionPeerUnsupported' ||
+      !('address' in peer) ||
       canonicalTonAddress(peer.address) !== address
     ) continue;
 

@@ -27,6 +27,7 @@ import type {DcId, InvokeApiOptions} from '@types';
 import {AppManager} from '@appManagers/manager';
 import {randomLong} from '@helpers/random';
 import makeError from '@helpers/makeError';
+import {canonicalTonAddress} from '@lib/wallet/transferMessages';
 import ctx from '@environment/ctx';
 import {GRAM_TRANSFER_RESOLUTION_TIMEOUT, GramTransferDraftContent, isDefiniteTransferRefusal} from '@lib/wallet/transferMessages';
 import {
@@ -160,6 +161,12 @@ export default class AppWalletManager extends AppManager {
   private streamingUrl: {url: string, expiresAt: number};
 
   protected after() {
+    this.appStateManager.getState().then(({walletAddresses}) => {
+      for(const userId in walletAddresses) {
+        this.peersStorage.requestPeer(userId.toPeerId(false), 'wallet');
+      }
+    });
+
     this.clear = () => {
       this.status = {presence: 'unknown', date: 0};
       this.statusPromise = undefined;
@@ -528,6 +535,45 @@ export default class AppWalletManager extends AppManager {
     }
 
     return found;
+  }
+
+  /** What an opened profile says of its wallet: remembered, and forgotten once the profile no longer shows one */
+  public saveWalletAddress(userId: UserId, address?: string) {
+    return this.appStateManager.getState().then((state) => {
+      const addresses = state.walletAddresses;
+      if(addresses[userId] === address) return;
+
+      if(address) {
+        addresses[userId] = address;
+        this.peersStorage.requestPeer(userId.toPeerId(false), 'wallet');
+      } else {
+        delete addresses[userId];
+        this.peersStorage.releasePeer(userId.toPeerId(false), 'wallet');
+      }
+
+      this.appStateManager.pushToState('walletAddresses', addresses);
+    });
+  }
+
+  /**
+   * Whose wallet this is, as far as profiles tell, with no wallet method asked: one opened before,
+   * or the card of someone at hand or our own
+   */
+  public async getKnownAddressOwner(address: string, userIds: UserId[] = []): Promise<UserId | undefined> {
+    const canonical = canonicalTonAddress(address);
+    if(!canonical) return;
+
+    const {walletAddresses} = await this.appStateManager.getState();
+    for(const userId in walletAddresses) {
+      if(canonicalTonAddress(walletAddresses[userId]) === canonical) return +userId as UserId;
+    }
+
+    for(const userId of new Set([...userIds, this.rootScope.myId.toUserId()])) {
+      try {
+        const {wallet_card} = await this.appProfileManager.getProfile(userId);
+        if(wallet_card && canonicalTonAddress(wallet_card.address) === canonical) return userId;
+      } catch{}
+    }
   }
 
   // MARK: Toncenter proxy
