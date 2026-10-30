@@ -15,8 +15,11 @@ export type CopyQrCodeOutcome = 'image' | 'link' | 'failed';
  * toasting itself.
  */
 export default async function copyQrCode({blob, url}: {
-  /** Absent when the code has not painted yet; then only the link is copied. */
-  blob?: Blob,
+  /**
+   * Absent when the code has not painted yet; then only the link is copied. A promise lets the picture be made
+   * after the click: the clipboard takes the item inside the click, and fills it in when it is ready.
+   */
+  blob?: Blob | Promise<Blob>,
   url: string
 }): Promise<CopyQrCodeOutcome> {
   if(blob) {

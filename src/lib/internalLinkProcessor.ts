@@ -61,6 +61,7 @@ import parseChatSpecificTag from '@lib/richTextProcessor/parseChatSpecificTag';
 import searchByTag from '@lib/richTextProcessor/searchByTag';
 import {APP_TABS} from '@lib/appColumns';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
 
 /**
  * A link whose section we know but whose path we do not — the one thing worse
@@ -320,7 +321,7 @@ export class InternalLinkProcessor {
     }
 
     type K1 = {thread?: string, comment?: string, t?: string, option?: string, single?: string};
-    type K2 = {thread?: string, comment?: string, start?: string, startgroup?: string, startchannel?: string, admin?: string, t?: string, text?: string, option?: string, single?: string};
+    type K2 = {thread?: string, comment?: string, start?: string, startgroup?: string, startchannel?: string, admin?: string, t?: string, text?: string, option?: string, single?: string, free?: string};
     type K3 = {startattach?: string, attach?: string, choose?: TelegramChoosePeerType};
     type K4 = {startapp?: string, mode?: 'compact' | 'fullscreen'};
     type K5 = {story?: string};
@@ -420,7 +421,8 @@ export class InternalLinkProcessor {
             stack: appImManager.getStackFromElement(element),
             t: uriParams.t,
             text: uriParams.text,
-            single: uriParams.single
+            single: uriParams.single,
+            free: uriParams.free
           };
         }
 
@@ -470,7 +472,8 @@ export class InternalLinkProcessor {
         startapp?: string,
         compact?: string,
         story?: string,
-        single?: string
+        single?: string,
+        free?: string
       }
     }>({
       name: 'resolve',
@@ -1087,11 +1090,52 @@ export class InternalLinkProcessor {
     } as any as InternalLinkTypeMap[T];
   }
 
-  public processMessageLink = (link: InternalLink.InternalLinkMessage) => {
+  /**
+   * `t.me/<username>?free=<code>`: the code removes the message fee of the user it names.
+   * Resolves with whether the link was spent on that, and nothing is left to do; `false` for a link that does not
+   * name a user, which goes on as a plain username link.
+   */
+  private async useNoPaidMessagesToken(link: InternalLink.InternalLinkMessage) {
+    const managers = bindManagersToSession(this.managers);
+    let peer;
+    try {
+      peer = await managers.appUsersManager.resolveUsername(link.domain);
+    } catch(err) {
+      this.showUsernameResolveError(err as ApiError);
+      return true;
+    }
+
+    if(peer?._ !== 'user') {
+      return false;
+    }
+
+    const userId = peer.id;
+    try {
+      await managers.appUsersManager.importNoPaidMessagesToken(userId, link.free);
+    } catch(err) {
+      toastNew({langPackKey: (err as ApiError).type?.startsWith('USER_') ? 'NoPaidMessagesToken.UserInvalid' : 'NoPaidMessagesToken.Invalid'});
+      return true;
+    }
+
+    const peerId = userId.toPeerId(false);
+    toastNew({
+      langPackKey: 'NoPaidMessagesToken.Imported',
+      langPackArguments: [await wrapPeerTitle({peerId})]
+    });
+    await appImManager.setInnerPeer({peerId});
+    return true;
+  }
+
+  public processMessageLink = async(link: InternalLink.InternalLinkMessage) => {
+    const managers = bindManagersToSession(this.managers);
+    if(link.free && await this.useNoPaidMessagesToken(link)) {
+      return;
+    }
+
     if(link.startgroup !== undefined || link.startchannel !== undefined) {
       const requestedRights = parseBotAdminRights(link.admin);
       const scope = getBotAddToChatScope(link, requestedRights);
-      return this.managers.appUsersManager.resolveUsername(link.domain).then(async(peer) => {
+      return managers.appUsersManager.resolveUsername(link.domain).then(async(peer) => {
         if(peer._ === 'user' && peer.pFlags.bot) {
           await showAddBotToChat({
             botId: peer.id as BotId,

@@ -78,6 +78,7 @@ export namespace InternalLink {
     t?: string, // media timestamp
     single?: string, // present (empty) when the link is to this one item of an album, not to the whole album
     text?: string,
+    free?: string, // a code that removes the owner's message fee for the one who follows the link
     stack?: ChatSetPeerOptions['stack'] // local
   }
 

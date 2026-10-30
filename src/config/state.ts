@@ -202,14 +202,6 @@ export type StateSettings = {
   // The order the contacts tab lists them in, kept between visits the way Android and iOS keep it
   // (tdesktop opens its contacts by last seen every time)
   contactsSortMode: ContactsSortMode,
-  // My QR-code popup: remembers the user's last picked chat-theme + brightness
-  // so reopens land back where they left off. `nightMode` falls back to the
-  // global theme's brightness when unset; `selectedThemeId` empty = the
-  // DEFAULT_THEME sentinel (i.e. "use the current chat theme").
-  qrCode: {
-    nightMode?: boolean,
-    selectedThemeId: string
-  },
   stories: {
     // other people's story videos play in their original quality, not the lower one the server keeps
     // beside it — Premium only, as on iOS and Android (Android's default: on)
@@ -231,6 +223,8 @@ export type State = {
   communityDialogs: {[communityId: string]: Dialog.dialogCommunity},
   joinedCommunityIds: ChatId[] | null,
   botCommands: {[peerId: PeerId]: {[botId: string]: BotCommand[]}},
+  // the permanent code that removes the message fee of the own QR code, kept across opens
+  noPaidMessagesToken: {token: string, url: string, permanent?: boolean} | null,
   // contactsList: UserId[],
   contactsListCachedTime: number,
   updates: Partial<{
@@ -620,9 +614,6 @@ export const SETTINGS_INIT: StateSettings = {
   },
   recordingMediaType: 'voice',
   contactsSortMode: 'online',
-  qrCode: {
-    selectedThemeId: ''
-  },
   stories: {
     highQuality: true
   }
@@ -634,6 +625,7 @@ export const STATE_INIT: State = {
   communityDialogs: {},
   joinedCommunityIds: null,
   botCommands: {},
+  noPaidMessagesToken: null,
   // contactsList: [],
   contactsListCachedTime: 0,
   updates: {},
