@@ -118,6 +118,19 @@ describe('getMessagePreviewIcon', () => {
     expect(getMessagePreviewIcon(message({media}))).toBe(expected);
   });
 
+  it('marks a Gram transfer with the gem, not with a gift', () => {
+    const transfer = {
+      _: 'messageService',
+      pFlags: {},
+      id: 1,
+      peer_id: {_: 'peerUser', user_id: 1},
+      date: 1,
+      action: {_: 'messageActionGramTransfer', pFlags: {}, amount: '1500000000', peer_address: '', transaction_id: ''}
+    } as Message.messageService;
+
+    expect(getMessagePreviewIcon(transfer)).toBe('gram_filled');
+  });
+
   it('classifies call service messages', () => {
     const call = {
       _: 'messageService',

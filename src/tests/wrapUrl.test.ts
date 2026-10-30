@@ -73,3 +73,26 @@ describe('wrapUrl Telegram links', () => {
     expect(wrapUrl(url)).toEqual({url, onclick: undefined});
   });
 });
+
+describe('wrapUrl wallet links', () => {
+  test('sends t.me/sendgrams to the wallet and leaves the other one-segment links alone', () => {
+    vi.stubGlobal('im', vi.fn());
+    vi.stubGlobal('sendgrams', vi.fn());
+    vi.stubGlobal('share', vi.fn());
+    vi.stubGlobal('boost', vi.fn());
+    expect(wrapUrl('https://t.me/sendgrams?to=@durov&amount=1').onclick).toBe('sendgrams');
+    // * written any case, with a closing slash, as iOS and Android take it
+    expect(wrapUrl('https://t.me/sendgrams/?to=@durov').onclick).toBe('sendgrams');
+    expect(wrapUrl('https://t.me/SendGrams?to=@durov').onclick).toBe('sendgrams');
+    expect(wrapUrl('https://t.me/sendgrams/x?to=@durov').onclick).not.toBe('sendgrams');
+    // one path segment of the shared group is a username link, as it always was
+    expect(wrapUrl('https://t.me/share?url=https://x').onclick).toBe('im');
+    expect(wrapUrl('https://t.me/boost?c=123').onclick).toBe('im');
+    expect(wrapUrl('https://t.me/share/url?url=https://x').onclick).toBe('share');
+  });
+
+  test('sends ton://transfer to the wallet', () => {
+    vi.stubGlobal('ton_transfer', vi.fn());
+    expect(wrapUrl('ton://transfer/UQA8RRt6mUoTcShtSDlxDvF1SX6Femu9dMCB-ZTK3uQ-aU_k?amount=1').onclick).toBe('ton_transfer');
+  });
+});

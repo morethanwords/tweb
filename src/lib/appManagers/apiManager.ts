@@ -332,6 +332,12 @@ export class ApiManager extends ApiManagerMethods {
       // * a write still on its way would bring the data back after it is gone
       await AccountController.whenUpdated(accountNumber);
 
+      // * the wallet key never outlives the account on this device
+      const userId = accountData.userId;
+      if(userId) {
+        await import('@lib/wallet/vault').then(({default: WalletVault}) => new WalletVault(userId).wipe()).catch(noop);
+      }
+
       this.baseDcId = undefined;
       // * totalAccounts can be 0 somehow
       if(totalAccounts <= 1 && accountNumber === 1 && !migrateAccountTo) {
@@ -390,6 +396,8 @@ export class ApiManager extends ApiManagerMethods {
     .map(accountNumber => AppStoragesManager.clearAllStoresForAccount(accountNumber));
 
     await Promise.all([
+      // * no wallet key outlives the accounts on this device (the per-account logout wipes its own)
+      import('@lib/wallet/vault').then(({default: WalletVault}) => WalletVault.wipeAll()).catch(noop),
       sessionStorage.localStorageProxy('clear'),
       commonStateStorage.clear(),
       EncryptedStorageLayer.getInstance(getCommonDatabaseState(), 'localStorage__encrypted').clear(),
@@ -855,6 +863,10 @@ export class ApiManager extends ApiManagerMethods {
           if(after) return after.promise.then(() => performRequest());
           else return performRequest();
         } else if(!options.rawError && error.code === 500) {
+          if(options.noRetry) {
+            throw error;
+          }
+
           const now = Date.now();
           if(options.stopTime) {
             if(now >= options.stopTime) {
@@ -864,7 +876,7 @@ export class ApiManager extends ApiManagerMethods {
 
           options.waitTime = options.waitTime ? Math.min(60, options.waitTime * 1.5) : 1;
           return pause(options.waitTime * 1000).then(() => performRequest());
-        } else if(error.type === 'UNKNOWN' || error.type === 'MTPROTO_CLUSTER_INVALID') { // cluster invalid - request from regular user to premium endpoint
+        } else if((error.type === 'UNKNOWN' && !options.noRetry) || error.type === 'MTPROTO_CLUSTER_INVALID') { // cluster invalid - request from regular user to premium endpoint
           return pause(1000).then(() => performRequest());
         } else {
           if(RepayRequestHandler.canHandleError(error))

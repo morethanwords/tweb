@@ -35,7 +35,7 @@ export class StarGiftPriceInputFieldClass extends InputField {
 
   public setIcon(icon: 'ton' | 'stars') {
     if(icon === 'ton') {
-      this.icon.replaceChildren(Icon('ton'))
+      this.icon.replaceChildren(Icon('gram_filled'))
     } else {
       this.icon.replaceChildren(currencyStarIcon() as HTMLElement)
     }

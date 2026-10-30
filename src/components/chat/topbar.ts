@@ -632,6 +632,23 @@ export default class ChatTopbar {
         this.chat.isChannel || (this.chat.peerId.isUser() && !this.chat.isBot && (await this.managers.appUsersManager.isRegularUser(this.peerId)))
       ) && !(this.chat.type === ChatType.Logs)
     }, {
+      icon: 'wallet',
+      text: 'Wallet.SendMoney',
+      onClick: () => {
+        const peerId = this.peerId;
+        import('@components/wallet').then(({default: showWalletPopup}) => {
+          showWalletPopup({send: {userId: peerId.toUserId()}, fromChat: true});
+        });
+      },
+      verify: async() => (
+        this.chat.peerId.isUser() &&
+        !this.chat.isBot &&
+        rootScope.myId !== this.peerId &&
+        this.chat.type !== ChatType.Logs &&
+        (await this.managers.appUsersManager.isRegularUser(this.peerId)) &&
+        (await apiManagerProxy.getAppConfig()).wallet_available !== false
+      )
+    }, {
       icon: 'message',
       text: 'ChannelDirectMessages.Manage',
       onClick: () => this.onDirectMessagesClick(),

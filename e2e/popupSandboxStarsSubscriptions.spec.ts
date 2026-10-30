@@ -87,7 +87,7 @@ test('mobile subscription statuses and product names stay within the popup', asy
   await page.evaluate(() => (window.popupSandbox as unknown as {hide(): void}).hide());
   await page.evaluate(() => window.popupSandbox.open('transaction/subscription-list'));
   const section = page.locator('.popup-stars-subscriptions-section');
-  const rows = section.locator('.popup-stars-transaction-row');
+  const rows = section.locator('.transaction-row');
   await expect(rows).toHaveCount(9);
   await expect(section).toContainText('Cancelled by the business');
   const overflow = await rows.evaluateAll((elements) => elements.map((element) => ({

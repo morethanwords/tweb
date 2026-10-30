@@ -57,7 +57,10 @@
       "src/components/mediaViewer/rtmp.ts",
       "src/lib/calls/callInstance.ts",
       "src/lib/calls/groupCallConnectionInstance.ts",
-      "src/lib/calls/groupCallInstance.ts"
+      "src/lib/calls/groupCallInstance.ts",
+      "src/lib/wallet/engineHost.ts",
+      "src/lib/wallet/stream.ts",
+      "src/lib/wallet/walletSession.ts"
     ],
     "rules": {"tweb/managers-before-await": ["error", {"allowThis": true}]}
   }, {

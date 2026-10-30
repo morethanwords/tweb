@@ -12,7 +12,7 @@ import {MyStarGift} from '@appManagers/appGiftsManager';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
 import showSendGiftPopup from '@components/popups/sendGift';
-import Table, {TableButton, TableButtonWithTooltip, TablePeer, TableRow} from '@components/table';
+import Table, {TableButton, TablePeer, TableRow} from '@components/table';
 import {NULL_PEER_ID, STARS_CURRENCY, TON_CURRENCY} from '@appManagers/constants';
 import rootScope from '@lib/rootScope';
 import {toastNew} from '@components/toast';
@@ -23,8 +23,6 @@ import {ButtonMenuToggleTsx} from '@components/buttonMenuToggleTsx';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import {showSharingPicker2Popup} from '@components/popups/pickUser';
 import {I18nTsx} from '@helpers/solid/i18n';
-import buttonKeyDown from '@helpers/solid/buttonKeyDown';
-import Modes from '@config/modes';
 import tsNow from '@helpers/tsNow';
 import {useAppState} from '@stores/appState';
 import transferStarGift from '@components/popups/transferStarGift';
@@ -61,56 +59,7 @@ import {showCreateStarGiftOfferPopup} from '@components/popups/createStarGiftOff
 import {getCanManagePeerGifts} from '@components/stargifts/canManageGifts';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
-
-function AttributeTableButton(props: {rarity: StarGiftAttributeRarity}) {
-  if(props.rarity._ !== 'starGiftAttributeRarity') {
-    const map: Record<Exclude<StarGiftAttributeRarity['_'], 'starGiftAttributeRarity'>, {langKey: LangPackKey, color: string}> = {
-      'starGiftAttributeRarityUncommon': {langKey: 'StarGiftRarityUncommon', color: 'green'},
-      'starGiftAttributeRarityRare': {langKey: 'StarGiftRarityRare', color: 'blue'},
-      'starGiftAttributeRarityEpic': {langKey: 'StarGiftRarityEpic', color: 'violet'},
-      'starGiftAttributeRarityLegendary': {langKey: 'StarGiftRarityLegendary', color: 'gold'}
-    };
-
-    return (
-      <TableButtonWithTooltip
-        class={`rarity rarity-${map[props.rarity._].color} disable-hover`}
-      >
-        {i18n(map[props.rarity._].langKey)}
-      </TableButtonWithTooltip>
-    );
-  }
-
-  // * the server rounds a rarity below 0.1% down to zero
-  const percent = props.rarity.permille > 0 ? `${props.rarity.permille / 10}%` : '< 0.1%';
-  return (
-    <TableButtonWithTooltip
-      tooltipTextElement={i18n('StarGiftAttributeTooltip', [percent])}
-      tooltipClass="popup-star-gift-info-tooltip"
-    >
-      <span dir="ltr">{percent}</span>
-    </TableButtonWithTooltip>
-  );
-}
-
-export function AttributeValue(props: {name: string, rarity: StarGiftAttributeRarity, onClick?: () => void}) {
-  return (
-    <div class="popup-star-gift-info-attribute-value">
-      {props.onClick ? (
-        <span
-          class="popup-star-gift-info-attribute-clickable"
-          role="button"
-          tabindex={Modes.a11y ? 0 : undefined}
-          onClick={props.onClick}
-          onKeyDown={buttonKeyDown}
-          dir="auto"
-        >
-          {props.name}
-        </span>
-      ) : <span dir="auto">{props.name}</span>}
-      <AttributeTableButton rarity={props.rarity} />
-    </div>
-  )
-}
+import {GiftAttributeValue} from '@components/stargifts/giftAttributeValue';
 
 const attributeValueKeyFrames = (element: Element, removed: boolean) => [
   {opacity: 0, transform: `translateY(${removed ? '-14px' : '14px'}) scaleY(0.5)`},
@@ -197,7 +146,7 @@ function AnimatedAttributeValue(props: {
         <Index each={items}>
           {(item, index) => (
             <Match when={index === position()}>
-              <AttributeValue
+              <GiftAttributeValue
                 name={item().name}
                 rarity={item().rarity}
                 onClick={props.onClick}
@@ -727,7 +676,7 @@ export default function showStarGiftInfoPopup(options: {
               started={upgradeAnimationStarted()}
             />
           ) : (
-            <AttributeValue
+            <GiftAttributeValue
               name={collectibleAttributes.model.name}
               rarity={collectibleAttributes.model.rarity}
               onClick={() => handleAttributeClick(collectibleAttributes.model)}
@@ -747,7 +696,7 @@ export default function showStarGiftInfoPopup(options: {
               started={upgradeAnimationStarted()}
             />
           ) : (
-            <AttributeValue
+            <GiftAttributeValue
               name={collectibleAttributes.backdrop.name}
               rarity={collectibleAttributes.backdrop.rarity}
               onClick={() => handleAttributeClick(collectibleAttributes.backdrop)}
@@ -767,7 +716,7 @@ export default function showStarGiftInfoPopup(options: {
               started={upgradeAnimationStarted()}
             />
           ) : (
-            <AttributeValue
+            <GiftAttributeValue
               name={collectibleAttributes.pattern.name}
               rarity={collectibleAttributes.pattern.rarity}
               onClick={() => handleAttributeClick(collectibleAttributes.pattern)}

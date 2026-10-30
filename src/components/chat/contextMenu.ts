@@ -1266,6 +1266,21 @@ export default class ChatContextMenu {
       },
       verify: () => !!this.messageLanguage
     }, {
+      // * a transfer in a chat with someone: Grams back to them, as iOS offers it on the transfer itself
+      icon: 'wallet',
+      text: 'Wallet.SendMoney',
+      onClick: () => {
+        const userId = this.peerId.toUserId();
+        import('@components/wallet').then(({default: showWalletPopup}) => showWalletPopup({send: {userId}, fromChat: true}));
+      },
+      verify: async() => this.message?._ === 'messageService' &&
+        this.message.action._ === 'messageActionGramTransfer' &&
+        this.peerId.isUser() &&
+        this.peerId !== rootScope.myId &&
+        this.chat.type === ChatType.Chat &&
+        await this.managers.appUsersManager.isRegularUser(this.peerId.toUserId()) &&
+        (await this.managers.apiManager.getAppConfig()).wallet_available !== false
+    }, {
       icon: 'link',
       text: 'MessageContext.CopyMessageLink1',
       onClick: this.onCopyLinkClick,

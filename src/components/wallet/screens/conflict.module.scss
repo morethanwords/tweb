@@ -1,0 +1,16 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+// * the whole address, in lines of six groups
+.addressTitle:global(.row-title) {
+  white-space: normal;
+  overflow: visible;
+}
+
+.address {
+  font-size: .875rem;
+  line-height: 1.25rem;
+}

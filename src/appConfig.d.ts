@@ -151,6 +151,12 @@ export interface MTAppConfig {
   verify_age_country?:                       string;
   ton_usd_rate?:                             number;
   ton_topup_url?:                            string;
+  ton_blockchain_explorer_url?:              string;
+  wallet_available?:                         boolean;
+  wallet_transfer_min_nanos?:                number;
+  wallet_gasless_min_nanos?:                 number;
+  wallet_gasless_daily_transfers?:           number;
+  old_wallet_bot_username?:                  string;
   ton_stargift_resale_amount_max?:            number;
   ton_stargift_resale_amount_min?:            number;
   ton_stargift_resale_commission_permille?:   number;

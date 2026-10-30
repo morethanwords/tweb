@@ -38,14 +38,16 @@ export default function paymentsWrapCurrencyAmount<T extends boolean = false>(
   currency: string,
   skipSymbol?: boolean,
   useNative?: boolean,
-  plain?: T
+  plain?: T,
+  /** decimals other than the currency's own: a fee worth a fraction of a cent */
+  fractionDigits?: number
 ): T extends true ? string : HTMLElement | string {
   if(currency === TON_CURRENCY) {
     const str = formatNanoton(amount);
     if(plain) return `${str} ${GRAM_CURRENCY_SYMBOL}`;
     const out = document.createElement('span');
     out.classList.add('ton-amount');
-    out.append(Icon('ton', 'ton-amount-icon'), ' ', str);
+    out.append(Icon('gram_filled', 'ton-amount-icon'), ' ', str);
     return out as any;
   }
 
@@ -71,8 +73,8 @@ export default function paymentsWrapCurrencyAmount<T extends boolean = false>(
 
   const amountExp = amount / Math.pow(10, currencyData.exp);
 
-  let decimals = currencyData.exp;
-  if(currency == 'IRR' && Math.floor(amountExp) == amountExp) {
+  let decimals = fractionDigits ?? currencyData.exp;
+  if(fractionDigits === undefined && currency == 'IRR' && Math.floor(amountExp) == amountExp) {
     decimals = 0; // у иранцев копейки почти всегда = 0 и не показываются в UI
   }
 

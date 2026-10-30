@@ -104,7 +104,9 @@ function collectLayoutComplaints() {
   // Only at the end of the scroll: anywhere else the card's edge is a scroll position, and a list
   // still filling itself passes through every position on its way.
   popup.querySelectorAll('.sidebar-left-section').forEach((section) => {
-    if(getComputedStyle(section).boxShadow === 'none') return;
+    // a card that is not rendered (a screen of a stack under another one, `display: none`) paints no shadow, and its
+    // zero-sized box would read as no room at all
+    if(!section.getClientRects().length || getComputedStyle(section).boxShadow === 'none') return;
 
     for(let clipper = section.parentElement; clipper && popup.contains(clipper); clipper = clipper.parentElement) {
       const style = getComputedStyle(clipper);

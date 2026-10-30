@@ -1534,6 +1534,25 @@ export default class ChatInput {
         ]).then(([canGift, {premium_gift_attach_menu_icon}]) => canGift && premium_gift_attach_menu_icon);
       }
     }, {
+      // * Grams to the person this chat is with, like the desktop client's attach menu
+      icon: 'wallet',
+      richMessageAction: 'sendMoney',
+      text: 'Wallet.Menu',
+      onClick: () => {
+        const userId = this.chat.peerId.toUserId();
+        import('@components/wallet').then(({default: showWalletPopup}) => showWalletPopup({send: {userId}, fromChat: true}));
+      },
+      verify: async() => {
+        const peerId = this.chat.peerId;
+        if(this.editMsgId || this.ephemeralComposer || this.isWelcomeComposer) return false;
+        if(!peerId.isUser() || peerId === rootScope.myId || this.chat.isBot) return false;
+        const [regular, appConfig] = await Promise.all([
+          this.managers.appUsersManager.isRegularUser(peerId.toUserId()),
+          this.managers.apiManager.getAppConfig()
+        ]);
+        return regular && appConfig.wallet_available !== false;
+      }
+    }, {
       icon: 'poll',
       richMessageAction: 'poll',
       text: 'Poll',

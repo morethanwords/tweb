@@ -266,3 +266,36 @@
   color: var(--secondary-text-color);
   font-size: .875rem;
 }
+
+// * the wallet's chat cards over a plain wallpaper (story wallet/chatCards)
+.WalletChatCards {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  overflow: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 2rem;
+  background: linear-gradient(135deg, #a7c18c, #6f9a7e);
+}
+
+.WalletChatCard {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+// * a message bubble with a TON address in it (mountWalletAddressMessage)
+.WalletAddressMessage {
+  max-width: 22rem;
+  padding: .5rem .75rem;
+  border-radius: 1rem;
+  background: var(--surface-color);
+  color: var(--primary-text-color);
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.3125;
+}

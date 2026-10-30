@@ -925,7 +925,8 @@ picks themes, `A11Y_STORIES=a,b` picks stories, `A11Y_WORKERS` / `A11Y_STORY_PAR
 tune the split, and `--project=chromium` drops the other engines (~70 s).
 `test:popups` works the same way: parallel, the story sweep split into parts
 (`POPUPS_WORKERS` / `POPUP_STORY_PARTS`), Chromium unless `POPUPS_ALL_ENGINES=1`
-(`test:popups:full`, implied on CI). So does `test:focus`, on the popup suite's
+(`test:popups:full`, implied on CI); `RTL_STORIES=a,b` (or `wallet/*` for a prefix)
+narrows its mirror sweep. So does `test:focus`, on the popup suite's
 kind of server (`playwright.focus.config.ts`): a part per worker but one, which
 the sign-in sweep takes (`FOCUS_WORKERS` / `FOCUS_STORY_PARTS`,
 `FOCUS_STORIES=a,b` picks stories).

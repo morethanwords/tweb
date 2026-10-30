@@ -347,6 +347,17 @@ describe('layer 229 rich text', () => {
     // the inner formatting survives; only the button chrome is dropped
     expect(wrapped.entities.some((entity) => entity._ === 'messageEntityBold')).toBe(true);
   });
+
+  test('keeps a TON address and marks it as one', () => {
+    const address = 'UQBvW8Z5huBkMJYdnfAEM5JqTNkuWX3diqYENkWsIL0XggGG';
+    const wrapped = wrapTelegramRichText({
+      _: 'textConcat',
+      texts: [text('Pay to '), {_: 'textTonAddress', text: text(address)}]
+    });
+
+    expect(wrapped.text).toBe('Pay to ' + address);
+    expect(wrapped.entities).toContainEqual({_: 'messageEntityTonAddress', offset: 7, length: address.length});
+  });
 });
 
 describe('isRichMessageFullWidth', () => {

@@ -1,0 +1,25 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+.body {
+  gap: 0;
+}
+
+.section {
+  background: none;
+}
+
+// * the row's work in progress, at its end (iOS: the activity accessory)
+.spinner {
+  position: relative;
+  display: inline-block;
+  width: 1.25rem;
+  height: 1.25rem;
+
+  :global(.preloader-path) {
+    stroke: var(--secondary-text-color);
+  }
+}

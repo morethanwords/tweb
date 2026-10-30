@@ -7,6 +7,7 @@
  */
 
 import type {
+  WalletTransaction,
   AiComposeToneExample,
   Chat,
   Dialog,
@@ -29,10 +30,14 @@ import type {
   StarsAmount,
   StarsGiveawayOption,
   User,
+  WalletNftItem,
+  WebDocument,
   WebPage
 } from '@layer';
 import {MESSAGE_ID_OFFSET} from '@appManagers/constants';
+import type {PopupStoryContext} from './context';
 import type {MyStarGift} from '@appManagers/appGiftsManager';
+import type {WalletCustodyRecord} from '@lib/wallet/vault';
 import {getMiddleware} from '@helpers/middleware';
 
 export const SELF_USER_ID = 777001;
@@ -678,3 +683,230 @@ export const starsGiveawayOptions: StarsGiveawayOption[] = [500, 1000].map((star
 }));
 
 export const EMBEDDED_PAGE_URL = 'data:text/html,' + encodeURIComponent('<!doctype html><html lang="en"><head><title>Sandbox embedded page</title></head><body><main><h1>Sandbox embedded page</h1><p>Local fixture. No Telegram traffic.</p></main></body></html>');
+
+// MARK: Wallet
+
+const WALLET_ADDRESS = 'UQA8RRt6mUoTcShtSDlxDvF1SX6Femu9dMCB-ZTK3uQ-aU_k';
+// * well-formed (the checksum holds): the engine reads the addresses it is handed, a malformed one fails the flow
+export const walletSandboxOtherAddress = 'UQC5Yw1jHf6s6CTr5kn6XgGcAkCq3lWlDYDYp2Dz4TQYJxPv';
+export const walletSandboxPublicKey = new Uint8Array(32).map((_, i) => (i * 37 + 11) & 0xff);
+const WALLET_NOW = Math.floor(Date.now() / 1000);
+
+function walletState(balance: string, flags: {backup_enabled?: true, can_export_phrase?: true, can_enable_backup?: true} = {backup_enabled: true, can_export_phrase: true}) {
+  return {
+    _: 'walletState' as const,
+    pFlags: flags,
+    address: WALLET_ADDRESS,
+    public_key: walletSandboxPublicKey,
+    balance
+  };
+}
+
+export function walletSandboxTransactions(userId: UserId): WalletTransaction[] {
+  const make = (index: number, amount: string, peer: WalletTransaction['peer'], extra: Partial<WalletTransaction> = {}): WalletTransaction => ({
+    _: 'walletTransaction',
+    id: `${1000 + index}:sandbox${index}`,
+    amount,
+    fee: '2749650',
+    date: WALLET_NOW - index * 86400 - 3600,
+    peer,
+    tx_hash: 'k1nYRmyLRn4PvAckJe7Zqta5rEu9phCURNxpD2KYRdw=',
+    ...extra,
+    pFlags: {incoming: amount.startsWith('-') ? undefined : true, ...extra.pFlags}
+  });
+
+  return [
+    make(0, '2460000000', {_: 'walletTransactionPeerUser', user_id: userId, address: walletSandboxOtherAddress}, {comment: 'For the coffee ☕️'}),
+    make(1, '50150000000', {_: 'walletTransactionPeerOnramp', pFlags: {}, address: walletSandboxOtherAddress, provider_name: 'MoonPay'} as any),
+    make(2, '-15460000000', {_: 'walletTransactionPeerUser', user_id: userId, address: walletSandboxOtherAddress}, {pFlags: {gasless: true}}),
+    make(3, '-235230000000', {_: 'walletTransactionPeerAddress', pFlags: {}, address: walletSandboxOtherAddress} as any),
+    make(4, '120000000000', {_: 'walletTransactionPeerUser', user_id: userId, address: walletSandboxOtherAddress}, {pFlags: {comment_encrypted: true}, comment: 'AAAA'}),
+    make(5, '-500000000000', {_: 'walletTransactionPeerAddress', pFlags: {}, address: walletSandboxOtherAddress, domain: 'foundation.ton'} as any, {pFlags: {failed: true}}),
+    // * a collectible that went to a user: the row says one item and shows it under itself
+    make(6, '-50000000', {_: 'walletTransactionPeerUser', user_id: userId, address: walletSandboxOtherAddress}, {nft: walletSandboxNfts[0]})
+  ];
+}
+
+export function walletSandboxManagers(options: {
+  balance?: string,
+  presence?: 'ready' | 'provisioning' | 'unavailable',
+  empty?: boolean,
+  nfts?: boolean,
+  flags?: {backup_enabled?: true, can_export_phrase?: true, can_enable_backup?: true},
+  /** what the old wallet on this device holds (`walletSandboxParkedRecord`); without it the chain does not answer */
+  parkedNanos?: string,
+  /** false: Telegram pays no fee today, every transfer shows its own */
+  gasless?: boolean
+} = {}) {
+  return (ctx: PopupStoryContext) => {
+    const presence = options.presence || 'ready';
+    const status = {
+      presence,
+      state: presence === 'ready' ? walletState(options.balance ?? '1720580000000', options.flags) : undefined,
+      date: Date.now()
+    };
+
+    const list = options.empty ? [] : walletSandboxTransactions(ctx.peer('private').toUserId());
+    return {
+      appWalletManager: {
+        getStatus: () => status,
+        getCachedStatus: () => status,
+        getTransactions: () => ({_: 'wallet.transactions', pFlags: {}, balance: status.state?.balance, transactions: list, chats: [] as any[], users: [] as any[]}),
+        getTransactionsByIds: (ids: string[]) => ({_: 'wallet.transactions', pFlags: {}, transactions: list.filter((item) => ids.includes(item.id)), chats: [] as any[], users: [] as any[]}),
+        getTransactionsByMsgHash: () => ({_: 'wallet.transactions', pFlags: {}, transactions: [] as WalletTransaction[], chats: [] as any[], users: [] as any[]}),
+        getRates: () => ({rates: {USD: 2.12, EUR: 1.87, GBP: 1.61, RUB: 172.4}, date: Date.now()}),
+        getUserAddress: () => ({_: 'walletUserAddress', pFlags: {}, user_id: ctx.peer('private').toUserId(), address: walletSandboxOtherAddress, public_key: walletSandboxPublicKey}),
+        getAddressOwner: (): any => undefined,
+        getGaslessInfo: () => ({available: options.gasless ?? true, left: 4, reset_at: WALLET_NOW + 86400, min_amount: '100000000', relayer_address: walletSandboxOtherAddress, date: Date.now()}),
+        performToncenterRequest: () => Promise.reject({type: 'WALLET_TONCENTER_ERROR', message: 'sandbox'}),
+        getAddressFunds: () => options.parkedNanos !== undefined ?
+          {nanos: options.parkedNanos, neverUsed: false} :
+          Promise.reject({type: 'WALLET_TONCENTER_ERROR', message: 'sandbox'}),
+        // * Telegram's provider is there, but no session opens in the sandbox: a moment of the button's spinner, then
+        // * the failure alert
+        isOnrampAvailable: () => true,
+        createOnrampSession: () => new Promise((resolve, reject) => setTimeout(() => reject({type: 'SANDBOX'}), 1500)),
+        getNfts: () => ({_: 'wallet.nftItems', items: options.nfts ? walletSandboxNfts : []}),
+        getExistingWaltBalance: () => ({_: 'wallet.existingBalance', pFlags: {}, url: ''}),
+        // * nothing kept of an earlier window (stories/wallet.ts `wallet/history/*` keep something), and what this one
+        // * changes of its "Sending" rows goes nowhere
+        getHistoryCache: (): void => undefined,
+        getPendingTransfers: (): any[] => [],
+        addPendingTransfer: (): void => undefined,
+        updatePendingTransfer: (): void => undefined,
+        removePendingTransfer: (): void => undefined,
+        applyStreamBalance: (): void => undefined
+      },
+      // * the collectible screen checks a gift's address before it offers to sell it
+      appGiftsManager: {
+        getGiftBySlug: walletSandboxGiftBySlug
+      },
+      appUsersManager: {
+        getTopPeers: () => [{id: ctx.peer('private'), rating: 1}],
+        isRegularUser: () => true
+      },
+      // * the recipient picker lists people only: users that are not bots
+      appPeersManager: {
+        isRegularUser: (peerId: PeerId) => peerId.isUser() && peerId !== ctx.peer('bot')
+      }
+    };
+  };
+}
+
+/** whose vault the key popups open: nobody's on this device */
+export const walletSandboxUserId = 0 as UserId;
+
+/** the key of a wallet used before on this device: the stories lay it over the session's vault, never into it */
+export const walletSandboxParkedRecord: WalletCustodyRecord = {
+  recordId: 'sandbox-parked',
+  // * a well-formed address: the engine reads it to tell it from the served one and to ask what it holds
+  address: 'UQAHPHGm2xBFeq_kGU6DuO0iV4zB9itglcr_NGme0wg9ciqH',
+  anchorKey: '11'.repeat(32),
+  signingKey: '11'.repeat(32),
+  secretRef: 'sandbox-parked-secret',
+  network: 'mainnet',
+  date: WALLET_NOW * 1000 - 30 * 86400e3
+};
+
+/** a made-up phrase: the quiz asks three of these back */
+export const walletSandboxWords = 'abandon ability able about above absent absorb abstract absurd abuse access accident'.split(' ');
+
+/** the made-up phrase after a key update: the anchor half stays, the signing half is new */
+export const walletSandboxRotatedWords = [
+  ...walletSandboxWords,
+  ...'actor actress actual adapt add addict address adjust admit adult advance advice'.split(' ')
+];
+
+/** what a key update costs on the sandbox's chain, nanograms */
+export const walletSandboxRotationFee = '4200000';
+
+const WALLET_NFT_ADDRESSES = [
+  'EQC5Yw1jHf6s6CTr5kn6XgGcAkCq3lWlDYDYp2Dz4TQYKL_F',
+  'EQC5Yw1jHf6s6CTr5kn6XgGcAkCq3lWlDYDYp2Dz4TQYKa_k',
+  'EQC5Yw1jHf6s6CTr5kn6XgGcAkCq3lWlDYDYp2Dz4TQYKp-H',
+  'EQC5Yw1jHf6s6CTr5kn6XgGcAkCq3lWlDYDYp2Dz4TQYK4-m'
+];
+
+// * Fragment's own collections: an item is a username or a number only in these (lib/wallet/nftKind.ts)
+const FRAGMENT_USERNAMES = 'EQCA14o1-VWhS2efqoh_9M1b_A9DtKTuoqfmkn83AbJzwnPi';
+const FRAGMENT_NUMBERS = 'EQAOQdwdw8kGftJCSFgOErM1mBjYPe4DBPq8-AhF6vr9si5N';
+
+/** a link the client only reads: the kind of a collectible comes from its Fragment URLs */
+const walletNftUrl = (url: string): WebDocument => ({_: 'webDocument', url, access_hash: 0, size: 0, attributes: []});
+const walletNftTrait = (trait_type: string, value: string) => ({_: 'wallet.nftAttribute' as const, trait_type, value});
+/** the metadata the server passes on as JSON */
+const walletNftExtra = (value: object) => ({_: 'dataJSON' as const, data: JSON.stringify(value)});
+
+/**
+ * Made-up collectibles, one of each kind: a gift, a username, an anonymous number and an NFT that is not
+ * Telegram's. No pictures: the sandbox fetches no web files.
+ */
+export const walletSandboxNfts: WalletNftItem[] = [
+  {
+    collection_address: walletSandboxOtherAddress,
+    name: 'Plush Pepe #12',
+    content_url: walletNftUrl('https://nft.fragment.com/gift/plushpepe-12.json'),
+    attributes: [walletNftTrait('Model', 'Frog'), walletNftTrait('Backdrop', 'Emerald'), walletNftTrait('Symbol', 'Star')],
+    // * the collection line under the name: a link, its page is on Fragment
+    extra: walletNftExtra({collection_name: 'Plush Pepes', collection_url: 'https://fragment.com/gifts/plushpepe'})
+  },
+  {
+    collection_address: FRAGMENT_USERNAMES,
+    name: '@sandbox',
+    content_url: walletNftUrl('https://nft.fragment.com/username/sandbox.json')
+  },
+  {
+    collection_address: FRAGMENT_NUMBERS,
+    name: '+888 0000 0007',
+    content_url: walletNftUrl('https://nft.fragment.com/number/88800000007.json')
+  },
+  {
+    collection_address: walletSandboxOtherAddress,
+    name: 'Sandbox Punk #93',
+    description: 'A collectible from the sandbox.',
+    attributes: [walletNftTrait('Hat', 'Beanie'), walletNftTrait('Eyes', 'Laser')],
+    // * a collection whose page is not on Fragment: named, not linked
+    extra: walletNftExtra({collection: {name: 'Sandbox Punks', external_link: 'https://punks.example.com'}})
+  }
+].map((fields: Partial<WalletNftItem>, index) => ({
+  _: 'wallet.nftItem' as const,
+  address: WALLET_NFT_ADDRESSES[index],
+  owner_address: WALLET_ADDRESS,
+  index: String(index),
+  ...fields
+}));
+
+/**
+ * The gift `payments.getUniqueStarGift` names for a collectible's slug: by default the collectible itself, at its
+ * own address; `address` puts it elsewhere, as a forged collectible's metadata would.
+ */
+export function walletSandboxGiftBySlug(slug: string, address?: string): MyStarGift {
+  const item = walletSandboxNfts.find((item) => item.content_url?.url.endsWith('/gift/' + slug + '.json'));
+  return {
+    ...myUniqueStarGift,
+    raw: {...uniqueStarGift, slug, gift_address: address ?? item?.address ?? walletSandboxOtherAddress}
+  };
+}
+
+
+/** the wallet's own address in the sandbox: a dApp's preview tells what leaves it from what comes back */
+export const walletSandboxAddress = WALLET_ADDRESS;
+
+/**
+ * Apps connected over TON Connect: made-up manifests without icons (the sandbox fetches no web files), one of them
+ * being disconnected by the server
+ */
+export const walletSandboxTonConnectSessions = [
+  {name: 'Fragment', url: 'https://fragment.com', closing: false},
+  {name: 'TON Stakers', url: 'https://app.tonstakers.com', closing: false},
+  {name: 'Getgems', url: 'https://getgems.io', closing: true}
+].map(({name, url, closing}, index) => ({
+  _: 'tonConnectSession' as const,
+  pFlags: closing ? {closing: true as const} : {},
+  id: String(7000 + index),
+  dapp_client_id: (index + 1).toString(16).repeat(64).slice(0, 64),
+  client_id: 'a8ed199729d5efd0c212c2542fd7d353e692e42c95e7e97a9e47e2569cbe4f61',
+  nonce: new Uint8Array(16).fill(index + 1),
+  manifest: {_: 'tonConnectManifest' as const, url, name},
+  date: WALLET_NOW - index * 86400
+}));

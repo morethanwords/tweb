@@ -11,6 +11,7 @@ export function inputRichText(text: RichText): RichText {
     case 'textAutoEmail':
     case 'textAutoPhone':
     case 'textBankCard':
+    case 'textTonAddress':
     case 'textDiff':
       return inputRichText(text.text);
     case 'textConcat':

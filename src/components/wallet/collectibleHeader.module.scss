@@ -1,0 +1,86 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+@use "../../scss/mixins" as *;
+
+// * iOS's rhythm: 18 px from the picture to the name, 6 px from the name to the collection
+.header {
+  gap: .375rem;
+}
+
+.sticker {
+  margin-bottom: .75rem;
+}
+
+// * a card, not an avatar: rounded corners, the animation clipped to them
+.media {
+  position: relative;
+  width: var(--wallet-collectible-size);
+  height: var(--wallet-collectible-size);
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.image,
+.lottie {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+// * the placeholder reads on the wallet's grey screen and on a white popup alike (iOS: a placeholder colour)
+.media .image {
+  background-color: var(--light-secondary-text-color);
+}
+
+.lottie {
+  // * a native button with the keyboard layer: none of its own box
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+
+  :global(canvas) {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.title {
+  @include text-overflow(2);
+}
+
+.collection {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.collectionLink {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  min-width: 0;
+  color: inherit;
+
+  @include hover-global() {
+    text-decoration: none;
+    color: var(--primary-text-color);
+  }
+}
+
+.collectionName {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chevron {
+  flex: 0 0 auto;
+  font-size: 1rem;
+}

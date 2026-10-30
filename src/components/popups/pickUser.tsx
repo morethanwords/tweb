@@ -599,7 +599,7 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
   createPopup(() => {
     return (
       <PopupElement
-        class="popup-forward"
+        class="popup-forward selector-picker"
         containerClass={options.autoHeight ? 'popup-forward-auto-height' : undefined}
         containerProps={options.containerProps}
         closable

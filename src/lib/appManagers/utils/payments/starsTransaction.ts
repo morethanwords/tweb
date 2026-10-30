@@ -22,7 +22,7 @@ export function getStarsTransactionPresentation(transaction: StarsTransaction) {
   let kind: string;
   let titleKey: LangPackKey;
   let titleArgs: (string | number)[] = [];
-  let icon: Icon = ton ? 'ton' : 'star';
+  let icon: Icon = ton ? 'gram_filled' : 'star';
   const set = (type: string, key: LangPackKey, args: (string | number)[] = []) => {
     kind = type;
     titleKey = key;

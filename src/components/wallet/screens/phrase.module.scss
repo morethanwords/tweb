@@ -1,0 +1,47 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+// * iOS's recovery info: three warnings, each on its own icon in the accent colour
+.warnings {
+  display: flex;
+  flex-direction: column;
+}
+
+.warning {
+  padding-inline-start: 3.75rem;
+}
+
+.warningText:global(.row-title) {
+  white-space: normal;
+  overflow: visible;
+}
+
+// * two columns, numbered down each column like the paper copy people write; the words cannot be selected (iOS)
+.grid {
+  margin: 0;
+  padding-block: 1rem;
+  // * the numbers stand at the inline start
+  padding-inline: 2.75rem 1.5rem;
+  border-radius: 1.5rem;
+  background-color: var(--surface-color);
+  columns: 2;
+  column-gap: 2rem;
+  font-size: 1.0625rem;
+  line-height: 1.875rem;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.word {
+  padding-inline-start: .25rem;
+  font-weight: var(--font-weight-bold);
+
+  &::marker {
+    color: var(--secondary-text-color);
+    font-weight: normal;
+    font-variant-numeric: tabular-nums;
+  }
+}

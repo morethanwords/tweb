@@ -137,9 +137,17 @@ for(let part = 0; part < PARTS; ++part) test(`every popup story is mirrored in R
   // * the panel would take a third of the window, popups centre on what is left
   await preparePopupSandbox(page, false);
 
-  const stories = takeStoryPart(await page.evaluate(() => window.popupSandbox.list()), part, PARTS)
+  // * RTL_STORIES=a,b picks stories, and `wallet/*` every story under a prefix; empty is no filter
+  const requested = process.env.RTL_STORIES?.split(',').map((entry) => entry.trim()).filter(Boolean);
+  const filter = requested?.length ? requested : undefined;
+  const matches = (entry: string, id: string) => entry.endsWith('*') ? id.startsWith(entry.slice(0, -1)) : id === entry;
+  const all = await page.evaluate(() => window.popupSandbox.list());
+  // * an entry that names no story is a typo or a story gone, never a pass with nothing compared
+  expect(filter?.filter((entry) => !all.some(({id}) => matches(entry, id))) ?? [], 'RTL_STORIES names no such story').toEqual([]);
+  const stories = takeStoryPart(filter ? all.filter(({id}) => filter.some((entry) => matches(entry, id))) : all, part, PARTS)
   // * a surface (the sign-in cards, the in-app browser) owns the screen rather than a popup
   .filter((story) => !story.surface);
+  test.skip(!!filter && !stories.length, 'none of RTL_STORIES falls in this part');
   expect(stories.length).toBeGreaterThan(0);
 
   const failed: string[] = [];

@@ -6,7 +6,7 @@ import Button from '@components/button';
 import SetTransition from '@components/singleTransition';
 import Modes from '@config/modes';
 import PeerTitle from '@components/peerTitle';
-import I18n from '@lib/langPack';
+import I18n, {i18n} from '@lib/langPack';
 import findUpTag from '@helpers/dom/findUpTag';
 import crossfadeContent, {getCrossfadingTo, STATUS_CROSSFADE_DURATION} from '@helpers/dom/crossfadeContent';
 import {TextHighlight} from '@helpers/dom/textHighlight';
@@ -51,6 +51,8 @@ export type DialogDom = {
   mentionsBadge?: HTMLElement,
   reactionsBadge?: HTMLElement,
   pollVotesBadge?: HTMLElement,
+  /** an unread incoming Gram transfer, in the mention's place */
+  gramBadge?: HTMLElement,
   /** opens a bot's main mini app without opening the chat */
   botAppButton?: HTMLElement,
   lastMessageSpan: HTMLSpanElement,
@@ -204,6 +206,7 @@ export type DialogElementBadgeState = {
   mentions: boolean,
   reactions: boolean,
   pollVotes: boolean,
+  gram?: boolean,
   botApp?: boolean,
   transitionDuration?: number
 };
@@ -523,6 +526,18 @@ export class DialogElement {
     this.dom.subtitleEl.append(badge);
   }
 
+  // * the gem on the unread colour, as iOS marks a chat whose last message is a transfer not read yet
+  public createGramBadge() {
+    if(this.dom.gramBadge) return;
+    const badge = this.dom.gramBadge = document.createElement('div');
+    badge.className = `dialog-subtitle-badge badge badge-${BADGE_SIZE} dialog-subtitle-badge-gram`;
+    // * it stands for the unread count too: a screen reader hears what the gem says
+    const label = i18n('Wallet.ChatList.UnreadTransfer');
+    label.classList.add('sr-only');
+    badge.append(Icon('gram_filled'), label);
+    this.dom.subtitleEl.append(badge);
+  }
+
   public createPollVotesBadge() {
     if(this.dom.pollVotesBadge) return;
     const badge = this.dom.pollVotesBadge = document.createElement('div');
@@ -574,6 +589,7 @@ export class DialogElement {
       mentionsBadge: !!this.dom.mentionsBadge,
       reactionsBadge: !!this.dom.reactionsBadge,
       pollVotesBadge: !!this.dom.pollVotesBadge,
+      gramBadge: !!this.dom.gramBadge,
       botAppButton: !!this.dom.botAppButton
     };
 
@@ -587,6 +603,7 @@ export class DialogElement {
       ['mentionsBadge', options.mentions],
       ['reactionsBadge', options.reactions],
       ['pollVotesBadge', options.pollVotes],
+      ['gramBadge', !!options.gram],
       ['botAppButton', botApp]
     ];
 
@@ -610,6 +627,7 @@ export class DialogElement {
     if(options.mentions) this.createMentionsBadge();
     if(options.reactions) this.createReactionsBadge();
     if(options.pollVotes) this.createPollVotesBadge();
+    if(options.gram) this.createGramBadge();
     if(botApp) this.createBotAppButton();
 
     const subtitleBadgesLength = [
@@ -618,6 +636,7 @@ export class DialogElement {
       options.mentions,
       options.reactions,
       options.pollVotes,
+      options.gram,
       botApp
     ].filter(Boolean).length;
     const hasOnlyPinnedBadge = pinned && subtitleBadgesLength === 1;
@@ -688,6 +707,7 @@ export class DialogElement {
       mentionsBadge: options.mentions,
       reactionsBadge: options.reactions,
       pollVotesBadge: options.pollVotes,
+      gramBadge: !!options.gram,
       botAppButton: botApp,
       hasOnlyPinnedBadge,
       unreadText: options.unreadText,
@@ -729,7 +749,7 @@ export class DialogElement {
   }
 
   public toggleBadgeByKey(
-    key: Extract<keyof DialogDom, 'unreadBadge' | 'unreadAvatarBadge' | 'mentionsBadge' | 'reactionsBadge' | 'pollVotesBadge' | 'pinnedBadge' | 'botAppButton'>,
+    key: Extract<keyof DialogDom, 'unreadBadge' | 'unreadAvatarBadge' | 'mentionsBadge' | 'reactionsBadge' | 'pollVotesBadge' | 'gramBadge' | 'pinnedBadge' | 'botAppButton'>,
     hasBadge: boolean,
     justCreated: boolean,
     batch?: boolean

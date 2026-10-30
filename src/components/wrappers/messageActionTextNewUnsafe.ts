@@ -4,11 +4,15 @@ import htmlToSpan from '@helpers/dom/htmlToSpan';
 import setInnerHTML, {setDirection} from '@helpers/dom/setInnerHTML';
 import {wrapCallDuration} from '@components/wrappers/wrapDuration';
 import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
+import {absNanos, formatFiat} from '@components/wallet/format';
+import {getWalletFiatRate, loadWalletFiatRate, WalletFiatRate} from '@components/wallet/fiat';
+import {formatTransferGrams, wrapGramTransferCompactText} from '@components/wallet/transferText';
 import {ForumTopic, Message, MessageAction, MessageEntity, MessageMedia, MessageReplyHeader, StarGift, TextWithEntities} from '@layer';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import I18n, {FormatterArgument, FormatterArguments, i18n, join, langPack, LangPackKey, _i18n} from '@lib/langPack';
-import {GENERAL_TOPIC_ID} from '@appManagers/constants';
+import {GENERAL_TOPIC_ID, SERVICE_PEER_ID} from '@appManagers/constants';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import tsNow from '@helpers/tsNow';
 import wrapPlainText from '@lib/richTextProcessor/wrapPlainText';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import rootScope from '@lib/rootScope';
@@ -210,9 +214,9 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
 
     const managers = bindManagersToSession(rootScope.managers);
 
-    const getNameDivHTML = (peerId: PeerId, plain: boolean) => {
+    const getNameDivHTML = (peerId: PeerId, plain: boolean, onlyFirstName?: boolean) => {
       // a name in a service message opens its peer on click (onBubblesClick): a link to it
-      return plain ? getPeerTitle({peerId, plainText: plain}) : wrapPeerTitle({peerId, link: !noLinks});
+      return plain ? getPeerTitle({peerId, plainText: plain, onlyFirstName}) : wrapPeerTitle({peerId, link: !noLinks, onlyFirstName});
     };
 
     const wrapTruncatedText = (text: string, entities: MessageEntity[] | undefined, maxLength: number) => {
@@ -705,6 +709,64 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         args.push(paymentsWrapCurrencyAmount(action.amount, action.currency, false, true, plain));
 
         langPackKey = isMe ? 'ActionGiftOutbound' : 'ActionGiftInbound';
+
+        break;
+      }
+
+      case 'messageActionWalletTonConnectRequest': {
+        // * a connected app's request (TON Connect): pending until the server marks it answered or it expires
+        const name = action.dapp_name?.replace(/[\u0000-\u001f\u007f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '').trim();
+        const state = action.pFlags.accepted ? 'Processed' : action.pFlags.declined ? 'Declined' : action.expires <= tsNow(true) ? 'Expired' : 'Pending';
+        // * what a pending request asks for, by its method (tdesktop): a transfer unless named otherwise
+        const asks = state === 'Pending' && name && (action.topic === 'signData' || action.topic === 'disconnect') ? action.topic : '';
+        langPackKey = (asks ?
+          (asks === 'signData' ? 'Wallet.Action.TonConnectAppSignData' : 'Wallet.Action.TonConnectAppDisconnect') :
+          name ? 'Wallet.Action.TonConnectApp' + state : 'Wallet.Action.TonConnect' + state) as LangPackKey;
+        args = name ? [wrapSomeText(name, plain, [{_: 'messageEntityBold', offset: 0, length: name.length}])] : [];
+        break;
+      }
+
+      case 'messageActionGramTransfer': {
+        const out = !!message.pFlags.out;
+        // * the service account's transfers name nobody, as in the desktop client: "You received 1.5 Grams"
+        const anonymous = message.peerId === SERVICE_PEER_ID;
+        // * under the sender's name (a chat list row, a notification): "sent you 1.5 Grams", no name, no fiat
+        if(options.compact) {
+          const text = wrapGramTransferCompactText({transfer: action, out, anonymous, notification: options.compact === 'notification'});
+          if(plain) return text;
+          element.append(wrapSomeText(text, plain));
+          return element;
+        }
+
+        // * "You sent 1.5 Grams ($4.20) to Alice" / "Alice sent you 1.5 Grams ($4.20)": at most three decimals, the
+        // * value in the wallet's currency, the first name (iOS walletTransferServiceMessageString, tdesktop shortName)
+        const nanos = absNanos(action.amount);
+        const grams = formatTransferGrams(nanos);
+        const withFiat = (rate: WalletFiatRate) => {
+          // * "(2 308,64 €)" stays on one line
+          const fiat = rate && formatFiat(nanos, rate.perGram, rate.currency).replace(/ /g, '\u00a0');
+          return fiat ? I18n.format('Wallet.Action.AmountFiat', true, [grams, fiat]) : grams;
+        };
+        const rate = getWalletFiatRate();
+        let amount: FormatterArgument = withFiat(rate);
+        if(!plain) {
+          const span = document.createElement('span');
+          span.textContent = amount;
+          // * a currency other than the dollar has its rate a moment later the first time: the value follows then
+          if(!rate) loadWalletFiatRate().then((rate) => rate && (span.textContent = withFiat(rate)));
+          amount = span;
+        }
+
+        if(anonymous) {
+          langPackKey = out ? 'Wallet.Action.SentUnknown' : 'Wallet.Action.ReceivedUnknown';
+          args = [amount];
+        } else if(out) {
+          langPackKey = 'Wallet.Action.Sent';
+          args = [amount, getNameDivHTML(message.peerId, plain, true)];
+        } else {
+          langPackKey = 'Wallet.Action.Received';
+          args = [getNameDivHTML(message.fromId, plain, true), amount];
+        }
 
         break;
       }

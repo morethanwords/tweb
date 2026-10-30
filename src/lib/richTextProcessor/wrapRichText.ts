@@ -470,6 +470,22 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
         break;
       }
 
+      // * a TON wallet address the server marked: a click opens what can be done with it (wallet/addressMenu);
+      // * the link itself starts a transfer to it, for wherever the menu is not
+      case 'messageEntityTonAddress': {
+        if(!options.noLinks) {
+          element = document.createElement('a');
+          element.classList.add('ton-address');
+          (element as HTMLAnchorElement).href = encodeEntities('tg://sendgrams?to=' + encodeURIComponent(fullEntityText));
+          if(!contextExternal) {
+            element.setAttribute('onclick', 'openTonAddress(this)');
+            element.setAttribute('aria-haspopup', 'menu');
+          }
+        }
+
+        break;
+      }
+
       case 'messageEntityBotCommand': {
         // if(!(options.noLinks || options.noCommands || contextExternal)/*  && !entity.unsafe */) {
         if(!options.noLinks && passEntities[entity._]) {

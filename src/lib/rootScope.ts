@@ -23,6 +23,8 @@ import type {UnconfirmedAuthorization} from '@appManagers/appAccountManager';
 import type {ActiveAccountNumber} from '@lib/accounts/types';
 import type {BotConnectionReview} from '@appManagers/appBusinessManager';
 import type {StreamedMessageDraft, StreamedMessageDraftRemovalReason} from '@appManagers/utils/messages/streamedMessageDrafts';
+import type {WalletSentTransfer, WalletStatus, WalletTonConnectRequestAction} from '@appManagers/appWalletManager';
+import type {TonConnectSession} from '@layer';
 import {NULL_PEER_ID, UserAuth} from '@appManagers/constants';
 import EventListenerBase, {EventListenerListeners} from '@helpers/eventListenerBase';
 import {MOUNT_CLASS_TO} from '@config/debug';
@@ -228,6 +230,14 @@ export type BroadcastEvents = {
   'saved_tags_clear': void,
 
   'stars_balance': {balance: Long, fulfilledReservedStars?: number, ton: boolean},
+
+  'wallet_status': WalletStatus,
+  'wallet_transfer_sent': WalletSentTransfer,
+  'wallet_tonconnect_session': TonConnectSession,
+  /** sessions the server wants the wallet to close: the dApp went away */
+  'wallet_tonconnect_pending_disconnect': string[],
+  /** a dApp's request in the service chat, new or answered */
+  'wallet_tonconnect_request': WalletTonConnectRequestAction,
 
   'file_speed_limited': {increaseTimes: number, isUpload: boolean},
 

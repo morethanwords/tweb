@@ -846,6 +846,7 @@ PopupElement.Button = (props: {
       class={classNames(
         !props.noDefaultClass && 'popup-button btn',
         props.noDefaultClass ? undefined : (props.danger ? 'danger' : 'primary'),
+        props.preloader && pending() && 'is-pending',
         props.class
       )}
       noRipple={props.noRipple}

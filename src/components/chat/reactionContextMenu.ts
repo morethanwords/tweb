@@ -6,7 +6,7 @@ import {Middleware} from '@helpers/middleware';
 import ListenerSetter from '@helpers/listenerSetter';
 import ButtonMenu, {ButtonMenuItemOptions} from '@components/buttonMenu';
 import ButtonIcon from '@components/buttonIcon';
-import PeerTitle from '@components/peerTitle';
+import ButtonMenuPeerText from '@components/buttonMenuPeerText';
 import showReactedListPopup from '@components/popups/reactedList';
 import ReactionsElement from '@components/chat/reactions';
 import ReactionElement from '@components/chat/reaction';
@@ -49,24 +49,6 @@ async function getReactionPack(managers: AppManagers, reaction: Reaction): Promi
     input,
     title: stickerSet.set.title
   };
-}
-
-function createPeerText(peerId: PeerId, date: number) {
-  const container = document.createElement('span');
-  container.classList.add('reaction-context-menu-peer');
-
-  const title = new PeerTitle({
-    peerId,
-    dialog: false
-  }).element;
-  title.classList.add('reaction-context-menu-peer-title');
-
-  const subtitle = document.createElement('span');
-  subtitle.classList.add('reaction-context-menu-peer-date');
-  subtitle.append(formatFullSentTime(date, false));
-
-  container.append(title, subtitle);
-  return container;
 }
 
 export default async function createReactionContextMenu({
@@ -138,7 +120,7 @@ export default async function createReactionContextMenu({
     const button: ButtonMenuItemOptions = {
       avatarInfo: {peerId},
       className: 'reaction-context-menu-participant with-subtitle',
-      textElement: createPeerText(peerId, peerReaction.date),
+      textElement: ButtonMenuPeerText(peerId, formatFullSentTime(peerReaction.date, false)),
       onClick: undefined
     };
     buttons.push(button);

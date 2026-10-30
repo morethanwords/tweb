@@ -991,6 +991,25 @@ $btn-menu-z-index: 4;
   opacity: 0.5;
 }
 
+// * a menu item for a person (ButtonMenuPeerText): the name over a smaller grey line
+.btn-menu-item-peer {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+
+  &-title,
+  &-subtitle {
+    @include text-overflow();
+  }
+
+  &-subtitle {
+    color: var(--secondary-text-color);
+    font-size: var(--font-size-12);
+    font-weight: 400;
+    line-height: var(--line-height-14);
+  }
+}
+
 .reaction-context-menu {
   width: min(15rem, calc(100vw - 2rem)) !important;
   max-width: calc(100vw - 2rem);
@@ -999,24 +1018,6 @@ $btn-menu-z-index: 4;
 
   &-participant {
     min-width: 0;
-  }
-
-  &-peer {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-
-    &-title,
-    &-date {
-      @include text-overflow();
-    }
-
-    &-date {
-      color: var(--secondary-text-color);
-      font-size: var(--font-size-12);
-      font-weight: 400;
-      line-height: var(--line-height-14);
-    }
   }
 
   &-delete {

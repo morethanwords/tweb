@@ -1,5 +1,6 @@
 import {expect} from '@playwright/test';
 import {test} from './workerContext';
+import {openStory} from './popupSandbox.helpers';
 import Icons from '../src/icons';
 import {createTransactionFixtures} from '../src/components/popupSandbox/transactionFixtures';
 
@@ -63,14 +64,14 @@ test('all Stars and Gram receipts show the operation, exact amount, status and t
   for(const {id, transaction} of cases) {
     await test.step(id, async() => {
       errors.length = 0;
-      await page.evaluate((id) => window.popupSandbox.open('transaction/' + id), id);
+      expect(await openStory(page, 'transaction/' + id)).toBeNull();
       const popup = page.locator('.popup-stars-pay.active');
       await expect(popup).toBeVisible({timeout: 15_000});
       const title = popup.locator('[data-popup-title]');
       await expect(title).not.toBeEmpty();
       const expectedTitle = titles[id.split('/')[1]];
       if(expectedTitle) await expect(title).toHaveText(expectedTitle);
-      const amount = popup.locator('.popup-stars-intro > .popup-stars-pay-amount');
+      const amount = popup.locator('.popup-stars-intro > .currency-amount');
       await expect(amount).toContainText(amountText(transaction));
       await expect(amount.locator('.tgico')).toHaveCount(transaction.amount._ === 'starsTonAmount' ? 1 : 0);
       if(transaction.id) await expect(popup.locator('table')).toContainText(transaction.id);
@@ -120,7 +121,7 @@ for(const ton of [false, true]) {
     await page.goto('/?popups=1');
     await page.waitForFunction(() => !!window.popupSandbox);
     await page.evaluate(() => window.popupSandbox.ready());
-    await page.evaluate((id) => window.popupSandbox.open(id), `transaction/history-${ton ? 'gram' : 'stars'}-${owner}`);
+    expect(await openStory(page, `transaction/history-${ton ? 'gram' : 'stars'}-${owner}`)).toBeNull();
     const popup = page.locator('.popup-stars.active');
     await expect(popup).toBeVisible();
     const rows = popup.locator('.popup-stars-transactions-section .row');
@@ -145,7 +146,7 @@ test('a transaction source link navigates to its exact channel message', async({
   await page.goto('/?popups=1');
   await page.waitForFunction(() => !!window.popupSandbox);
   await page.evaluate(() => window.popupSandbox.ready());
-  await page.evaluate(() => window.popupSandbox.open('transaction/stars/message-link'));
+  expect(await openStory(page, 'transaction/stars/message-link')).toBeNull();
   await page.evaluate(() => {
     (window as any).appImManager.setInnerPeer = (params: unknown) => (window as any).transactionNavigation = params;
   });
@@ -160,7 +161,7 @@ test('purchased media opens in the real media viewer', async({page}) => {
   await page.waitForFunction(() => !!window.popupSandbox);
   await page.evaluate(() => window.popupSandbox.ready());
   await page.evaluate(() => (window.popupSandbox as unknown as {hide(): void}).hide());
-  await page.evaluate(() => window.popupSandbox.open('transaction/stars/media'));
+  expect(await openStory(page, 'transaction/stars/media')).toBeNull();
   await page.locator('.popup-stars-pay.active .popup-stars-pay-avatar').click();
   await expect(page.locator('.media-viewer-whole')).toBeVisible({timeout: 15_000});
   // * the items of the purchase are one album: the strip under the media shows them all
@@ -180,10 +181,10 @@ test('mobile Gram receipt and history fit the viewport without truncating int64 
   await page.waitForFunction(() => !!window.popupSandbox);
   await page.evaluate(() => window.popupSandbox.ready());
   await page.evaluate(() => (window.popupSandbox as unknown as {hide(): void}).hide());
-  await page.evaluate(() => window.popupSandbox.open('transaction/stars/int64-gram'));
+  expect(await openStory(page, 'transaction/stars/int64-gram')).toBeNull();
   const receipt = page.locator('.popup-stars-pay.active');
   await expect(receipt).toBeVisible();
-  await expect(receipt.locator('.popup-stars-intro > .popup-stars-pay-amount')).toContainText('+9223372036.854775807');
+  await expect(receipt.locator('.popup-stars-intro > .currency-amount')).toContainText('+9223372036.854775807');
   const overflow = async() => page.locator('.popup.active .popup-container, .popup.active table, .popup.active .row').evaluateAll((elements) => elements.filter((element) => {
     const node = element as HTMLElement;
     return node.clientWidth > 0 && node.scrollWidth > node.clientWidth + 1;
@@ -192,7 +193,7 @@ test('mobile Gram receipt and history fit the viewport without truncating int64 
   await receipt.screenshot({path: testInfo.outputPath('gram-int64-mobile.png'), animations: 'disabled'});
   await page.evaluate(() => window.popupSandbox.closePopups());
   await expect(page.locator('.popup-stars-pay')).toHaveCount(0);
-  await page.evaluate(() => window.popupSandbox.open('transaction/history-gram-self'));
+  expect(await openStory(page, 'transaction/history-gram-self')).toBeNull();
   const history = page.locator('.popup-stars.active');
   await expect(history.locator('.popup-stars-transactions-section .row')).toHaveCount(cases.filter(({transaction}) => transaction.id && transaction.amount._ === 'starsTonAmount').length);
   await history.screenshot({path: testInfo.outputPath('gram-history-mobile.png'), animations: 'disabled'});
@@ -208,17 +209,17 @@ test('bot subscription and one-nanogram invoice receipts render their amounts', 
   await page.goto('/?popups=1');
   await page.waitForFunction(() => !!window.popupSandbox);
   await page.evaluate(() => window.popupSandbox.ready());
-  await page.evaluate(() => window.popupSandbox.open('transaction/bot-subscription'));
+  expect(await openStory(page, 'transaction/bot-subscription')).toBeNull();
   const popup = page.locator('.popup-stars-pay.active');
   await expect(popup).toBeVisible();
   await expect(popup.locator('table')).toContainText('Sandbox Bot');
   await expect(popup.locator('button').filter({hasText: /Cancel Subscription/i})).toBeVisible();
   await page.evaluate(() => window.popupSandbox.closePopups());
   await expect(popup).toHaveCount(0);
-  await page.evaluate(() => window.popupSandbox.open('transaction/gram-nano-receipt'));
+  expect(await openStory(page, 'transaction/gram-nano-receipt')).toBeNull();
   await expect(popup).toBeVisible();
-  await expect(popup.locator('.popup-stars-intro > .popup-stars-pay-amount')).toContainText('-0.000000001');
-  await expect(popup.locator('.popup-stars-intro > .popup-stars-pay-amount .tgico')).toHaveCount(1);
+  await expect(popup.locator('.popup-stars-intro > .currency-amount')).toContainText('-0.000000001');
+  await expect(popup.locator('.popup-stars-intro > .currency-amount .tgico')).toHaveCount(1);
   await expect(popup.locator('table')).toContainText('sandbox-one-nanogram');
   expect(errors).toEqual([]);
 });
@@ -228,10 +229,10 @@ test('history retries failures, loads the next page and preserves same-ID refund
   await page.waitForFunction(() => !!window.popupSandbox);
   await page.evaluate(() => window.popupSandbox.ready());
   await page.evaluate(() => (window.popupSandbox as unknown as {hide(): void}).hide());
-  await page.evaluate(() => window.popupSandbox.open('transaction/history-retry-pages'));
+  expect(await openStory(page, 'transaction/history-retry-pages')).toBeNull();
   const popup = page.locator('.popup-stars.active');
   await popup.getByRole('button', {name: 'Retry', exact: true}).click();
-  const rows = popup.locator('.popup-stars-transaction-row');
+  const rows = popup.locator('.transaction-row');
   await expect(rows).toHaveCount(3);
   await expect(rows.filter({hasText: 'Original expense'})).toHaveCount(1);
   await expect(rows.filter({hasText: 'Same ID received'})).toHaveCount(1);

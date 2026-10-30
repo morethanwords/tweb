@@ -82,4 +82,47 @@ describe('AppPromoManager', () => {
     expect(dispatchEvent).not.toHaveBeenCalled();
     expect(vi.getTimerCount()).toBe(1);
   });
+
+  it('asks again for a suggestion the server adds without pushing, unless it is pending or dismissed already', async() => {
+    vi.useFakeTimers();
+
+    const KEY = 'WALLET_FIRST_INCOMING_TRANSFER';
+    const answer = (pending: string[], dismissed: string[] = []): HelpPromoData.helpPromoData => ({
+      _: 'help.promoData',
+      pFlags: {},
+      expires: Date.now() / 1000 + HOUR / 1000,
+      pending_suggestions: pending,
+      dismissed_suggestions: dismissed,
+      chats: [],
+      users: []
+    });
+    let next = answer([]);
+    const invokeApiSingleProcess = vi.fn((options: {
+      processResult: (result: HelpPromoData) => unknown
+    }) => Promise.resolve(options.processResult(next)));
+    const manager = new AppPromoManager();
+    Object.assign(manager as any, {
+      apiManager: {invokeApiSingleProcess},
+      appPeersManager: {saveApiPeers: vi.fn()},
+      rootScope: {dispatchEvent: vi.fn()}
+    });
+
+    expect(await manager.hasPendingSuggestion(KEY)).toBe(false);
+    expect(await manager.hasPendingSuggestion(KEY)).toBe(false);
+    expect(invokeApiSingleProcess).toHaveBeenCalledTimes(1);
+
+    next = answer([KEY]);
+    manager.invalidateSuggestion(KEY);
+    expect(invokeApiSingleProcess).toHaveBeenCalledTimes(2);
+    expect(await manager.hasPendingSuggestion(KEY)).toBe(true);
+
+    manager.invalidateSuggestion(KEY);
+    expect(invokeApiSingleProcess).toHaveBeenCalledTimes(2);
+
+    next = answer([], [KEY]);
+    await manager.getPromoData(true);
+    manager.invalidateSuggestion(KEY);
+    expect(invokeApiSingleProcess).toHaveBeenCalledTimes(3);
+    expect(await manager.hasPendingSuggestion(KEY)).toBe(false);
+  });
 });

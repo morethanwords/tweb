@@ -1,0 +1,216 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+// * TON Connect: the connect sheet, an app's request and the connected apps (iOS WalletConnectScreen,
+// * WalletTransferScreen, WalletAppsScreen)
+
+.popup {
+  --popup-width: 26.25rem;
+}
+
+.body {
+  padding: 0 1rem 1rem;
+}
+
+// * an app's icon from its manifest, or its first letter
+.icon {
+  width: var(--tonconnect-icon-size, 5.5rem);
+  height: var(--tonconnect-icon-size, 5.5rem);
+  border-radius: 22.5%;
+  flex: 0 0 auto;
+}
+
+.iconImage {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.iconLetter {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  background-color: var(--primary-color);
+  color: #fff;
+  font-weight: var(--font-weight-bold);
+  font-size: calc(var(--tonconnect-icon-size, 5.5rem) * .45);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.iconLoading {
+  background-color: var(--light-secondary-text-color);
+}
+
+.domain {
+  font-weight: var(--font-weight-bold);
+  color: var(--secondary-text-color);
+  word-break: break-all;
+}
+
+.text {
+  margin: 0 1rem;
+  text-align: center;
+  font-size: .9375rem;
+  line-height: 1.25rem;
+  color: var(--secondary-text-color);
+  white-space: pre-line;
+}
+
+.card {
+  margin: 1.125rem auto 1.25rem;
+  width: min(100%, 22.5rem);
+}
+
+.caption {
+  margin: 0 1rem;
+  text-align: center;
+  font-size: .8125rem;
+  line-height: 1.125rem;
+  color: var(--secondary-text-color);
+}
+
+.error {
+  margin: .75rem 1rem 0;
+  text-align: center;
+  font-size: .875rem;
+  line-height: 1.25rem;
+  color: var(--danger-color);
+}
+
+// * Cancel and the action, side by side (iOS)
+.footer {
+  display: flex;
+  align-items: center;
+  gap: .625rem;
+
+  // * doubled: the popup's stacked footer buttons keep their own gap otherwise
+  &#{&} > :global(.popup-footer-button) {
+    flex: 1 1 0;
+    min-width: 0;
+    margin: 0;
+  }
+}
+
+// MARK: Request
+
+// * the sheet's width, which the amount is fitted to
+.amountHeader {
+  container-type: inline-size;
+}
+
+// * every digit of what is approved, clipped never: a long amount gets smaller to fit the width (by its length in
+// * ems, `--amount-ems`, with 5% to spare) down to a legible size, and past that GRAM, then the number itself, goes on
+// * in another line
+.amount {
+  font-size: clamp(1.25rem, 95cqi / var(--amount-ems, 1), 2rem);
+  line-height: 1.25em;
+  font-weight: var(--font-weight-bold);
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  column-gap: .125em;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.amountFraction {
+  font-size: .75em;
+}
+
+.amountSuffix {
+  font-size: .625em;
+}
+
+.recipient {
+  width: 100%;
+  text-align: center;
+  color: var(--secondary-text-color);
+  font-size: .9375rem;
+  line-height: 1.25rem;
+}
+
+.section {
+  margin-top: .75rem;
+}
+
+// * on one line while there is room; a long one breaks rather than leave the row, its sign kept with its digits
+.actionAmount {
+  word-break: break-all;
+  font-weight: var(--font-weight-bold);
+}
+
+.actionIncoming {
+  color: var(--green-color);
+}
+
+.actionFailed {
+  color: var(--danger-color);
+}
+
+.fee {
+  margin: .75rem 1rem 0;
+  font-size: .875rem;
+  line-height: 1.25rem;
+  color: var(--secondary-text-color);
+}
+
+.warning {
+  color: var(--danger-color);
+}
+
+// MARK: Sign data
+
+.dataTitle {
+  margin: .25rem 1rem .5rem;
+  font-weight: var(--font-weight-bold);
+}
+
+.data {
+  margin: 0 0 .75rem;
+  padding: .75rem 1rem;
+  max-height: 15rem;
+  overflow: auto;
+  border-radius: .75rem;
+  background-color: var(--surface-color);
+  font-family: var(--font-monospace);
+  font-size: .875rem;
+  line-height: 1.25rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.blind {
+  margin: 0 0 .75rem;
+  padding: .75rem 1rem;
+  border-radius: .75rem;
+  background-color: var(--surface-color);
+  font-size: .9375rem;
+  line-height: 1.25rem;
+}
+
+.blindTitle {
+  display: flex;
+  align-items: center;
+  gap: .375rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--danger-color);
+  margin-bottom: .125rem;
+}
+
+// MARK: Connected apps
+
+.rowIcon {
+  --tonconnect-icon-size: 2.5rem;
+}
+
+.empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--secondary-text-color);
+}

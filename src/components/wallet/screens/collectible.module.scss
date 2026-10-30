@@ -1,0 +1,42 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+// * 12 px under the header (iOS), the metadata's own line breaks kept
+.description {
+  margin-top: .375rem;
+  padding-inline: 1rem;
+  text-align: center;
+  color: var(--secondary-text-color);
+  font-size: var(--font-size-15);
+  line-height: var(--line-height-15);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.table {
+  margin-inline: auto;
+}
+
+// * the values on the surface, the names on the grey, as a popup's table looks (iOS: a filled right column)
+.tableCell {
+  background-color: var(--surface-color);
+}
+
+.tableKey {
+  background-color: var(--background-color);
+}
+
+// * the owner is you: your avatar and "You", in the colour of a peer the table names
+.owner {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  color: var(--primary-color);
+
+  :global(.avatar) {
+    flex-shrink: 0;
+  }
+}

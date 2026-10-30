@@ -26,7 +26,7 @@ import ListenerSetter from '@helpers/listenerSetter';
 import showChatToast from '@components/chat/chatToast';
 import {AudioElement, DeferredMediaElement, isAudioElement} from '@components/audio';
 import {ChannelParticipant, Chat as MTChat, ChatParticipant, Document, Game, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, UserFull, WebPage, WebPageAttribute, Reaction, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, PeerSettings, LangPackString, ForumTopic, MessageAction} from '@layer';
-import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP, STARS_CURRENCY} from '@appManagers/constants';
+import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP, SERVICE_PEER_ID, STARS_CURRENCY} from '@appManagers/constants';
 import {FocusDirection, ScrollStartCallbackDimensions} from '@helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '@hooks/useHeavyAnimationCheck';
 import {doubleRaf, fastRaf, fastRafPromise} from '@helpers/schedulers';
@@ -45,6 +45,7 @@ import {hideToast, toastNew} from '@components/toast';
 import {getMiddleware, Middleware, MiddlewareHelper} from '@helpers/middleware';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent, CLICK_EVENT_NAME, simulateClickEvent} from '@helpers/dom/clickEvent';
+import ensureButtonSemantics from '@helpers/dom/ensureButtonSemantics';
 import htmlToDocumentFragment from '@helpers/dom/htmlToDocumentFragment';
 import reflowScrollableElement from '@helpers/dom/reflowScrollableElement';
 import setInnerHTML, {setDirection} from '@helpers/dom/setInnerHTML';
@@ -213,6 +214,7 @@ import {getCurrentNewMediaPopup} from '@components/popups/newMedia';
 import showStarGiftInfoPopup from '@components/popups/starGiftInfo';
 import {StarGiftBubble, UniqueStarGiftWebPageBox} from '@components/chat/bubbles/starGift';
 import {PremiumGiftBubble} from '@components/chat/bubbles/premiumGift';
+import WalletChatCard from '@components/wallet/chatCard';
 import {UnknownUserBubble} from '@components/chat/bubbles/unknownUser';
 import {
   HIDDEN_LINK_ENTITY_TYPES,
@@ -9543,6 +9545,30 @@ export default class ChatBubbles {
           }), content, middleware);
 
           bubbleContainer.after(content);
+        } else if(action._ === 'messageActionGramTransfer') {
+          // * a wallet transfer in the chat: the card opens its details in the wallet
+          const content = bubbleContainer.cloneNode(false) as HTMLElement;
+          content.classList.add('has-service-before');
+
+          this.wrapSomeSolid(() => WalletChatCard({
+            message: message as Message.messageService,
+            animationGroup: this.chat.animationGroup,
+            middleware
+          }), content, middleware);
+
+          bubbleContainer.after(content);
+        } else if(action._ === 'messageActionWalletTonConnectRequest') {
+          // * a connected app's request: a click reviews it in the wallet while it is pending (Android, tdesktop)
+          if(message.peerId === SERVICE_PEER_ID && !message.pFlags.out && !action.pFlags.accepted && !action.pFlags.declined) {
+            bubbleContainer.classList.add('is-clickable');
+            // * a button to assistive technology, and with the a11y layer a tab stop Enter and Space open
+            ensureButtonSemantics(s);
+            attachClickEvent(s, () => {
+              import('@components/wallet/tonConnect').then(({openTonConnectRequestMessage}) => {
+                openTonConnectRequestMessage(String(action.session_id), (message as Message.messageService).id, action.expires);
+              });
+            }, {listenerSetter: this.listenerSetter});
+          }
         } else if(action._ === 'messageActionChannelJoined') {
           bubble.classList.add('is-similar-channels');
 
@@ -11795,7 +11821,7 @@ export default class ChatBubbles {
             const won = +outcome.ton_amount > 0;
             const s = document.createElement('span');
             s.append(
-              Icon('ton', 'inline-icon', 'text-text-bottom'),
+              Icon('gram_filled', 'inline-icon', 'text-text-bottom'),
               formatNanoton(won ? outcome.ton_amount : outcome.stake_ton_amount)
             );
 

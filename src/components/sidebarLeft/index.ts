@@ -783,6 +783,14 @@ export class AppSidebarLeft extends SidebarSlider {
       text: 'Contacts',
       onClick: onContactsClick
     }, {
+      icon: 'wallet',
+      text: 'Wallet.Menu',
+      new: true,
+      onClick: () => {
+        import('@components/wallet').then(({default: showWalletPopup}) => showWalletPopup());
+      },
+      verify: async() => (await apiManagerProxy.getAppConfig()).wallet_available !== false
+    }, {
       icon: 'phone',
       text: 'Calls',
       onClick: () => {

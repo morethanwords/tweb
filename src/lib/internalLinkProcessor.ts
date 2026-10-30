@@ -477,6 +477,11 @@ export class InternalLinkProcessor {
       protocol: 'tg',
       callback: ({uriParams, element, masked}) => {
         let link: InternalLink;
+        // * a dApp's request addressed to the wallet by name
+        if(uriParams.domain?.toLowerCase() === 'sendgrams' && uriParams.startapp?.startsWith('tonconnect-')) {
+          return this.processInternalLink(this.makeLink(INTERNAL_LINK_TYPE.TON_CONNECT, {url: element.href}));
+        }
+
         if(uriParams.voicechat !== undefined || uriParams.videochat !== undefined || uriParams.livestream !== undefined) {
           link = this.makeLink(INTERNAL_LINK_TYPE.VOICE_CHAT, uriParams as Required<typeof uriParams>);
         } else if(uriParams.story) {
@@ -679,6 +684,94 @@ export class InternalLinkProcessor {
       protocol: 'tg',
       callback: ({uriParams}) => {
         const link = this.makeLink(INTERNAL_LINK_TYPE.BUSINESS_CHAT, uriParams);
+        return this.processInternalLink(link);
+      }
+    });
+
+    // t.me/sendgrams?to=@user&amount=…&text=…&encrypted=1 and tg://sendgrams?to=…
+    type SendGramsParams = {to?: string, amount?: string, text?: string, comment?: string, encrypted?: string, startapp?: string, id?: string, v?: string, r?: string};
+    const onSendGrams = ({uriParams, element}: {uriParams: SendGramsParams, element?: HTMLAnchorElement}) => {
+      // * with TON Connect's fields (id, v, r or a `tonconnect-` start parameter) the wallet's link is a dApp's
+      if(uriParams.startapp?.startsWith('tonconnect-') || uriParams.id !== undefined || uriParams.v !== undefined || uriParams.r !== undefined) {
+        return this.processInternalLink(this.makeLink(INTERNAL_LINK_TYPE.TON_CONNECT, {url: element.href}));
+      }
+
+      // * a link that names two recipients or two amounts means neither (iOS)
+      try {
+        const search = new URL(element.href).searchParams;
+        if(search.getAll('to').length > 1 || search.getAll('amount').length > 1) {
+          return;
+        }
+      } catch(err) {}
+
+      const link = this.makeLink(INTERNAL_LINK_TYPE.WALLET_SEND, {
+        to: uriParams.to,
+        amount: uriParams.amount,
+        text: uriParams.text || uriParams.comment,
+        encrypted: uriParams.encrypted
+      });
+      return this.processInternalLink(link);
+    };
+
+    addAnchorListener<{uriParams: SendGramsParams}>({
+      name: 'sendgrams',
+      callback: onSendGrams
+    });
+
+    addAnchorListener<{uriParams: SendGramsParams}>({
+      name: 'sendgrams',
+      protocol: 'tg',
+      callback: onSendGrams
+    });
+
+    // * a connected app's request is shown as it arrives in the service chat (iOS, tdesktop): TON Connect's code is
+    // * loaded for the first one only
+    rootScope.addEventListener('wallet_tonconnect_request', (action) => {
+      if(action.accepted || action.declined) return;
+      import('@components/wallet/tonConnect').then(({queueTonConnectRequest}) => queueTonConnectRequest(action));
+    });
+
+    // tc://?v=2&id=…&r=… and tg://ton-connect?…: a dApp connecting to the wallet
+    const onTonConnect = ({element}: {element?: HTMLAnchorElement}) => {
+      return this.processInternalLink(this.makeLink(INTERNAL_LINK_TYPE.TON_CONNECT, {url: element.href}));
+    };
+
+    addAnchorListener<{}>({
+      name: 'tonconnect',
+      protocol: 'tc',
+      noPathnameParams: true,
+      noUriParams: true,
+      callback: onTonConnect
+    });
+
+    addAnchorListener<{}>({
+      name: 'ton-connect',
+      protocol: 'tg',
+      noPathnameParams: true,
+      noUriParams: true,
+      callback: onTonConnect
+    });
+
+    // * a TON address in a message (tg://sendgrams?to=<address>): the menu of what can be done with it
+    addAnchorListener<{uriParams: {to?: string}}>({
+      name: 'openTonAddress',
+      noPathnameParams: true,
+      callback: ({uriParams, element, event}) => {
+        const address = uriParams.to || element.textContent;
+        import('@components/wallet/addressMenu').then(({default: openTonAddressMenu}) => {
+          return openTonAddressMenu({address, element, event});
+        });
+      }
+    });
+
+    // ton://transfer/<address>?amount=…&text=…
+    addAnchorListener<{}>({
+      name: 'transfer',
+      protocol: 'ton',
+      noPathnameParams: true,
+      noUriParams: true,
+      callback: ({element}) => {
+        const link = this.makeLink(INTERNAL_LINK_TYPE.WALLET_SEND, {tonLink: element.href});
         return this.processInternalLink(link);
       }
     });
@@ -1571,6 +1664,23 @@ export class InternalLinkProcessor {
     });
   };
 
+  public processWalletSendLink = (link: InternalLink.InternalLinkWalletSend) => {
+    return import('@components/wallet').then(({default: showWalletPopup}) => {
+      showWalletPopup({send: {
+        to: link.to,
+        amount: link.amount,
+        comment: link.text,
+        // * as Android reads a flag: present and not "0" or "false"
+        encrypted: !!link.encrypted && !/^(0|false)$/i.test(link.encrypted),
+        tonLink: link.tonLink
+      }});
+    });
+  };
+
+  public processTonConnectLink = (link: InternalLink.InternalLinkTonConnect) => {
+    return import('@components/wallet/tonConnect').then(({openTonConnectLink}) => openTonConnectLink(link.url));
+  };
+
   public processStarsTopupLink = async(link: InternalLink.InternalLinkStarsTopup) => {
     const middlewareHelper = getMiddleware();
     const balance = +(await prefetchStars(middlewareHelper.get()));
@@ -1705,7 +1815,9 @@ export class InternalLinkProcessor {
       [INTERNAL_LINK_TYPE.STORY_ALBUM]: this.processStoryAlbumLink,
       [INTERNAL_LINK_TYPE.INSTANT_VIEW]: this.processInstantViewLink,
       [INTERNAL_LINK_TYPE.CONFERENCE_CALL]: this.processConferenceCallLink,
-      [INTERNAL_LINK_TYPE.ADD_AI_STYLE]: this.processAddAiStyleLink
+      [INTERNAL_LINK_TYPE.ADD_AI_STYLE]: this.processAddAiStyleLink,
+      [INTERNAL_LINK_TYPE.WALLET_SEND]: this.processWalletSendLink,
+      [INTERNAL_LINK_TYPE.TON_CONNECT]: this.processTonConnectLink
     };
 
     const processor = map[link._];

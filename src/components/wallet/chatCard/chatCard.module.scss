@@ -1,0 +1,408 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+@use "../../../scss/mixins" as *;
+
+// * the desktop client's gram transfer card: 272 px wide with a 4 px border of the service plate, a 16 px card in it
+$ticker: #0fddff;
+$address: #005eda;
+// * the desktop card's dark blue reads about 2:1 on its sweep: the increased contrast setting whitens it
+$address-contrast: rgba(255, 255, 255, .92);
+$center: rgb(14, 127, 255);
+
+// * the address's colour is the glare passing over it; `$offset`: where the painted box starts in the card, from
+// * the inline start - the glare runs from there, right to left too
+@mixin address-sheen($color, $offset: 0px) {
+  background: linear-gradient(
+    calc(90deg * var(--reflect)),
+    $color calc(var(--wallet-card-glare, -100px) - #{$offset} - 45px),
+    $ticker calc(var(--wallet-card-glare, -100px) - #{$offset}),
+    $color calc(var(--wallet-card-glare, -100px) - #{$offset} + 45px)
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.wrap {
+  width: 17rem;
+  max-width: 100%;
+  padding: .25rem !important;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  transform-origin: 50% 50%;
+}
+
+.card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 1rem;
+  padding-bottom: .6875rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #fff;
+  cursor: pointer;
+  user-select: none;
+  --ticker-color: #{$ticker};
+  --card-shade: transparent;
+  background-color: #0b7aff;
+
+  // * the desktop card's colours read about 2:1: the increased contrast setting shades the sweep a quarter darker
+  // * (white then reads at least 4.5:1 on its brightest blue), whitens the cyan words and darkens the ribbons
+  :global(.high-contrast) & {
+    --ticker-color: #fff;
+    --card-shade: rgba(0, 0, 0, .25);
+  }
+
+  :global(:where(.a11y)) &:focus-visible {
+    outline: 2px solid $ticker;
+    outline-offset: 2px;
+  }
+}
+
+// * the sweep: a conic gradient on a layer that the cursor turns (--wallet-card-angle, a composited transition)
+// * and the card's own spin turns again (animated in the script); big enough to cover the card at any angle
+.sweepTurn,
+.sweep {
+  position: absolute;
+  pointer-events: none;
+}
+
+.sweepTurn {
+  z-index: -1;
+  left: 50%;
+  top: 50%;
+  width: 150%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) rotate(var(--wallet-card-angle, 0deg));
+
+  // * it turns after the cursor: movement
+  @include animation-level-global(2) {
+    transition: transform .34s ease-in-out;
+  }
+}
+
+.sweep {
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    #0773fe 0deg, #046bfe 15deg, #0368fe 30deg, #046cff 45deg, #0872ff 60deg, #0b7aff 75deg,
+    #1084ff 90deg, #1594ff 105deg, #1ea3fe 120deg, #1da4fe 135deg, #169cfe 150deg, #0e94ff 165deg,
+    #098cff 180deg, #0483ff 195deg, #027eff 210deg, #057efe 225deg, #0980ff 240deg, #0c82ff 255deg,
+    #1083fe 270deg, #178efe 285deg, #1b9afe 300deg, #1a96fe 315deg, #1488ff 330deg, #0d7dff 345deg,
+    #0773fe 360deg
+  );
+}
+
+// * the soft centre stays put; the increased contrast setting shades the whole card through it
+.soft {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--card-shade), var(--card-shade)),
+    radial-gradient(
+      circle 55px at 50% 50%,
+      rgba($center, 1) 0%,
+      rgba($center, .87) 9%,
+      rgba($center, .69) 18%,
+      rgba($center, .46) 27%,
+      rgba($center, .33) 36%,
+      rgba($center, .24) 45%,
+      rgba($center, .18) 55%,
+      rgba($center, .15) 64%,
+      rgba($center, .11) 73%,
+      rgba($center, .05) 82%,
+      rgba($center, .03) 91%,
+      rgba($center, 0) 100%
+    );
+}
+
+// * the glare that runs over the border from the inline start: a band of the ticker colour, masked to a 2 px ring
+.glare {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  pointer-events: none;
+  background: linear-gradient(
+    calc(90deg * var(--reflect)),
+    transparent calc(var(--wallet-card-glare, -100px) - 45px),
+    $ticker var(--wallet-card-glare, -100px),
+    transparent calc(var(--wallet-card-glare, -100px) + 45px)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  z-index: 1;
+}
+
+.mark {
+  position: relative;
+  width: 2.625rem;
+  height: 2.625rem;
+  margin-top: 1.8125rem;
+  flex: none;
+}
+
+.markPlayer {
+  position: absolute;
+  width: 63px;
+  height: 63px;
+  left: calc(50% - 31.5px);
+  top: calc(50% - 31.5px - 8px);
+}
+
+.isHidden {
+  visibility: hidden;
+}
+
+.amount {
+  margin-top: .1875rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  max-width: calc(100% - 2.5rem);
+  font-weight: var(--font-weight-bold);
+  font-size: 1.375rem;
+  line-height: 1.6875rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.whole {
+  white-space: nowrap;
+}
+
+.fraction {
+  font-size: 1rem;
+}
+
+.ticker {
+  margin-inline-start: .4375rem;
+  font-size: 1rem;
+  color: var(--ticker-color);
+}
+
+// * right to left the ticker reads after the digits: on their left (the line itself reads left to right)
+:global(.is-rtl) .ticker {
+  order: -1;
+  margin-inline: 0 .4375rem;
+}
+
+// * a digit's drum while an incoming card is read: as tall as the line and aligned to its top, its glyphs sit on
+// * the same baseline as the text around it
+.drum {
+  display: inline-block;
+  height: 1.6875rem;
+  overflow: hidden;
+  vertical-align: top;
+}
+
+.strip {
+  display: block;
+  white-space: pre;
+  will-change: transform;
+}
+
+.identity {
+  margin-top: .9375rem;
+  max-width: calc(100% - 2.5rem);
+  font-weight: var(--font-weight-bold);
+  font-size: .8125rem;
+  line-height: 1rem;
+  text-transform: uppercase;
+  color: var(--ticker-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// * a click on the name is the card's: the chat takes one on a `.peer-title` for its peer (onBubblesClick), and the
+// * details would never open
+.name {
+  pointer-events: none;
+}
+
+// * the full width of the card, so that the glare's position means the same here as on the border. It reads left
+// * to right in either direction - by `direction`, not `dir`, which would turn the glare's `--reflect` round
+.address {
+  direction: ltr;
+  unicode-bidi: isolate;
+  align-self: stretch;
+  margin-top: .3125rem;
+  font-family: var(--font-monospace);
+  font-size: .75rem;
+  line-height: .9375rem;
+  white-space: pre;
+  text-align: center;
+  color: transparent;
+  @include address-sheen($address);
+
+  :global(.high-contrast) & {
+    @include address-sheen($address-contrast);
+  }
+
+  // * while its glyphs lift each one paints the glare itself: a lifted glyph keeps its colour
+  &.isLifting,
+  :global(.high-contrast) &.isLifting {
+    background: none;
+  }
+
+  &.isLifting .glyph {
+    @include address-sheen($address, var(--glyph-x, 0px));
+  }
+
+  :global(.high-contrast) &.isLifting .glyph {
+    @include address-sheen($address-contrast, var(--glyph-x, 0px));
+  }
+}
+
+// * a glyph of the card while it lifts under the glare (chatCard/arrival)
+.glyph {
+  display: inline-block;
+  white-space: pre;
+}
+
+.burst {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+// * the ribbon's colour by the transfer's outcome
+.isSent {
+  --ribbon-color: #4ab44a;
+}
+
+.isReceived {
+  --ribbon-color: #5ec2ff;
+}
+
+.isFailed {
+  --ribbon-color: #d03a3b;
+}
+
+:global(.high-contrast) {
+  .isSent {
+    --ribbon-color: #2e7d32;
+  }
+
+  .isReceived {
+    --ribbon-color: #1565c0;
+  }
+
+  .isFailed {
+    --ribbon-color: #c62828;
+  }
+}
+
+// * the corner ribbon (the gift badge, at the inline-end corner): its colour fills it only at rest, the reveal
+// * paints it from the clock
+.card .ribbon {
+  top: 0;
+  inset-inline-end: 0;
+  background: var(--ribbon-color, #{$ticker});
+
+  &.isBare {
+    background: none;
+  }
+}
+
+.ribbonText {
+  position: relative;
+  z-index: 1;
+}
+
+.ribbonWord {
+  display: block;
+}
+
+// * the word's centre in the badge, from its inline-start edge: the badge turns its 60 × 10 text box by 45° and
+// * moves it by (15, 10), mirrored right to left
+$word-x: 33.5px;
+$word-y: 22.7px;
+
+.ribbonFill {
+  position: absolute;
+  inset-inline-start: $word-x - 45px;
+  top: $word-y - 45px;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  // * where the reveal's colour ends (the script animates it from the ticker's)
+  background-color: var(--ribbon-color, #{$ticker});
+  transform: scale(.15);
+}
+
+.clock {
+  position: absolute;
+  inset-inline-start: $word-x - 6px;
+  top: $word-y - 6px;
+  width: 12px;
+  height: 12px;
+  border: 1px solid $ticker;
+  border-radius: 50%;
+  z-index: 2;
+}
+
+.clockMinute,
+.clockHour {
+  position: absolute;
+  left: calc(50% - .5px);
+  bottom: 50%;
+  width: 1px;
+  border-radius: .5px;
+  background-color: $ticker;
+  transform-origin: 50% 100%;
+}
+
+.clockMinute {
+  height: 3.5px;
+}
+
+.clockHour {
+  height: 2.5px;
+  transform: rotate(90deg);
+}
+
+// * a turn of the hour hand takes 2 s, the minute hand turns three times as fast
+.isTicking {
+  .clockMinute {
+    animation: wallet-card-clock-minute .6667s linear infinite;
+  }
+
+  .clockHour {
+    animation: wallet-card-clock-hour 2s linear infinite;
+  }
+}
+
+@keyframes wallet-card-clock-minute {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes wallet-card-clock-hour {
+  from { transform: rotate(90deg); }
+  to { transform: rotate(450deg); }
+}
+
+.comment {
+  padding: .125rem .5rem;
+  margin-top: .125rem;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.cover {
+  cursor: pointer;
+}

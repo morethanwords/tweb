@@ -20,12 +20,31 @@ export default function confirmationPopup<T extends PopupConfirmationOptions>(
 ): Promise<T['checkboxes'] extends PopupPeerCheckboxOptions[] ? Array<boolean> : (T['checkbox'] extends PopupPeerCheckboxOptions ? boolean : void)> {
   return new Promise<any>((resolve, reject: (reason?: ConfirmationPopupRejectReason) => void) => {
     const {button, cancelButton: customCancelButton, checkbox, rejectWithReason} = options;
+    const ownCallback = button.callback;
     button.callback = (e, set) => {
-      if(checkbox || !set) {
-        resolve(set ? !!set.size : undefined);
-      } else {
-        resolve(options.checkboxes.map((checkbox) => set.has(checkbox.text)));
+      const settle = () => {
+        if(checkbox || !set) {
+          resolve(set ? !!set.size : undefined);
+        } else {
+          resolve(options.checkboxes.map((checkbox) => set.has(checkbox.text)));
+        }
+      };
+
+      // * the button's own callback goes first: a promise keeps the popup up, the button busy, until it settles;
+      // * `false` (or a rejection) keeps it open
+      const result = ownCallback?.(e, set);
+      if(result instanceof Promise) {
+        return result.then((value) => {
+          if(value !== false) settle();
+          return value;
+        });
       }
+
+      if(result === false) {
+        return false;
+      }
+
+      settle();
     };
 
     const buttons = options.buttons || [button];
