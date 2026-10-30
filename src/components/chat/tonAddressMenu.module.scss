@@ -1,0 +1,67 @@
+.gap.gap {
+  height: .5rem;
+  margin: 0;
+  border: none;
+  opacity: 1;
+  background-color: var(--light-secondary-text-color);
+}
+
+.item:global(.btn-menu-item) {
+  height: 3.25rem;
+  padding-block: 0;
+  padding-inline: .8125rem 1rem;
+}
+
+.note:global(.btn-menu-item) {
+  // the menu keeps the width its actions gave it, and the text wraps inside
+  width: 0;
+  min-width: 100%;
+  height: auto;
+  padding-block: .5rem;
+  padding-inline: .8125rem;
+  font-size: .8125rem;
+  line-height: 1.125rem;
+  pointer-events: none;
+
+  :global(.btn-menu-item-text) {
+    overflow: visible;
+    white-space: normal;
+  }
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  min-width: 0;
+}
+
+.avatar {
+  flex: none;
+
+  // the peer's colour is for the initials: it must not show around a photo
+  &:has(:global(.avatar-photo)) {
+    background: none;
+  }
+}
+
+.info {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.action {
+  display: flex;
+  align-items: center;
+  gap: .125rem;
+  font-size: .8125rem;
+  color: var(--primary-color);
+}

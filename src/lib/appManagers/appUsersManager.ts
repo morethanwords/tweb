@@ -15,6 +15,7 @@ import isObject from '@helpers/object/isObject';
 import safeReplaceObject from '@helpers/object/safeReplaceObject';
 import {AccountEmojiStatuses, Chat, ContactsResolvedPeer, EmojiStatus, InputContact, InputGeoPoint, InputMedia, InputPeer, InputUser, User as MTUser, RequirementToContact, UserProfilePhoto, UserStatus} from '@layer';
 import parseEntities from '@lib/richTextProcessor/parseEntities';
+import {isSameTonAddress} from '@lib/richTextProcessor/tonAddress';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 import SearchIndex from '@lib/searchIndex';
 import {AppManager} from '@appManagers/manager';
@@ -210,6 +211,10 @@ export class AppUsersManager extends AppManager {
         }
       });
 
+      for(const userId in state.walletAddresses) {
+        this.peersStorage.requestPeer(userId.toPeerId(false), 'wallet');
+      }
+
       this.peersStorage.addEventListener('peerNeeded', (peerId) => {
         if(!this.appPeersManager.isUser(peerId)) {
           return;
@@ -312,6 +317,53 @@ export class AppUsersManager extends AppManager {
 
       this.peersStorage.releasePeer(peerId, storageKey);
       this.appStateManager.pushToState(stateKey, list);
+    });
+  }
+
+  /** What an opened profile says of its wallet: remembered, and forgotten once the profile no longer shows one */
+  public saveWalletAddress(userId: UserId, address?: string) {
+    return this.appStateManager.getState().then((state) => {
+      const addresses = state.walletAddresses;
+      if(addresses[userId] === address) return;
+
+      if(address) {
+        addresses[userId] = address;
+        this.peersStorage.requestPeer(userId.toPeerId(false), 'wallet');
+      } else {
+        delete addresses[userId];
+        this.peersStorage.releasePeer(userId.toPeerId(false), 'wallet');
+      }
+
+      this.appStateManager.pushToState('walletAddresses', addresses);
+    });
+  }
+
+  /** Whose wallet this is: a profile that showed it before, the card of someone at hand or our own, else the server's word on the address */
+  public async getUserIdByTonAddress(address: string, userIds: UserId[] = []) {
+    const {walletAddresses} = await this.appStateManager.getState();
+    for(const userId in walletAddresses) {
+      if(isSameTonAddress(walletAddresses[userId], address)) return +userId as UserId;
+    }
+
+    for(const userId of new Set([...userIds, this.userId])) {
+      try {
+        const {wallet_card} = await this.appProfileManager.getProfile(userId);
+        if(wallet_card && isSameTonAddress(wallet_card.address, address)) return userId;
+      } catch{}
+    }
+
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'wallet.getUserAddresses',
+      params: {id: [], addresses: [address]},
+      processResult: (result) => {
+        this.saveApiUsers(result.users);
+        // * asked about one address, the answer is about it, however the server spells it
+        return result.addresses[0]?.user_id as UserId;
+      },
+      // * this client may not be let in: then only the cards above can tell
+      processError: (error) => {
+        if(error.type !== 'WALLET_UNAVAILABLE') throw error;
+      }
     });
   }
 

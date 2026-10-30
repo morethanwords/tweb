@@ -8,6 +8,7 @@ import parseEntities from '@lib/richTextProcessor/parseEntities';
 import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
 import setExternalToAnchor, {getElectronHelpers} from '@helpers/electronHelpers';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
+import {getTonAddressExplorerUrl} from '@lib/richTextProcessor/tonAddress';
 import {getEmojiImageUrl, isEmojiNative} from '@lib/richTextProcessor/emojiImage';
 import {CLICK_EVENT_NAME} from '@helpers/dom/clickEvent';
 import IS_CUSTOM_EMOJI_SUPPORTED from '@environment/customEmojiSupport';
@@ -97,6 +98,7 @@ const ENTITY_DIRECTIONS: {[type in MessageEntity['_']]?: 'ltr' | 'auto'} = {
   messageEntityUrl: 'ltr',
   messageEntityEmail: 'ltr',
   messageEntityPhone: 'ltr',
+  messageEntityTonAddress: 'ltr',
   messageEntityBotCommand: 'ltr',
   messageEntityMention: 'ltr',
   messageEntityCashtag: 'ltr',
@@ -467,6 +469,20 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           element.classList.add('phone-url');
           (element as HTMLAnchorElement).href = encodeEntities('tel:' + target);
         }
+        break;
+      }
+
+      case 'messageEntityTonAddress': {
+        if(!options.noLinks) {
+          element = document.createElement('a');
+          (element as HTMLAnchorElement).href = encodeEntities(getTonAddressExplorerUrl(fullEntityText));
+          (element as HTMLAnchorElement).target = '_blank';
+          (element as HTMLAnchorElement).rel = 'noopener noreferrer';
+          if(!contextExternal) {
+            element.setAttribute('onclick', 'tonAddress(this)');
+          }
+        }
+
         break;
       }
 

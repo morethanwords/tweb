@@ -248,6 +248,8 @@ export type State = {
     }
   },
   recentSearch: PeerId[],
+  /** The wallet each profile showed when last opened: the memory of whose address is whose */
+  walletAddresses: {[userId: UserId]: string},
   /** Peers whose chat was left behind — closed outright, or switched away from. Newest first. */
   recentlyClosedChats: PeerId[],
   version: typeof STATE_VERSION,
@@ -633,6 +635,7 @@ export const STATE_INIT: State = {
   emojiVariants: {},
   topPeersCache: {},
   recentSearch: [],
+  walletAddresses: {},
   recentlyClosedChats: [],
   version: STATE_VERSION,
   build: BUILD,

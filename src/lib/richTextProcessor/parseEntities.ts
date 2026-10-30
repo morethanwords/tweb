@@ -10,6 +10,7 @@ import TLD from '@config/tld';
 import {MessageEntity} from '@layer';
 import checkBrackets from '@lib/richTextProcessor/checkBrackets';
 import getEmojiUnified from '@lib/richTextProcessor/getEmojiUnified';
+import {isValidTonAddress, TON_ADDRESS_REG_EXP} from '@lib/richTextProcessor/tonAddress';
 
 export default function parseEntities(text: string) {
   let match: RegExpMatchArray;
@@ -125,5 +126,17 @@ export default function parseEntities(text: string) {
   // if (entities.length) {
   //   console.log('parse entities', text, entities.slice())
   // }
+  if(text.length >= 48) {
+    let hasTonAddress = false;
+    for(const tonMatch of text.matchAll(TON_ADDRESS_REG_EXP)) {
+      const offset = tonMatch.index, end = offset + tonMatch[0].length;
+      if(!isValidTonAddress(tonMatch[0]) || entities.some((entity) => entity.offset < end && offset < entity.offset + entity.length)) continue;
+      entities.push({_: 'messageEntityTonAddress', offset, length: tonMatch[0].length});
+      hasTonAddress = true;
+    }
+
+    if(hasTonAddress) entities.sort((a, b) => a.offset - b.offset);
+  }
+
   return entities;
 }

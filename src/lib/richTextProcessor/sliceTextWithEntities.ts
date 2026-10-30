@@ -17,6 +17,7 @@ const ATOMIC: ReadonlySet<MessageEntity['_']> = new Set([
   'messageEntityEmail',
   'messageEntityPhone',
   'messageEntityBankCard',
+  'messageEntityTonAddress',
   'messageEntityCustomEmoji',
   'messageEntityEmoji',
   'messageEntityImage',

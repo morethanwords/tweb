@@ -250,6 +250,7 @@ export class AppProfileManager extends AppManager {
     if(isUser) {
       const userId = peerId.toUserId();
       this.usersFull[userId] = fullPeer as UserFull.userFull;
+      this.appUsersManager.saveWalletAddress(userId, (fullPeer as UserFull.userFull).wallet_card?.address);
       this.rootScope.dispatchEvent('user_full_update', userId);
     } else {
       const chatId = peerId.toChatId();

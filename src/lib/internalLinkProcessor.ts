@@ -93,6 +93,15 @@ export class InternalLinkProcessor {
     listenForMaskedAnchorAuxClicks();
 
     addAnchorListener<{}>({
+      name: 'tonAddress',
+      noPathnameParams: true,
+      noUriParams: true,
+      callback: ({element, event}) => {
+        import('@components/chat/tonAddressMenu').then(({default: openTonAddressMenu}) => openTonAddressMenu(element, event as MouseEvent));
+      }
+    });
+
+    addAnchorListener<{}>({
       name: 'showMaskedAlert',
       callback: ({element}) => {
         const href = element.href;

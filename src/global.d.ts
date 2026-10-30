@@ -170,6 +170,7 @@ declare global {
 
   type ServerErrorType =
     | 'FILE_REFERENCE_EXPIRED'
+    | 'WALLET_UNAVAILABLE'
     | 'SESSION_REVOKED'
     | 'AUTH_KEY_DUPLICATED'
     | 'SESSION_PASSWORD_NEEDED'

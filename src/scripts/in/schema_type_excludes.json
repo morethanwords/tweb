@@ -7,7 +7,6 @@
     "updateWalletGaslessInfo",
     "updateWalletTonConnectSession",
     "updateWalletTonConnectPendingDisconnect",
-    "messageEntityTonAddress",
     "textTonAddress"
   ],
   "constructorParams": {}
