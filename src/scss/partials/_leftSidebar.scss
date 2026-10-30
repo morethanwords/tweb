@@ -95,8 +95,10 @@
       padding-inline-end: .5rem;
     }
 
+    // * the start padding is read by the collapsed column's burger too, to stand centred over the avatars
     .has-vertical-folders & {
-      padding-inline: .5rem;
+      --header-padding-inline-start: .5rem;
+      padding-inline: var(--header-padding-inline-start);
 
       &:not(.is-input-the-last-child) {
         padding-inline-end: 1rem;
@@ -190,7 +192,7 @@
 
     // * centred over the avatars: half of what the narrow column leaves beside it, less the header's padding
     body:not(.has-folders-sidebar) & .left-sidebar-burger {
-      margin-inline-start: calc((var(--sidebar-collapsed-width) - 2.5rem) / 2 - 1rem);
+      margin-inline-start: calc((var(--sidebar-collapsed-width) - 2.5rem) / 2 - var(--header-padding-inline-start, 1rem));
     }
 
     #new-menu {
