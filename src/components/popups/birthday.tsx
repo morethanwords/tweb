@@ -111,9 +111,11 @@ export default async function showBirthdayPopup(props: {
     const nowMonth = now.getMonth() + 1;
     const nowDay = now.getDate();
 
+    // * the day as it was entered: a month or year too short for it clamps what the field shows, and the next one
+    // * is checked against this, not the clamp (31, then April on the way to August, is August 31)
+    let enteredDay = dayField.value;
     function updateDayInput() {
-      const value = dayField.value;
-      const cleanValue = value.replace(/[^0-9]/g, '');
+      const cleanValue = enteredDay.replace(/[^0-9]/g, '');
       if(!cleanValue) {
         setDay(undefined);
         return;
@@ -133,6 +135,7 @@ export default async function showBirthdayPopup(props: {
         dayField.setValueSilently('1');
         setDay(1);
       } else {
+        if(dayField.value !== enteredDay) dayField.setValueSilently(enteredDay);
         setDay(valueNum);
       }
     }
@@ -182,7 +185,10 @@ export default async function showBirthdayPopup(props: {
       if(option) selectMonth(option);
     }
 
-    dayField.input.addEventListener('input', updateDayInput);
+    dayField.input.addEventListener('input', () => {
+      enteredDay = dayField.value;
+      updateDayInput();
+    });
     monthField.input.addEventListener('beforeinput', (e: InputEvent) => {
       cancelEvent(e);
       if(e.inputType === 'insertText' && e.data) {
@@ -217,6 +223,8 @@ export default async function showBirthdayPopup(props: {
         return availableMonths();
       },
       single: true,
+      // * the field opens it as it gets the focus and takes the keys itself: typing, arrows
+      activateFocus: false,
       optionKey: (v) => v.value.toString(),
       renderOption: (props) => (
         <>

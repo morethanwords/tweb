@@ -284,6 +284,9 @@ export function createButtonMenuSelect<T>(props: ComponentProps<typeof ButtonMen
   floatingDirection?: FloatingMenuDirection
   floatingOptions?: FloatingMenuPositionOptions & {constrainHeight?: boolean}
   onToggleMenu?: (open: boolean) => void
+  // * false keeps the focus where it is instead of handing it to the menu (the a11y layer does): for a field that
+  // * opens the menu as it gets the focus and takes the keys itself
+  activateFocus?: boolean
   direction: ButtonMenuDirection
 }) {
   type MenuInstance = {
@@ -337,7 +340,8 @@ export function createButtonMenuSelect<T>(props: ComponentProps<typeof ButtonMen
         'direction',
         'floatingDirection',
         'floatingOptions',
-        'onToggleMenu'
+        'onToggleMenu',
+        'activateFocus'
       ])
 
       return <ButtonMenuSelectInner {...innerProps} />
@@ -405,7 +409,7 @@ export function createButtonMenuSelect<T>(props: ComponentProps<typeof ButtonMen
         menu.removeTimeout = undefined;
         removeMenu(menu)
       }, 300);
-    })
+    }, undefined, props.activateFocus)
     opened = true
   }
 
