@@ -10,16 +10,21 @@ import {resolve} from 'path';
 import {existsSync, copyFileSync, readFileSync, realpathSync} from 'fs';
 import {createHash} from 'crypto';
 import {Plugin, ServerOptions} from 'vite';
-import {watchLangFile} from './watch-lang.js';
-import {watchScssTypes} from './scss-types.js';
 import {vitestWorkers} from './scripts/testQueue';
 import devChecks from './scripts/dev-checks.mjs';
 import settingsSearchPlugin from './scripts/settings-search-plugin.mjs';
 import watchTransformCache from './scripts/watch-transform-cache.mjs';
 import hotReloadPlugin from './scripts/hot-reload-plugin.mjs';
 import path from 'path';
+import {createRequire} from 'module';
+import {fileURLToPath} from 'url';
 
-const rootDir = resolve(__dirname);
+// CommonJS, which a config evaluated as an ES module (`--configLoader runner`) cannot import
+const require = createRequire(import.meta.url);
+const {watchLangFile} = require('./watch-lang.js') as typeof import('./watch-lang.js');
+const {watchScssTypes} = require('./scss-types.js') as typeof import('./scss-types.js');
+
+const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const certsDir = path.join(rootDir, 'certs');
 const ENV_LOCAL_FILE_PATH = path.join(rootDir, '.env.local');
 const LANG_PACK_LOCAL_FILE_PATH = path.join(rootDir, 'src', 'langPackLocalVersion.ts');

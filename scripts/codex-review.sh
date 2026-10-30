@@ -5,9 +5,11 @@
 # Asked for a review, an agent does not review its own change: it hands the
 # change to `codex exec review`, together with what the change is for, then
 # checks what comes back against the code (.claude/skills/codex-review/SKILL.md).
-# Codex reads the change and the code around it in its own read-only sandbox, so
-# it cannot touch a tree other sessions work in — and cannot run the tests
-# either, those stay with the agent.
+# Codex reads the change and the code around it in a sandbox of its own, which
+# reads everything and writes nowhere but a temp dir of the run's own, with the
+# network off: it cannot touch a tree other sessions work in. It may run tsc and
+# a test file there to check what it finds; the tests the change needs stay with
+# the agent.
 #
 # Usage: bash scripts/codex-review.sh [--fast] [--about <text>] [--since <sha>] <what>
 #
@@ -230,10 +232,28 @@ limit=()
 command -v timeout >/dev/null && limit=(timeout "${minutes}m")
 tier=() how=$effort
 if [ "$fast" = 1 ]; then tier=(-c 'service_tier="priority"'); how="$effort, fast"; fi
+# Codex's sandbox reads everything and writes nowhere but a temp dir of the run's own, gone with it, so that the tests
+# it runs to check a finding run: in a sandbox with nowhere to write every vitest it started failed (the forks pool
+# hands the modules to its workers through files in the temp dir), and it spent steps on ways around that. Codex
+# also checks the commit out there to test its exact tree, so the dir is not under a tmp/ dir: the vite config denies
+# every path through one. Only that one dir: Codex mounts guards over .git and the like in every dir it may write,
+# made up on the spot where there are none, and in a dir several reviews share at once those collide.
+# pnpm checks the dependencies before it runs a script, and in a worktree that check runs an install, which writes
+# into the checkout: it is skipped.
+cache=${XDG_CACHE_HOME:-$HOME/.cache}
+mkdir -p "$cache" && scratch=$(mktemp -d "$cache/codex-review.XXXXXX") || die 2 "cannot create a temp dir in $cache"
+trap 'rm -rf "$scratch"' EXIT
+# those of runs that were killed
+find "$cache" -mindepth 1 -maxdepth 1 -type d -name 'codex-review.*' -mmin +1440 -exec rm -rf {} + 2>/dev/null
+# vite.config.ts makes this one from its example on its first load in a checkout, which the sandbox cannot do: in a
+# checkout that never had a test run, a build or a dev server (a worktree made for the review), no test would start
+[ -e src/langPackLocalVersion.ts ] || cp -n src/langPackLocalVersion.example.ts src/langPackLocalVersion.ts
+sandbox=(-c 'default_permissions="tweb_review"' -c "permissions.tweb_review.filesystem={\":root\"=\"read\", \"$scratch\"=\"write\"}")
 failures=()
 for model in "${models[@]}"; do
   say "$model ($how) reviews $what…"
-  "${limit[@]}" codex exec -m "$model" -c "model_reasoning_effort=\"$effort\"" "${tier[@]}" -s read-only --ephemeral \
+  TMPDIR=$scratch pnpm_config_verify_deps_before_run=false \
+  "${limit[@]}" codex exec -m "$model" -c "model_reasoning_effort=\"$effort\"" "${tier[@]}" "${sandbox[@]}" --ephemeral \
     review --commit "$sha" --title "$title" --json -o "$OUT/$model.md" \
     > "$OUT/$model.jsonl" 2> "$OUT/$model.stderr" < /dev/null
   code=$?
