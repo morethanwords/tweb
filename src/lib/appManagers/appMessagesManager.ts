@@ -9069,7 +9069,12 @@ export class AppMessagesManager extends AppManager {
         return false;
       }
 
-      if((messageReplyMarkup as ReplyMarkup.replyKeyboardMarkup).pFlags.selective) {
+      // a selective one is for those its message mentions, and for the author of the message it
+      // answers: the server marks it `mentioned` for them (desktop's `mentionsMe`, Android's)
+      if(
+        (messageReplyMarkup as ReplyMarkup.replyKeyboardMarkup).pFlags.selective &&
+        !(message as Message.message).pFlags.mentioned
+      ) {
         return false;
       }
 

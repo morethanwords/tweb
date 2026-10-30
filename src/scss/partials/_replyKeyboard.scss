@@ -6,6 +6,8 @@
 $reply-keyboard-gap: .25rem;
 $reply-keyboard-button-radius: .625rem;
 $reply-keyboard-fade: 1.5rem;
+// * less on a short screen, by as much as the input above it grows and the plates under the topbar take
+$reply-keyboard-max-height: min(15rem, calc(var(--under-input-max-height) - var(--chat-input-height-surplus, 0px) - var(--pinned-floating-height, 0px)));
 
 // * how far its edges fade where there is more of it past them: typed, so that a fade comes and goes
 @property --reply-keyboard-fade-top {
@@ -41,8 +43,7 @@ $reply-keyboard-fade: 1.5rem;
     position: relative;
     inset: auto;
     height: auto;
-    // * less on a short screen, by as much as the input above it grows and the plates under the topbar take
-    max-height: min(15rem, calc(var(--under-input-max-height) - var(--chat-input-height-surplus, 0px) - var(--pinned-floating-height, 0px)));
+    max-height: $reply-keyboard-max-height;
 
     // * once it scrolls, its edges fade out where it goes on past them (Scrollable2's `withBorders="manual"`): the
     // * same stops either way, so that only how far they reach changes
@@ -75,6 +76,25 @@ $reply-keyboard-fade: 1.5rem;
 
   .reply-markup {
     margin-top: 0;
+  }
+
+  // * one that does not ask to be as tall as its rows (`resize`) is as tall as it may be, its rows sharing that height
+  // * (desktop's `_maximizeSize`; iOS and Android make it the device keyboard's height) - scrolled still where they
+  // * need more
+  &.is-stretched {
+    .reply-keyboard-scrollable {
+      height: $reply-keyboard-max-height;
+    }
+
+    .reply-markup {
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+    }
+
+    .reply-markup-row {
+      flex: 1 0 auto;
+    }
   }
 
   // * further apart than under a bubble

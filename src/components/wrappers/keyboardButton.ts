@@ -367,15 +367,21 @@ function getButtonTypeHandler({
     case 'buttonTypeDefault': {
       if(!message) {
         // a keyboard an ephemeral message brought answers its bot privately: the press replies
-        // to that message, which makes the send an ephemeral reply (desktop replies to the
-        // keyboard's message in groups for the same reason). The text goes where the keyboard
-        // was shown: in a topic that is the topic — without it a group's General gets it, and a
-        // bot's private chat with topics opens a new one for it
-        const replyToEphemeral = isEphemeralMessageId(messageMid) ? {replyToMsgId: messageMid} : undefined;
+        // to that message, which makes the send an ephemeral reply. In a group the press answers
+        // the keyboard's message too, as desktop and Android have it: a bot in privacy mode is
+        // told only of what is meant for it, and a plain text is not. The field's own reply stays
+        // for the user's next message. The text goes where the keyboard was shown: in a topic
+        // that is the topic — without it a group's General gets it, and a bot's private chat with
+        // topics opens a new one for it
         result.onClick = () => {
+          const ephemeralSnapshot = chat.input?.getEphemeralSendingSnapshot();
+          const replyToKeyboard = messageMid && (
+            isEphemeralMessageId(messageMid) ||
+            (!ephemeralSnapshot && !peerId.isUser())
+          ) ? {replyToMsgId: messageMid} : undefined;
           rootScope.managers.appMessagesManager.sendText({
-            ...chat.input?.getEphemeralSendingSnapshot(),
-            ...replyToEphemeral,
+            ...ephemeralSnapshot,
+            ...replyToKeyboard,
             peerId,
             threadId: chat.threadId,
             text: label

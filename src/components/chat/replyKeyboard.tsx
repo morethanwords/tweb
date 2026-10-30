@@ -123,6 +123,7 @@ export default class ReplyKeyboard extends EventListenerBase<{
         }
 
         this.see();
+        this.chatInput.updateKeyboardPlaceholder();
 
         getHeavyAnimationPromise().then(() => {
           this.checkForceReply();
@@ -507,6 +508,21 @@ export default class ReplyKeyboard extends EventListenerBase<{
     }
   }
 
+  /**
+   * What the bot asks the empty field to say (`ChatInput.updateKeyboardPlaceholder`): while its keyboard is open, or while
+   * the field answers the message that brought it - a force reply's (Android's, desktop's while it is the last one)
+   */
+  public getPlaceholder(replyToMsgId: number) {
+    const replyMarkup = this.getReplyMarkup() as ReplyMarkup.replyKeyboardMarkup | ReplyMarkup.replyKeyboardForceReply;
+    if(
+      !this.ephemeralMode &&
+      replyMarkup.placeholder &&
+      (this.active || (replyToMsgId && replyToMsgId === replyMarkup.mid))
+    ) {
+      return replyMarkup.placeholder;
+    }
+  }
+
   private getReplyMarkup(): ReplyMarkup {
     const {chat} = this.chatInput;
     // the welcome messages section shares the chat's history storage, yet a bot's keyboard or
@@ -527,6 +543,7 @@ export default class ReplyKeyboard extends EventListenerBase<{
     }
 
     this.middlewareHelper.clean();
+    this.element.classList.toggle('is-stretched', !replyMarkup.pFlags?.resize);
 
     // * a single-use keyboard goes once a button of it is pressed (desktop's `singleUse`),
     // * any other stays for the next one
@@ -595,6 +612,7 @@ export default class ReplyKeyboard extends EventListenerBase<{
   public setEphemeralMode(ephemeralMode: boolean) {
     this.ephemeralMode = ephemeralMode;
     this.checkAvailability();
+    this.chatInput.updateKeyboardPlaceholder();
   }
 
   /** The chat it is for, as it opens: its keyboard opens with it, if it would by itself (`autoShow`), once the field is laid out. */

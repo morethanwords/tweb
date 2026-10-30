@@ -81,3 +81,32 @@ describe('layer 229 force_reply markups', () => {
     expect(markup.mid).toBe(7);
   });
 });
+
+describe('a selective keyboard', () => {
+  const keyboard = (): ReplyMarkup.replyKeyboardMarkup => ({
+    _: 'replyKeyboardMarkup',
+    pFlags: {selective: true},
+    rows: [{_: 'keyboardButtonRow', buttons: [{_: 'keyboardButton', text: 'Yes', type: {_: 'buttonTypeDefault'}}]}]
+  });
+
+  test('is shown to whom its message mentions or answers', () => {
+    const manager = makeManager();
+    const storage = makeStorage();
+    const message = makeMessage(5, keyboard());
+    message.pFlags.mentioned = true;
+
+    expect(manager.mergeReplyKeyboard(storage, message)).toBe(true);
+    expect(storage.replyMarkup).toBe(message.reply_markup);
+  });
+
+  test('is not shown to anyone else, nor does it hide the keyboard there is', () => {
+    const manager = makeManager();
+    const storage = makeStorage();
+    const shown = makeMessage(5, {...keyboard(), pFlags: {}});
+    manager.mergeReplyKeyboard(storage, shown);
+
+    expect(manager.mergeReplyKeyboard(storage, makeMessage(6, keyboard()))).toBe(false);
+    expect(manager.mergeReplyKeyboard(storage, makeMessage(7, {_: 'replyKeyboardHide', pFlags: {selective: true}}))).toBe(false);
+    expect(storage.replyMarkup).toBe(shown.reply_markup);
+  });
+});

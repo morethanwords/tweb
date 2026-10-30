@@ -48,6 +48,7 @@ function setup(partial = false) {
     getPlaceholderParams: vi.fn(async(_editing: boolean) => ({key: 'Message' as const})),
     setMessageInputEditable: vi.fn((editable: boolean) => {}),
     updateMessageInputPlaceholder: vi.fn(() => ({oldKey: 'Message', oldArgs: []})),
+    updateKeyboardPlaceholder: vi.fn(),
     editMsgId: undefined as number,
     editMessage: undefined as Message.message,
     restoreInputLock: undefined as (() => void),

@@ -370,25 +370,8 @@ test.describe('the bot keyboard under the field', () => {
 
   test('a keyboard that comes as the chat opens does not open over the draft on its way back', async({page}) => {
     // * the chat opened again with a saved draft, which the worker answers late; nothing is saved or sent
-    await page.evaluate(() => {
-      const w = window as any;
-      const proxy = w.apiManagerProxy;
-      const invoke = proxy.invoke.bind(proxy);
-      proxy.invoke = (type: string, payload: any, ack: boolean, ...rest: any[]) => {
-        if(type === 'manager' && /^(send|saveDraft|setDraft|clearDraft|syncDraft|read)/.test(payload.method)) {
-          return ack ? {cached: true, result: Promise.resolve()} : Promise.resolve();
-        }
-
-        if(type === 'manager' && payload.method === 'getDraft') {
-          const draft = {_: 'draftMessage', pFlags: {}, message: 'A saved draft', date: Math.floor(Date.now() / 1000)};
-          const result = new Promise((resolve) => setTimeout(() => resolve(draft), 300));
-          return ack ? {cached: false, result} : result;
-        }
-
-        return invoke(type, payload, ack, ...rest);
-      };
-      w.appImManager.setPeer({peerId: 0});
-    });
+    await holdWrites(page, 'A saved draft');
+    await page.evaluate(() => (window as any).appImManager.setPeer({peerId: 0}));
     await page.waitForTimeout(500);
     await page.evaluate(() => {
       const w = window as any;
@@ -602,6 +585,110 @@ test.describe('the bot keyboard under the field', () => {
     expect(opened.scroll.clientHeight - grown.scroll.clientHeight).toBeCloseTo(48, 0);
   });
 
+  test('one that does not ask to fit its rows is as tall as it may be, its rows sharing that height', async({page}) => {
+    const rows = () => page.evaluate(() => Array.from(document.querySelectorAll('.reply-keyboard .reply-markup-row'), (row) => {
+      const {top, bottom, height} = row.getBoundingClientRect();
+      return {top, bottom, height, button: row.firstElementChild.getBoundingClientRect().height};
+    }));
+    const rem = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize));
+    await setKeyboard(page, 3);
+    const closed = await measure(page);
+    await page.locator('.chat-input-main .toggle-reply-markup').click();
+    await settled(page);
+    const [fitted] = await rows();
+
+    await setKeyboard(page, 3, {stretched: true, comes: true});
+    const opened = await settled(page);
+    expect(opened.scroll.clientHeight).toBeCloseTo(15 * rem, 0);
+    expect(opened.scroll.scrollHeight).toBe(opened.scroll.clientHeight);
+    expect(opened.keyboard.height).toBeCloseTo(15.375 * rem, 0);
+    // * the field and the history standing on it all the way
+    expect(closed.field.bottom - opened.field.bottom).toBeCloseTo(opened.keyboard.height, 0);
+    expect(opened.paddingBottom - closed.paddingBottom).toBeCloseTo(opened.keyboard.height, 0);
+    // * rows of one height, from its top to its bottom, as far apart as ever, their buttons as tall as they are
+    const stretched = await rows();
+    expect(stretched[0].height).toBeCloseTo((15 - 2 * .25) * rem / 3, 0);
+    for(const row of stretched) {
+      expect(row.height).toBeCloseTo(stretched[0].height, 0);
+      expect(row.button).toBeCloseTo(row.height, 0);
+    }
+    expect(stretched[0].top - opened.field.bottom).toBeCloseTo(.375 * rem, 0);
+    expect(stretched[2].bottom).toBeCloseTo(opened.keyboard.bottom, 0);
+    expect(stretched[1].top - stretched[0].bottom).toBeCloseTo(.25 * rem, 0);
+
+    // * more of them than fit: as tall as they are, scrolled
+    await setKeyboard(page, 12, {stretched: true, comes: true});
+    const scrolled = await settled(page);
+    expect(scrolled.scroll.clientHeight).toBeCloseTo(15 * rem, 0);
+    expect(scrolled.scroll.scrollHeight).toBeGreaterThan(scrolled.scroll.clientHeight);
+    expect((await rows())[0].height).toBeCloseTo(fitted.height, 0);
+  });
+
+  test('the field says what the keyboard asks it to while it is open, and what a force reply does while it answers it', async({page}) => {
+    await holdWrites(page);
+    const placeholder = () => page.evaluate(() => {
+      const element = (window as any).appImManager.chat.input.messageInputField.placeholder as HTMLElement;
+      return {text: element.textContent, dir: element.querySelector('[dir]')?.getAttribute('dir')};
+    });
+    const own = await placeholder();
+    expect(own.text).toBeTruthy();
+
+    await setKeyboard(page, 2, {placeholder: 'Pick a city'});
+    expect(await placeholder()).toEqual(own);
+    await page.locator('.chat-input-main .toggle-reply-markup').click();
+    await settled(page);
+    // * in the direction of the bot's words
+    expect(await placeholder()).toEqual({text: 'Pick a city', dir: 'auto'});
+    await page.keyboard.press('Escape');
+    await settled(page);
+    expect(await placeholder()).toEqual(own);
+
+    // * a force reply: the field answers its message, in its words, until that answer is dropped
+    const mid = await page.evaluate(() => {
+      const chat = (window as any).appImManager.chat;
+      const mid = Math.max(...Array.from(document.querySelectorAll<HTMLElement>('.bubbles-inner .bubble[data-mid]'), (bubble) => +bubble.dataset.mid));
+      const [, setStore] = Object.values((window as any).historyStorages).find(([candidate]: any) => candidate === chat.historyStorage) as [any, (key: string, value: any) => void];
+      setStore('replyMarkup', undefined);
+      setStore('replyMarkup', {_: 'replyKeyboardForceReply', pFlags: {}, mid, fromId: chat.peerId, placeholder: 'Your name'});
+      (window as any).rootScope.dispatchEventSingle('history_reply_markup', {peerId: chat.peerId});
+      return mid;
+    });
+    await expect.poll(placeholder).toEqual({text: 'Your name', dir: 'auto'});
+    expect(await page.evaluate(() => (window as any).appImManager.chat.input.replyToMsgId)).toBe(mid);
+    await page.evaluate(() => (window as any).appImManager.chat.input.clearHelper());
+    await expect.poll(placeholder).toEqual(own);
+  });
+
+  test('a markup the worker puts in place of another keeps nothing of the one before', async({page}) => {
+    await holdWrites(page);
+    // * as the worker's mirror hands the history's markup over to the tab
+    const mirror = (markup: any) => page.evaluate((markup) => {
+      const w = window as any;
+      const chat = w.appImManager.chat;
+      w.apiManagerProxy.processMirrorTaskMap.historyStorage({
+        key: [chat.historyStorage.key, 'replyMarkup'].join('\x01'),
+        value: {...markup, fromId: chat.peerId}
+      });
+      w.rootScope.dispatchEventSingle('history_reply_markup', {peerId: chat.peerId});
+    }, markup);
+    const placeholder = () => page.evaluate(() => (window as any).appImManager.chat.input.messageInputField.placeholder.textContent);
+    const own = await placeholder();
+    const rows = [{_: 'keyboardButtonRow', buttons: [{_: 'keyboardButton', text: 'Menu', type: {_: 'buttonTypeDefault'}}]}];
+
+    await mirror({_: 'replyKeyboardMarkup', pFlags: {resize: true}, mid: 1101, placeholder: 'Pick a city', rows});
+    expect((await settled(page)).active).toBe(true);
+    expect(await placeholder()).toBe('Pick a city');
+    // * another, with no words of its own: the field's
+    await mirror({_: 'replyKeyboardMarkup', pFlags: {resize: true}, mid: 1102, rows});
+    expect((await settled(page)).active).toBe(true);
+    expect(await placeholder()).toBe(own);
+    // * a force reply after it: no rows left of the keyboard to show
+    const mid = await page.evaluate(() => Math.max(...Array.from(document.querySelectorAll<HTMLElement>('.bubbles-inner .bubble[data-mid]'), (bubble) => +bubble.dataset.mid)));
+    await mirror({_: 'replyKeyboardForceReply', pFlags: {}, mid});
+    expect((await settled(page)).active).toBe(false);
+    await expect(page.locator('.chat-input-main .toggle-reply-markup')).toHaveClass(/\bhide\b/);
+  });
+
   test('scrolls past 15rem', async({page}) => {
     await setKeyboard(page, 12);
     await page.locator('.chat-input-main .toggle-reply-markup').click();
@@ -642,6 +729,10 @@ async function openSavedMessages(page: Page, query = '') {
 
 type KeyboardOptions = {
   singleUse?: boolean,
+  // * not asking to fit its rows (`resize`), as most bots' are
+  stretched?: boolean,
+  // * what it asks the empty field to say
+  placeholder?: string,
   // * a single-use one answered already
   hidden?: boolean,
   // * the message that brought it
@@ -653,7 +744,7 @@ type KeyboardOptions = {
 // * the keyboard a bot's last message would have left in the chat, `rows` rows of it (none: what there was, and the
 // * user's closing of it forgotten)
 async function setKeyboard(page: Page, rows: number, options: KeyboardOptions = {}) {
-  await page.evaluate(async([rows, {singleUse, hidden, mid = 1, comes}]) => {
+  await page.evaluate(async([rows, {singleUse, stretched, placeholder, hidden, mid = 1, comes}]) => {
     const chat = (window as any).appImManager.chat;
     // * the store and its setter, the app's own (`historyStorages`)
     const [, setStore] = Object.values((window as any).historyStorages).find(([candidate]: any) => candidate === chat.historyStorage) as [any, (key: string, value: any) => void];
@@ -668,9 +759,12 @@ async function setKeyboard(page: Page, rows: number, options: KeyboardOptions = 
     }
 
     const button = (text: string) => ({_: 'keyboardButton', text, type: {_: 'buttonTypeDefault'}});
+    // * in place of the one there was, as the worker's mirror puts it (a store would merge the two)
+    setStore('replyMarkup', undefined);
     setStore('replyMarkup', {
       _: 'replyKeyboardMarkup',
-      pFlags: {...(singleUse && {single_use: true}), ...(hidden && {hidden: true})},
+      pFlags: {...(!stretched && {resize: true}), ...(singleUse && {single_use: true}), ...(hidden && {hidden: true})},
+      placeholder,
       mid,
       fromId: chat.peerId,
       rows: Array.from({length: rows}, (_, i) => ({
@@ -684,6 +778,28 @@ async function setKeyboard(page: Page, rows: number, options: KeyboardOptions = 
       await keyboard.checkAvailability();
     }
   }, [rows, options] as const);
+}
+
+// * nothing of the chat is saved or sent from this tab - a draft, a read mark, a message - and a draft asked for is
+// * `draft`, answered late, if there is one
+async function holdWrites(page: Page, draft?: string) {
+  await page.evaluate((draft) => {
+    const proxy = (window as any).apiManagerProxy;
+    const invoke = proxy.invoke.bind(proxy);
+    proxy.invoke = (type: string, payload: any, ack: boolean, ...rest: any[]) => {
+      if(type === 'manager' && /^(send|saveDraft|setDraft|clearDraft|syncDraft|read)/.test(payload.method)) {
+        return ack ? {cached: true, result: Promise.resolve()} : Promise.resolve();
+      }
+
+      if(draft !== undefined && type === 'manager' && payload.method === 'getDraft') {
+        const message = {_: 'draftMessage', pFlags: {}, message: draft, date: Math.floor(Date.now() / 1000)};
+        const result = new Promise((resolve) => setTimeout(() => resolve(message), 300));
+        return ack ? {cached: false, result} : result;
+      }
+
+      return invoke(type, payload, ack, ...rest);
+    };
+  }, draft);
 }
 
 // * the same twice over, and nothing of the field or the history moving: a way that has not started yet (a busy machine

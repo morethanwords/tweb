@@ -64,6 +64,7 @@ import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 import CacheStorageController, {CacheStorageDbName} from '@lib/files/cacheStorage';
 import type {PushSingleManager} from '@appManagers/pushSingleManager';
 import getDeepProperty from '@helpers/object/getDeepProperty';
+import isObject from '@helpers/object/isObject';
 import {_changeHistoryStorageKey, _deleteHistoryStorage, _iterateHistoryStorages, _useHistoryStorage} from '@stores/historyStorages';
 import {
   reconcileCommunityDialog,
@@ -401,7 +402,15 @@ class ApiManagerProxy extends MTProtoMessagePort {
           // @ts-ignore
           slicedArray[smth1](...payload.value);
         } else {
-          setHistoryStorage(property as any, payload.value);
+          // * what the worker put there takes the place of what was: a store merges an object into the one before
+          // * it, which would keep what the old had and the new lacks (a keyboard's rows under the force reply after it)
+          batch(() => {
+            if(isObject(historyStorage[property as keyof typeof historyStorage])) {
+              setHistoryStorage(property as any, undefined);
+            }
+
+            setHistoryStorage(property as any, payload.value);
+          });
         }
 
         return false;

@@ -43,9 +43,9 @@ beforeAll(async() => {
   ({getKeyboardButtonHandler, getRichPageButtonHandler} = await import('@components/wrappers/keyboardButton'));
 });
 
-function makeChat(threadId?: number) {
+function makeChat(threadId?: number, peerId = (5 as UserId).toPeerId(false)) {
   return {
-    peerId: (5 as UserId).toPeerId(false),
+    peerId,
     threadId,
     input: {openPollCreation: vi.fn(), getEphemeralSendingSnapshot: (): undefined => undefined},
     appImManager: {requestLocation: vi.fn(), requestPhone: vi.fn()}
@@ -134,6 +134,22 @@ describe('a reply keyboard shown in a topic answers in that topic', () => {
     expect(mocks.sendText).toHaveBeenCalledWith({
       peerId: chat.peerId,
       threadId: 42,
+      text: 'Hello'
+    });
+  });
+
+  test('in a group a plain button answers the keyboard\'s message, for a bot that hears only what is meant for it', () => {
+    const chat = makeChat(42, (6 as ChatId).toPeerId(true));
+    getKeyboardButtonHandler({
+      button: replyButton({_: 'buttonTypeDefault'}, 'Hello'),
+      chat: chat as any,
+      replyMarkup
+    }).onClick(new MouseEvent('click'));
+
+    expect(mocks.sendText).toHaveBeenCalledWith({
+      peerId: chat.peerId,
+      threadId: 42,
+      replyToMsgId: 77,
       text: 'Hello'
     });
   });

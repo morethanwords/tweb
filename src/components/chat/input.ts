@@ -641,6 +641,10 @@ export default class ChatInput {
   public suggestedPost: SuggestedPostPayload;
   private inputHelperNavigationItem: NavigationItem;
   private placeholderParamsMiddlewareHelper: MiddlewareHelper;
+  // * what the field says while empty (`getPlaceholderParams`), and a bot keyboard's words said instead
+  private placeholderParams: Parameters<ChatInput['updateMessageInputPlaceholder']>[0];
+  private keyboardPlaceholder: string;
+  private keyboardPlaceholderElement: HTMLElement;
 
   private savedReplyToPollOption?: {
     msgId: number;
@@ -1164,10 +1168,16 @@ export default class ChatInput {
       const element = this.emoticonsDropdown?.getElement();
       if(element?.classList.contains('is-under') && this.emoticonsDropdown.chatInput === this) element.style.display = 'none';
       this.updateReplyMarkupToggle();
+      this.updateKeyboardPlaceholder();
     });
     this.listenerSetter.add(this.replyKeyboard)('close', () => {
       this.btnToggleReplyMarkup.classList.remove('active');
       this.updateReplyMarkupToggle();
+      this.updateKeyboardPlaceholder();
+    });
+    // * a language applied over the bot's words puts the field's own back: the bot's go there again
+    this.listenerSetter.add(rootScope)('language_apply', () => {
+      if(this.keyboardPlaceholder) this.updateKeyboardPlaceholder();
     });
   }
 
@@ -3480,17 +3490,23 @@ export default class ChatInput {
     canSend ??= await this.chat.canSend('send_plain');
     const {peerId, threadId, isForum, type} = this.chat;
     let key: LangPackKey, args: FormatterArguments, inputStarsCountEl: HTMLElement;
+    // * where the field only asks for a message, a bot's keyboard may ask in its words (`updateKeyboardPlaceholder`) - not
+    // * over what it cannot take, what it is for instead (a template, a thread to choose) or what a message costs, which
+    // * is said before it is sent (Android)
+    let yieldsToKeyboard = false;
     if(!canSend) {
       key = 'Channel.Persmission.MessageBlock';
     } else if(type === ChatType.Welcome) {
       key = 'WelcomeMessages.Placeholder';
     } else if(threadId && !isForum && !peerId.isUser()) {
       key = 'Comment';
+      yieldsToKeyboard = true;
     } else if(
       (peerState ? peerState.isBroadcast : await this.managers.appPeersManager.isBroadcast(peerId)) ||
       (peerState ? peerState.isBroadcastGroup : await this.managers.appPeersManager.isBroadcastGroup(peerId))
     ) {
       key = 'ChannelBroadcast';
+      yieldsToKeyboard = true;
     } else if(this.chat.isMonoforum && this.chat.canManageDirectMessages) {
       key = this.inputState.store.isSuggestingUneditablePostChange ?
         'ChannelDirectMessages.CantChangeSuggestedPostMessage' :
@@ -3504,6 +3520,7 @@ export default class ChatInput {
       (peerState ? peerState.isAnonymousSending : await this.managers.appMessagesManager.isAnonymousSending(peerId))
     ) {
       key = 'SendAnonymously';
+      yieldsToKeyboard = true;
     } else if(type === ChatType.Stories && !this.chat.starsAmount) {
       // * a reply that costs Stars shows its price below instead, over the stealth mode countdown too:
       // * as Android has it, what a message costs is said before it is sent
@@ -3525,6 +3542,8 @@ export default class ChatInput {
       } else {
         key = 'Message';
       }
+
+      yieldsToKeyboard = true;
     } else if(this.chat.starsAmount) {
       key = 'PaidMessages.MessageForStars';
       const starsElement = document.createElement('span');
@@ -3534,19 +3553,17 @@ export default class ChatInput {
       args = [starsElement];
     } else {
       key = 'Message';
+      yieldsToKeyboard = true;
     }
 
-    return {key, args, inputStarsCountEl};
+    return {key, args, inputStarsCountEl, yieldsToKeyboard};
   }
 
-  public updateMessageInputPlaceholder({
-    key,
-    args = [],
-    inputStarsCountEl
-  }: {
+  public updateMessageInputPlaceholder(params: {
     key: LangPackKey,
     args?: FormatterArguments,
-    inputStarsCountEl?: HTMLElement
+    inputStarsCountEl?: HTMLElement,
+    yieldsToKeyboard?: boolean
   }) {
     // console.warn('[input] update placeholder');
     // const i = I18n.weakMap.get(this.messageInput) as I18n.IntlElement;
@@ -3557,10 +3574,45 @@ export default class ChatInput {
 
     const oldKey = i.key;
     const oldArgs = i.args;
-    i.compareAndUpdateBool({key, args}) &&
-    this.inputState.set({inputStarsCountEl});
+    this.placeholderParams = params;
+    this.updateKeyboardPlaceholder();
 
     return {oldKey, oldArgs};
+  }
+
+  /**
+   * The field's placeholder: its own words, or a bot's keyboard's while they apply (`ReplyKeyboard.getPlaceholder`),
+   * as desktop and Android have them - not while a message is edited, nor where the field says more than that it asks
+   * for a message (`yieldsToKeyboard`). The field's own wait under the bot's as the placeholder's, put back once they go
+   */
+  public updateKeyboardPlaceholder() {
+    const element = this.messageInputField?.placeholder;
+    const i = element && I18n.weakMap.get(element) as I18n.IntlElement;
+    const params = this.placeholderParams;
+    if(!i || !params) {
+      return;
+    }
+
+    const {key, args = [], inputStarsCountEl, yieldsToKeyboard} = params;
+    const text = yieldsToKeyboard && !this.editMsgId ?
+      this.replyKeyboard?.getPlaceholder(this.replyToMsgId) :
+      undefined;
+    if(text) {
+      i.key = key;
+      i.args = args;
+      const span = this.keyboardPlaceholderElement ??= document.createElement('span');
+      // * the bot's words, in their own direction
+      span.dir = 'auto';
+      if(text !== this.keyboardPlaceholder) span.replaceChildren(wrapEmojiText(text));
+      if(span.parentElement !== element) element.replaceChildren(span);
+    } else if(this.keyboardPlaceholder) {
+      i.update({key, args});
+    } else if(!i.compareAndUpdateBool({key, args})) {
+      return;
+    }
+
+    this.keyboardPlaceholder = text;
+    this.inputState.set({inputStarsCountEl});
   }
 
   private filterAttachMenuButtons() {
@@ -5706,6 +5758,7 @@ export default class ChatInput {
         }
         this.editMsgId = mid;
         this.editMessage = message;
+        this.updateKeyboardPlaceholder();
         input = undefined;
         richMessage = undefined;
         // the limit plate steps aside for editing what is already there
@@ -6092,6 +6145,7 @@ export default class ChatInput {
       this.replyIsEphemeral = false;
     }
     this.updateEphemeralComposer();
+    this.updateKeyboardPlaceholder();
     this.center(true);
   }
 
@@ -6130,6 +6184,7 @@ export default class ChatInput {
 
     this.editMsgId = this.editMessage = undefined;
     this.helperType = this.helperFunc = undefined;
+    this.updateKeyboardPlaceholder();
     if(this.welcomeLimitReached) void this.center(true);
     this.setCurrentHover();
     this.saveDraftDebounced();
