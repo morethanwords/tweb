@@ -166,7 +166,7 @@ function MyQrCodePopup(props: {
     save: ({theme, shown}) => accountManagers.appProfileManager.setShareTheme(peerId, theme, shown),
     onError: () => {
       toastNew({langPackKey: 'Error.AnError'});
-      // the manager has put the full peer back; so does the screen
+      // the manager has put the full peer back; so does the screen, unless this device holds on to the choice
       showServedTheme();
     }
   });
@@ -218,7 +218,7 @@ function MyQrCodePopup(props: {
     return shown && I18n.format(shown.title, true);
   };
 
-  const sheetHeight = createMemo(() => sheetHeightFor(size().height));
+  const sheetHeight = createMemo(() => sheetHeightFor(size().height, size().width));
   const sheetSize = createMemo(() => ({width: size().width - 2 * SHEET_INSET, height: sheetHeight()}));
   const cardLayout = createMemo(() => panel() ? openLayout({...surface(), pillExtra: 0}, sheetHeight()) : undefined);
 
@@ -243,6 +243,12 @@ function MyQrCodePopup(props: {
       {clipPath: open ? shapes : shapes.reverse()},
       open ? {duration: 400, easing: 'cubic-bezier(.16, 1, .3, 1)'} : {duration: 240, easing: 'ease-in'}
     );
+    // what stands in it comes once there is room for it, and goes first
+    for(const child of sheetElement.children) {
+      // the fade that held it hidden while it was closed must not outlive the closing
+      child.getAnimations().forEach((animation) => animation.cancel());
+      child.animate({opacity: open ? [0, 1] : [1, 0]}, open ? {duration: 220, delay: 90, fill: 'backwards'} : {duration: 100, fill: 'forwards'});
+    }
   }, {defer: true}));
 
   function closePanel(fromNavigation?: boolean) {

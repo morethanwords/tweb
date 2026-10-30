@@ -1,11 +1,16 @@
 import type {ReadingManagers} from '@lib/managers';
 import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
+import getEmojiEntityFromEmoji from '@lib/richTextProcessor/getEmojiEntityFromEmoji';
+import {getEmojiImageUrl} from '@lib/richTextProcessor/emojiImage';
 
 /**
  * The emoji anyone may put on a QR code, Premium or not: custom emoji of the set `RestrictedEmoji`
  * (`QrEmojiPanel.PRESETS`, three rows of seven). Slot 4 is the set's snowflake once the set is known.
  */
 export const PRESET_EMOJI_SET = 'RestrictedEmoji';
+
+/** A plain emoji a theme was served with: the same picture on every platform, as on Android */
+export const getStandardEmojiUrl = (emoticon: string) => getEmojiImageUrl(getEmojiEntityFromEmoji(emoticon).unicode);
 const PRESET_SNOW_SLOT = 4;
 export const PRESET_EMOJI_IDS = [
   '5449505950283078474', '5420315771991497307', '5373141891321699086', '5373026167722876724', '5435957248314579621', '5440354006335495210', '5436040291507247633',

@@ -12,10 +12,9 @@ export function fieldCanvasSize(width: number, height: number, periodWidth: numb
 // Android's `QrShareView`: the field turns 0.763 deg/s, drifts 6.2 px/s up and to the left with a wandering heading,
 // follows a drag 1:1 and glides on after a release (tau 0.35 s, 2600 px/s at most). The idle motion stops under the
 // finger (over 0.07 s) and returns 0.25 s after it (over 0.45 s).
-// The idle speed is tenth of those numbers: side by side with the phone, they looked ten times too fast.
-const IDLE_SPEED = 0.1;
-const ROTATION = -0.763 * IDLE_SPEED;
-const DRIFT_SPEED = 6.2 * IDLE_SPEED, DRIFT_ANGLE = Math.atan2(-5.5, -3.5);
+// four times Android's 0.763: asked for by eye
+const ROTATION = -3;
+const DRIFT_SPEED = 6.2, DRIFT_ANGLE = Math.atan2(-5.5, -3.5);
 const GLIDE_TAU = 0.35, GLIDE_END = GLIDE_TAU * 8, MAX_FLING = 2600;
 const SLOP = 8;
 const LIVE_FRAME = 32;

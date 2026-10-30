@@ -19,6 +19,9 @@ type LocalTheme = {
 
 const localThemes = new Map<string, LocalTheme>();
 
+/** Android's own panel offers custom emoji only, so the server may not keep a plain one: this device goes on showing it */
+const hasPlainEmoji = (theme: ShareTheme) => theme._ === 'shareThemeEmojiBackdrop' && !!theme.emojis?.some((emoji) => emoji._ === 'reactionEmoji');
+
 const keyOf = (account: number, peerId: PeerId) => account + '_' + peerId;
 
 /** The theme chosen on this device that a full peer from the server must not override yet */
@@ -27,7 +30,7 @@ export function getHeldTheme(account: number, peerId: PeerId, now = Date.now()):
   const local = localThemes.get(key);
   if(!local) return;
 
-  if(local.savedAt && now - local.savedAt > LOCAL_THEME_HOLD) {
+  if(local.savedAt && now - local.savedAt > LOCAL_THEME_HOLD && !hasPlainEmoji(local.shown)) {
     localThemes.delete(key);
     return;
   }
@@ -71,7 +74,7 @@ export function createThemeSaver(options: {
       if(local && localThemes.get(key) === local) local.savedAt = Date.now();
     }, (error) => {
       // not saved: the server's full is right
-      if(localThemes.get(key) === local) localThemes.delete(key);
+      if(localThemes.get(key) === local && !hasPlainEmoji(sending.shown)) localThemes.delete(key);
       options.onError(error);
     });
   };

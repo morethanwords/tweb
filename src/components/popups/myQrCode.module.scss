@@ -24,7 +24,7 @@
 
 .popup {
   --popup-width: 23.5rem;
-  --popup-height: 40rem;
+  --popup-height: min(47rem, calc(100vh - 2rem));
   --popup-max-height: 100%;
   --popup-border-radius: 1.5rem;
   --popup-background-color: #000;
@@ -262,6 +262,10 @@
 .islandAway {
   visibility: hidden;
   transition: none;
+
+  @include animation-level-global(2) {
+    transition: none;
+  }
 }
 
 // Android's own pictures of the buttons
@@ -291,7 +295,7 @@
   position: absolute;
   display: flex;
   flex-direction: column;
-  border-radius: 1.75rem;
+  border-radius: 1.76rem; // SHEET_RADIUS 28.17
   overflow: hidden;
   // one flat colour per backdrop, as Android's: the blur would be paid on every frame of the field beneath
   background: linear-gradient(var(--qr-control), var(--qr-control)), var(--qr-mid);
@@ -387,6 +391,7 @@
 }
 
 // Emoji: the emoji tab fills the sheet
+// `QrEmojiPanel`: its tabs, its titles (15 px, 44 px high) and the white circle of the tab on show
 .emojiHost {
   // the tab's glyphs and labels read on the glass in the card's colour, not in the app's grey
   --primary-text-color: var(--qr-foreground);
@@ -405,6 +410,36 @@
 
   :global(.super-emoji.active) {
     background-color: var(--qr-control-active);
+  }
+
+  :global(.menu-horizontal-div) {
+    flex: none;
+    height: 2.25rem;
+    padding-inline: .1875rem;
+  }
+
+  :global(.menu-horizontal-div-item) {
+    flex: none;
+    width: 2.125rem;
+    height: 1.875rem;
+    margin-block: .1875rem;
+    border-radius: .9375rem;
+    color: var(--qr-foreground);
+
+    &:global(.active) {
+      background-color: rgba(255, 255, 255, .36);
+    }
+  }
+
+  :global(.category-title) {
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding-block: 0;
+    padding-inline: .875rem;
+    color: var(--qr-foreground);
+    font-size: .9375rem;
+    opacity: .7;
   }
 }
 

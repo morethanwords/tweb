@@ -120,11 +120,9 @@ export const SHEET_TOP_INSET = 51;
 export const SHEET_CARD_GAP = 13;
 /** The card does not shrink below this share of its size */
 const MIN_CARD_SCALE = 0.5;
-const SHEET_HEIGHT_RATIO = 0.42;
-const MIN_SHEET_HEIGHT = 220;
-const MAX_SHEET_HEIGHT = 320;
 
-export const sheetHeightFor = (surfaceHeight: number) => Math.round(Math.min(MAX_SHEET_HEIGHT, Math.max(MIN_SHEET_HEIGHT, surfaceHeight * SHEET_HEIGHT_RATIO)));
+// Android's `sheetH`: from the card, its chip's place and the gap down to the bottom; at the least 160
+export const sheetHeightFor = (surfaceHeight: number, surfaceWidth: number) => Math.round(Math.max(160, surfaceHeight - SHEET_BOTTOM - (SHEET_TOP_INSET + surfaceWidth * 0.745 * 1.07 + 24 + 11 + SHEET_CARD_GAP)));
 
 export type OpenLayout = {
   /** The card's scale, about its top middle */

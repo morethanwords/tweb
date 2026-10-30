@@ -1,3 +1,5 @@
+import type {MyDocument} from '@appManagers/appDocsManager';
+import {getStandardEmojiUrl} from './emojiPresets';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import wrapSticker from '@components/wrappers/sticker';
 import liteMode from '@helpers/liteMode';
@@ -42,12 +44,23 @@ function createCanvas(width: number, height: number) {
   return {canvas, ctx};
 }
 
-type Picture = HTMLImageElement | string;
+type Picture = HTMLImageElement | HTMLCanvasElement | string;
+
+/** `QrEmojiPanel.isTextColor`: an emoji made to take the text's colour is white on the pattern, on any backdrop */
+const TEXT_COLOR_EMOJI = '#ffffff';
+const isTextColorEmoji = (doc: MyDocument) => doc.attributes.some((attribute) => attribute._ === 'documentAttributeCustomEmoji' && attribute.pFlags.text_color);
 
 async function loadPicture(emoji: ThemeEmoji, middleware: Middleware): Promise<Picture | undefined> {
-  if(!emoji.documentId) return emoji.emoticon;
+  if(!emoji.documentId) {
+    const image = new Image();
+    image.src = getStandardEmojiUrl(emoji.emoticon);
+    return image.decode().then(() => image, () => emoji.emoticon);
+  }
+
   try {
-    return await loadEmojiStill({docId: emoji.documentId, middleware, emojiSize: 96});
+    const doc = await rootScope.managers.appEmojiManager.getCustomEmojiDocument(emoji.documentId);
+    const image = await loadEmojiStill({docId: doc, middleware, emojiSize: 96});
+    return isTextColorEmoji(doc) ? tint(image, TEXT_COLOR_EMOJI) : image;
   } catch{}
 }
 
@@ -148,6 +161,11 @@ function settledField(source: HTMLCanvasElement, width: number, height: number) 
 // Android's `placeInner`: the EdgeSqueeze band, d' = band * e^(d / band - 1), the size by the same factor, never below 9 px
 const SQUEEZE_BAND = 90;
 const SQUEEZE_MIN_SIZE = 9;
+const SQUEEZE_EDGE_FADE = 12;
+const smoothStep = (from: number, to: number, value: number) => {
+  const t = Math.min(1, Math.max(0, (value - from) / (to - from)));
+  return t * t * (3 - 2 * t);
+};
 // the largest copy is about 48 px, and a player's frames cost by their pixels
 const LIVE_EMOJI_SIZE = 48 * Math.min(window.devicePixelRatio || 1, 2);
 
@@ -167,11 +185,23 @@ function createLiveEmojiField(emojis: ThemeEmoji[], width: number, height: numbe
   middleware.onClean(() => players.remove());
 
   const managers = bindManagersToSession(rootScope.managers);
-  const holders = emojis.map((emoji) => {
-    if(!emoji.documentId) return;
+  const tinted: ReturnType<typeof createCanvas>[] = [];
+  const holders = emojis.map((emoji, index) => {
     const div = document.createElement('div');
     players.append(div);
+    if(!emoji.documentId) {
+      const image = new Image();
+      image.onload = () => middleware() && onLoad();
+      image.src = getStandardEmojiUrl(emoji.emoticon);
+      div.append(image);
+      return div;
+    }
+
     managers.appEmojiManager.getCustomEmojiDocument(emoji.documentId)
+    .then((doc) => {
+      if(isTextColorEmoji(doc)) tinted[index] = createCanvas(LIVE_EMOJI_SIZE, LIVE_EMOJI_SIZE);
+      return doc;
+    })
     .then((doc) => wrapSticker({doc, div, middleware, width: LIVE_EMOJI_SIZE, height: LIVE_EMOJI_SIZE, play: liteMode.isAvailable('motion'), loop: true, group: 'none', withThumb: false, exportLoad: 2}))
     .then(({load}) => load())
     .then(() => middleware() && onLoad())
@@ -193,7 +223,18 @@ function createLiveEmojiField(emojis: ThemeEmoji[], width: number, height: numbe
     ctx.clearRect(0, 0, width, height);
     const rad = angle * Math.PI / 180, cos = Math.cos(rad), sin = Math.sin(rad);
     const margin = SQUEEZE_BAND * 1.3;
-    const frames = emojis.map((_, index) => frameOf(index));
+    const frames = emojis.map((_, index) => {
+      const frame = frameOf(index), paint = tinted[index];
+      if(!frame || !paint) return frame;
+      // the current frame in white, once for all its copies
+      paint.ctx.globalCompositeOperation = 'source-over';
+      paint.ctx.clearRect(0, 0, LIVE_EMOJI_SIZE, LIVE_EMOJI_SIZE);
+      paint.ctx.drawImage(frame, 0, 0, LIVE_EMOJI_SIZE, LIVE_EMOJI_SIZE);
+      paint.ctx.globalCompositeOperation = 'source-in';
+      paint.ctx.fillStyle = TEXT_COLOR_EMOJI;
+      paint.ctx.fillRect(0, 0, LIVE_EMOJI_SIZE, LIVE_EMOJI_SIZE);
+      return paint.canvas;
+    });
     for(const node of nodes) {
       const fieldX = node.x - canvasWidth / 2 + x, fieldY = node.y - canvasHeight / 2 + y;
       let screenX = width / 2 + fieldX * cos - fieldY * sin, screenY = height / 2 + fieldX * sin + fieldY * cos;
@@ -201,19 +242,27 @@ function createLiveEmojiField(emojis: ThemeEmoji[], width: number, height: numbe
 
       let factor = 1;
       const squeeze = (value: number, end: number) => {
-        const near = value <= end - value ? value : end - value;
+        const atStart = value <= end - value;
+        const near = atStart ? value : end - value;
         if(near >= SQUEEZE_BAND) return value;
         const g = Math.exp(near / SQUEEZE_BAND - 1);
-        factor *= g;
-        return value <= end - value ? SQUEEZE_BAND * g : end - SQUEEZE_BAND * g;
+        factor = Math.min(factor, g);
+        return atStart ? SQUEEZE_BAND * g : end - SQUEEZE_BAND * g;
       };
       screenX = squeeze(screenX, width);
       screenY = squeeze(screenY, height);
+      // what the squeeze has pressed into the corners is gone by then: `EdgeSqueeze.alpha`, and the last 12 px at the edge
+      let alpha = smoothStep(0.08, 0.25, factor);
+      if(alpha <= 0.004) continue;
 
       const emoji = emojis[node.index];
       const frame = frames[node.index];
       if(!frame && emoji.documentId) continue;
       const size = node.size * Math.max(factor, Math.min(node.size, SQUEEZE_MIN_SIZE) / node.size);
+      const half = size / 2;
+      alpha *= smoothStep(0, SQUEEZE_EDGE_FADE, Math.min(screenX - half, width - screenX - half, screenY - half, height - screenY - half));
+      if(alpha <= 0.004) continue;
+      ctx.globalAlpha = alpha;
       ctx.save();
       ctx.translate(screenX, screenY);
       ctx.rotate((node.angle + angle) * Math.PI / 180);
