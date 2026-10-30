@@ -533,14 +533,17 @@ export default class ReplyKeyboard extends EventListenerBase<{
 
   /**
    * What the bot asks the empty field to say (`ChatInput.updateKeyboardPlaceholder`): while its keyboard is open, or while
-   * the field answers the message that brought it - a force reply's (Android's, desktop's while it is the last one)
+   * the field answers the message that brought it - a force reply's (Android's, desktop's while it is the last one), not
+   * another chat's message of the same id (a reply there)
    */
-  public getPlaceholder(replyToMsgId: number) {
+  public getPlaceholder(replyToMsgId: number, replyToPeerId?: PeerId) {
     const replyMarkup = this.getReplyMarkup() as ReplyMarkup.replyKeyboardMarkup | ReplyMarkup.replyKeyboardForceReply;
+    const answersIt = replyToMsgId && replyToMsgId === replyMarkup.mid &&
+      (!replyToPeerId || replyToPeerId === this.chatInput.chat.peerId);
     if(
       !this.ephemeralMode &&
       replyMarkup.placeholder &&
-      (this.active || (replyToMsgId && replyToMsgId === replyMarkup.mid))
+      (this.active || answersIt)
     ) {
       return replyMarkup.placeholder;
     }

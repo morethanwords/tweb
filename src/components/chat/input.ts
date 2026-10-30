@@ -3597,7 +3597,7 @@ export default class ChatInput {
 
     const {key, args = [], inputStarsCountEl, yieldsToKeyboard} = params;
     const text = yieldsToKeyboard && !this.editMsgId ?
-      this.replyKeyboard?.getPlaceholder(this.replyToMsgId) :
+      this.replyKeyboard?.getPlaceholder(this.replyToMsgId, this.replyToPeerId) :
       undefined;
     if(text) {
       i.key = key;

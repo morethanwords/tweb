@@ -103,3 +103,24 @@ describe('a force reply\'s answer the user drops', () => {
     expect(setAppState).toHaveBeenCalledWith('droppedForceReplies', 'history_100', 43);
   });
 });
+
+describe('the placeholder of a closed keyboard', () => {
+  function makeChat() {
+    return makeKeyboard({
+      type: ChatType.Chat,
+      peerId: PEER_ID,
+      historyStorage: {replyMarkup: {...keyboard(43), placeholder: 'Pick one'}}
+    }).replyKeyboard;
+  }
+
+  test('stands in the field that answers the message that brought it', () => {
+    const replyKeyboard = makeChat();
+    expect(replyKeyboard.getPlaceholder(43)).toBe('Pick one');
+    expect(replyKeyboard.getPlaceholder(43, PEER_ID)).toBe('Pick one');
+    expect(replyKeyboard.getPlaceholder(44)).toBeUndefined();
+  });
+
+  test('not in one that answers another chat\'s message with the same id', () => {
+    expect(makeChat().getPlaceholder(43, (7 as ChatId).toPeerId(true))).toBeUndefined();
+  });
+});

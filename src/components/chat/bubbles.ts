@@ -936,7 +936,10 @@ export default class ChatBubbles {
   private onAnimateLadder: () => Promise<any> | void;
   /** the zoom a list rendered anew comes in with (`animateAsLadder`), from the moment it is armed till it is over */
   private ladderAppearance: CancellablePromise<void>;
+  /** the zoom held back till the list of the peer change (`chat.setPeerPromise`) is mounted (`startHeldLadder`) */
   private resolveLadderAnimation: () => Promise<any>;
+  /** the peer change whose list is mounted: a zoom of its renders is held back no more */
+  private ladderMountedIn: Promise<void>;
   private emptyPlaceholderBubble: HTMLElement;
 
   private viewsMids: Set<FullMid> = new Set();
@@ -6453,6 +6456,7 @@ export default class ChatBubbles {
 
     this.onAnimateLadder = undefined;
     this.resolveLadderAnimation = undefined;
+    this.ladderMountedIn = undefined;
     this.ladderAppearance?.resolve();
     this.ladderAppearance = undefined;
     this.attachPlaceholderOnRender = undefined;
@@ -7018,12 +7022,7 @@ export default class ChatBubbles {
       }
 
       this.preloader.detach();
-
-      if(this.resolveLadderAnimation) {
-        this.resolveLadderAnimation();
-        this.resolveLadderAnimation = undefined;
-      }
-
+      this.startHeldLadder();
       this.setPeerCached = undefined;
 
       const scrollable = this.scrollable;
@@ -13366,12 +13365,26 @@ export default class ChatBubbles {
     }
   }
 
+  /**
+   * The list of the peer change is mounted: the zoom held back for it comes in, and so does at once one of a later
+   * render of the same change (the fresh page, while the change still waits for its dialog) - held back after this,
+   * nothing would bring it in, and the jump's highlights would wait for it for good
+   */
+  private startHeldLadder() {
+    this.ladderMountedIn = this.chat.setPeerPromise;
+    if(this.resolveLadderAnimation) {
+      this.resolveLadderAnimation();
+      this.resolveLadderAnimation = undefined;
+    }
+  }
+
   private async animateAsLadder(additionalFullMid: FullMid, additionalFullMids: FullMid[], isAdditionalRender: boolean, backLimit: number, maxId: FullMid) {
     /* const middleware = this.getMiddleware();
     await this.ladderDeferred; */
 
     const log = this.log.bindPrefix('ladder');
-    if(this.chat.setPeerPromise && !this.resolveLadderAnimation) {
+    const {setPeerPromise} = this.chat;
+    if(setPeerPromise && setPeerPromise !== this.ladderMountedIn && !this.resolveLadderAnimation) {
       log.warn('will be delayed');
       // @ts-ignore
       this.resolveLadderAnimation = this.animateAsLadder.bind(this, additionalFullMid, additionalFullMids, isAdditionalRender, backLimit, maxId);
