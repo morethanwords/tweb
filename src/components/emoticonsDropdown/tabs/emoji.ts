@@ -237,6 +237,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
   private onClick: (emoji: EmojiTabItem) => void;
   private activeEmoji: ReturnType<typeof getEmojiFromElement>;
   private activeElements: EmojiTabItem[];
+  private activeDocIds?: Set<DocId>;
   private noPacks: boolean;
   private noSearch: boolean;
   private preloaderDelay: number;
@@ -1176,7 +1177,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     };
 
     if(
-      options.active || (
+      options.active || (item.docId && this.activeDocIds?.has(item.docId)) || (
         this.activeEmoji && (
           item.docId ?
             this.activeEmoji.docId === item.docId :
@@ -1301,6 +1302,24 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     this.categoriesMap.forEach((category) => {
       category.items.forEach((item) => {
         if(emoji.docId ? item.docId === emoji.docId : item.emoji === emoji.emoji) {
+          item.element.classList.add('active');
+          this.activeElements.push(item);
+        }
+      });
+    });
+  }
+
+  /** Marks several custom emoji at once, for a picker that holds a few picks; the single `setActive` is left alone */
+  public setActiveDocIds(docIds: Iterable<DocId>) {
+    this.activeDocIds = new Set(docIds);
+    this.activeElements.forEach((item) => {
+      item.element.classList.remove('active');
+    });
+
+    this.activeElements.length = 0;
+    this.categoriesMap.forEach((category) => {
+      category.items.forEach((item) => {
+        if(item.docId && this.activeDocIds.has(item.docId)) {
           item.element.classList.add('active');
           this.activeElements.push(item);
         }

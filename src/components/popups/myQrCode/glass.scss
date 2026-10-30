@@ -1,0 +1,10 @@
+// The glass of the screen's buttons: Android draws it with a shader; here the blur, a lift of the colours and its rim
+@mixin qr-glass {
+  background-image: linear-gradient(135deg, rgba(255, 255, 255, .18), transparent 42%, transparent 62%, rgba(255, 255, 255, .1));
+  backdrop-filter: blur(20px) saturate(1.6);
+  box-shadow:
+    inset 0 0 0 .5px rgba(255, 255, 255, .35),
+    inset 0 1px 1px rgba(255, 255, 255, .4),
+    inset 0 -1px 1px rgba(255, 255, 255, .12),
+    0 2px 8px rgba(0, 0, 0, .12);
+}

@@ -1,5 +1,5 @@
 import bigInt from 'big-integer';
-import {InputSavedStarGift, Message, MessageAction, PremiumGiftCodeOption, SavedStarGift, StarGift, StarGiftAttribute, StarGiftAttributeId, StarGiftCollection, StarGiftUpgradePrice, StarsAmount, WebPageAttribute} from '@layer';
+import {InputCheckPasswordSRP, InputSavedStarGift, Message, MessageAction, PremiumGiftCodeOption, SavedStarGift, StarGift, StarGiftAttribute, StarGiftAttributeId, StarGiftCollection, StarGiftUpgradePrice, StarsAmount, WebPageAttribute} from '@layer';
 import {STARS_CURRENCY} from '@appManagers/constants';
 import {MyDocument} from '@appManagers/appDocsManager';
 import {AppManager} from '@appManagers/manager';
@@ -542,6 +542,11 @@ export default class AppGiftsManager extends AppManager {
       }
       this.rootScope.dispatchEvent('star_gift_list_update', {peerId: toId});
     });
+  }
+
+  public async getStarGiftWithdrawalUrl(stargift: InputSavedStarGift, password: InputCheckPasswordSRP) {
+    const {tmp_password} = await this.passwordManager.getTmpPassword(password, 60);
+    return this.apiManager.invokeApi('payments.getStarGiftWithdrawalUrl', {stargift, tmp_password});
   }
 
   public async getResaleOptions(params: {

@@ -424,6 +424,68 @@ export class AppUsersManager extends AppManager {
     return this.apiManager.invokeApiSingle('contacts.exportContactToken', {});
   }
 
+  /**
+   * The code that lets non-contacts message the own profile for free. A permanent one (no `expires`) is kept in the
+   * state, to be shown at once on the next open; a temporary one is replaced by the server every few seconds.
+   */
+  public async exportNoPaidMessagesToken(options: {revoke?: boolean, temporary?: boolean} = {}) {
+    const token = await this.apiManager.invokeApi('contacts.exportNoPaidMessagesToken', {
+      revoke: options.revoke ? true : undefined,
+      temporary: options.temporary ? true : undefined
+    });
+
+    if(!token.expires) {
+      await this.appStateManager.pushToState('noPaidMessagesToken', {token: token.token, url: token.url, permanent: true});
+    } else if(options.revoke) {
+      // * revoking kills the kept permanent code too
+      await this.clearKeptNoPaidMessagesToken();
+    } else {
+      // a temporary code is the mode now; the permanent token stays valid and kept
+      await this.setKeptNoPaidMessagesTokenPermanent(false);
+    }
+
+    return token;
+  }
+
+  /** The kept permanent code, and whether permanent was the mode last: only then it comes back as the mode */
+  public async getKeptNoPaidMessagesToken(): Promise<{token: string, url: string, permanent?: boolean} | null> {
+    const state = await this.appStateManager.getState();
+    return state.noPaidMessagesToken || null;
+  }
+
+  /** Going back to the fee or to a temporary code revokes nothing: the token stays, only the mode is not permanent */
+  public async setKeptNoPaidMessagesTokenPermanent(permanent: boolean) {
+    const kept = await this.getKeptNoPaidMessagesToken();
+    if(kept && !!kept.permanent !== permanent) {
+      await this.appStateManager.pushToState('noPaidMessagesToken', {...kept, permanent});
+    }
+  }
+
+  public clearKeptNoPaidMessagesToken() {
+    return this.appStateManager.pushToState('noPaidMessagesToken', null);
+  }
+
+  /**
+   * Uses someone's code. Resolves with whether the user can be messaged for free now (their fee for us is gone);
+   * rejects with the server's error (`USER_*`, `TOKEN_*` …).
+   */
+  public async importNoPaidMessagesToken(userId: UserId, token: string) {
+    const user = await this.apiManager.invokeApiSingleProcess({
+      method: 'contacts.importNoPaidMessagesToken',
+      params: {
+        user_id: this.getUserInput(userId),
+        token
+      },
+      processResult: (user) => {
+        this.saveApiUser(user);
+        return user;
+      }
+    });
+
+    const fullUser = await this.appProfileManager.getProfile(userId, true);
+    return !fullUser?.send_paid_messages_stars;
+  }
+
   private pushContact(id: UserId) {
     this.contactsList.add(id);
     this.contactsIndex.indexObject(id, this.getUserSearchText(id));

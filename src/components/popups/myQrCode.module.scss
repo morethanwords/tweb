@@ -1,66 +1,485 @@
+@use "../../scss/mixins" as *;
+@use "./myQrCode/glass" as *;
+
+// The QR screen: the whole panel is the backdrop, with the white card on it. On a desktop it is a compact panel,
+// standing in the middle of the window over everything like a big menu; on a phone it is the whole screen.
+
+// A change fades over 300 ms, and over 180 ms at the reduced level; off, it is at once
+@mixin fade($properties) {
+  @include animation-level-global(1) {
+    transition-property: $properties;
+    transition-duration: .3s;
+  }
+
+  :global(body.animation-level-1:not(.animation-level-2)) & {
+    transition-duration: .18s;
+  }
+}
+
+// Above every menu, popup and viewer, which stand at 4 whatever the order they were opened in: a menu of the panel's own
+// lives inside it, and the picker that Share opens is raised to 6 (exportButtons) and the toasts to 6 (toast.scss).
+.popup:global(.popup) {
+  z-index: 5;
+}
+
 .popup {
   --popup-width: 23.5rem;
-  --popup-min-width: 22rem;
-  --popup-max-width: 26rem;
-  --popup-border-radius: 1.25rem;
+  --popup-height: 40rem;
+  --popup-max-height: 100%;
+  --popup-border-radius: 1.5rem;
+  --popup-background-color: #000;
 
-  :global(.themes-container) {
-    padding-inline: .5rem;
+  &.fullscreen {
+    --popup-width: 100%;
+    --popup-height: 100%;
+    --popup-max-width: 100%;
+    --popup-border-radius: 0;
+
+    padding: 0;
   }
 }
 
 .popupContainer {
-  // Surface bg lives here so the lower panel (body header + picker + footer)
-  // reads as one continuous panel below the captureArea. The captureArea has
-  // its own ChatBackground inside so its wallpaper paints over this surface
-  // for the upper half — net result: wallpaper on top, surface on bottom.
-  background: var(--surface-color);
+  // the same shadow as a menu has
+  box-shadow: var(--menu-box-shadow);
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// TopSection canvas — the whole hero area (wallpaper + card + avatar + QR +
-// username) lives on a single canvas painted from JS. SCSS just supplies the
-// CSS-px width/height (the canvas itself runs at 2× backing for retina) and
-// the off-DOM hosts that feed it.
-// ────────────────────────────────────────────────────────────────────────────
+.surface {
+  --qr-foreground: #fff;
+  --qr-control: rgba(255, 255, 255, .16);
+  // the button of the island whose panel is on show
+  --qr-control-active: rgba(255, 255, 255, .3);
 
-.captureCanvas {
-  display: block;
-  flex: 0 0 auto;
-}
-
-// Off-DOM mount point for `<ChatBackgroundLayer>` and `<AvatarNewTsx>` — we
-// only need their internal canvas / img to be painted/loaded so we can sample
-// them; they never appear on screen themselves.
-.hiddenHost {
-  position: absolute;
-  left: -99999px;
-  top: 0;
+  position: relative;
+  flex: 1 1 auto;
   overflow: hidden;
+  color: var(--qr-foreground);
+  background-color: #000;
+  isolation: isolate;
+  // a drag on the backdrop moves the pattern, not the page
+  touch-action: none;
+}
+
+// The backdrop's gradient layers, one over the other
+.backdrop {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+
+  @include fade(opacity);
+}
+
+.backdropShown {
+  opacity: 1;
+}
+
+// What floats on the backdrop: a canvas for the emoji, or for a gift's models and symbols
+.field {
+  --field-fade: 48px;
+
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  // the pattern fades out toward the surface's edges (`EDGE_BAND`; the exported picture does the same)
+  mask-image:
+    linear-gradient(to right, transparent, #000 var(--field-fade), #000 calc(100% - var(--field-fade)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--field-fade), #000 calc(100% - var(--field-fade)), transparent);
+  mask-composite: intersect;
+}
+
+// Turned, drifted and dragged by `transform` from the script: the size is the canvases' own
+.fieldMover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  will-change: transform;
+}
+
+.fieldCanvas {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+
+  @include fade(opacity);
+}
+
+.fieldShown {
+  opacity: 1;
+}
+
+// The card keeps to the left of the panel in every direction: its place is a measured coordinate
+.cardPlace {
+  position: absolute;
+  top: 0;
+  direction: ltr;
+  // a panel opening moves the card up and shrinks it, about its top middle
+  transform-origin: 50% 0;
+
+  @include animation-level-global(2) {
+    transition: transform var(--transition-standard-in);
+  }
+}
+
+.card {
+  position: relative;
+  background-color: #fff;
+  color: var(--ink);
+  contain: layout style;
+
+  @include fade(color box-shadow);
+}
+
+.qr {
+  position: absolute;
+}
+
+.qrCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+
+  @include fade(opacity);
+}
+
+.qrShown {
+  opacity: 1;
+}
+
+.caption {
+  position: absolute;
+  inset-inline: 0;
+  text-align: center;
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+  // the capitals of a username read as a line, whatever follows
+  unicode-bidi: isolate;
+}
+
+.captionLine {
+  overflow: hidden;
+}
+
+// The close button and the controls: round glass over the backdrop
+.close,
+.control {
+  background-color: var(--qr-control);
+  color: var(--qr-foreground);
+  font-size: 1.375rem;
+  @include qr-glass;
+
+  &:hover {
+    background-color: var(--qr-control);
+  }
+}
+
+.close {
+  position: absolute;
+  inset-block-start: .5625rem;
+  inset-inline-start: .5625rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin: 0;
+  border-radius: 50%;
+}
+
+// Android's places: 40 px circles, the top ones 9 px in, the bottom ones centred 42 px in and 40 px up
+.copy {
+  position: absolute;
+  inset-block-start: .5625rem;
+  inset-inline-end: .5625rem;
+}
+
+.bar {
+  position: absolute;
+  inset-block-end: 1.25rem;
+  inset-inline: 1.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   pointer-events: none;
 }
 
-.title {
+.barGroup {
+  display: contents;
+}
+
+.control {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  pointer-events: auto;
+
+  @include animation-level-global(1) {
+    transition: opacity .2s ease, scale .3s cubic-bezier(.34, 1.56, .64, 1), background-color .2s ease;
+  }
+}
+
+// a panel stands open: the side buttons step back, as the island grows on Android
+.controlAway {
+  opacity: 0;
+  scale: .6;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+// The three buttons that open the panels, in the middle under everything: glass, as the other controls
+.island {
+  position: absolute;
+  inset-block-end: 1.25rem;
+  inset-inline: 0;
+  margin-inline: auto;
+  width: 9rem;
+  display: flex;
+  align-items: center;
+  border-radius: 1.25rem;
+  background-color: var(--qr-control);
+  @include qr-glass;
+
+  .control {
+    width: 3rem;
+    height: 2.5rem;
+    border-radius: 1.25rem;
+    background: none;
+    backdrop-filter: none;
+    box-shadow: none;
+
+    &:hover {
+      background: none;
+    }
+  }
+
+  @include animation-level-global(2) {
+    transition: visibility 0s .24s;
+  }
+}
+
+// it has grown into the sheet
+.islandAway {
+  visibility: hidden;
+  transition: none;
+}
+
+// Android's own pictures of the buttons
+@mixin qr-icon($name, $size) {
+  > :global(.tgico) {
+    width: $size;
+    height: $size;
+    font-size: 0;
+    background-color: currentColor;
+    mask: url('/assets/img/qr/#{$name}.webp') center / contain no-repeat;
+
+    &::before {
+      content: none;
+    }
+  }
+}
+
+.iconShare { @include qr-icon('msg_share', 22px); }
+.iconSave { @include qr-icon('msg_download', 24px); }
+.iconCopy { @include qr-icon('msg_copy', 22px); }
+.iconColors { @include qr-icon('msg_colors', 22px); }
+.iconEmoji { @include qr-icon('input_smile', 24.5px); }
+.iconGifts { @include qr-icon('menu_gift', 22px); }
+
+// The sheet the panels stand in, above the island. Closed it is not there for the eye, the mouse or the keyboard.
+.sheet {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  border-radius: 1.75rem;
+  overflow: hidden;
+  // one flat colour per backdrop, as Android's: the blur would be paid on every frame of the field beneath
+  background: linear-gradient(var(--qr-control), var(--qr-control)), var(--qr-mid);
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+
+  @include animation-level-global(1) {
+    transition: opacity .2s ease, visibility 0s .2s;
+  }
+
+  // the island grows into it (a clip from the script), and it stays until the clip has gone back
+  @include animation-level-global(2) {
+    opacity: 1;
+    transition: visibility 0s .24s;
+  }
+}
+
+.sheetOpen {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+
+  @include animation-level-global(1) {
+    transition-delay: 0s;
+  }
+
+  @include animation-level-global(2) {
+    transition-delay: 0s;
+  }
+}
+
+.sheetPanel {
+  position: relative;
   flex: 1 1 auto;
-  text-align: center;
-  margin: 0 .5rem;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  &[hidden] {
+    display: none;
+  }
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// Theme picker strip — fully delegated to `<ChatThemesPicker>`. We don't
-// override `.themes-container` / `.theme-container` / `.theme-bubble` sizes
-// here so the picker reads identical to the one in generalSettings. The only
-// local tweak is a negative-margin pair to absorb the section's 1rem horizontal
-// padding (otherwise the section-edge-extension `width: calc(100% + 1rem)`
-// would still leave .5rem white gutters on both sides of the strip).
-// ────────────────────────────────────────────────────────────────────────────
+// Colours: six to a row, three rows and a peek of the next
+.swatches {
+  --swatch-gap: .75rem;
 
-.themePicker {
-  margin: 0 -1rem;
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  align-content: start;
+  gap: var(--swatch-gap);
+  padding: .6875rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
-.copyBtn {
-  display: flex !important;
+.swatch {
+  position: relative;
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  cursor: pointer;
+  // a hairline keeps a light swatch visible over the glass
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12);
+
+  // the ring of the chosen one, inset
+  &::after {
+    content: "";
+    position: absolute;
+    inset: -.25rem;
+    border: .125rem solid var(--qr-foreground);
+    border-radius: 50%;
+    opacity: 0;
+    scale: .85;
+
+    @include animation-level-global(1) {
+      transition: opacity .2s ease;
+    }
+
+    @include animation-level-global(2) {
+      transition: opacity .2s ease, scale var(--transition-standard-in);
+    }
+  }
+
+  &[aria-pressed="true"]::after {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+// Emoji: the emoji tab fills the sheet
+.emojiHost {
+  // the tab's glyphs and labels read on the glass in the card's colour, not in the app's grey
+  --primary-text-color: var(--qr-foreground);
+  --secondary-text-color: var(--qr-foreground);
+
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+
+  > :global(.emoji-container),
+  > :global(.emoticons-tab) {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  :global(.super-emoji.active) {
+    background-color: var(--qr-control-active);
+  }
+}
+
+// Gifts: three to a row
+.giftsScroll {
+  flex: 1 1 auto;
+  padding: .5rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.gifts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .5625rem;
+}
+
+.giftTile {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
   align-items: center;
   justify-content: center;
+  border: 0;
+  border-radius: .875rem;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  background-color: var(--surface-color);
+  color: inherit;
+
+  &[aria-pressed="true"] {
+    box-shadow: 0 0 0 .125rem var(--qr-foreground);
+  }
+}
+
+.giftBackdrop {
+  position: absolute;
+  inset: 0;
+  --stargift-backdrop-offset-y: -30px;
+}
+
+.giftSticker {
+  position: relative;
+  width: 82%;
+  aspect-ratio: 1;
+  z-index: 1;
+}
+
+.giftsPreloader {
+  margin-block: .5rem;
+}
+
+.giftsEmpty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+.giftsEmptyIcon {
+  font-size: 4rem;
+  opacity: .8;
+}
+
+.giftsEmptyTitle {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-18);
+}
+
+.giftsEmptyInfo {
+  white-space: pre-line;
+  opacity: .8;
 }

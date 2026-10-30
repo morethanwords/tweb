@@ -7,7 +7,7 @@
 
 import type {MyTopPeer} from '@appManagers/appUsersManager';
 import tsNow from '@helpers/tsNow';
-import {ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, InputPhoto, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates, ChatParticipant, PeerSettings, SendAsPeer, InputGroupCall, Birthday, TextWithEntities, UsersUserFull, MessagesChatFull, ProfileTab, Document, InputCollectible} from '@layer';
+import {ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, InputPhoto, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates, ChatParticipant, PeerSettings, SendAsPeer, InputGroupCall, Birthday, TextWithEntities, UsersUserFull, MessagesChatFull, ProfileTab, Document, InputCollectible, ShareTheme, ShareThemeBackdropOption, ShareThemeBackdrops} from '@layer';
 import SearchIndex from '@lib/searchIndex';
 import {AppManager} from '@appManagers/manager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
@@ -219,6 +219,12 @@ export class AppProfileManager extends AppManager {
       }
     }
 
+    // * the documents of the gift a share theme shows (its model, its pattern) are saved to be wrapped by the tab
+    const shareTheme = (fullPeer as UserFull.userFull | ChatFull.channelFull).share_theme;
+    if(shareTheme?._ === 'shareThemeGift' && shareTheme.stargift._ === 'starGiftUnique') {
+      this.appGiftsManager.wrapGift(shareTheme.stargift);
+    }
+
     if('pinned_msg_id' in fullPeer && fullPeer.pinned_msg_id) {
       fullPeer.pinned_msg_id = this.appMessagesIdsManager.generateMessageId(
         fullPeer.pinned_msg_id,
@@ -324,6 +330,69 @@ export class AppProfileManager extends AppManager {
 
       return result;
     });
+  }
+
+  /**
+   * The colours a share theme can pick (`backdrop_id` names one). The server list is hashed: a repeated call passes the
+   * hash and a `shareThemeBackdropsNotModified` answer keeps the list from the first one.
+   */
+  public getShareThemeBackdrops(overwrite?: boolean): Promise<ShareThemeBackdropOption[]> {
+    return this.apiManager.invokeApiHashable({
+      method: 'messages.getShareThemeBackdrops',
+      processResult: (result) => (result as ShareThemeBackdrops.shareThemeBackdrops).backdrops,
+      overwrite
+    });
+  }
+
+  /** The theme of the full peer in the cache, if the full peer is there: `undefined` without it, the default one has no field. */
+  public getCachedShareTheme(peerId: PeerId): ShareTheme | undefined {
+    const fullPeer = this.getCachedProfileByPeerId(peerId) as UserFull.userFull | ChatFull.channelFull;
+    if(!fullPeer) {
+      return;
+    }
+
+    return fullPeer.share_theme || {_: 'shareThemeDefault'};
+  }
+
+  /**
+   * Saves the share theme of the own profile or of a public channel. The cached full peer takes the theme at once
+   * (`peer_full_update`), and gets the previous one back if the request fails.
+   * @param shown what the full peer holds in place of `theme`, when `theme` is an input constructor
+   * (`inputShareThemeGift` is sent, `shareThemeGift` is shown).
+   */
+  public async setShareTheme(peerId: PeerId, theme: ShareTheme, shown?: ShareTheme) {
+    const local = shown || (theme._ !== 'inputShareThemeGift' ? theme : undefined);
+    const hadFull = !!this.getCachedProfileByPeerId(peerId);
+    let previous: ShareTheme | undefined;
+    if(local && hadFull) {
+      this.modifyCachedFullPeer(peerId, (fullPeer) => {
+        const target = fullPeer as UserFull.userFull | ChatFull.channelFull;
+        previous = target.share_theme;
+        target.share_theme = local;
+      });
+    }
+
+    try {
+      return await this.apiManager.invokeApi('messages.setShareTheme', {
+        peer: peerId === this.rootScope.myId ? this.appPeersManager.getInputPeerSelf() : this.appPeersManager.getInputPeerById(peerId),
+        theme
+      });
+    } catch(err) {
+      if(local && hadFull) {
+        // * something else may have written the full peer meanwhile, which is not ours to undo
+        this.modifyCachedFullPeer(peerId, (fullPeer) => {
+          const target = fullPeer as UserFull.userFull | ChatFull.channelFull;
+          if(target.share_theme !== local) {
+            return false;
+          }
+
+          if(previous) target.share_theme = previous;
+          else delete target.share_theme;
+        });
+      }
+
+      throw err;
+    }
   }
 
   public getCachedFullChat(chatId: ChatId): ChatFull {
