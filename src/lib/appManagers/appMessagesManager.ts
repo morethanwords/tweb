@@ -9961,7 +9961,8 @@ export class AppMessagesManager extends AppManager {
         threadId: isForumTopic(dialog) ? options.threadId : undefined,
         isReaction: key === 'unread_reactions_count',
         isPollVote: key === 'unread_poll_votes_count',
-        add: !!add
+        // * a negative count (all of them read) takes off, it does not add
+        add: +add > 0
       });
     });
 
@@ -11193,8 +11194,12 @@ export class AppMessagesManager extends AppManager {
     const recentReactions = reactions?.recent_reactions;
     const previousReactions = message.reactions;
     const previousRecentReactions = previousReactions?.recent_reactions;
-    const isUnread = recentReactions?.some((reaction) => reaction.pFlags.unread);
     const wasUnread = !!previousRecentReactions?.some((reaction) => reaction.pFlags.unread);
+    // * the last reaction taken off comes without `recent_reactions` at all, while a `min` object leaves them out
+    // * whatever they are: it says nothing of the unread ones
+    const isUnread = !recentReactions && reactions?.pFlags.min && reactions.results.length ?
+      wasUnread :
+      !!recentReactions?.some((reaction) => reaction.pFlags.unread);
     if(recentReactions?.length && message.pFlags.out) { // * if user added a reaction to our message
       const recentReaction = recentReactions[recentReactions.length - 1];
       if(

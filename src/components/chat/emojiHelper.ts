@@ -13,6 +13,9 @@ import attachMediaPeekListeners from '@components/mediaPeek';
 import ListenerSetter from '@helpers/listenerSetter';
 import rootScope from '@lib/rootScope';
 
+// * as many as a typed query is answered with
+const QUERY_LIMIT = 40;
+
 export default class EmojiHelper extends AutocompleteHelper {
   private scrollable: ScrollableX;
   private innerList: HTMLElement;
@@ -59,10 +62,6 @@ export default class EmojiHelper extends AutocompleteHelper {
     const customEmojis: Parameters<CustomEmojiRendererElement['add']>[0]['addCustomEmojis'] = new Map();
     const inner = this.innerList = document.createElement('span');
     container.append(inner);
-
-    if(!rootScope.premium) {
-      emojis = emojis.filter((emoji) => this.chatInput.emoticonsDropdown.canUseEmoji(emoji, false));
-    }
 
     emojis.forEach((emoji) => {
       const wrapped = wrapAppEmoji(emoji, true);
@@ -148,17 +147,29 @@ export default class EmojiHelper extends AutocompleteHelper {
     }); */
   }
 
+  // * custom emoji a non-premium user can't use here are dropped before render(), which would otherwise show an
+  // * empty strip instead of hiding it
+  private filterUsable(emojis: AppEmoji[]) {
+    if(rootScope.premium) {
+      return emojis;
+    }
+
+    return emojis.filter((emoji) => this.chatInput.emoticonsDropdown.canUseEmoji(emoji, false));
+  }
+
   public checkQuery(query: string, firstChar: string) {
     const middleware = this.getMiddleware();
     this.emoticon = undefined;
     const q = query.replace(/^:/, '');
-    this.managers.appEmojiManager.prepareAndSearchEmojis({q, addCustom: true}).then(async(emojis) => {
+    // * every custom emoji found comes before its emoji: cut to the limit before the ones that can't be used are
+    // * dropped, they would take the places of the emoji that can
+    const premium = rootScope.premium;
+    this.managers.appEmojiManager.prepareAndSearchEmojis({q, addCustom: true, limit: premium ? QUERY_LIMIT : Infinity}).then((emojis) => {
       if(!middleware()) {
         return;
       }
 
-      this.render(emojis, firstChar !== ':', middleware);
-      // console.log(emojis);
+      this.render(this.filterUsable(emojis).slice(0, QUERY_LIMIT), firstChar !== ':', middleware);
     });
   }
 
@@ -193,14 +204,8 @@ export default class EmojiHelper extends AutocompleteHelper {
         return;
       }
 
-      let emojis: AppEmoji[] = emojiList.document_id.map((docId) => ({docId, emoji: ''}));
-      // * the result is custom emoji only — drop the ones a non-premium user can't use here,
-      // * otherwise render() would show an empty strip instead of hiding it
-      if(!rootScope.premium) {
-        emojis = emojis.filter((emoji) => this.chatInput.emoticonsDropdown.canUseEmoji(emoji, false));
-      }
-
-      this.render(emojis, true, middleware);
+      const emojis: AppEmoji[] = emojiList.document_id.map((docId) => ({docId, emoji: ''}));
+      this.render(this.filterUsable(emojis), true, middleware);
     });
   }
 }

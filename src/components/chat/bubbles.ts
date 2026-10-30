@@ -929,7 +929,8 @@ export default class ChatBubbles {
   }> = {};
 
   private onAnimateLadder: () => Promise<any> | void;
-  // private ladderDeferred: CancellablePromise<void>;
+  /** the zoom a list rendered anew comes in with (`animateAsLadder`), from the moment it is armed till it is over */
+  private ladderAppearance: CancellablePromise<void>;
   private resolveLadderAnimation: () => Promise<any>;
   private emptyPlaceholderBubble: HTMLElement;
 
@@ -6020,6 +6021,15 @@ export default class ChatBubbles {
     }
   }
 
+  /**
+   * What a jump lights up waits for: the scroll to it to settle, and a list rendered anew to have come in — lit up
+   * while it zooms in, the bubble flashes unseen and the text is measured at the zoom's scale, the found words
+   * painted off their place
+   */
+  private waitForJumpToSettle(scroll: Promise<any>) {
+    return Promise.all([scroll, this.ladderAppearance]);
+  }
+
   public highlightBubble(element: HTMLElement, textHighlight?: TextHighlightMatch) {
     const datasetKey = 'highlightTimeout';
     if(element.dataset[datasetKey]) {
@@ -6434,6 +6444,8 @@ export default class ChatBubbles {
 
     this.onAnimateLadder = undefined;
     this.resolveLadderAnimation = undefined;
+    this.ladderAppearance?.resolve();
+    this.ladderAppearance = undefined;
     this.attachPlaceholderOnRender = undefined;
     this.emptyPlaceholderBubble = undefined;
     this.previousStickyDate = undefined;
@@ -6676,7 +6688,7 @@ export default class ChatBubbles {
           // * plays while the message is still travelling
           const targets = this.getJumpTargets(bubble, lastMsgFullMid, wholeAlbum);
           const focusOn = this.getMessageFocus(bubble, lastMsgFullMid, highlight, pollOption, targets);
-          this.scrollToBubble(bubble, 'center', undefined, undefined, focusOn).then(() => {
+          this.waitForJumpToSettle(this.scrollToBubble(bubble, 'center', undefined, undefined, focusOn)).then(() => {
             if(!middleware()) return;
             targets.forEach((target) => this.highlightBubble(target, highlight));
             this.highlightBubblePollAnswer(bubble, lastMsgFullMid, pollOption);
@@ -7102,7 +7114,7 @@ export default class ChatBubbles {
 
           if(willHighlight) {
             // * after the scroll settles, see the same-peer branch above
-            promise.then(() => {
+            this.waitForJumpToSettle(promise).then(() => {
               if(!middleware()) return;
               targets.forEach((target) => this.highlightBubble(target, highlight));
               this.highlightBubblePollAnswer(bubble, lastMsgFullMid, pollOption);
@@ -13361,10 +13373,12 @@ export default class ChatBubbles {
       return;
     } */
 
+    const appearance = this.ladderAppearance;
     const fullMids = this.getRenderedHistory('desc');
 
     if(!fullMids.length) {
       log.warn('no bubbles');
+      appearance?.resolve();
       return;
     }
 
@@ -13488,6 +13502,7 @@ export default class ChatBubbles {
           });
 
           this.chatInner.classList.remove('zoom-fading');
+          appearance?.resolve();
         });
 
         // ! в хроме, каким-то образом из-за zoom-fade класса начинает прыгать скролл при подгрузке сообщений вверх,
@@ -13496,6 +13511,8 @@ export default class ChatBubbles {
         //   this.needReflowScroll = true;
         // }
       });
+    } else {
+      appearance?.resolve();
     }
 
     return promise;
@@ -14666,7 +14683,9 @@ export default class ChatBubbles {
 
     if(isFirstMessageRender && liteMode.isAvailable('motion')/*  && false */) {
       let times = isAdditionRender ? 2 : 1;
-      this.messagesQueueOnRenderAdditional = () => {
+      this.ladderAppearance?.resolve();
+      const appearance = this.ladderAppearance = deferredPromise();
+      const arm = this.messagesQueueOnRenderAdditional = () => {
         this.log('messagesQueueOnRenderAdditional');
 
         if(--times) return;
@@ -14680,7 +14699,14 @@ export default class ChatBubbles {
           }, 0);
         });
       };
+
+      // * the renders of this load are through without running it: it does not come
+      waitPromise.catch(noop).then(() => {
+        if(this.messagesQueueOnRenderAdditional === arm) appearance.resolve();
+      });
     } else {
+      // * one armed that has not run by now does not come any more
+      if(this.messagesQueueOnRenderAdditional) this.ladderAppearance?.resolve();
       this.messagesQueueOnRenderAdditional = undefined;
     }
 

@@ -657,19 +657,21 @@ export class CustomEmojiRendererElement extends HTMLElement {
       return;
     }
 
-    if(this.offscreen) { // re-arm the compositor fade so the group fades again on viewport re-entry
-      const docId = elements.values().next().value?.docId;
-      if(docId !== undefined) {
-        this.sendCompositor('resetFade', {groupId: docId});
-      }
-    }
-
     elements.forEach((element) => {
       const saved = element.savedChildren;
       if(saved?.length && !element.firstChild) {
         element.replaceChildren(...saved);
       }
     });
+
+    this.onPlaceholdersShown(elements);
+  }
+
+  /** The group is shown by its placeholders again: they are cleared, and it fades in, once it is drawn anew */
+  private onPlaceholdersShown(elements: CustomEmojiElements, docId: DocId = elements.values().next().value?.docId) {
+    if(this.offscreen && docId !== undefined) { // re-arm the compositor fade so the group fades again on viewport re-entry
+      this.sendCompositor('resetFade', {groupId: docId});
+    }
 
     this.clearedElements.delete(elements);
     elementsFadeInStartTimes.delete(elements);
@@ -1347,6 +1349,10 @@ export class CustomEmojiRendererElement extends HTMLElement {
       // * placeholder (wrap leaves the thumb out of a cleared group): one under the canvas until it is
       // * painted showed through it for a frame or two - a translucent emoji darkened, a thin one bold
       else if(this.isSelectable) this.clearedElements.delete(elements);
+      // * Thumbnails put on a group the canvas has drawn (a category of the emoji panel going out of sight: its emoji
+      // * leave the group and come back to it in one pass, which keeps it): the group is shown by its placeholders
+      // * again - still taken for drawn, it would never clear them, and they would show under it once it is drawn
+      else if(onlyThumb && this.clearedElements.has(elements)) this.onPlaceholdersShown(elements, docId);
 
       for(const el of addElements) {
         if(elements.has(el)) {

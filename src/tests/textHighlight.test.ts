@@ -191,6 +191,17 @@ describe('computeLineBoxes', () => {
     const boxes = computeLineBoxes([rangeOf(rect(100, 51, 50, 19), rect(100, 93, 50, 19))], origin, 21);
     expect(boxes.map((b) => b.top)).toEqual([0, 42]);
   });
+
+  it('measures in the overlay\'s own pixels when an ancestor is scaled', () => {
+    // * the first test's text with the bubble at .8 of its size, as it zooms in when its chat opens
+    const scaled = rect(100, 50, 320, 240);
+    const at = (left: number, top: number, width: number, height: number) => rect(100 + left * .8, 50 + top * .8, width * .8, height * .8);
+    const boxes = computeLineBoxes([rangeOf(at(10, 1, 40, 19), at(50, 1, 60, 19), at(0, 22, 90, 19))], scaled, 21, {x: .8, y: .8});
+    expect(boxes.map((b) => [b.left, b.top, b.width, b.height].map((v) => +v.toFixed(3) + 0))).toEqual([
+      [10, 0, 100, 21],
+      [0, 21, 90, 21]
+    ]);
+  });
 });
 
 describe('computeFullRange', () => {

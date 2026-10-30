@@ -364,9 +364,10 @@ export function findTextRect(container: HTMLElement, match: TextHighlightMatch, 
 /**
  * Turns the ranges' fragment rects into per-line boxes stretched to the line height (glyph rects
  * are only font-high; the missing half-leading is added on both sides), unioned along a line
- * and expressed relative to `origin`.
+ * and expressed relative to `origin`, in its own pixels: `scale` is how much bigger the screen
+ * shows them (an ancestor scaled - a bubble zooming in as its chat opens).
  */
-export function computeLineBoxes(ranges: Range[], origin: DOMRect, lineHeight: number): TextLineBox[] {
+export function computeLineBoxes(ranges: Range[], origin: DOMRect, lineHeight: number, scale = {x: 1, y: 1}): TextLineBox[] {
   type Edges = {left: number, right: number, top: number, bottom: number};
   const fragments: Edges[] = [];
   for(const range of ranges) {
@@ -375,8 +376,14 @@ export function computeLineBoxes(ranges: Range[], origin: DOMRect, lineHeight: n
         continue;
       }
 
-      const extra = Math.max(0, lineHeight - rect.height) / 2;
-      fragments.push({left: rect.left, right: rect.right, top: rect.top - extra, bottom: rect.bottom + extra});
+      const top = (rect.top - origin.top) / scale.y, bottom = (rect.bottom - origin.top) / scale.y;
+      const extra = Math.max(0, lineHeight - (bottom - top)) / 2;
+      fragments.push({
+        left: (rect.left - origin.left) / scale.x,
+        right: (rect.right - origin.left) / scale.x,
+        top: top - extra,
+        bottom: bottom + extra
+      });
     }
   }
 
@@ -412,8 +419,8 @@ export function computeLineBoxes(ranges: Range[], origin: DOMRect, lineHeight: n
   }
 
   return boxes.map((box) => ({
-    left: box.left - origin.left,
-    top: box.top - origin.top,
+    left: box.left,
+    top: box.top,
     width: box.right - box.left,
     height: box.bottom - box.top
   }));
@@ -698,8 +705,14 @@ class TextHighlighter implements TextHighlight {
   }
 
   private computeLineBoxes(ranges: Range[]) {
+    const {overlay} = this;
     const lineHeight = parseFloat(getComputedStyle(this.container).lineHeight) || 0;
-    return computeLineBoxes(ranges, this.overlay.getBoundingClientRect(), lineHeight);
+    const origin = overlay.getBoundingClientRect();
+    // * the rects are the screen's, the boxes are painted inside the overlay: a scaled ancestor (a bubble zooming in)
+    // * is taken out — the transform changes no size, and nothing would measure them again once it is over
+    const {width, height} = getComputedStyle(overlay);
+    const scale = {x: origin.width / parseFloat(width) || 1, y: origin.height / parseFloat(height) || 1};
+    return computeLineBoxes(ranges, origin, lineHeight, scale);
   }
 
   private createLineBox(box: TextLineBox) {
