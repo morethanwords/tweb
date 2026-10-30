@@ -4019,6 +4019,10 @@ const lang = {
     'one_value': 'Add this gift to your profile or convert it to %d Star.',
     'other_value': 'Add this gift to your profile or convert it to %d Stars.'
   },
+  'StarGiftGotStars': {
+    'one_value': 'You got **%d Star** for this gift.',
+    'other_value': 'You got **%d Stars** for this gift.'
+  },
   'StarGiftDefaultMessageConvertableOut': {
     'one_value': '%2$s can add this gift on their profile or convert it to %1$d Star.',
     'other_value': '%2$s can add this gift on their profile or convert it to %1$d Stars.'

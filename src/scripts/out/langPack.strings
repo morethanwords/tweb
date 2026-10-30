@@ -3524,6 +3524,8 @@
 "StarGiftDefaultMessageOut" = "%s can display this gift on their profile.";
 "StarGiftDefaultMessageConvertable_one" = "Add this gift to your profile or convert it to %d Star.";
 "StarGiftDefaultMessageConvertable_other" = "Add this gift to your profile or convert it to %d Stars.";
+"StarGiftGotStars_one" = "You got **%d Star** for this gift.";
+"StarGiftGotStars_other" = "You got **%d Stars** for this gift.";
 "StarGiftDefaultMessageConvertableOut_one" = "%2$s can add this gift on their profile or convert it to %1$d Star.";
 "StarGiftDefaultMessageConvertableOut_other" = "%2$s can add this gift on their profile or convert it to %1$d Stars.";
 "StarGiftDefaultMessageUpgrade" = "Upgrade this gift to a unique collectible.";
