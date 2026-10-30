@@ -21,6 +21,7 @@ import {TabContentContext} from '@components/mediaEditor/tabs/tabContent';
 import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 import A11yButton from '@components/a11yButton';
 import smoothScrollBehavior from '@helpers/dom/smoothScrollBehavior';
+import createStickersSearch from '@components/emoticonsDropdown/stickersSearch';
 
 export default function StickersTab() {
   const {wrapStickerSetThumb, EmoticonsSearch} = useHotReloadGuard();
@@ -261,29 +262,45 @@ export default function StickersTab() {
     }
   });
 
-  createEffect(async() => {
-    if(search()) {
-      setFilteredStickers(await managers.appStickersManager.searchStickers(search()));
+  let filteredEnd: HTMLDivElement;
+  createEffect(() => {
+    const query = search();
+    const g = !query && group();
+    if(!query && !g) {
+      setFilteredStickers();
       return;
     }
-    if(group()) {
-      const g = group();
-      if(g._ === 'emojiGroupPremium') {
-        setFilteredStickers(await managers.appStickersManager.getPremiumStickers());
-        return;
-      }
-      setFilteredStickers(
-        await managers.appStickersManager.getStickersByEmoticon({
+
+    // * an answer for a query or a group already left behind must not land
+    let active = true;
+    onCleanup(() => active = false);
+
+    if(g) {
+      const promise = g._ === 'emojiGroupPremium' ?
+        managers.appStickersManager.getPremiumStickers() :
+        managers.appStickersManager.getStickersByEmoticon({
           emoticon: g.emoticons,
           includeServerStickers: true
-        })
-      );
-
+        });
+      promise.then((stickers) => active && setFilteredStickers(stickers));
       return;
     }
-    if(!group() && !search()) {
-      setFilteredStickers();
-    }
+
+    // * the user's own stickers first, then the server's, page by page as the grid is scrolled on
+    const stickersSearch = createStickersSearch(managers, query);
+    onCleanup(stickersSearch.destroy);
+    stickersSearch.local().then(stickersSearch.first).then((stickers) => {
+      if(!active) {
+        return;
+      }
+
+      setFilteredStickers(stickers);
+      stickersSearch.paginate(filteredEnd, container(), (more) => {
+        if(active) {
+          setFilteredStickers((stickers) => [...stickers, ...more]);
+        }
+      });
+    });
   });
 
   return (
@@ -324,6 +341,7 @@ export default function StickersTab() {
         <div class="media-editor__stickers-grid">
           <For each={filteredStickers()}>{(doc) => <Sticker doc={doc} />}</For>
         </div>
+        <div ref={filteredEnd} />
       </Show>
 
       <Show when={stickerSets() && !filteredStickers()}>

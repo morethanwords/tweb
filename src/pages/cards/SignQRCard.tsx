@@ -13,7 +13,6 @@ import pause from '@helpers/schedulers/pause';
 import {paintQrCode} from '@helpers/qrCode/paintQrCode';
 import type {DcId} from '@types';
 import {AuthAuthorization, AuthLoginToken} from '@layer';
-import App from '@config/app';
 import {LangPackKey, i18n} from '@lib/langPack';
 import AccountController from '@lib/accounts/accountController';
 import rootScope from '@lib/rootScope';
@@ -128,27 +127,22 @@ export default function SignQRCard(_props: {spec: Spec}) {
 
   /* ---------- iterate loop ---------- */
 
-  const options: {dcId?: DcId, ignoreErrors: true} = {ignoreErrors: true};
+  // * the DC the account behind the QR lives on, once the server has said so
+  let migratedDcId: DcId | undefined;
   let prevToken: Uint8Array | number[] | undefined;
 
   async function iterate(QRCodeStyling: any, isLoop: boolean): Promise<boolean> {
     try {
       const userIds = await AccountController.getUserIds();
-      let loginToken = await managers.apiManager.invokeApi('auth.exportLoginToken', {
-        api_id: App.id,
-        api_hash: App.hash,
-        except_ids: userIds.map((userId) => userId.toUserId())
-      }, {ignoreErrors: true});
+      let loginToken = await managers.appAccountManager.exportLoginToken(userIds.map((userId) => userId.toUserId()));
 
       if(loginToken._ === 'auth.loginTokenMigrateTo') {
-        if(!options.dcId) {
-          options.dcId = loginToken.dc_id as DcId;
+        if(!migratedDcId) {
+          migratedDcId = loginToken.dc_id as DcId;
           managers.apiManager.setBaseDcId(loginToken.dc_id);
         }
 
-        loginToken = await managers.apiManager.invokeApi('auth.importLoginToken', {
-          token: loginToken.token
-        }, options) as AuthLoginToken.authLoginToken;
+        loginToken = await managers.appAccountManager.importLoginToken(loginToken.token, migratedDcId) as AuthLoginToken.authLoginToken;
       }
 
       if(loginToken._ === 'auth.loginTokenSuccess') {

@@ -558,6 +558,7 @@ const SharedMedia: Component = () => {
   const c: [SearchSuperMediaTab['type'], LangPackKey][] = [
     ['savedDialogs', 'SavedDialogsTabCount'],
     ['stories', 'StoriesCount'],
+    ['botPreviews', 'BotPreviews.SubtitleCount'],
     ['gifts', 'StarGiftsCount'],
     ['members', 'Members'],
     ['media', 'MediaFiles'],
@@ -566,6 +567,7 @@ const SharedMedia: Component = () => {
     ['links', 'Links'],
     ['music', 'MusicFiles'],
     ['voice', 'Voice'],
+    ['gifs', 'GIFs'],
     ['groups', 'CommonGroups'],
     ['similar', 'SimilarChannelsCount']
   ];
@@ -726,6 +728,9 @@ const SharedMedia: Component = () => {
       name: 'Stories',
       type: 'stories'
     }, {
+      name: 'ProfileBotPreviewTab',
+      type: 'botPreviews'
+    }, {
       name: 'SharedMedia.Gifts',
       type: 'gifts'
     }, {
@@ -756,6 +761,10 @@ const SharedMedia: Component = () => {
       name: 'SharedVoiceTab2',
       type: 'voice'
     }, {
+      inputFilter: 'inputMessagesFilterGif',
+      name: 'SharedGIFsTab2',
+      type: 'gifs'
+    }, {
       name: 'ChatList.Filter.Groups',
       type: 'groups'
     }, {
@@ -785,7 +794,9 @@ const SharedMedia: Component = () => {
         return;
       }
 
-      subtitles.get(type).compareAndUpdate({key: item[1], args: [length]});
+      // * a bot's similar peers are bots
+      const key: LangPackKey = type === 'similar' && tab.peerId.isUser() ? 'SimilarBotsCount' : item[1];
+      subtitles.get(type).compareAndUpdate({key, args: [length]});
     },
     onMediaCountersChange: (counters) => {
       mediaCounters = counters;

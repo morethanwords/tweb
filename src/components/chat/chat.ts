@@ -10,7 +10,8 @@ import ChatContextMenu from '@components/chat/contextMenu';
 import ChatInput from '@components/chat/input';
 import ChatSelection from '@components/chat/selection';
 import ChatTopbar from '@components/chat/topbar';
-import {HIDDEN_PEER_ID, NULL_PEER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SEND_PAID_WITH_STARS_DELAY, SERVICE_PEER_ID, VERIFICATION_CODES_BOT_ID} from '@appManagers/constants';
+import {NULL_PEER_ID, REPLIES_PEER_ID, SEND_PAID_WITH_STARS_DELAY} from '@appManagers/constants';
+import getAutoDeleteUnavailablePeerIds from '@appManagers/utils/peers/getAutoDeleteUnavailablePeerIds';
 import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
 import ChatSearch from '@components/chat/search';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
@@ -1888,8 +1889,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public canManageAutoDelete = async() => {
-    const specialChats = [REPLIES_PEER_ID, REPLIES_HIDDEN_CHANNEL_ID.toPeerId(), VERIFICATION_CODES_BOT_ID, HIDDEN_PEER_ID, SERVICE_PEER_ID, rootScope.myId];
-    if(specialChats.includes(this.peerId)) return false;
+    if(this.peerId === rootScope.myId || getAutoDeleteUnavailablePeerIds().includes(this.peerId)) return false;
 
     if(this.peerId.isUser()) return true;
 

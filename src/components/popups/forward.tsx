@@ -25,6 +25,8 @@ import {getMiddleware} from '@helpers/middleware';
 import {SEND_WHEN_ONLINE_TIMESTAMP} from '@appManagers/constants';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import {copyStoryLink} from '@components/stories/share';
+import toHHMMSS from '@helpers/string/toHHMMSS';
 
 async function resolveChatRightsActions(peerIdMids: {[fromPeerId: PeerId]: number[]}): Promise<ChatRights[]> {
   const messagesPromises = Object.keys(peerIdMids).map((peerId) => {
@@ -98,8 +100,8 @@ async function resolveChatRightsActions(peerIdMids: {[fromPeerId: PeerId]: numbe
 export type ForwardPopupStory = {
   peerId: PeerId,
   id: number,
-  /** what "Copy Link" copies while nobody is picked; without it there is no such button */
-  link?: string,
+  /** whether "Copy Link" copies the story's link (`copyStoryLink`) while nobody is picked; without it there is no such button */
+  canCopyLink?: boolean,
   /** shows where the story went, in place of the toast */
   onSent?: (text: HTMLElement) => void
 };
@@ -109,7 +111,9 @@ export default async function showForwardPopup(
   _onSelect?: (peerId: PeerId, threadId?: number) => Promise<void> | void,
   noTopics?: boolean,
   onClose?: () => void,
-  story?: ForwardPopupStory
+  story?: ForwardPopupStory,
+  /** a video's forward starts it at this second for whoever gets it ("Share at 0:42"), as its link does */
+  videoTimestamp?: number
 ) {
   const managers = bindManagersToSession(rootScope.managers);
   const chatRightsActions: ChatRights[] = story ? ['send_media'] : peerIdMids ? await resolveChatRightsActions(peerIdMids) : [];
@@ -117,10 +121,10 @@ export default async function showForwardPopup(
     chatRightsActions.push('send_plain');
   }
 
-  let canCopyLink = false, messageCount = 0, storyMedia: InputMedia.inputMediaStory;
+  let canCopyLink = false, messageCount = 0, storyMedia: InputMedia.inputMediaStory, username: string;
   if(story) {
     messageCount = 1;
-    canCopyLink = !!story.link;
+    canCopyLink = !!story.canCopyLink;
     storyMedia = {
       _: 'inputMediaStory',
       id: story.id,
@@ -137,6 +141,11 @@ export default async function showForwardPopup(
     const mid = peerIdMids[fromPeerIdStr as any as number][0];
     const firstMessage = await managers.appMessagesManager.getMessageByPeer(fromPeerId, mid) as Message.message;
     canCopyLink = !!firstMessage?.pFlags?.post;
+    if(canCopyLink && videoTimestamp !== undefined) {
+      // * a link with a time is a public channel's only, as tdesktop has it
+      username = await managers.appPeersManager.getPeerUsername(fromPeerId);
+      canCopyLink = !!username;
+    }
   }
 
   const {message_length_max: MAX_MESSAGE_LENGTH} = await managers.apiManager.getConfig();
@@ -190,20 +199,24 @@ export default async function showForwardPopup(
 
   const handleCopyLink = async() => {
     if(story) {
-      copyTextToClipboard(story.link);
-      toastNew({langPackKey: 'LinkCopied'});
-      handle.hide();
+      if(await copyStoryLink(managers, story.peerId, story.id)) {
+        handle.hide();
+      }
+
       return;
     }
 
     const fromPeerIdStr = Object.keys(peerIdMids)[0];
     const fromPeerId = fromPeerIdStr.toPeerId();
     const mid = peerIdMids[fromPeerIdStr as any as number][0];
-    const username = await rootScope.managers.appPeersManager.getPeerUsername(fromPeerId);
+    username ??= await managers.appPeersManager.getPeerUsername(fromPeerId);
     const msgId = getServerMessageId(mid);
     let url = 'https://t.me/';
     if(username) {
       url += username + '/' + msgId;
+      if(videoTimestamp !== undefined) {
+        url += '?t=' + videoTimestamp;
+      }
     } else {
       url += 'c/' + fromPeerId.toChatId() + '/' + msgId;
     }
@@ -232,7 +245,7 @@ export default async function showForwardPopup(
     let success: boolean;
     if(openChat) {
       await hotReloadGuard.appImManager.setInnerPeer({peerId, threadId, monoforumThreadId});
-      hotReloadGuard.appImManager.chat.input.initMessagesForward(peerIdMids);
+      hotReloadGuard.appImManager.chat.input.initMessagesForward(peerIdMids, videoTimestamp);
     } else {
       const result = await ChatInput.sendMessageWithForward({
         inputField,
@@ -247,6 +260,7 @@ export default async function showForwardPopup(
           scheduleRepeatPeriod: scheduleRepeatPeriod || undefined
         },
         forwarding: peerIdMids,
+        forwardParams: {videoTimestamp},
         media: storyMedia,
         slowModeParams: {
           peerId,
@@ -402,7 +416,12 @@ export default async function showForwardPopup(
     chatRightsActions,
     selfPresence: 'ChatYourSelf',
     useTopics: !noTopics,
-    titleLangKey: 'ShareWith',
+    ...(videoTimestamp !== undefined ? {
+      titleLangKey: 'ShareAtTimeWith',
+      titleLangArgs: [toHHMMSS(videoTimestamp)]
+    } : {
+      titleLangKey: 'ShareWith'
+    }),
     showTopPeers: true,
     ...(useIsFrozen() && {
       getMoreCustom: async() => {

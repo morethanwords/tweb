@@ -92,7 +92,7 @@ const TranslateSection = () => {
 // Section 2 — language radio list. The fetch is collected into the tab's
 // promise collector so opening waits for the list (avoids showing an empty
 // section that suddenly fills with 50+ rows). On repeat opens
-// `invokeApiCacheable` returns synchronously from cache, so no real wait.
+// `appLangPackManager.getLanguages` answers from its cache, so no real wait.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const LanguageListSection = () => {
@@ -103,9 +103,7 @@ const LanguageListSection = () => {
   let webLangCodes: string[] = [];
 
   promiseCollector.collect((async() => {
-    const langs1 = await rootScope.managers.apiManager.invokeApiCacheable('langpack.getLanguages', {
-      lang_pack: 'web'
-    });
+    const langs1 = await rootScope.managers.appLangPackManager.getLanguages('web');
     // macos langpack disabled in legacy tab — kept the structure for parity
     const langs2: LangPackLanguage[] = [];
 

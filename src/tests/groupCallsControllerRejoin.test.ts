@@ -27,6 +27,10 @@ vi.mock('@components/toast', () => ({toastNew: vi.fn()}));
 
 import {GroupCallsController} from '@lib/calls/groupCallsController';
 import GROUP_CALL_STATE from '@lib/calls/groupCallState';
+import GroupCallInstance from '@lib/calls/groupCallInstance';
+import {hasCallInTab} from '@lib/calls/callAccount';
+import deferredPromise from '@helpers/cancellablePromise';
+import rootScope from '@lib/rootScope';
 
 const INPUT = {_: 'inputGroupCall' as const, id: '900', access_hash: '901'};
 
@@ -422,5 +426,168 @@ describe('legacy group call transport recovery', () => {
     // connection; only the replacement's watcher listens.
     expect(removed.mock.calls.map(([event]) => event).sort()).toEqual(['connectionstatechange', 'iceconnectionstatechange']);
     expect(listeners.get('state')).toHaveLength(1);
+  });
+
+  it('joins again as the channel picked in "Display me as...", once, keeping the capture', async() => {
+    const {controller} = makeController();
+    const {instance, main, created} = makeLegacyInstance();
+    instance.myId = 1;
+    main.options = {type: 'main'};
+    controller.setCurrentGroupCall(instance);
+    const channel = (-5000).toPeerId();
+
+    await controller.changeGroupCallJoinAs(instance, channel);
+
+    expect(instance.joinAsPeerId).toBe(channel);
+    expect(created).toHaveLength(1);
+    expect(instance.createConnectionInstance).toHaveBeenCalledWith(expect.objectContaining({
+      streamManager: main.streamManager,
+      options: expect.objectContaining({type: 'main', joinAs: channel, joinVideo: true, rejoin: true})
+    }));
+
+    // already shown as the channel: nothing to do
+    await controller.changeGroupCallJoinAs(instance, channel);
+    expect(created).toHaveLength(1);
+
+    // back to the account: the join goes out without a join_as of its own
+    await controller.changeGroupCallJoinAs(instance, 1 as PeerId);
+    expect(instance.joinAsPeerId).toBeUndefined();
+    expect(created).toHaveLength(2);
+    expect(created[1].options.joinAs).toBeUndefined();
+  });
+
+  it('never switches a conference away from the account', async() => {
+    const {controller} = makeController();
+    const {instance, created} = makeLegacyInstance();
+    instance.isConference = true;
+    controller.setCurrentGroupCall(instance);
+
+    await expect(controller.changeGroupCallJoinAs(instance, (-5000).toPeerId())).rejects.toThrow();
+    expect(created).toHaveLength(0);
+    expect(instance.joinAsPeerId).toBeUndefined();
+  });
+});
+
+describe('"Display me as..." picked while the first join is out', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // * the controller's own steps a first join goes through, typed for the spies
+  type FirstJoinInternals = {
+    connectMainConnection: (
+      instance: GroupCallInstance,
+      streamManager: unknown,
+      options: {beforeNegotiation?: () => void}
+    ) => Promise<unknown>,
+    reconnectMainConnection: (instance: GroupCallInstance) => Promise<void>,
+    rejoinGroupCall: (instance: GroupCallInstance, reason: string) => Promise<void>,
+    recoverGroupCall: (instance: GroupCallInstance, reason: string) => Promise<void>,
+    joinGroupCallInternal: (
+      chatId: ChatId,
+      groupCallId: string,
+      streamManager: unknown,
+      muted: boolean,
+      joinVideo: boolean,
+      account: unknown
+    ) => Promise<void>
+  };
+
+  /**
+   * A first join whose phone.joinGroupCall answers when `negotiated` settles, the call current meanwhile;
+   * `onNegotiated` runs as the answer comes, where the transport's watcher starts.
+   */
+  async function startFirstJoin(onNegotiated?: (joining: GroupCallInstance, internals: FirstJoinInternals) => void) {
+    const {controller} = makeController();
+    Object.assign(lastManagers.appGroupCallsManager, {
+      getGroupCallFull: vi.fn(async() => ({_: 'groupCall', id: INPUT.id})),
+      // * what a rejoin replays to its new connection
+      getCachedParticipants: vi.fn(async() => new Map())
+    });
+    const internals = controller as unknown as FirstJoinInternals;
+    const negotiated = deferredPromise<void>();
+    vi.spyOn(internals, 'connectMainConnection').mockImplementation(async(joining, _streamManager, options) => {
+      joining.connections.main = {
+        options: {type: 'main', joinAs: joining.joinAsPeerId},
+        closeConnectionAndStream: vi.fn()
+      } as any;
+      options.beforeNegotiation();
+      await negotiated;
+      onNegotiated?.(joining, internals);
+    });
+    // * the transport a rejoin builds anew
+    const reconnect = vi.spyOn(internals, 'reconnectMainConnection').mockResolvedValue(undefined);
+    const rejoin = vi.spyOn(internals, 'rejoinGroupCall');
+    const account = {accountNumber: 1, managers: lastManagers, myId: (1).toPeerId()};
+    const joining = internals.joinGroupCallInternal(99 as ChatId, INPUT.id, {stop: vi.fn()}, true, false, account);
+    await flush();
+    const instance = controller.groupCall;
+    expect(instance).toBeInstanceOf(GroupCallInstance);
+    return {controller, negotiated, reconnect, rejoin, joining, instance};
+  }
+
+  it('waits for the join to settle and then joins again as the pick', async() => {
+    const {controller, negotiated, reconnect, rejoin, joining, instance} = await startFirstJoin();
+    const channel = (-5000).toPeerId();
+
+    const switching = controller.changeGroupCallJoinAs(instance, channel);
+    await flush();
+    // * a rejoin now would replace the connection being negotiated
+    expect(rejoin).not.toHaveBeenCalled();
+
+    negotiated.resolve();
+    await joining;
+    await switching;
+    expect(rejoin).toHaveBeenCalledTimes(1);
+    expect(rejoin).toHaveBeenCalledWith(instance, 'join-as');
+    expect(reconnect).toHaveBeenCalledTimes(1);
+    expect(instance.joinAsPeerId).toBe(channel);
+
+    instance.cleanup();
+  });
+
+  it('rejoins after it a transport that had failed by the time the join was answered', async() => {
+    const {negotiated, reconnect, rejoin, joining, instance} = await startFirstJoin((joining, internals) => {
+      // * what the transport's watcher does when it starts on a connection whose ICE failed already
+      void internals.recoverGroupCall(joining, 'ice-failed');
+    });
+
+    negotiated.resolve();
+    await joining;
+
+    // * asked during the join, held, and run once it settled - not folded into the join and lost
+    expect(rejoin.mock.calls.map(([, reason]) => reason)).toEqual(['ice-failed', 'ice-failed']);
+    expect(reconnect).toHaveBeenCalledTimes(1);
+    await rejoin.mock.results[1].value;
+
+    instance.cleanup();
+  });
+
+  it('asks for nothing once a join that failed has ended the call', async() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    // * the call ending tells the chat (chat_update), which has no worker port here
+    vi.spyOn(rootScope, 'dispatchEvent').mockImplementation(() => {});
+    const {controller, negotiated, rejoin, joining, instance} = await startFirstJoin();
+
+    const switching = controller.changeGroupCallJoinAs(instance, (-5000).toPeerId());
+    negotiated.reject(new Error('GROUPCALL_INVALID'));
+    await expect(joining).rejects.toThrow('GROUPCALL_INVALID');
+    await switching;
+
+    expect(rejoin).not.toHaveBeenCalled();
+    expect(controller.groupCall).toBeNull();
+  });
+});
+
+describe('a video chat that never joined', () => {
+  it('cleans up without a transport: its player leaves the page and the tab holds no call', () => {
+    const instance = new GroupCallInstance({id: 'never-joined' as any, chatId: 99 as any, managers: {} as any});
+    expect(document.querySelector('.call-player')).not.toBeNull();
+    expect(hasCallInTab()).toBe(true);
+
+    instance.cleanup();
+
+    expect(document.querySelector('.call-player')).toBeNull();
+    expect(hasCallInTab()).toBe(false);
   });
 });

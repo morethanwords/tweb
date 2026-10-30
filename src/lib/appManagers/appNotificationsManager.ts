@@ -6,10 +6,11 @@
  */
 
 import tsNow from '@helpers/tsNow';
-import {InputChannel, InputNotifyPeer, InputPeer, InputPeerNotifySettings, NotifyPeer, Peer, PeerNotifySettings, ReactionsNotifySettings, Update} from '@layer';
+import {Chat, InputChannel, InputNotifyPeer, InputPeerNotifySettings, NotificationSound, NotifyPeer, Peer, PeerNotifySettings, ReactionsNotifySettings, Update, Updates} from '@layer';
 import {MUTE_UNTIL} from '@appManagers/constants';
 import throttle from '@helpers/schedulers/throttle';
 import convertInputKeyToKey from '@helpers/string/convertInputKeyToKey';
+import noop from '@helpers/noop';
 import {AppManager} from '@appManagers/manager';
 import ctx from '@environment/ctx';
 import assumeType from '@helpers/assumeType';
@@ -23,6 +24,7 @@ import type {
   NotificationBuildTaskPayload
 } from '@lib/apiManagerProxy';
 import type {MyTopPeer} from '@appManagers/appUsersManager';
+import type {GlobalNotifySettingsKey} from '@config/state';
 
 /** what a notification's builder provides — the routing fields are filled in by the router */
 type NotificationBuildPayload =
@@ -36,6 +38,17 @@ type MyInputNotifyPeer =
   InputNotifyPeer.inputNotifyUsers['_'] |
   InputNotifyPeer.inputNotifyChats['_'] |
   InputNotifyPeer.inputNotifyBroadcasts['_'];
+/** the settings a chat, a topic or a Community keeps of its own, under the key they are kept by */
+type OwnSettingsKey = 'notifyPeer' | 'notifyForumTopic' | 'notifyCommunity';
+
+const NOTIFY_PEER_TYPES: MyInputNotifyPeer[] = ['inputNotifyBroadcasts', 'inputNotifyUsers', 'inputNotifyChats'];
+
+/** The settings clock's key of what is kept under `key` of `kind` (a type's settings are of the kind `type`) */
+const getSettingsClockKey = (kind: OwnSettingsKey | 'type' | 'reactions', key: string | number) => kind + ':' + key;
+const REACTIONS_CLOCK_KEY = getSettingsClockKey('reactions', '');
+
+/** A chat of a type whose own settings make it an exception to the type's (tdesktop's: its own `mute_until`) */
+export type NotifyException = {peerId: PeerId, muted: boolean};
 export class AppNotificationsManager extends AppManager {
   private peerSettings = {
     notifyPeer: {} as {[peerId: string]: ImSadAboutIt},
@@ -45,7 +58,17 @@ export class AppNotificationsManager extends AppManager {
     notifyBroadcasts: null as ImSadAboutIt,
     notifyForumTopic: {} as {[peerId_threadId: string]: ImSadAboutIt}
   };
-  // private exceptions: {[peerId: string]: PeerNotifySettings} = {};
+  // * the exceptions of each chat type, newest first, peerId -> muted; kept up to date once the type's are asked for
+  private exceptions: Partial<Record<GlobalNotifySettingsKey, Map<PeerId, boolean>>>;
+  // * Reset All on its way: every request of these settings goes out after it, so that none crosses it
+  private resetting: Promise<void>;
+  // * The settings clock: a tick with every change of settings here (a local edit, or one the server pushes), kept
+  // * by the key they changed under (`settingsChangedAt`), and with every Reset All that went through
+  // * (`settingsResetAt`). An answer asked for at a tick (`askedAt`) holds nothing newer than what changed after it,
+  // * so it is not kept for that (savePeerSettings), and after such a reset it is out of date as a whole (`stale`)
+  private settingsClock = 0;
+  private settingsResetAt = 0;
+  private settingsChangedAt = new Map<string, number>();
 
   private getNotifyPeerTypePromise: Promise<any>;
 
@@ -105,29 +128,33 @@ export class AppNotificationsManager extends AppManager {
       communityId ?
         this.peerSettings.notifyCommunity :
         this.peerSettings;
-    return container[key] = this.apiManager.invokeApi('account.getNotifySettings', {peer})
-    .then((settings) => {
-      this.savePeerSettings({
+    const promise: Promise<PeerNotifySettings> = container[key] = this.invokeAfterReset(() => {
+      return this.apiManager.invokeApi('account.getNotifySettings', {peer});
+    }).then(({result: settings, askedAt, stale}) => {
+      // * a Reset All went through while it was asked: asked again, after it
+      if(stale) {
+        if(container[key] === promise) delete container[key];
+        return this.getNotifySettings(peer);
+      }
+
+      // * or what changed here since, which is kept in their place
+      return this.savePeerSettings({
         key,
         peerId,
         communityId,
         threadId,
-        settings
+        settings,
+        askedAt
       });
-
-      return settings;
     });
+
+    return promise;
   }
 
   public getNotifyPeerTypeSettings() {
     if(this.getNotifyPeerTypePromise) return this.getNotifyPeerTypePromise;
 
-    const promises = ([
-      'inputNotifyBroadcasts',
-      'inputNotifyUsers',
-      'inputNotifyChats'
-    ] as MyInputNotifyPeer[])
-    .map((inputKey) => {
+    const promises = NOTIFY_PEER_TYPES.map((inputKey) => {
       return this.getNotifySettings({_: inputKey});
     });
 
@@ -143,13 +170,16 @@ export class AppNotificationsManager extends AppManager {
       _: convertInputKeyToKey(peer._)
     };
 
+    // * the sounds go out as this client's own and come back per platform: this client's one is `other`
+    const {sound, stories_sound, ...rest} = settings;
+    const notifySettings: PeerNotifySettings = {...rest, _: 'peerNotifySettings'};
+    if('sound' in settings) notifySettings.other_sound = sound;
+    if('stories_sound' in settings) notifySettings.stories_other_sound = stories_sound;
+
     this.apiUpdatesManager.processLocalUpdate({
       _: 'updateNotifySettings',
       peer: notifyPeer,
-      notify_settings: {
-        ...settings,
-        _: 'peerNotifySettings'
-      }
+      notify_settings: notifySettings
     });
   }
 
@@ -159,11 +189,13 @@ export class AppNotificationsManager extends AppManager {
     /* const inputSettings: InputPeerNotifySettings = copy(settings) as any;
     inputSettings._ = 'inputPeerNotifySettings'; */
 
-    return this.apiManager.invokeApi('account.updateNotifySettings', {
-      peer,
-      settings
-    }).then(() => {
-      this.generateLocalNotifySettingsUpdate(peer, settings);
+    return this.invokeAfterReset(() => {
+      return this.apiManager.invokeApi('account.updateNotifySettings', {peer, settings});
+    }).then(({stale}) => {
+      // * else the reset undid it
+      if(!stale) {
+        this.generateLocalNotifySettingsUpdate(peer, settings);
+      }
     });
   }
 
@@ -176,8 +208,14 @@ export class AppNotificationsManager extends AppManager {
     peer: InputNotifyPeer.inputNotifyPeer | InputNotifyPeer.inputNotifyForumTopic | InputNotifyPeer.inputNotifyCommunity,
     edit: Partial<Omit<InputPeerNotifySettings, '_'>>,
     local?: boolean
-  ) {
-    const current = await this.getNotifySettings(peer);
+  ): Promise<void> {
+    // * read, merged and written with no Reset All on its way or gone through in between: across one, the fields it
+    // * clears would travel along
+    const {result: current, stale} = await this.invokeAfterReset(async() => this.getNotifySettings(peer));
+    if(stale || this.resetting) {
+      return this.editNotifySettings(peer, edit, local);
+    }
+
     const settings: InputPeerNotifySettings = {
       ...current,
       _: 'inputPeerNotifySettings',
@@ -196,30 +234,316 @@ export class AppNotificationsManager extends AppManager {
     else return this.updateNotifySettings(peer, settings);
   }
 
-  // public getNotifyExceptions() {
-  //   apiManager.invokeApi('account.getNotifyExceptions', {compare_sound: true})
-  //   .then((updates) => {
-  //     apiUpdatesManager.processUpdateMessage(updates);
-  //   });
-  // }
-
-  public getContactSignUpNotification() {
-    if(this.notifyContactsSignUp) return this.notifyContactsSignUp;
-    return this.notifyContactsSignUp = this.apiManager.invokeApi('account.getContactSignUpNotification')
-    .then((silent) => !silent);
-  }
-
-  public setContactSignUpNotification(silent: boolean) {
-    this.apiManager.invokeApi('account.setContactSignUpNotification', {silent})
-    .then((value) => {
-      this.notifyContactsSignUp = Promise.resolve(!silent);
+  /**
+   * Back to the defaults everywhere: the server drops every chat's, topic's and Community's own settings and
+   * resets the types', and whatever shows them is told so, as an update from the server would
+   */
+  public resetNotifySettings() {
+    return this.resetting ??= this.performResetNotifySettings().finally(() => {
+      this.resetting = undefined;
     });
   }
 
-  public getReactionsNotifySettings() {
+  /**
+   * Every request of these settings: sent at once, or after a Reset All on its way, at the settings clock's tick it
+   * is handed (`askedAt`). Its answer is `stale` when a Reset All went through while it was out: what it holds is gone
+   * then
+   */
+  private async invokeAfterReset<T>(invoke: (askedAt: number) => Promise<T>) {
+    while(this.resetting) {
+      await this.resetting.catch(noop);
+    }
+
+    const askedAt = this.settingsClock;
+    const result = await invoke(askedAt);
+    return {result, askedAt, stale: this.settingsResetAt > askedAt};
+  }
+
+  /**
+   * The settings clock's tick: read before asking the server for what holds a chat's settings (a full profile), and
+   * handed to savePeerSettings with them, so that they do not overwrite what changed here since
+   */
+  public getSettingsClock() {
+    return this.settingsClock;
+  }
+
+  /**
+   * Whether what is kept under `clockKey` changed here, or a Reset All went through, after the tick `askedAt`: an
+   * answer asked for then holds older settings than that
+   */
+  private isChangedSince(clockKey: string, askedAt: number) {
+    return this.settingsResetAt > askedAt || this.settingsChangedAt.get(clockKey) > askedAt;
+  }
+
+  private async performResetNotifySettings() {
+    await this.apiManager.invokeApi('account.resetNotifySettings');
+    this.settingsResetAt = ++this.settingsClock;
+
+    // * no list of exceptions follows the chats one by one: they are all empty at once below
+    const exceptions = this.exceptions;
+    this.exceptions = undefined;
+
+    const ownKeys: OwnSettingsKey[] = ['notifyPeer', 'notifyForumTopic', 'notifyCommunity'];
+    for(const ownKey of ownKeys) {
+      const container = this.peerSettings[ownKey];
+      for(const key in container) {
+        const settings = container[key];
+        if(settings instanceof Promise) {
+          delete container[key];
+        } else if(Object.keys(settings).some((field) => field !== '_' && field !== 'flags')) {
+          this.saveOwnSettingsUpdate(ownKey, key, {_: 'peerNotifySettings'});
+        }
+      }
+    }
+
+    if(exceptions) {
+      this.exceptions = {};
+      for(const key in exceptions) {
+        this.exceptions[key as GlobalNotifySettingsKey] = new Map();
+        this.dispatchExceptions(key as GlobalNotifySettingsKey);
+      }
+    }
+
+    // * the contact sign-up and reactions settings are asked for again rather than guessed
+    this.notifyContactsSignUp = undefined;
+    this.reactionsNotifySettings = undefined;
+
+    // * the types' settings are asked for anew, and nothing of the old ones is kept meanwhile: should asking fail, the
+    // * next read asks the server
+    this.getNotifyPeerTypePromise = undefined;
+    await Promise.all(NOTIFY_PEER_TYPES.map(async(inputKey) => {
+      const key = convertInputKeyToKey<MyNotifyPeer>(inputKey);
+      this.forgetTypeSettings(key);
+      const askedAt = this.settingsClock;
+      const settings = await this.apiManager.invokeApi('account.getNotifySettings', {peer: {_: inputKey}}).catch(noop);
+      // * else a change pushed meanwhile is newer than the answer
+      if(settings && !this.isChangedSince(getSettingsClockKey('type', key), askedAt)) {
+        this.apiUpdatesManager.saveUpdate({_: 'updateNotifySettings', peer: {_: key}, notify_settings: settings});
+      }
+    }));
+
+    this.rootScope.dispatchEvent('notify_settings_reset');
+  }
+
+  /**
+   * The chats of a type with settings of their own (account.getNotifyExceptions), as tdesktop counts them: an own
+   * `mute_until`. The list then follows every change of a chat's settings (`notify_exceptions`)
+   */
+  public getNotifyExceptions(inputKey: MyInputNotifyPeer): Promise<NotifyException[]> {
+    return this.invokeAfterReset((askedAt) => this.apiManager.invokeApiSingleProcess({
+      method: 'account.getNotifyExceptions',
+      params: {peer: {_: inputKey}},
+      // * a list asked for after Reset All never joins one asked for before it
+      options: {cacheKey: inputKey + '_' + this.settingsResetAt},
+      // * kept or not as it comes, as the chats' settings are saved with it
+      processResult: (updates) => {
+        // * a Reset All went through while it was asked: nothing of it is kept, and it is asked again below
+        if(this.settingsResetAt > askedAt) {
+          return;
+        }
+
+        const key = convertInputKeyToKey<GlobalNotifySettingsKey>(inputKey);
+        this.exceptions ??= {};
+        // * filled after the chats' settings are saved: saving them must not touch a list that is being replaced
+        delete this.exceptions[key];
+
+        const exceptions = new Map<PeerId, boolean>();
+        const add = (peerId: PeerId, settings: PeerNotifySettings) => {
+          // * the server may answer with chats of every type: each goes to its own type's list, as tdesktop's
+          // * updateException sorts them
+          const {_: peerInputKey} = this.appPeersManager.getInputNotifyPeerById({peerId, ignorePeerId: true});
+          if(peerInputKey === inputKey && this.isNotifyException(peerId, settings)) {
+            exceptions.set(peerId, this.isMuted(settings));
+          }
+        };
+
+        // * a chat whose settings changed here since it was asked goes by what it has now, newest on top
+        const peerClockKey = getSettingsClockKey('notifyPeer', '');
+        const changed = [...this.settingsChangedAt]
+        .filter(([clockKey, changedAt]) => changedAt > askedAt && clockKey.startsWith(peerClockKey))
+        .sort(([, a], [, b]) => b - a);
+        for(const [clockKey] of changed) {
+          const peerId = clockKey.slice(peerClockKey.length).toPeerId();
+          add(peerId, this.getPeerLocalSettings({peerId, respectType: false}));
+        }
+
+        if('updates' in updates) {
+          this.appPeersManager.saveApiPeers(updates as Updates.updates);
+          for(const update of (updates as Updates.updates).updates) {
+            if(update._ !== 'updateNotifySettings' || update.peer._ !== 'notifyPeer') {
+              continue;
+            }
+
+            // * kept as an update from the server would be, so the chat's dialog has them too, unless they changed
+            // * here since
+            const peerId = this.appPeersManager.getPeerId(update.peer.peer);
+            if(!this.isChangedSince(getSettingsClockKey('notifyPeer', this.getPeerKey(peerId)), askedAt)) {
+              this.apiUpdatesManager.saveUpdate(update);
+              add(peerId, update.notify_settings);
+            }
+          }
+        }
+
+        this.exceptions[key] = exceptions;
+        return this.getExceptionsList(key);
+      }
+    })).then(({result, stale}) => {
+      // * also when it was kept just before the reset went through, which emptied the list since
+      return stale ? this.getNotifyExceptions(inputKey) : result;
+    });
+  }
+
+  /**
+   * Drops the chats' own settings, so that they follow their type's again
+   */
+  public resetPeersNotifySettings(peerIds: PeerId[]) {
+    return Promise.all(peerIds.map((peerId) => {
+      return this.updateNotifySettings(
+        this.appPeersManager.getInputNotifyPeerById({peerId}),
+        {_: 'inputPeerNotifySettings'}
+      );
+    }));
+  }
+
+  private getExceptionsList(key: GlobalNotifySettingsKey): NotifyException[] {
+    return [...this.exceptions[key]].map(([peerId, muted]) => ({peerId, muted}));
+  }
+
+  private dispatchExceptions(key: GlobalNotifySettingsKey) {
+    this.rootScope.dispatchEvent('notify_exceptions', {key, exceptions: this.getExceptionsList(key)});
+  }
+
+  // * tdesktop's SkipAddException: nobody can change the settings of a chat that is gone, nor of one's own
+  private isNotifyException(peerId: PeerId, settings: PeerNotifySettings) {
+    if(settings.mute_until === undefined || peerId === this.appPeersManager.peerId) {
+      return false;
+    }
+
+    if(peerId.isUser()) {
+      const user = this.appUsersManager.getUser(peerId.toUserId());
+      return !!user && !user.pFlags.deleted;
+    }
+
+    const chat = this.appChatsManager.getChat(peerId.toChatId());
+    return !!chat &&
+      chat._ !== 'chatForbidden' &&
+      chat._ !== 'channelForbidden' &&
+      !(chat as Chat.chat).pFlags.deactivated &&
+      !this.appPeersManager.isCommunity(peerId);
+  }
+
+  private updateException(peerId: PeerId, settings: PeerNotifySettings) {
+    if(!this.exceptions) {
+      return;
+    }
+
+    const {_: inputKey} = this.appPeersManager.getInputNotifyPeerById({peerId, ignorePeerId: true});
+    const key = convertInputKeyToKey<GlobalNotifySettingsKey>(inputKey);
+    const exceptions = this.exceptions[key];
+    if(!exceptions) {
+      return;
+    }
+
+    const isException = this.isNotifyException(peerId, settings);
+    const muted = isException && this.isMuted(settings);
+    if(isException ? exceptions.get(peerId) === muted : !exceptions.has(peerId)) {
+      return;
+    }
+
+    if(!isException) exceptions.delete(peerId);
+    else if(exceptions.has(peerId)) exceptions.set(peerId, muted);
+    // * a new one goes on top, as in tdesktop
+    else this.exceptions[key] = new Map([[peerId, muted], ...exceptions]);
+
+    this.dispatchExceptions(key);
+  }
+
+  /**
+   * Whether this client stays silent for a chat or a topic: their own choice, else what they inherit (the chat's,
+   * then its Community's and its type's). This client's sound is the `other` one, as in tdesktop
+   */
+  public isPeerLocalSoundOff(options: {peerId: PeerId, threadId?: number}) {
+    if(!(options = this.validatePeerSettings(options))) return false;
+
+    let sound: NotificationSound;
+    if(options.threadId) {
+      sound = this.getPeerLocalSettings({...options, respectType: false}).other_sound;
+    }
+
+    sound ??= this.getPeerLocalSettings({peerId: options.peerId}).other_sound;
+    return sound?._ === 'notificationSoundNone';
+  }
+
+  /**
+   * {@link isPeerLocalSoundOff}, with everything it reads asked for first
+   */
+  public async isPeerSoundOff(options: {peerId: PeerId, threadId?: number}) {
+    // * a thread that is no forum's topic (comments) has the chat's settings, as mutePeer and playback have them
+    if(!(options = this.validatePeerSettings({...options}))) return false;
+
+    const {peerId, threadId} = options;
+    await Promise.all([
+      this.getNotifyPeerTypeSettings(),
+      this.getNotifySettings(this.appPeersManager.getInputNotifyPeerById({peerId})),
+      threadId && this.getNotifySettings(this.appPeersManager.getInputNotifyPeerById({peerId, threadId}))
+    ]);
+
+    return this.isPeerLocalSoundOff({peerId, threadId});
+  }
+
+  /**
+   * tdesktop's "Disable sound" / "Enable sound": the chat's or the topic's own sound becomes none, or the default
+   */
+  public setPeerSoundOff(options: {peerId: PeerId, threadId?: number}, off: boolean) {
+    if(!(options = this.validatePeerSettings({...options}))) return;
+
+    return this.editNotifySettings(this.appPeersManager.getInputNotifyPeerById(options), {
+      sound: {_: off ? 'notificationSoundNone' : 'notificationSoundDefault'}
+    });
+  }
+
+  public getContactSignUpNotification(): Promise<boolean> {
+    if(this.notifyContactsSignUp) return this.notifyContactsSignUp;
+    const promise: Promise<boolean> = this.notifyContactsSignUp = this.invokeAfterReset(() => {
+      return this.apiManager.invokeApi('account.getContactSignUpNotification');
+    }).then(({result: silent, stale}) => {
+      if(!stale) {
+        return !silent;
+      }
+
+      if(this.notifyContactsSignUp === promise) this.notifyContactsSignUp = undefined;
+      return this.getContactSignUpNotification();
+    });
+
+    return promise;
+  }
+
+  public setContactSignUpNotification(silent: boolean) {
+    this.invokeAfterReset(() => {
+      return this.apiManager.invokeApi('account.setContactSignUpNotification', {silent});
+    }).then(({stale}) => {
+      // * else whatever the reset left is asked for
+      if(!stale) {
+        this.notifyContactsSignUp = Promise.resolve(!silent);
+      }
+    });
+  }
+
+  public getReactionsNotifySettings(): Promise<ReactionsNotifySettings> | ReactionsNotifySettings {
     if(this.reactionsNotifySettings) return this.reactionsNotifySettings;
-    return this.reactionsNotifySettings = this.apiManager.invokeApi('account.getReactionsNotifySettings')
-    .then((settings) => this.reactionsNotifySettings = settings);
+    const promise: Promise<ReactionsNotifySettings> = this.reactionsNotifySettings = this.invokeAfterReset(() => {
+      return this.apiManager.invokeApi('account.getReactionsNotifySettings');
+    }).then(({result: settings, askedAt}) => {
+      if(!this.isChangedSince(REACTIONS_CLOCK_KEY, askedAt)) {
+        return this.reactionsNotifySettings = settings;
+      }
+
+      // * a Reset All went through, or they were changed here, while they were asked: what there is now
+      if(this.reactionsNotifySettings === promise) this.reactionsNotifySettings = undefined;
+      return this.getReactionsNotifySettings();
+    });
+
+    return promise;
   }
 
   // * whether a reaction to our own story from this peer should be notified about,
@@ -243,8 +567,18 @@ export class AppNotificationsManager extends AppManager {
 
   public setReactionsNotifySettings(settings: ReactionsNotifySettings) {
     this.reactionsNotifySettings = settings;
-    return this.apiManager.invokeApi('account.setReactionsNotifySettings', {settings})
-    .then((result) => this.reactionsNotifySettings = result);
+    this.settingsChangedAt.set(REACTIONS_CLOCK_KEY, ++this.settingsClock);
+    return this.invokeAfterReset(() => {
+      return this.apiManager.invokeApi('account.setReactionsNotifySettings', {settings});
+    }).then(({result, askedAt}) => {
+      if(!this.isChangedSince(REACTIONS_CLOCK_KEY, askedAt)) {
+        return this.reactionsNotifySettings = result;
+      }
+
+      // * a Reset All undid it, or a newer change went out since: what there is now
+      if(this.reactionsNotifySettings === settings) this.reactionsNotifySettings = undefined;
+      return this.getReactionsNotifySettings();
+    });
   }
 
   private checkMuteUntil = () => {
@@ -277,48 +611,38 @@ export class AppNotificationsManager extends AppManager {
       return false;
     };
 
-    [
-      'notifyPeer' as const,
-      'notifyForumTopic' as const
-    ].forEach((typeKey) => {
-      for(const key in this.peerSettings[typeKey]) {
-        const peerNotifySettings = this.peerSettings[typeKey][key];
+    const ownKeys: OwnSettingsKey[] = ['notifyPeer', 'notifyForumTopic', 'notifyCommunity'];
+    for(const ownKey of ownKeys) {
+      for(const key in this.peerSettings[ownKey]) {
+        const peerNotifySettings = this.peerSettings[ownKey][key];
         if(p(peerNotifySettings)) {
-          const [peerId, topicId] = key.split('_');
-          const peer = this.appPeersManager.getOutputPeer(peerId.toPeerId());
-          this.apiUpdatesManager.saveUpdate({
-            _: 'updateNotifySettings',
-            peer: topicId ? {
-              _: 'notifyForumTopic',
-              peer,
-              top_msg_id: +topicId
-            } : {
-              _: 'notifyPeer',
-              peer
-            },
-            notify_settings: peerNotifySettings
-          });
+          this.saveOwnSettingsUpdate(ownKey, key, peerNotifySettings);
         }
-      }
-    });
-
-    for(const communityId in this.peerSettings.notifyCommunity) {
-      const peerNotifySettings = this.peerSettings.notifyCommunity[communityId];
-      if(p(peerNotifySettings)) {
-        this.apiUpdatesManager.saveUpdate({
-          _: 'updateNotifySettings',
-          peer: {
-            _: 'notifyCommunity',
-            community_id: communityId
-          },
-          notify_settings: peerNotifySettings
-        });
       }
     }
 
     const timeout = Math.min(1800e3, (closestMuteUntil - timestamp) * 1000);
     this.checkMuteUntilTimeout = ctx.setTimeout(this.checkMuteUntil, timeout);
   };
+
+  /**
+   * Hands a chat's, a topic's or a Community's own settings out as an update from the server would, by the key they
+   * are kept under (`peerId`, `peerId_threadId` or the Community's id)
+   */
+  private saveOwnSettingsUpdate(ownKey: OwnSettingsKey, key: string, settings: PeerNotifySettings) {
+    let peer: NotifyPeer;
+    if(ownKey === 'notifyCommunity') {
+      peer = {_: 'notifyCommunity', community_id: key};
+    } else {
+      const [peerId, threadId] = key.split('_');
+      const outputPeer = this.appPeersManager.getOutputPeer(peerId.toPeerId());
+      peer = threadId ?
+        {_: 'notifyForumTopic', peer: outputPeer, top_msg_id: +threadId} :
+        {_: 'notifyPeer', peer: outputPeer};
+    }
+
+    this.apiUpdatesManager.saveUpdate({_: 'updateNotifySettings', peer, notify_settings: settings});
+  }
 
   /**
    * The local thread id a topic's settings are kept under
@@ -331,20 +655,52 @@ export class AppNotificationsManager extends AppManager {
     return peerId + (threadId ? '_' + threadId : '');
   }
 
-  public savePeerSettings({key, peerId, communityId, threadId, settings}: {
+  /**
+   * Drops what is kept of a type's settings, here and for the next start: the next read asks the server
+   */
+  private forgetTypeSettings(key: MyNotifyPeer) {
+    this.peerSettings[key] = undefined;
+    this.appStateManager.getState().then((state) => {
+      delete state.notifySettings[key];
+      this.appStateManager.pushToState('notifySettings', state.notifySettings);
+    });
+  }
+
+  /**
+   * Keeps settings, and gives what is kept now: settings that come with an answer asked for at the settings clock's
+   * `askedAt` are older than a change of them made here since, or than a Reset All gone through since, and are not
+   * kept then (what was is given, or none of their own). Without `askedAt` they are always kept; with `changed` they
+   * are such a change themselves
+   */
+  public savePeerSettings({key, peerId, communityId, threadId, settings, askedAt, changed}: {
     key?: MyNotifyPeer,
     peerId?: PeerId,
     communityId?: ChatId,
     threadId?: number,
-    settings: PeerNotifySettings
-  }) {
+    settings: PeerNotifySettings,
+    askedAt?: number,
+    changed?: boolean
+  }): PeerNotifySettings {
     let obj: any;
+    let kind: Parameters<typeof getSettingsClockKey>[0] = 'type';
     if(peerId) {
       key = this.getPeerKey(peerId, threadId) as any;
-      obj = this.peerSettings[threadId ? 'notifyForumTopic' : 'notifyPeer'];
+      kind = threadId ? 'notifyForumTopic' : 'notifyPeer';
+      obj = this.peerSettings[kind];
     } else if(communityId) {
       key = communityId as any;
+      kind = 'notifyCommunity';
       obj = this.peerSettings.notifyCommunity;
+    }
+
+    const clockKey = getSettingsClockKey(kind, key);
+    if(askedAt !== undefined && this.isChangedSince(clockKey, askedAt)) {
+      const kept = (obj || this.peerSettings)[key];
+      return kept && !(kept instanceof Promise) ? kept : {_: 'peerNotifySettings'};
+    }
+
+    if(changed) {
+      this.settingsChangedAt.set(clockKey, ++this.settingsClock);
     }
 
     (obj || this.peerSettings)[key] = settings;
@@ -358,9 +714,13 @@ export class AppNotificationsManager extends AppManager {
       });
     } else {
       this.checkMuteUntilThrottled();
+      if(peerId && !threadId) {
+        this.updateException(peerId, settings);
+      }
     }
 
     // rootScope.broadcast('notify_settings', {peerId: peerId});
+    return settings;
   }
 
   public isMuted(peerNotifySettings: PeerNotifySettings) {
@@ -560,7 +920,9 @@ export class AppNotificationsManager extends AppManager {
       peerId,
       communityId,
       threadId,
-      settings: update.notify_settings
+      settings: update.notify_settings,
+      // * a local edit (processLocalUpdate) or one the server pushes: newer than any answer still out
+      changed: true
     });
     if(communityId) {
       this.appCommunitiesManager.saveCommunityNotifySettings(

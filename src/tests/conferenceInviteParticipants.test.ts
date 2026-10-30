@@ -20,7 +20,8 @@ vi.mock('@components/wrappers/peerTitle', () => ({
 }));
 
 vi.mock('@components/toast', () => ({
-  toast: toastMock
+  toast: toastMock,
+  toastNew: toastNewMock
 }));
 
 const groupCallsControllerMock = vi.hoisted(() => ({
@@ -28,12 +29,14 @@ const groupCallsControllerMock = vi.hoisted(() => ({
 }));
 
 const toastMock = vi.hoisted(() => vi.fn());
+const toastNewMock = vi.hoisted(() => vi.fn());
 
 import {
   classifyConferenceInviteError,
   composeConferenceInviteToast,
   createConferenceInviteResult,
   inviteConferenceParticipants,
+  inviteVideoChatParticipants,
   showConferenceInviteResultToast
 } from '@components/groupCall/inviteParticipants';
 
@@ -120,5 +123,63 @@ describe('conference invite outcomes', () => {
 
     expect(toastMock).toHaveBeenCalledTimes(1);
     expect(lines(toastMock.mock.calls[0][0])).toEqual(['ConferenceCall.Invite.DoneMany']);
+  });
+});
+
+describe('video chat invite outcomes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const makeInstance = (inviteToGroupCall: (id: string, userIds: UserId[]) => Promise<UserId[]>) => ({
+    id: '42',
+    managers: {appGroupCallsManager: {inviteToGroupCall: vi.fn(inviteToGroupCall)}}
+  }) as any;
+
+  it('invites everyone in one go and tells who the server took', async() => {
+    const instance = makeInstance(async(_id, userIds) => userIds.filter((userId) => userId !== BOB.toUserId()));
+
+    const result = await inviteVideoChatParticipants(instance, [ALICE, BOB, CAROL]);
+
+    expect(instance.managers.appGroupCallsManager.inviteToGroupCall).toHaveBeenCalledWith('42', [101, 102, 103]);
+    expect(result.invited).toEqual([ALICE, CAROL]);
+    expect(result.failed).toEqual([BOB]);
+  });
+
+  it('counts a request that failed outright as nobody invited', async() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const instance = makeInstance(() => Promise.reject(new Error('offline')));
+
+    const result = await inviteVideoChatParticipants(instance, [ALICE]);
+
+    expect(result.invited).toEqual([]);
+    expect(result.failed).toEqual([ALICE]);
+  });
+
+  it('drops the verdicts when the call is gone', async() => {
+    const instance = makeInstance(async(_id, userIds) => userIds);
+
+    expect(await inviteVideoChatParticipants(instance, [ALICE], {isAlive: () => false})).toEqual(createConferenceInviteResult());
+  });
+
+  it('names only who was invited, as tdesktop does for a video chat', async() => {
+    const result = createConferenceInviteResult();
+    result.invited.push(ALICE);
+    result.failed.push(BOB);
+
+    expect(lines(await composeConferenceInviteToast(result, 'videoChat'))).toEqual(['VoipGroupInvitedUser']);
+
+    result.invited.push(CAROL);
+    expect(lines(await composeConferenceInviteToast(result, 'videoChat'))).toEqual(['VoiceChat.Invite.DoneMany']);
+  });
+
+  it('still answers the press when nobody got in', async() => {
+    const result = createConferenceInviteResult();
+    result.failed.push(ALICE);
+
+    await showConferenceInviteResultToast(result, 'videoChat');
+
+    expect(toastMock).not.toHaveBeenCalled();
+    expect(toastNewMock).toHaveBeenCalledWith({langPackKey: 'Error.AnError'});
   });
 });

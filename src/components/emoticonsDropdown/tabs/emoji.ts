@@ -61,6 +61,8 @@ import {
 import showEmojiTonePicker from '@components/emoticonsDropdown/emojiTonePicker';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import appendClearRecentButton from '@components/emoticonsDropdown/clearRecentButton';
+import forEachReverse from '@helpers/array/forEachReverse';
 
 
 const loadedURLs: Set<string> = new Set();
@@ -232,6 +234,13 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
   private noRegularEmoji?: boolean;
   private noSearchGroups?: boolean;
   private mainSets: () => (Promise<DocId[]> | Array<Promise<DocId[]>>);
+  // * the second of the main sets is a recent one the user can clear — the reaction picker's: `clear`
+  // * forgets it and answers what the category keeps after that
+  private clearRecent: {
+    titleLangKey: LangPackKey,
+    descriptionLangKey: LangPackKey,
+    clear: (managers: ReadingManagers) => Promise<DocId[]>
+  };
   private additionalSets: () => Promise<StickerSet.stickerSet[]>;
   private additionalLocalStickerSet: () => Promise<{title: LangPackKey, stickers: MyDocument[]}>;
   private onClick: (emoji: EmojiTabItem) => void;
@@ -258,6 +267,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     noRegularEmoji?: boolean,
     noSearchGroups?: boolean,
     mainSets?: EmojiTab['mainSets'],
+    clearRecent?: EmojiTab['clearRecent'],
     additionalSets?: EmojiTab['additionalSets'],
     additionalLocalStickerSet?: EmojiTab['additionalLocalStickerSet'],
     onClick?: EmojiTab['onClick'],
@@ -645,6 +655,17 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
             batch: true
           });
         }
+
+        if(this.clearRecent && mainSets?.[1] && recentCategory.elements.title) {
+          const {clear, titleLangKey, descriptionLangKey} = this.clearRecent;
+          appendClearRecentButton({
+            category: recentCategory,
+            managers,
+            titleLangKey,
+            descriptionLangKey,
+            clear: (managers) => clear(managers).then((docIds) => this.keepCategoryEmojis(recentCategory, docIds))
+          });
+        }
       }
 
       if(recentCustomCategory) {
@@ -706,6 +727,24 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     });
 
     return this.initPromise = promise;
+  }
+
+  /** Leaves only the custom emoji of `docIds` in a local category: what a cleared recent one keeps */
+  private keepCategoryEmojis(category: EmojiTabCategory, docIds: DocId[]) {
+    const keep = new Set(docIds);
+    forEachReverse(category.items, (item, idx) => {
+      if(!keep.has(item.docId)) {
+        category.items.splice(idx, 1);
+        item.element.remove();
+      }
+    });
+
+    this.onLocalCategoryUpdate(category);
+    // * the canvas renderer draws what it was handed: it is handed what is left, as on scrolling back in
+    if(category.items.length && this.isCategoryVisible(category)) {
+      this._onCategoryVisibility(category, false);
+      this._onCategoryVisibility(category, true);
+    }
   }
 
   private renderLocalStickerSet(localStickerSet: {title: LangPackKey, stickers: MyDocument[]}) {

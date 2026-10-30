@@ -49,14 +49,16 @@ export const BooleanKeyValue = (props: {
   />
 );
 
+// * a member let in from a public group's own join requests came through no link: that is what stands for it
 export const InviteKeyValue = (props: {invite: ExportedChatInvite}) => {
   return (
-    <Show when={props.invite._ === 'chatInviteExported'}>
-      <KeyValuePair
-        label={<I18nTsx key='InviteLink' />}
-        value={props.invite._ === 'chatInviteExported' ? props.invite.link : ''}
-      />
-    </Show>
+    <KeyValuePair
+      label={<I18nTsx key='InviteLink' />}
+      value={props.invite._ === 'chatInviteExported' ?
+        props.invite.link :
+        <I18nTsx key='AdminRecentActions.PublicJoinRequest' />
+      }
+    />
   );
 };
 

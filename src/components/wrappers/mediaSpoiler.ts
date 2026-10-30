@@ -11,7 +11,7 @@ import SetTransition from '@components/singleTransition';
 import Button from '@components/button';
 import Modes from '@config/modes';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
-import makeMediaPreviewsAccessible, {MEDIA_PREVIEW_SELECTOR} from '@helpers/dom/mediaPreviewAccessibility';
+import makeMediaPreviewsAccessible, {getSpoilerMediaPreview} from '@helpers/dom/mediaPreviewAccessibility';
 import {doubleRaf} from '@helpers/schedulers';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import {getAccountSession} from '@lib/accounts/getCurrentAccount';
@@ -35,7 +35,7 @@ const linkRevealButtons = new WeakMap<HTMLElement, HTMLElement>();
 
 function removeSpoiler(mediaSpoiler: HTMLElement) {
   const restoreFocus = Modes.a11y && mediaSpoiler.contains(mediaSpoiler.ownerDocument.activeElement);
-  const preview = mediaSpoiler.closest<HTMLElement>(MEDIA_PREVIEW_SELECTOR);
+  const preview = getSpoilerMediaPreview(mediaSpoiler);
   const link = mediaSpoiler.closest<HTMLElement>('a');
   if(link) linkRevealButtons.get(link)?.remove();
   mediaSpoiler.remove();

@@ -87,6 +87,7 @@ import setAttachmentSize, {EXPAND_TEXT_WIDTH} from '@helpers/setAttachmentSize';
 import wrapWebPageDescription from '@components/wrappers/webPageDescription';
 import wrapWebPageTitle from '@components/wrappers/webPageTitle';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import {wrapBusinessIntroLines} from '@components/chat/businessIntroPlaceholder';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import {MESSAGE_LINK_ENTITY_SELECTOR} from '@lib/richTextProcessor/filterDisabledEntities';
 import wrapMessageActionTextNew from '@components/wrappers/messageActionTextNew';
@@ -199,6 +200,7 @@ import {setAppSettings} from '@stores/appSettings';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
 import findAndSplice from '@helpers/array/findAndSplice';
 import partition from '@helpers/array/partition';
+import filterUnique from '@helpers/array/filterUnique';
 import generatePhotoForExtendedMediaPreview from '@appManagers/utils/photos/generatePhotoForExtendedMediaPreview';
 import icon from '@components/icon';
 import {MediaSearchContext} from '@components/appMediaPlaybackController';
@@ -605,6 +607,7 @@ const webPageTypes: {[type in WebPage.webPage['type']]?: LangPackKey} = {
   telegram_chatlist: 'OpenChatlist',
   telegram_story: 'OpenStory',
   telegram_channel_boost: 'BoostLinkButton',
+  telegram_group_boost: 'BoostLinkButton',
   telegram_giftcode: 'Open',
   telegram_chat: 'OpenGroup',
   telegram_livestream: 'VoipChannelJoinVoiceChatUrl',
@@ -612,6 +615,8 @@ const webPageTypes: {[type in WebPage.webPage['type']]?: LangPackKey} = {
   telegram_collection: 'StarGiftCollectionLinkButton',
   telegram_story_album: 'ViewStoryAlbum',
   telegram_megagroup_request: 'Chat.Message.RequestToJoin',
+  telegram_channel_request: 'Chat.Message.RequestToJoin',
+  telegram_chat_request: 'Chat.Message.RequestToJoin',
   telegram_stickerset: 'OpenStickers',
   telegram_call: 'JoinCall',
   telegram_aicomposetone: 'AiEditor.Chat.ViewStyle'
@@ -2658,6 +2663,10 @@ export default class ChatBubbles {
 
     this.listenerSetter.add(rootScope)('state_cleared', () => {
       this.onHistoryReload();
+    });
+
+    this.listenerSetter.add(rootScope)('sponsored_messages_toggle', (enabled) => {
+      this.onSponsoredMessagesToggle(enabled);
     });
 
     this.listenerSetter.add(rootScope)('settings_updated', ({key}) => {
@@ -13572,7 +13581,7 @@ export default class ChatBubbles {
         i18n('ChatYourSelfDescription4')
       ];
     } else if(type === 'greeting') {
-      let subtitle = i18n('NoMessagesGreetingsDescription');
+      let {subtitle} = wrapBusinessIntroLines();
 
       // findAndSplice(this.messagesQueue, q => q.bubble === bubble);
 
@@ -13590,17 +13599,9 @@ export default class ChatBubbles {
 
         const intro = userFull.business_intro;
         if(intro) {
-          if(intro.title) {
-            const _title = document.createElement('span');
-            _title.append(wrapEmojiText(intro.title));
-            _title.className = title.className;
-            elements[elements.indexOf(title)] = _title;
-          }
-
-          if(intro.description) {
-            subtitle = document.createElement('span');
-            subtitle.append(wrapEmojiText(intro.description));
-          }
+          const lines = wrapBusinessIntroLines(intro);
+          elements[elements.indexOf(title)] = lines.title;
+          subtitle = lines.subtitle;
 
           if(intro.sticker) {
             doc = intro.sticker as MyDocument;
@@ -13656,8 +13657,6 @@ export default class ChatBubbles {
       //   reverse: false,
       //   promises: [loadPromise]
       // });
-
-      subtitle.classList.add('center', BASE_CLASS + '-subtitle');
 
       elements.push(subtitle, stickerDiv);
     } else if(type === 'premiumRequired') {
@@ -13805,6 +13804,12 @@ export default class ChatBubbles {
     animate?: boolean
   ) {
     const isSponsored = !!(message as Message.message).pFlags.sponsored;
+    // * an ad rendered as a new message ends here, and its bubble is registered right after with no await between:
+    // * one turned off while it waited (`dropSponsoredMessages`) stops here, one turned off later is deleted. An ad
+    // * between posts is taken from `sponsoredAfterMids`, which the drop empties, and is registered as it is taken
+    if(isSponsored && !this.liveSponsoredMessages.has(message as MyMessage)) {
+      return;
+    }
 
     const onClearedBefore = () => {
       this.log.warn('local message was cleared before render', message);
@@ -14192,8 +14197,40 @@ export default class ChatBubbles {
   private messagesSinceLastSponsored = 0;
   private sponsoredAfterMids = new Map<number, MyMessage>();
   private sponsoredMessagesLoaded = false;
+  /** The ads of the chat's load, forgotten all at once by `dropSponsoredMessages`: a render of one checks it is here */
+  private liveSponsoredMessages = new WeakSet<MyMessage>();
 
-  private async generateSponsoredMessage(sponsoredMessage: SponsoredMessage.sponsoredMessage, idx: number) {
+  /**
+   * Do Not Hide Ads turned off: the ads shown and the ones waiting for their place go at once. Turned
+   * back on, the chat's next load asks for them again, as Android's `addSponsoredMessages` checks the
+   * choice on each.
+   */
+  private onSponsoredMessagesToggle(enabled: boolean) {
+    this.dropSponsoredMessages();
+    this.sponsoredMessagesLoaded = !enabled;
+  }
+
+  /** Takes the chat's ads away: the shown ones, the queued ones and a load on its way. */
+  private dropSponsoredMessages() {
+    const fullMids = this.sponsoredMessagesMids;
+    // * a load on its way checks this promise (`loadSponsoredMessages`)
+    this.getSponsoredMessagePromise = undefined;
+    this.sponsoredMessagesMids = [];
+    this.sponsoredMessages = [];
+    this.sponsoredMessagesAvailable = [];
+    this.sponsoredMessageEvery = 0;
+    this.sponsoredAfterMids.clear();
+    // * an ad whose render still waits has no bubble to delete yet: it finds itself forgotten before it has one
+    this.liveSponsoredMessages = new WeakSet();
+    // * an id twice would destroy its bubble a second time, after the first took it out of `bubbles`
+    this.deleteMessagesByIds(filterUnique(fullMids));
+  }
+
+  private async generateSponsoredMessage(
+    sponsoredMessage: SponsoredMessage.sponsoredMessage,
+    idx: number,
+    middleware: () => boolean
+  ) {
     const offset = SPONSORED_MESSAGE_ID_OFFSET + idx
 
     const msg = await this.generateLocalFirstMessage(false, (message) => {
@@ -14229,7 +14266,11 @@ export default class ChatBubbles {
       };
     }, offset)
 
-    this.sponsoredMessagesMids.push(makeFullMid(this.peerId, msg.mid));
+    // * every load makes the same ids: one dropped while it waited must not register them for the next
+    if(middleware()) {
+      this.sponsoredMessagesMids.push(makeFullMid(this.peerId, msg.mid));
+      this.liveSponsoredMessages.add(msg);
+    }
 
     return msg;
   }
@@ -14250,14 +14291,15 @@ export default class ChatBubbles {
       // Ads are appended without moving the reader away from the last post.
       if(sponsoredMessages.posts_between) {
         this.sponsoredMessageEvery = sponsoredMessages.posts_between;
-        Promise.all(sponsoredMessages.messages.map((it, idx) => this.generateSponsoredMessage(it, idx))).then((msgs) => {
+        // * the load lasts until the ads are made, so that one dropped meanwhile (`dropSponsoredMessages`) stays dropped
+        return Promise.all(sponsoredMessages.messages.map((it, idx) => this.generateSponsoredMessage(it, idx, middleware))).then((msgs) => {
+          if(!middleware()) return;
           this.messagesSinceLastSponsored = 0;
           this.sponsoredMessages = this.sponsoredMessagesAvailable = msgs
           if(this.scrollable.loadedAll.bottom && msgs.length) {
             this.renderNewMessage(msgs.shift());
           }
         });
-        return;
       }
 
       const sponsoredMessage = sponsoredMessages.messages[0];
@@ -14266,7 +14308,7 @@ export default class ChatBubbles {
         return;
       }
 
-      const messagePromise = this.generateSponsoredMessage(sponsoredMessage, 0);
+      const messagePromise = this.generateSponsoredMessage(sponsoredMessage, 0, middleware);
 
       return Promise.all([
         messagePromise,

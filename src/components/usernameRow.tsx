@@ -1,4 +1,4 @@
-import {JSX, Ref} from 'solid-js';
+import {ComponentProps, JSX, Ref} from 'solid-js';
 import {IconTsx} from '@components/iconTsx';
 import Row from '@components/rowTsx';
 
@@ -12,6 +12,8 @@ export default function UsernameRow(props: {
   dragging?: boolean,
   sortHandlePointerDown?: JSX.EventHandler<HTMLSpanElement, PointerEvent>,
   clickable?: boolean | JSX.HTMLAttributes<HTMLElement>['onClick'],
+  /** a menu the row opens on a click (and a right click), as a link's actions do */
+  contextMenu?: ComponentProps<typeof Row>['contextMenu'],
   isLink?: boolean,
   icon?: Icon,
   color?: string,
@@ -19,6 +21,8 @@ export default function UsernameRow(props: {
   title?: JSX.Element,
   subtitle?: JSX.Element,
   titleRight?: JSX.Element,
+  /** the far end of the title in the grey of a secondary value (a link's clicks) */
+  titleRightSecondary?: boolean,
   subtitleRight?: JSX.Element,
   titleRef?: Ref<HTMLDivElement>,
   subtitleRef?: Ref<HTMLDivElement>,
@@ -39,11 +43,13 @@ export default function UsernameRow(props: {
         'is-dragging': !!props.dragging
       }}
       clickable={props.clickable ?? true}
+      contextMenu={props.contextMenu}
     >
       <Row.Title
         ref={props.titleRef}
         class={props.isLink ? 'text-bold' : undefined}
         titleRight={props.titleRight}
+        titleRightSecondary={props.titleRightSecondary}
       >
         {props.title}
       </Row.Title>

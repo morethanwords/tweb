@@ -458,7 +458,8 @@ function createHarness(options: {
     appNotificationsManager: {
       // the real predicate — the Community row's mute state is derived from it
       isMuted: AppNotificationsManager.prototype.isMuted,
-      isPeerLocalMuted: vi.fn(() => false)
+      isPeerLocalMuted: vi.fn(() => false),
+      getSettingsClock: () => 0
     },
     appStateManager: {getState, pushToState},
     dialogsStorage: {

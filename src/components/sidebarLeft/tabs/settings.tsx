@@ -17,6 +17,7 @@ import showMyQrCodePopup from '@components/popups/myQrCode';
 import showSendGiftPicker from '@components/popups/sendGiftPicker';
 import {formatNanoton} from '@helpers/paymentsWrapCurrencyAmount';
 import showLogOutPopup from '@components/popups/logOut';
+import askQuestion, {openTelegramFaq} from '@components/askQuestion';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
@@ -449,6 +450,17 @@ const Settings = () => {
           </Row>
         </Section>
       </Show>
+      {/* help, the way tdesktop ends its main settings */}
+      <Section>
+        <Row clickable={openTelegramFaq}>
+          <Row.Icon icon="faq_filled" />
+          <Row.Title>{i18n('TelegramFaq')}</Row.Title>
+        </Row>
+        <Row clickable={() => askQuestion(bindManagersToSession(rootScope.managers))}>
+          <Row.Icon icon="message_filled" />
+          <Row.Title>{i18n('AskAQuestion')}</Row.Title>
+        </Row>
+      </Section>
       <A11yButton class={styles.version} onClick={openExperimental}>
         <span dir="ltr">{getAppVersionText()}</span>
         <Show when={experimentalOn()}>

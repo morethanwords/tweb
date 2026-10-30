@@ -792,9 +792,12 @@ export class ApiManager extends ApiManagerMethods {
 
           return this.cachedExportPromise[dcId].then(() => performRequest());
         } else if(error.code === 303) {
-          const newDcId = +error.type.match(/^(PHONE_MIGRATE_|NETWORK_MIGRATE_|USER_MIGRATE_|STATS_MIGRATE_)(\d+)/)[2] as DcId;
-          if(newDcId !== dcId) {
-            if(options.dcId) {
+          // * a 303 of a kind not listed here is an ordinary error, as in tdesktop's onErrorDefault; FILE_MIGRATE comes
+          // * as a 303 too (payments.getBankCardData), and moves only the request, as its 400 below does
+          const match = error.type.match(/^(PHONE_MIGRATE_|NETWORK_MIGRATE_|USER_MIGRATE_|STATS_MIGRATE_|FILE_MIGRATE_)(\d+)/);
+          const newDcId = match && +match[2] as DcId;
+          if(newDcId && newDcId !== dcId) {
+            if(options.dcId || match[1] === 'FILE_MIGRATE_') {
               options.dcId = newDcId;
             } else {
               this.setBaseDcId(newDcId);
@@ -802,6 +805,8 @@ export class ApiManager extends ApiManagerMethods {
 
             return this.invokeApi(method, params, options);
           }
+
+          throw error;
         } else if(error.code === 400 && error.type.indexOf('FILE_MIGRATE') === 0) {
           const newDcId = +error.type.match(/^(FILE_MIGRATE_)(\d+)/)[2] as DcId;
           if(newDcId !== dcId) {

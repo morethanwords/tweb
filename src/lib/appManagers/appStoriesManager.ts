@@ -13,7 +13,7 @@ import deepEqual from '@helpers/object/deepEqual';
 import safeReplaceObject from '@helpers/object/safeReplaceObject';
 import pause from '@helpers/schedulers/pause';
 import tsNow from '@helpers/tsNow';
-import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoryItem, Update, PeerStories, User, Chat, ChatFull, StoryView, StoryReaction, Message, MediaArea, StoryAlbum, StoriesStealthMode, InputPrivacyRule} from '@layer';
+import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoryItem, Update, PeerStories, User, Chat, ChatFull, StoryView, StoryReaction, Message, MediaArea, StoryAlbum, StoriesStealthMode, InputPrivacyRule, RecentStory} from '@layer';
 import getPrivacyRulesDetails from '@appManagers/utils/privacy/getPrivacyRulesDetails';
 import getStoryPrivacyType from '@appManagers/utils/stories/privacyType';
 import {StorySettings, StorySettingsSaveResult} from '@appManagers/utils/stories/storySettings';
@@ -25,6 +25,8 @@ import type {MyTopPeer} from '@appManagers/appUsersManager';
 import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
 import StoriesCacheType from '@appManagers/utils/stories/cacheType';
 import insertStory from '@appManagers/utils/stories/insertStory';
+import {makeStoryLink} from '@appManagers/utils/stories/storyLink';
+import canPollPeerStories, {PEER_STORIES_POLL_INTERVAL} from '@appManagers/utils/stories/canPollPeerStories';
 
 type MyStoryItem = Exclude<StoryItem, StoryItem.storyItemDeleted>;
 
@@ -77,6 +79,12 @@ type StoriesPeerCache = {
   pinnedToTop: Map<number, number>,
   storiesMap: Map<MyStoryItem['id'], MyStoryItem>,
   deleted: Set<number>,
+  /** the peer's active stories came whole (`getAllStories`, `getPeerStories`): until then `stories` holds only
+   * what came one by one, and `maxReadId` may be known without them (`updateReadStories`) */
+  loaded?: boolean,
+  /** the number (`askPeerStories`) of the latest question whose answer on what the peer has in stories was taken:
+   * the answer to one asked before it is older, and is not (`takePeerStoriesAnswer`) */
+  answered?: number,
   maxReadId?: number,
   getStoriesPromises: Map<StoryItem['id'], CancellablePromise<StoryItem.storyItem>>,
   getStoriesPromise?: CancellablePromise<void>,
@@ -108,6 +116,8 @@ const TEST_SKIPPED = false;
 const TEST_READ = false;
 const TEST_EXPIRING = 0;
 
+const PEER_STORIES_POLL_BATCH = 100;
+
 export default class AppStoriesManager extends AppManager {
   private settingsSaveQueue: SerializedQueue;
   private cache: {[userId: UserId]: StoriesPeerCache};
@@ -117,6 +127,14 @@ export default class AppStoriesManager extends AppManager {
   private stealthMode: StoriesStealthMode;
   /** the writes to the lists of albums and of their stories, one after another (`writeLists`) */
   private listWrites: Map<string, {queue: Promise<unknown>, pending: number, refused: boolean}>;
+  /** the links the server gave for stories (`getStoryLink`), by `${peerId}_${id}` */
+  private exportedStoryLinks: Map<string, string>;
+  /** the read state of every peer's stories was asked for this session (`requestReadTills`) */
+  private readTillsRequested: boolean;
+  /** when the server was last asked what a peer has in stories (`pollPeersStories`) */
+  private peerStoriesPolledAt: Map<PeerId, number>;
+  /** how many questions on what peers have in stories were asked (`askPeerStories`) */
+  private peerStoriesAsked: number;
 
   protected after() {
     this.clear(true);
@@ -184,7 +202,30 @@ export default class AppStoriesManager extends AppManager {
     };
     this.expiring = [];
     this.listWrites = new Map();
+    this.exportedStoryLinks = new Map();
+    this.readTillsRequested = false;
+    this.peerStoriesPolledAt = new Map();
+    this.peerStoriesAsked = 0;
   };
+
+  /**
+   * Numbers a question to the server on what peers have in stories (the feed, a peer's stories, a poll), as it is
+   * asked: their answers can come in any order, and one is taken for a peer only if no answer to a later question
+   * was (`takePeerStoriesAnswer`)
+   */
+  private askPeerStories() {
+    return ++this.peerStoriesAsked;
+  }
+
+  /** Whether the answer to question `asked` is taken for the peer: the one to a later question was not, before it */
+  private takePeerStoriesAnswer(cache: StoriesPeerCache, asked: number) {
+    if(asked < (cache.answered ?? 0)) {
+      return false;
+    }
+
+    cache.answered = asked;
+    return true;
+  }
 
   private onSubscriptionUpdate(peerId: PeerId) {
     const peer = this.getPeer(peerId);
@@ -193,15 +234,15 @@ export default class AppStoriesManager extends AppManager {
     }
 
     const cache = this.getPeerStoriesCache(peerId, false);
-    if(!cache) {
-      const isSubscribed = this.isSubcribedToPeer(peerId);
-      const hasStories = peer.stories_max_id !== undefined;
-      if(isSubscribed && hasStories) {
-        Promise.resolve(this.getPeerStories(peerId)).then((peerStories) => {
-          this.rootScope.dispatchEvent('stories_stories', peerStories);
-        });
-      }
+    // * one held without its stories (only how far they are read, `requestReadTills`) has them read as well
+    if(!cache?.loaded && this.isSubcribedToPeer(peerId) && peer.stories_max_id !== undefined) {
+      Promise.resolve(this.getPeerStories(peerId)).then((peerStories) => {
+        this.rootScope.dispatchEvent('stories_stories', peerStories);
+      });
+      return;
+    }
 
+    if(!cache) {
       return;
     }
 
@@ -433,6 +474,21 @@ export default class AppStoriesManager extends AppManager {
     };
   }
 
+  /** an active story leaves the list when it expires (`checkExpired`) */
+  private registerExpiring(peerId: PeerId, storyItem: StoryItem.storyItem | StoryItem.storyItemSkipped) {
+    if(TEST_EXPIRING) {
+      storyItem.expire_date = tsNow(true) + TEST_EXPIRING;
+    }
+
+    const pos = this.expiring.findIndex((item) => item.peerId === peerId && item.id === storyItem.id);
+    insertInDescendSortedArray(
+      this.expiring,
+      {peerId, id: storyItem.id, timestamp: storyItem.expire_date},
+      (item) => 0x7FFFFFFF - (item.timestamp),
+      pos
+    );
+  }
+
   public saveStoryItem(
     storyItem: StoryItem,
     cache: StoriesPeerCache,
@@ -448,6 +504,17 @@ export default class AppStoriesManager extends AppManager {
     const oldIsSkipped = oldStoryItem?._ === 'storyItemSkipped';
     const isSkipped = storyItem._ === 'storyItemSkipped';
     if(isSkipped && oldStoryItem && !oldIsSkipped) {
+      // * held whole, it is kept so, and is still one of the list the answer is: a peer's stories read anew after
+      // * what it has changed (`applyPeerRecentStory`) name those already held by id only. One held from elsewhere
+      // * (one story, the profile's) leaves the list when it expires too
+      if(cacheType === StoriesCacheType.Stories) {
+        this.registerExpiring(cache.peerId, oldStoryItem);
+      }
+
+      if(cacheType) {
+        insertStory(cache[cacheType], oldStoryItem, true, cacheType, cache.pinnedToTop);
+      }
+
       return oldStoryItem;
     }
 
@@ -515,17 +582,7 @@ export default class AppStoriesManager extends AppManager {
     }
 
     if(cacheType === StoriesCacheType.Stories) {
-      if(TEST_EXPIRING) {
-        storyItem.expire_date = tsNow(true) + TEST_EXPIRING;
-      }
-
-      const pos = this.expiring.findIndex((item) => item.peerId === cache.peerId && item.id === storyItem.id);
-      insertInDescendSortedArray(
-        this.expiring,
-        {peerId: cache.peerId, id: storyItem.id, timestamp: storyItem.expire_date},
-        (item) => 0x7FFFFFFF - (item.timestamp),
-        pos
-      );
+      this.registerExpiring(cache.peerId, storyItem);
     }
 
     if(cacheType) {
@@ -679,9 +736,13 @@ export default class AppStoriesManager extends AppManager {
     return storyItems;
   }
 
-  public savePeerStories(peerStories: PeerStories) {
+  /** `asked`: the question it answers (`askPeerStories`), when it is not taken yet: what came of the peer since is newer */
+  public savePeerStories(peerStories: PeerStories, asked?: number) {
     const peerId = this.appPeersManager.getPeerId(peerStories.peer);
     const cache = this.getPeerStoriesCache(peerId);
+    if(asked !== undefined && !this.takePeerStoriesAnswer(cache, asked)) {
+      return this.convertPeerStoriesCache(cache);
+    }
 
     if(TEST_NO_STORIES) {
       peerStories.stories = [];
@@ -700,7 +761,9 @@ export default class AppStoriesManager extends AppManager {
     }
 
     const cacheType = this.getCacheTypeForPeerId(peerId, true);
-    cache.maxReadId = peerStories.max_read_id ?? 0;
+    // * the read state only grows: one already known from an update can be newer than this answer
+    peerStories.max_read_id = cache.maxReadId = Math.max(cache.maxReadId ?? 0, peerStories.max_read_id ?? 0);
+    cache.loaded = true;
     peerStories.stories = this.saveStoryItems(peerStories.stories, cache, cacheType, true);
 
     if(cache.dispatchStoriesEvent) {
@@ -725,12 +788,13 @@ export default class AppStoriesManager extends AppManager {
       return;
     }
 
-    return storyId > cache.maxReadId ? (cache.storiesMap.get(storyId).pFlags.close_friends ? 'close' : 'unread') : 'read';
+    // * the read state can be known before the story itself (`requestReadTills`)
+    return storyId > cache.maxReadId ? (cache.storiesMap.get(storyId)?.pFlags.close_friends ? 'close' : 'unread') : 'read';
   }
 
   public getPeerStoriesSegments(peerId: PeerId): StoriesSegments | Promise<StoriesSegments> {
     const cache = this.getPeerStoriesCache(peerId);
-    if(cache.maxReadId === undefined) {
+    if(!cache.loaded) {
       return callbackify(this.getPeerStories(peerId), () => this.getPeerStoriesSegments(peerId));
     }
 
@@ -973,6 +1037,7 @@ export default class AppStoriesManager extends AppManager {
   }
 
   public getAllStories(next?: boolean, state?: string, hidden?: boolean) {
+    const asked = this.askPeerStories();
     return this.apiManager.invokeApiSingleProcess({
       method: 'stories.getAllStories',
       params: {
@@ -985,7 +1050,7 @@ export default class AppStoriesManager extends AppManager {
         this.appPeersManager.saveApiPeers(storiesAllStories);
 
         storiesAllStories.peer_stories = storiesAllStories.peer_stories
-        .map((peerStories) => this.savePeerStories(peerStories))
+        .map((peerStories) => this.savePeerStories(peerStories, asked))
         .filter((peerStories) => peerStories.stories.length);
 
         this.onUpdateStoriesStealthMode({
@@ -993,27 +1058,196 @@ export default class AppStoriesManager extends AppManager {
           stealth_mode: storiesAllStories.stealth_mode
         });
 
+        this.requestReadTills();
+
         return storiesAllStories;
       }
     });
   }
 
-  public getPeerStories(peerId: PeerId) {
+  /**
+   * How far the stories of every peer are read, asked once a session, once the feed has come (tdesktop
+   * `Stories::requestReadTills`): the feed carries the read state of its own peers only, and this, a batch of
+   * `updateReadStories`, that of everyone else - a peer seen elsewhere, whose stories were read on another device
+   */
+  private requestReadTills() {
+    if(this.readTillsRequested) {
+      return;
+    }
+
+    this.readTillsRequested = true;
+    this.apiManager.invokeApiSingleProcess({
+      method: 'stories.getAllReadPeerStories',
+      processResult: (updates) => {
+        // * applied at once, as tdesktop applies an answer without seq: a difference running then would drop it,
+        // * and it is not asked again; a read mark only grows, so one the difference brings after does no harm
+        this.apiUpdatesManager.processUpdateMessage(updates, {ignoreSyncLoading: true});
+      }
+    }).catch(() => {
+      // * asked again with the next feed
+      this.readTillsRequested = false;
+    });
+  }
+
+  public getPeerStories(peerId: PeerId): MaybePromise<PeerStories> {
     const cache = this.getPeerStoriesCache(peerId);
-    if(cache.maxReadId !== undefined) {
+    if(cache.loaded) {
       return this.convertPeerStoriesCache(cache);
     }
 
+    const answered = cache.answered;
+    const asked = this.askPeerStories();
     return this.apiManager.invokeApiSingleProcess({
       method: 'stories.getPeerStories',
       params: {
         peer: this.appPeersManager.getInputPeerById(peerId)
       },
-      processResult: (storiesPeerStories) => {
+      // * a request is joined only while nothing newer has come of the peer: one asked anew would otherwise join the
+      // * very request it replaces, which waits on it
+      options: {cacheKey: `${peerId}_${answered}`},
+      processResult: (storiesPeerStories): MaybePromise<PeerStories> => {
+        // * the answer to a later question came first (a poll that found them changed): they are asked for anew
+        if(!this.takePeerStoriesAnswer(cache, asked)) {
+          return this.getPeerStories(peerId);
+        }
+
         this.appPeersManager.saveApiPeers(storiesPeerStories);
         return this.savePeerStories(storiesPeerStories.stories);
       }
     });
+  }
+
+  /**
+   * Asks again what the peers on screen that the feed does not follow (`canPollPeerStories`) have in
+   * stories, each at most once an interval and up to 100 a request, as the other apps do (iOS
+   * `AccountViewTracker.refreshStoryStatsForPeerIds`, Android `UserListPoller`, Web A `usePeerStoriesPolling`)
+   */
+  public pollPeersStories(peerIds: PeerId[]) {
+    const now = Date.now();
+    const due = filterUnique(peerIds).filter((peerId) => {
+      const polledAt = this.peerStoriesPolledAt.get(peerId);
+      if((polledAt && now - polledAt < PEER_STORIES_POLL_INTERVAL) || !canPollPeerStories(this.getPeer(peerId))) {
+        return false;
+      }
+
+      this.peerStoriesPolledAt.set(peerId, now);
+      return true;
+    });
+
+    const promises: Promise<void>[] = [];
+    for(let i = 0; i < due.length; i += PEER_STORIES_POLL_BATCH) {
+      const slice = due.slice(i, i + PEER_STORIES_POLL_BATCH);
+      const asked = this.askPeerStories();
+      promises.push(this.apiManager.invokeApi('stories.getPeerMaxIDs', {
+        id: slice.map((peerId) => this.appPeersManager.getInputPeerById(peerId))
+      }).then((recentStories) => {
+        recentStories.forEach((recentStory, index) => this.applyPeerRecentStory(slice[index], recentStory, asked));
+      }, noop));
+    }
+
+    return Promise.all(promises).then(noop);
+  }
+
+  /**
+   * What `stories.getPeerMaxIDs` says a peer has in stories, to question `asked` (`askPeerStories`): the peer takes
+   * it, telling the avatars when it gains or loses them, and its stories held here, no longer the ones it has, are read
+   * again when asked for - unless what came of the peer meanwhile (its stories, another poll) is newer
+   */
+  private applyPeerRecentStory(peerId: PeerId, recentStory: RecentStory, asked: number) {
+    const peer = this.getPeer(peerId);
+    const cache = this.getPeerStoriesCache(peerId, false);
+    if(!peer || (cache && !this.takePeerStoriesAnswer(cache, asked))) {
+      return;
+    }
+
+    // * a summary without max_id: the peer has no active stories
+    const maxId = recentStory?.max_id;
+    const live = !!recentStory?.pFlags?.live;
+    const previous = peer.stories_max_id;
+    const peerChanged = previous ? previous.max_id !== maxId || !!previous.pFlags?.live !== live : !!maxId;
+    // * the stories held whole end at the newest: the peer may have been told of a newer one elsewhere (a profile, a
+    // * message's author) while they were not read again
+    const cacheBehind = !!cache?.loaded && cache.stories[cache.stories.length - 1] !== maxId;
+    if(!peerChanged && !cacheBehind) {
+      return;
+    }
+
+    // * the stories on their way, asked for before (`getPeerStories`), are not taken either
+    if(cacheBehind) {
+      // * with none left there is nothing to read again
+      const held = cache.stories.splice(0);
+      cache.loaded = !maxId;
+      this.updateListCachePosition(cache);
+
+      // * the stores and an open viewer follow: those no longer there leave as expired ones do (`checkExpired`, which
+      // * will not find them now), and those there are now - read at once, as the avatars read them - are told
+      const expire = (ids: StoryItem['id'][]) => ids.forEach((id) => this.rootScope.dispatchEvent('story_expired', {peerId, id}));
+      if(!maxId) {
+        expire(held);
+      } else {
+        Promise.resolve(this.getPeerStories(peerId)).then((peerStories) => {
+          const ids = new Set(peerStories.stories.map(({id}) => id));
+          expire(held.filter((id) => !ids.has(id)));
+          this.rootScope.dispatchEvent('stories_stories', peerStories);
+        }, noop);
+      }
+    }
+
+    if(peerChanged) {
+      // * a peer without `stories_max_id` says nothing of its stories (saveApiPeerStories): having none takes the flag
+      const pFlags = {...peer.pFlags};
+      const newPeer = {...peer, pFlags} as typeof peer;
+      if(maxId) {
+        newPeer.stories_max_id = recentStory;
+        delete pFlags.stories_unavailable;
+      } else {
+        delete newPeer.stories_max_id;
+        pFlags.stories_unavailable = true;
+      }
+
+      if(peerId.isUser()) this.appUsersManager.saveApiUsers([newPeer as User.user]);
+      else this.appChatsManager.saveApiChats([newPeer as Chat.channel]);
+    }
+
+    // * gaining or losing them is told by saving the peer; new ones beside the old, or old ones held, are told here
+    if(previous && maxId) {
+      this.rootScope.dispatchEvent('peer_stories', {peerId, available: true});
+    }
+  }
+
+  /**
+   * The link to a story, as tdesktop gives it (`ApiWrap::exportDirectStoryLink`): the one the server exported
+   * for it before; else the one by its peer's username at once, while the server is asked for its own for the
+   * next time; a peer without a username has only the server's (`stories_export_nopublic_link`)
+   */
+  public getStoryLink(peerId: PeerId, id: StoryItem['id']): MaybePromise<string> {
+    const username = this.appPeersManager.getPeerUsername(peerId);
+    // * by the username it was exported under, which the link names: a peer that changed it is asked again
+    const key = `${peerId}_${id}_${username}`;
+    const exported = this.exportedStoryLinks.get(key);
+    if(exported) {
+      return exported;
+    }
+
+    const promise = this.apiManager.invokeApiSingleProcess({
+      method: 'stories.exportStoryLink',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        id
+      },
+      options: {cacheKey: key},
+      processResult: ({link}) => {
+        this.exportedStoryLinks.set(key, link);
+        return link;
+      }
+    });
+
+    if(!username) {
+      return promise;
+    }
+
+    promise.catch(noop);
+    return makeStoryLink(username, id);
   }
 
   private getCachedStories(cache: StoriesPeerCache, pinned: boolean, limit: number, offsetId: number) {
@@ -2239,7 +2473,7 @@ export default class AppStoriesManager extends AppManager {
       return;
     }
 
-    if(cache.maxReadId === undefined) {
+    if(!cache.loaded) {
       Promise.resolve(this.getPeerStories(peerId)).then((userStories) => {
         this.rootScope.dispatchEvent('stories_stories', userStories);
         // * the peer's stories weren't cached yet (e.g. their very first story), so the
@@ -2329,7 +2563,20 @@ export default class AppStoriesManager extends AppManager {
   protected onUpdateReadStories = (update: Update.updateReadStories) => {
     const peerId = this.appPeersManager.getPeerId(update.peer);
     const cache = this.getPeerStoriesCache(peerId);
-    cache.maxReadId = update.max_id;
+    // * the read state only grows (stories.readStories), and a batch of them (`requestReadTills`) can come
+    // * after a newer one
+    const maxReadId = Math.max(cache.maxReadId ?? 0, update.max_id);
+    if(maxReadId === cache.maxReadId) {
+      return;
+    }
+
+    cache.maxReadId = maxReadId;
+    // * of a peer none of whose stories are held nothing on screen shows it: saying so would make every
+    // * avatar of the peer read its stories, for each peer of the batch
+    if(!cache.loaded && !cache.storiesMap.size) {
+      return;
+    }
+
     this.updateListCachePosition(cache);
     this.rootScope.dispatchEvent('stories_read', {peerId, maxReadId: cache.maxReadId});
   };

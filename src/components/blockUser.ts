@@ -8,14 +8,21 @@ import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 /**
  * Blocks a user once the confirmation is accepted, optionally reporting the chat as spam and
  * deleting it as well (the checkboxes the confirmation offers). `onConfirmed` gets the requests.
+ *
+ * With `fromRepliesMid`, the one who replied with that message of the Replies chat: the checkboxes
+ * report them and delete this reply and all of theirs, all in one request (desktop's
+ * `BlockSenderFromRepliesBox`).
  */
 export default async function blockUserWithConfirmation(options: {
   peerId: PeerId,
   showReport?: boolean,
   showDelete?: boolean,
+  fromRepliesMid?: number,
   onConfirmed?: (promise: Promise<any>) => void
 }) {
-  const {peerId, showReport, showDelete, onConfirmed} = options;
+  const {peerId, showDelete, fromRepliesMid, onConfirmed} = options;
+  const fromReplies = fromRepliesMid !== undefined;
+  const showReport = options.showReport || fromReplies;
   // * the account the user is blocked on, whichever the tab shows once the confirmation is answered
   const managers = bindManagersToSession(rootScope.managers);
   const checkboxes: PopupPeerCheckboxOptions[] = [
@@ -26,8 +33,18 @@ export default async function blockUserWithConfirmation(options: {
     showDelete && {
       text: 'DeleteThisChat',
       checked: true
+    },
+    fromReplies && {
+      text: 'BlockUser.DeleteReply',
+      checked: true
+    },
+    fromReplies && {
+      text: 'BlockUser.DeleteAllReplies',
+      textArgs: [new PeerTitle({peerId}).element],
+      checked: true
     }
   ];
+  const shown = checkboxes.filter(Boolean);
 
   const checked = await confirmationPopup({
     peerId,
@@ -38,14 +55,20 @@ export default async function blockUserWithConfirmation(options: {
       langKey: 'BlockUser',
       isDanger: true
     },
-    checkboxes: checkboxes.filter(Boolean)
+    checkboxes: shown
   });
 
-  const [reportSpam, deleteChat] = Array.isArray(checked) ? checked : [];
+  // * by its text: which of them were offered depends on the options
+  const isChecked = (text: PopupPeerCheckboxOptions['text']) => Array.isArray(checked) && !!checked[shown.findIndex((checkbox) => checkbox.text === text)];
+  const reportSpam = isChecked('DeleteReportSpam');
 
-  const promise = Promise.all([
+  const promise = fromReplies ? managers.appUsersManager.blockFromReplies(peerId, fromRepliesMid, {
+    deleteMessage: isChecked('BlockUser.DeleteReply'),
+    deleteHistory: isChecked('BlockUser.DeleteAllReplies'),
+    reportSpam
+  }) : Promise.all([
     reportSpam && managers.appMessagesManager.reportSpam(peerId),
-    deleteChat && managers.appMessagesManager.flushHistory({peerId, justClear: false, revoke: true}),
+    isChecked('DeleteThisChat') && managers.appMessagesManager.flushHistory({peerId, justClear: false, revoke: true}),
     managers.appUsersManager.toggleBlock(peerId, true)
   ]);
 

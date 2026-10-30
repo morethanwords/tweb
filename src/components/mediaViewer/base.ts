@@ -16,7 +16,7 @@ import animationIntersector from '@components/animationIntersector';
 import appMediaPlaybackController, {AppMediaPlaybackController} from '@components/appMediaPlaybackController';
 import ButtonIcon from '@components/buttonIcon';
 import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
-import ButtonMenuToggle from '@components/buttonMenuToggle';
+import ButtonMenuToggle, {createButtonMenuVisibility} from '@components/buttonMenuToggle';
 import ProgressivePreloader from '@components/preloader';
 import SwipeHandler, {ZoomDetails} from '@components/swipeHandler';
 import {formatFullSentTime} from '@helpers/date';
@@ -49,6 +49,7 @@ import setAttachmentSize from '@helpers/setAttachmentSize';
 import wrapEmojiText from '@richTextProcessor/wrapEmojiText';
 import LazyLoadQueueBase from '@components/lazyLoadQueueBase';
 import overlayCounter from '@helpers/overlayCounter';
+import contextMenuController from '@helpers/contextMenuController';
 import appDownloadManager from '@lib/appDownloadManager';
 import noop from '@helpers/noop';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
@@ -80,6 +81,8 @@ import {getMediaSourceClip} from '@components/mediaViewer/clipPath';
 import getEffectiveCornerRadii from '@components/mediaViewer/cornerRadii';
 import snapshotRenderedMedia, {copyRenderedImage, RenderedMedia} from '@components/mediaViewer/snapshotRenderedMedia';
 import getMediaViewerDocumentSize from '@components/mediaViewer/documentSize';
+import getShownVideo from '@components/mediaViewer/shownVideo';
+import createSlideMenu from '@components/mediaViewer/slideMenu';
 import getDocumentURL from '@appManagers/utils/docs/getDocumentURL';
 import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
 import assumeType from '@helpers/assumeType';
@@ -264,6 +267,10 @@ export default class AppMediaViewerBase<
   protected disposeSolid?: () => void;
 
   protected videoPlayer: VideoPlayer;
+  /** Hides the desktop ⋮ while none of its actions is offered: call once what their `verify` reads has changed */
+  protected updateMoreMenu: () => void = noop;
+  // * the menus' slide: what an action only a menu has acts on is `getMenuTarget()`
+  private slideMenu = createSlideMenu(() => ({id: this.tempId, target: this.target}));
   protected adminPanel: HTMLDivElement;
 
   protected zoomElements: {
@@ -991,9 +998,30 @@ export default class AppMediaViewerBase<
     this.videoPlayer.lockControls(this.isZooming || this.isRotated() ? false : undefined);
   }
 
-  protected setBtnMenuToggle(buttons: ButtonMenuItemOptionsVerifiable[]) {
-    const btnMenuToggle = ButtonMenuToggle({buttonOptions: {onlyMobile: true}, direction: 'bottom-left', buttons});
+  /**
+   * Handhelds get every action in the topbar's menu. On a desktop the actions have icons of their own, but for
+   * `menuOnly`, which have none: they go in a ⋮ beside the icons, as in tdesktop's viewer.
+   */
+  protected setBtnMenuToggle(buttons: ButtonMenuItemOptionsVerifiable[], menuOnly: ButtonMenuItemOptionsVerifiable[] = []) {
+    const btnMenuToggle = ButtonMenuToggle({buttonOptions: {onlyMobile: true}, direction: 'bottom-left', buttons, ...this.slideMenu.toggle()});
     this.topbar.append(btnMenuToggle);
+
+    if(menuOnly.length) {
+      const btnMore = ButtonMenuToggle({buttonOptions: {noRipple: true}, direction: 'bottom-left', buttons: menuOnly, ...this.slideMenu.toggle()});
+      btnMore.classList.add('hide');
+      this.buttons.close.before(btnMore);
+      this.updateMoreMenu = createButtonMenuVisibility(btnMore, menuOnly);
+    }
+  }
+
+  /** The slide the shown menu was opened on, while it is still shown: what an action only a menu has acts on */
+  protected getMenuTarget() {
+    return this.slideMenu.target();
+  }
+
+  /** The `<video>` the viewer shows, once it is there: never the previous slide's, while paging */
+  protected getShownVideo() {
+    return getShownVideo(this.content.mover, this.videoPlayer?.video);
   }
 
   /** What Escape and Back do to the viewer: a live stream's outlives an account switch. */
@@ -1174,7 +1202,9 @@ export default class AppMediaViewerBase<
 
   private onKeyDown = (e: KeyboardEvent) => {
     // this.log('onKeyDown', e);
-    if(overlayCounter.overlaysActive > 1) {
+    // * a popup over the viewer has the keys, and so does a menu with the a11y layer, whose arrows move through
+    // * its items; without the layer a key pages as before, and paging closes the menu (`_openMedia`)
+    if(overlayCounter.overlaysActive > 1 || (Modes.a11y && contextMenuController.isOpened())) {
       return;
     }
 
@@ -2346,6 +2376,8 @@ export default class AppMediaViewerBase<
 
     this.target = {element: target} as any;
     const tempId = ++this.tempId;
+    // * a menu is the slide's that goes (a swipe pages under it), and one still opening is dropped (`slideMenu`)
+    if(contextMenuController.isOpened()) contextMenuController.close();
 
     if(container.firstElementChild) {
       container.replaceChildren();
@@ -2598,6 +2630,8 @@ export default class AppMediaViewerBase<
 
         // * don't remove
         div.append(video);
+        // * the more menu's actions on the shown video (Share at) wait for it
+        this.updateMoreMenu();
 
         const canPlayThrough = new Promise((resolve) => {
           video.addEventListener('canplay', resolve, {once: true});

@@ -28,6 +28,7 @@ import {toastNew} from '@components/toast';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {showCallAccount} from '@lib/calls/callAccount';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import type {Accessor} from 'solid-js';
 
 export class GroupCallParticipantContextMenu {
   private buttons: ButtonMenuItemOptionsVerifiable[];
@@ -358,8 +359,8 @@ export default class GroupCallParticipantsElement {
     managers: AppManagers,
     videoList?: HTMLElement,
     videoGrid?: GroupCallVideoGrid,
-    /** What a conference offers under its last participant. */
-    actions?: GroupCallParticipantsActions
+    /** What grows the call, under its last participant. */
+    actions?: Accessor<GroupCallParticipantsActions | undefined>
   }) {
     safeAssign(this, options);
 

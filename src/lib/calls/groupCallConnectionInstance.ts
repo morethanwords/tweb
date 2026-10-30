@@ -51,6 +51,8 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     isMuted?: boolean,
     joinVideo?: boolean,
     rejoin?: boolean,
+    // Who a legacy video chat shows us as: a channel we speak as, or (unset) the account.
+    joinAs?: PeerId,
     // Conference (TdE2E) join: when set, passed to phone.joinGroupCall as
     // the `public_key` + `block` fields. Server treats the join as a
     // conference iff BOTH are present.

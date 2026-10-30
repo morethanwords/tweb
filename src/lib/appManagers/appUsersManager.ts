@@ -19,6 +19,7 @@ import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 import SearchIndex from '@lib/searchIndex';
 import {AppManager} from '@appManagers/manager';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
+import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import canSendToUser from '@appManagers/utils/users/canSendToUser';
 import getUserStatusForSort from '@appManagers/utils/users/getUserStatusForSort';
 import {getUserSortName} from '@appManagers/utils/users/sortContacts';
@@ -29,9 +30,11 @@ import callbackify from '@helpers/callbackify';
 import {NULL_PEER_ID, TEST_NO_STORIES} from '@appManagers/constants';
 import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import pause from '@helpers/schedulers/pause';
+import createSerializedQueue from '@helpers/createSerializedQueue';
 
 export type User = MTUser.user;
-export type TopPeerType = 'correspondents' | 'bots_inline' | 'bots_app' | 'bots_guestchat';
+const TOP_PEER_TYPES = ['correspondents', 'bots_inline', 'bots_app', 'bots_guestchat'] as const;
+export type TopPeerType = typeof TOP_PEER_TYPES[number];
 export type MyTopPeer = {id: PeerId, rating: number};
 
 // The recent-peer lists kept in state: the state key holding the list, and the peers-storage key
@@ -70,6 +73,12 @@ export class AppUsersManager extends AppManager {
   private getTopPeersPromises: {[type in TopPeerType]?: Promise<MyTopPeer[]>};
   // * until when the server asked to wait, per list: nothing is asked again before that
   private topPeersFloods: {[type in TopPeerType]?: number};
+  // * moves on every flip of `contacts.toggleTopPeers`: a list asked for before it is of the other setting
+  private topPeersVersion = 0;
+  // * and the flips reach the server in the order they were made, whichever screen made them
+  private topPeersSaves = createSerializedQueue();
+
+  private supportUserId: UserId;
 
   private defaultEmojiStatuses: MaybePromise<AccountEmojiStatuses>;
   private recentEmojiStatuses: MaybePromise<AccountEmojiStatuses>;
@@ -424,6 +433,21 @@ export class AppUsersManager extends AppManager {
     return this.apiManager.invokeApiSingle('contacts.exportContactToken', {});
   }
 
+  /**
+   * The other end of `exportContactToken`: the user whose `t.me/contact/<token>` link was opened, now
+   * a contact. A token that has expired answers with an error, as tdesktop expects.
+   */
+  public importContactToken(token: string) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'contacts.importContactToken',
+      params: {token},
+      processResult: (user) => {
+        this.saveApiUser(user);
+        return this.getUser(user.id);
+      }
+    });
+  }
+
   private pushContact(id: UserId) {
     this.contactsList.add(id);
     this.contactsIndex.indexObject(id, this.getUserSearchText(id));
@@ -525,20 +549,40 @@ export class AppUsersManager extends AppManager {
       id: this.appPeersManager.getInputPeerById(peerId),
       my_stories_from: blockMyStoriesFrom === undefined ? undefined : true
     }).then(() => {
-      // * the update says both lists a peer is on: the stories' one leaves the other as the profile knew it
-      const storiesList = blockMyStoriesFrom !== undefined;
-      const known = storiesList && peerId.isUser() && this.appProfileManager.getCachedFullUser(peerId.toUserId())?.pFlags;
-      this.apiUpdatesManager.processLocalUpdate({
-        _: 'updatePeerBlocked',
-        peer_id: this.appPeersManager.getOutputPeer(peerId),
-        pFlags: {
-          blocked: (storiesList ? known?.blocked : block) || undefined,
-          blocked_my_stories_from: (storiesList ? block : blockMyStoriesFrom) || undefined
-        }
-      });
-
-      this.appProfileManager.refreshPeerSettingsIfNeeded(peerId);
+      this.onPeerBlocked(peerId, block, blockMyStoriesFrom);
     });
+  }
+
+  /**
+   * Blocks the one who replied with a message of the Replies chat, deleting the reply, all their
+   * replies and reporting them as asked (desktop's `BlockSenderFromRepliesBox`)
+   */
+  public blockFromReplies(peerId: PeerId, mid: number, options: {deleteMessage?: boolean, deleteHistory?: boolean, reportSpam?: boolean}) {
+    return this.apiManager.invokeApi('contacts.blockFromReplies', {
+      msg_id: getServerMessageId(mid),
+      delete_message: options.deleteMessage || undefined,
+      delete_history: options.deleteHistory || undefined,
+      report_spam: options.reportSpam || undefined
+    }).then((updates) => {
+      this.apiUpdatesManager.processUpdateMessage(updates);
+      this.onPeerBlocked(peerId, true);
+    });
+  }
+
+  private onPeerBlocked(peerId: PeerId, block: boolean, blockMyStoriesFrom?: boolean) {
+    // * the update says both lists a peer is on: the stories' one leaves the other as the profile knew it
+    const storiesList = blockMyStoriesFrom !== undefined;
+    const known = storiesList && peerId.isUser() && this.appProfileManager.getCachedFullUser(peerId.toUserId())?.pFlags;
+    this.apiUpdatesManager.processLocalUpdate({
+      _: 'updatePeerBlocked',
+      peer_id: this.appPeersManager.getOutputPeer(peerId),
+      pFlags: {
+        blocked: (storiesList ? known?.blocked : block) || undefined,
+        blocked_my_stories_from: (storiesList ? block : blockMyStoriesFrom) || undefined
+      }
+    });
+
+    this.appProfileManager.refreshPeerSettingsIfNeeded(peerId);
   }
 
   public async getCloseFriends() {
@@ -1112,13 +1156,15 @@ export class AppUsersManager extends AppManager {
    * the list is a nicety for every caller (menus, sharing, the contacts sort, inline bots), and none of
    * them may hang on it
    */
-  public getTopPeers(type: TopPeerType) {
+  public getTopPeers(type: TopPeerType): Promise<MyTopPeer[]> {
     if(this.getTopPeersPromises[type]) return this.getTopPeersPromises[type];
 
     return this.getTopPeersPromises[type] = this.appStateManager.getState().then((state) => {
       const cached = state.topPeersCache[type];
       const getCachedPeers = () => cached.peers.filter((topPeer) => this.appPeersManager.getPeer(topPeer.id)); // * fix deleted peer
-      if(cached?.peers && (cached.cachedTime + 86400e3) > Date.now()) {
+      // * an empty list kept before the switch was there may be a disabled one: asked again, not read as on
+      const isKnown = cached?.peers?.length || cached?.disabled !== undefined;
+      if(cached?.peers && isKnown && (cached.cachedTime + 86400e3) > Date.now()) {
         return getCachedPeers();
       }
 
@@ -1133,12 +1179,18 @@ export class AppUsersManager extends AppManager {
         return getStalePeers();
       }
 
+      // * the switch flipped while the list was on its way: that list is of the other setting, neither
+      // * kept nor handed out — the caller gets the one of the current setting
+      const version = this.topPeersVersion;
+      const isSuperseded = () => version !== this.topPeersVersion;
       return this.apiManager.invokeApi('contacts.getTopPeers', {
         [type]: true,
         offset: 0,
         limit: 30,
         hash: '0'
       }, {floodMaxTimeout: 0}).then((result) => {
+        if(isSuperseded()) return this.getTopPeers(type);
+
         let topPeers: MyTopPeer[] = [];
         if(result._ === 'contacts.topPeers') {
           // console.log(result);
@@ -1156,7 +1208,8 @@ export class AppUsersManager extends AppManager {
 
         state.topPeersCache[type] = {
           peers: topPeers,
-          cachedTime: Date.now()
+          cachedTime: Date.now(),
+          disabled: result._ === 'contacts.topPeersDisabled'
         };
         this.appStateManager.pushToState('topPeersCache', state.topPeersCache);
 
@@ -1167,13 +1220,49 @@ export class AppUsersManager extends AppManager {
           this.topPeersFloods[type] = Date.now() + +wait[1] * 1000;
         }
 
-        return getStalePeers();
+        return isSuperseded() ? this.getTopPeers(type) : getStalePeers();
       });
     }).catch((err) => {
       // * don't keep a failure for the whole session, the next caller asks again
       delete this.getTopPeersPromises[type];
       throw err;
     });
+  }
+
+  /**
+   * Whether the server keeps the lists above at all — "Suggest frequent contacts" in Privacy and Security.
+   * Read off the people list, which the search asks for anyway, once every flip on its way has been
+   * answered. `undefined` while it is not known — the list could not be had (refused, FLOOD_WAIT) and none
+   * kept says it: asked again the next time
+   */
+  public isTopPeersEnabled(): Promise<boolean | undefined> {
+    return this.topPeersSaves.enqueue(() => this.getTopPeers('correspondents'))
+    .then(() => this.appStateManager.getState())
+    .then((state) => {
+      const cached = state.topPeersCache.correspondents;
+      // * a list kept before the switch was there says nothing of it, unless it has peers
+      return cached?.disabled !== undefined ? !cached.disabled : (cached?.peers?.length ? true : undefined);
+    });
+  }
+
+  /**
+   * `contacts.toggleTopPeers` turns every list on or off at once. Off, each is empty until it is on
+   * again; on, each is asked anew the next time it is wanted
+   */
+  public toggleTopPeers(enabled: boolean) {
+    return this.topPeersSaves.enqueue(() => this.apiManager.invokeApi('contacts.toggleTopPeers', {enabled}).then(() => {
+      ++this.topPeersVersion;
+      this.getTopPeersPromises = {};
+      return this.appStateManager.getState().then((state) => {
+        const cache = state.topPeersCache;
+        for(const type of TOP_PEER_TYPES) {
+          if(enabled) delete cache[type];
+          else cache[type] = {peers: [], cachedTime: Date.now(), disabled: true};
+        }
+
+        this.appStateManager.pushToState('topPeersCache', cache);
+      });
+    }));
   }
 
   /**
@@ -1195,6 +1284,25 @@ export class AppUsersManager extends AppManager {
     });
   }
 
+  /**
+   * `help.getSupport`: the volunteer "Ask a Question" opens a chat with. Asked once a session, as Web A
+   * keeps the support chat it was given, and again once that user has left memory
+   */
+  public getSupportUserId(): Promise<UserId> {
+    const userId = this.supportUserId;
+    if(userId && this.users[userId]) {
+      return Promise.resolve(userId);
+    }
+
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'help.getSupport',
+      processResult: (support) => {
+        this.saveApiUser(support.user);
+        return this.supportUserId = support.user.id as UserId;
+      }
+    });
+  }
+
   public getBlocked(offset = 0, limit = 0, myStoriesFrom?: boolean) {
     return this.apiManager.invokeApiSingle('contacts.getBlocked', {offset, limit, my_stories_from: myStoriesFrom}).then((contactsBlocked) => {
       this.saveApiUsers(contactsBlocked.users);
@@ -1202,6 +1310,8 @@ export class AppUsersManager extends AppManager {
       const count = contactsBlocked._ === 'contacts.blocked' ? contactsBlocked.blocked.length : contactsBlocked.count;
 
       const peerIds = contactsBlocked.blocked.map((blocked) => this.appPeersManager.getPeerId(blocked.peer_id));
+      // * the stories' list blocks nothing else
+      if(!myStoriesFrom) this.appProfileManager.saveBlockedPeers(peerIds);
 
       return {count, peerIds};
     });

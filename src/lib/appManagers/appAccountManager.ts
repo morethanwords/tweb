@@ -2,8 +2,10 @@ import App from '@config/app';
 import ctx from '@environment/ctx';
 import longFromBytes from '@helpers/long/longFromBytes';
 import tsNow from '@helpers/tsNow';
+import createSerializedQueue from '@helpers/createSerializedQueue';
+import noop from '@helpers/noop';
 import readBlobAsDataURL from '@helpers/blob/readBlobAsDataURL';
-import {AccountAuthorizations, Authorization, EmailVerification, EmailVerifyPurpose, InputCheckPasswordSRP, InputPasskeyCredential, Update, User, UserProfilePhoto} from '@layer';
+import {AccountAuthorizations, AuthSignIn, AuthSignUp, Authorization, EmailVerification, EmailVerifyPurpose, InputCheckPasswordSRP, InputPasskeyCredential, Update, User, UserProfilePhoto} from '@layer';
 import {DcId, TrueDcId} from '@types';
 import AccountController from '@lib/accounts/accountController';
 import type {SessionUserFields} from '@lib/accounts/types';
@@ -93,6 +95,9 @@ export default class AppAccountManager extends AppManager {
   // * who the account's slot says it is: the fields last written there, and the photo of its avatar
   private sessionUserFields: SessionUserFields;
   private sessionAvatarPhotoId: string;
+  // * the inactivity periods reach the server in the order they were picked, whichever screen picked them
+  private accountTTLSaves = createSerializedQueue();
+  private authorizationTTLSaves = createSerializedQueue();
 
   protected after() {
     const pendingUpdates: Update.updateNewAuthorization[] = [];
@@ -453,6 +458,68 @@ export default class AppAccountManager extends AppManager {
     });
   }
 
+  // * the phone sign-in: what the cards ask the server, without the answer's handling — which card
+  // * comes next stays theirs
+
+  public sendCode(phoneNumber: string) {
+    return this.apiManager.invokeApi('auth.sendCode', {
+      phone_number: phoneNumber,
+      api_id: App.id,
+      api_hash: App.hash,
+      settings: {
+        _: 'codeSettings',
+        pFlags: {}
+      }
+    });
+  }
+
+  public resendCode(phoneNumber: string, phoneCodeHash: string) {
+    return this.apiManager.invokeApi('auth.resendCode', {
+      phone_number: phoneNumber,
+      phone_code_hash: phoneCodeHash
+    });
+  }
+
+  public resetLoginEmail(phoneNumber: string, phoneCodeHash: string) {
+    return this.apiManager.invokeApi('auth.resetLoginEmail', {
+      phone_number: phoneNumber,
+      phone_code_hash: phoneCodeHash
+    });
+  }
+
+  /**
+   * The code was sent to a number the user is leaving for another one, so the server may stop
+   * delivering it. Fire-and-forget like the other clients: the way back never waits on it, and a
+   * code the server already forgot is not worth reporting.
+   */
+  public cancelCode(phoneNumber: string, phoneCodeHash: string) {
+    this.apiManager.invokeApi('auth.cancelCode', {
+      phone_number: phoneNumber,
+      phone_code_hash: phoneCodeHash
+    }, {ignoreErrors: true}).catch(() => {});
+  }
+
+  public signIn(params: AuthSignIn) {
+    return this.apiManager.invokeApi('auth.signIn', params, {ignoreErrors: true});
+  }
+
+  public signUp(params: AuthSignUp) {
+    return this.apiManager.invokeApi('auth.signUp', params);
+  }
+
+  public exportLoginToken(exceptIds: UserId[]) {
+    return this.apiManager.invokeApi('auth.exportLoginToken', {
+      api_id: App.id,
+      api_hash: App.hash,
+      except_ids: exceptIds
+    }, {ignoreErrors: true});
+  }
+
+  /** The token of a QR login whose account lives on another DC, asked on that DC */
+  public importLoginToken(token: Uint8Array, dcId: DcId) {
+    return this.apiManager.invokeApi('auth.importLoginToken', {token}, {dcId, ignoreErrors: true});
+  }
+
   public sendVerifyEmailCode(purpose: EmailVerifyPurpose, email: string) {
     return this.apiManager.invokeApi('account.sendVerifyEmailCode', {purpose, email});
   }
@@ -504,7 +571,34 @@ export default class AppAccountManager extends AppManager {
   // inactive for longer than `days`. The current value ships with
   // account.getAuthorizations as `authorization_ttl_days`.
   public setAuthorizationTTL(days: number) {
-    return this.apiManager.invokeApi('account.setAuthorizationTTL', {authorization_ttl_days: days});
+    return this.authorizationTTLSaves.enqueue(() => {
+      return this.apiManager.invokeApi('account.setAuthorizationTTL', {authorization_ttl_days: days});
+    });
+  }
+
+  /** The period the server holds, asked once every one on its way has been answered */
+  public getAuthorizationTTL() {
+    return this.authorizationTTLSaves.enqueue(async() => {
+      // * a list asked for before the last period was answered may still hold the one before it
+      await this.authorizationsPromise?.catch(noop);
+      return (await this.getAuthorizations()).authorization_ttl_days;
+    });
+  }
+
+  // account.getAccountTTL / account.setAccountTTL: the server deletes the
+  // account once it stays offline for longer than `days`. Asked once every
+  // period on its way has been answered.
+  public getAccountTTL() {
+    return this.accountTTLSaves.enqueue(() => this.apiManager.invokeApiSingleProcess({
+      method: 'account.getAccountTTL',
+      processResult: (ttl) => ttl.days
+    }));
+  }
+
+  public setAccountTTL(days: number) {
+    return this.accountTTLSaves.enqueue(() => {
+      return this.apiManager.invokeApi('account.setAccountTTL', {ttl: {_: 'accountDaysTTL', days}});
+    });
   }
 
   public resetAuthorization(hash: string | number) {

@@ -29,6 +29,13 @@ export class AppLangPackManager extends AppManager {
     });
   }
 
+  /** Every language of a pack, for the language list in Settings */
+  public getLanguages(langPack: string) {
+    return this.apiManager.invokeApiCacheable('langpack.getLanguages', {
+      lang_pack: langPack
+    });
+  }
+
   public getCountriesList(langCode: string, ignoreCache?: boolean) {
     return this.apiManager.invokeApiCacheable('help.getCountriesList', {
       lang_code: langCode,

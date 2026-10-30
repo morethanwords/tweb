@@ -88,25 +88,37 @@ export function getImportersLoader({
   chatId,
   managers,
   link,
-  requested
+  requested,
+  onCount
 }: {
   chatId: ChatId,
   managers: AppManagers,
   link?: string,
-  requested?: boolean
+  requested?: boolean,
+  /** the server's total, from each page loaded without a search query */
+  onCount?: (count: number) => void
 }) {
   const importers: ChatInviteImporter[] = [];
   const importersMap: Map<PeerId, ChatInviteImporter> = new Map();
   let lastQuery = '';
+  // * what changes while a page is on its way puts it behind: one request answered, the server's count in
+  // * it; all of them answered at once (`reset`) or another query, the whole page
+  let revision = 0, resetRevision = 0;
+  const reset = () => {
+    resetRevision = ++revision;
+    importers.length = 0;
+    importersMap.clear();
+  };
+
   const load: AppSelectPeers['getMoreCustom'] = async(q) => {
     if(lastQuery !== q) {
-      importers.length = 0;
-      importersMap.clear();
+      reset();
       lastQuery = q;
     }
 
     const limit = 50;
     const lastImporter = importers[importers.length - 1];
+    const startRevision = revision;
     const result = await managers.appChatInvitesManager.getChatInviteImporters({
       chatId,
       limit,
@@ -117,7 +129,15 @@ export function getImportersLoader({
       q
     });
 
+    if(resetRevision > startRevision) {
+      // * not the end: the next page is asked for anew, from the start
+      return {result: [], isEnd: false};
+    }
+
     importers.push(...result.importers);
+    if(!q && revision === startRevision) {
+      onCount?.(result.count);
+    }
 
     return {
       result: result.importers.map((importer) => {
@@ -130,7 +150,12 @@ export function getImportersLoader({
   };
 
   const deleteImporter = (peerId: PeerId) => {
-    importers.splice(importers.findIndex((importer) => importer.user_id.toPeerId(false) === peerId), 1);
+    ++revision;
+    const index = importers.findIndex((importer) => importer.user_id.toPeerId(false) === peerId);
+    if(index !== -1) {
+      importers.splice(index, 1);
+    }
+
     importersMap.delete(peerId);
   };
 
@@ -138,7 +163,8 @@ export function getImportersLoader({
     importers,
     importersMap,
     load,
-    deleteImporter
+    deleteImporter,
+    reset
   };
 }
 

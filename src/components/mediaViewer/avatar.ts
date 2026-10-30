@@ -10,6 +10,7 @@ import overlayAvatarVideoOnMover from '@components/mediaViewer/avatarVideo';
 import {i18n} from '@lib/langPack';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import {getPeerProfilePhotoActions, reportProfilePhoto, setMainProfilePhoto} from '@components/mediaViewer/profilePhotoActions';
 
 type AppMediaViewerAvatarTargetType = {element: HTMLElement, photoId: Photo.photo['id'], photo?: Photo.photo};
 export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', AppMediaViewerAvatarTargetType> {
@@ -18,6 +19,7 @@ export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete
   private canDeletePromise: Promise<boolean>;
   private videoAvatarCleanup?: () => void;
   private fallbackPhotoId?: Photo.photo['id'];
+  private photoActions: ReturnType<typeof getPeerProfilePhotoActions>;
 
   constructor(peerId: PeerId, fallbackPhotoId?: Photo.photo['id']) {
     super(new AvatarListLoader({peerId, managers: rootScope.managers, fallbackPhotoId}), ['delete']);
@@ -37,17 +39,30 @@ export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete
     this.buttons.delete.classList.add('hide');
     attachClickEvent(this.buttons.delete, this.onDeleteClick);
 
+    const btnMenuSetMain: ButtonMenuItemOptionsVerifiable = {
+      icon: 'user',
+      text: 'SetAsMain',
+      onClick: this.onSetMainClick,
+      verify: () => !!this.photoActions?.canSetMain
+    };
+    const btnMenuReport: ButtonMenuItemOptionsVerifiable = {
+      icon: 'flag',
+      text: 'ReportChat',
+      onClick: this.onReportClick,
+      verify: () => !!this.photoActions?.canReport
+    };
+
     this.setBtnMenuToggle([{
       icon: 'download',
       text: 'MediaViewer.Context.Download',
       onClick: this.onDownloadClick
-    }, this.btnMenuDelete = {
+    }, btnMenuSetMain, btnMenuReport, this.btnMenuDelete = {
       icon: 'delete',
       className: 'danger',
       text: 'Delete',
       onClick: this.onDeleteClick,
       verify: () => this.getCanDelete()
-    }]);
+    }], [btnMenuSetMain, btnMenuReport]);
 
     // * constructing html end
 
@@ -121,6 +136,20 @@ export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete
     this.close();
   };
 
+  // * the slide their menu was opened on (`getMenuTarget`)
+  onSetMainClick = async() => {
+    const target = this.getMenuTarget();
+    if(!target) return;
+    if(await setMainProfilePhoto(this.managers, this.peerId, target.photoId) && this.target === target) {
+      this.close();
+    }
+  };
+
+  onReportClick = () => {
+    const target = this.getMenuTarget();
+    if(target) reportProfilePhoto(this.peerId, target.photoId);
+  };
+
   public async openMedia({
     photoId,
     photo: cachedPhoto,
@@ -145,6 +174,14 @@ export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete
 
     if(this.isAskedTooLate()) return;
     this.buttons.delete.classList.toggle('hide', !canDelete);
+    this.photoActions = getPeerProfilePhotoActions({
+      peerId: this.peerId,
+      photoId: photo.id,
+      // * a chat's photo goes away, as it changes, by the right to change its info
+      canChangeInfo: canDelete,
+      fallbackPhotoId: this.fallbackPhotoId
+    });
+    this.updateMoreMenu();
 
     const ret = super._openMedia({
       media: photo,

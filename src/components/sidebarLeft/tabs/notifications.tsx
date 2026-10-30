@@ -1,8 +1,8 @@
-import {SETTINGS_INIT} from '@config/state';
+import {GlobalNotifySettingsKey, SETTINGS_INIT} from '@config/state';
 import copy from '@helpers/object/copy';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
-import convertKeyToInputKey from '@helpers/string/convertKeyToInputKey';
-import {InputNotifyPeer, InputPeerNotifySettings, PeerNotifySettings, ReactionNotificationsFrom, ReactionsNotifySettings, Update} from '@layer';
+import convertInputKeyToKey from '@helpers/string/convertInputKeyToKey';
+import {InputPeerNotifySettings, ReactionNotificationsFrom, ReactionsNotifySettings} from '@layer';
 import {i18n, LangPackKey} from '@lib/langPack';
 import {MUTE_UNTIL} from '@appManagers/constants';
 import rootScope from '@lib/rootScope';
@@ -18,22 +18,34 @@ import {toastNew} from '@components/toast';
 import Button from '@components/buttonTsx';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import IS_NOTIFICATION_SUPPORTED from '@environment/notificationSupport';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import type {AppNotificationsTab} from '@components/solidJsTabs/tabs';
+import type {NotifyException} from '@appManagers/appNotificationsManager';
+import confirmationPopup from '@components/confirmationPopup';
+import createTypeNotifySettings, {InputNotifyKey} from '@components/sidebarLeft/tabs/notificationsTypeSettings';
 
-type InputNotifyKey =
-  InputNotifyPeer.inputNotifyUsers['_'] |
-  InputNotifyPeer.inputNotifyChats['_'] |
-  InputNotifyPeer.inputNotifyBroadcasts['_'];
+/**
+ * Reset All as the sections see it. Once it is confirmed, and again once it is through, what they write only as the
+ * tab closes is put back to what is saved (`discards`), and while it is on its way (`pending`) they write nothing
+ * composed from the settings they hold: sent after the reset, either would bring back what it clears. The settings
+ * the reset leaves come to them after it
+ */
+type ResetState = {discards: Set<() => void>, pending: boolean};
 
 const NotifySection = (props: {
   name: LangPackKey,
   typeText: LangPackKey,
   inputKey: InputNotifyKey,
+  reset: ResetState
 }) => {
   const [enabled, setEnabled] = createSignal(true);
   const [showPreviews, setShowPreviews] = createSignal(true);
-  const [notifySettings, setNotifySettings] = createSignal<PeerNotifySettings>();
+  const notifySettings = createTypeNotifySettings(props.inputKey);
   const inputNotifyPeer = {_: props.inputKey};
+  // * the toggles as the settings have them
+  let saved: {enabled: boolean, showPreviews: boolean};
 
   createEffect(async() => {
     const _notifySettings = notifySettings();
@@ -42,49 +54,45 @@ const NotifySection = (props: {
     }
 
     const muted = await rootScope.managers.appNotificationsManager.isMuted(_notifySettings);
-    setEnabled(!muted);
-    setShowPreviews(!!_notifySettings.show_previews);
+    saved = {enabled: !muted, showPreviews: !!_notifySettings.show_previews};
+    setEnabled(saved.enabled);
+    setShowPreviews(saved.showPreviews);
 
     return muted;
   });
 
-  onCleanup(async() => {
-    // * the account the tab was open on: an account switch can come before the answer below
-    const managers = createProxiedManagersForAccount(getCurrentAccount());
-    const mute = !enabled();
-    const _showPreviews = showPreviews();
-    const _notifySettings = notifySettings();
-    const isMuted = await managers.appNotificationsManager.isMuted(_notifySettings);
+  props.reset.discards.add(() => {
+    if(saved) {
+      setEnabled(saved.enabled);
+      setShowPreviews(saved.showPreviews);
+    }
+  });
+
+  onCleanup(() => {
+    // * only what the user switched since the toggles took the settings: not toggles that have yet to take new ones,
+    // * nor any while there are none to compose with
     if(
-      mute === isMuted &&
-      _showPreviews === _notifySettings.show_previews
+      props.reset.pending ||
+      !saved ||
+      !notifySettings() ||
+      (enabled() === saved.enabled && showPreviews() === saved.showPreviews)
     ) {
       return;
     }
 
-    const inputSettings: InputPeerNotifySettings = copy(_notifySettings) as any;
+    // * the account the tab was open on
+    const managers = createProxiedManagersForAccount(getCurrentAccount());
+    const inputSettings: InputPeerNotifySettings = copy(notifySettings()) as any;
     inputSettings._ = 'inputPeerNotifySettings';
-    inputSettings.mute_until = mute ? MUTE_UNTIL : 0;
-    inputSettings.show_previews = _showPreviews;
+    inputSettings.mute_until = enabled() ? 0 : MUTE_UNTIL;
+    inputSettings.show_previews = showPreviews();
     managers.appNotificationsManager.updateNotifySettings(
       inputNotifyPeer,
       inputSettings
     );
   });
 
-  subscribeOn(rootScope)('notify_settings', (update: Update.updateNotifySettings) => {
-    const inputKey = convertKeyToInputKey(update.peer._) as any;
-    if(props.inputKey === inputKey) {
-      setNotifySettings(update.notify_settings);
-    }
-  });
-
-  const ret = rootScope.managers.appNotificationsManager.getNotifySettings(inputNotifyPeer);
-  (ret instanceof Promise ? ret : Promise.resolve(ret)).then((_notifySettings) => {
-    if(!notifySettings()) {
-      setNotifySettings(_notifySettings);
-    }
-  });
+  const exceptions = createNotifyExceptions(props.inputKey);
 
   return (
     <Section name={props.name}>
@@ -100,8 +108,39 @@ const NotifySection = (props: {
         </Row.CheckboxFieldToggle>
         <Row.Title>{i18n('MessagePreview')}</Row.Title>
       </Row>
+      <Row clickable={() => exceptions.open()}>
+        <Row.Title
+          titleRight={<span>{exceptions.list()?.length || ''}</span>}
+          titleRightSecondary
+        >
+          {i18n('NotificationsExceptions')}
+        </Row.Title>
+      </Row>
     </Section>
   );
+};
+
+/**
+ * A chat type's exceptions (tdesktop's), asked for as the screen opens and following every change of them; the list
+ * the tab of the exceptions shows
+ */
+const createNotifyExceptions = (inputKey: InputNotifyKey) => {
+  const [tab] = useSuperTab<typeof AppNotificationsTab>();
+  const [list, setList] = createSignal<NotifyException[]>();
+  const key = convertInputKeyToKey<GlobalNotifySettingsKey>(inputKey);
+
+  subscribeOn(rootScope)('notify_exceptions', (event) => {
+    if(event.key === key) {
+      setList(event.exceptions);
+    }
+  });
+
+  tab.managers.appNotificationsManager.getNotifyExceptions(inputKey).then(setList);
+
+  return {
+    list,
+    open: () => tab.slider.createTab(hotReloadGuard.tabs.AppNotificationExceptionsTab).open({inputKey, exceptions: list})
+  };
 };
 
 // * Global story notifications live on the "users" notify type (inputNotifyUsers),
@@ -113,12 +152,12 @@ const NotifySection = (props: {
 // * immediately (not batched on close like NotifySection) so a same-visit change
 // * to the sibling Private Chats section — which shares inputNotifyUsers — copies
 // * the already-committed story flags instead of reverting them.
-const StoriesNotifySection = () => {
+const StoriesNotifySection = (props: {reset: ResetState}) => {
   const [enabled, setEnabled] = createSignal(true); // "New Stories" — notify for all
   const [important, setImportant] = createSignal(true); // when !enabled: important-only vs off
   const [showSender, setShowSender] = createSignal(true);
-  const [notifySettings, setNotifySettings] = createSignal<PeerNotifySettings>();
   const inputNotifyPeer = {_: 'inputNotifyUsers'} as const;
+  const notifySettings = createTypeNotifySettings(inputNotifyPeer._);
 
   createEffect(() => {
     const _notifySettings = notifySettings();
@@ -134,7 +173,7 @@ const StoriesNotifySection = () => {
 
   const save = () => {
     const _notifySettings = notifySettings();
-    if(!_notifySettings) {
+    if(!_notifySettings || props.reset.pending) {
       return;
     }
 
@@ -167,20 +206,6 @@ const StoriesNotifySection = () => {
       inputSettings
     );
   };
-
-  subscribeOn(rootScope)('notify_settings', (update: Update.updateNotifySettings) => {
-    const inputKey = convertKeyToInputKey(update.peer._) as any;
-    if(inputNotifyPeer._ === inputKey) {
-      setNotifySettings(update.notify_settings);
-    }
-  });
-
-  const ret = rootScope.managers.appNotificationsManager.getNotifySettings(inputNotifyPeer);
-  (ret instanceof Promise ? ret : Promise.resolve(ret)).then((_notifySettings) => {
-    if(!notifySettings()) {
-      setNotifySettings(_notifySettings);
-    }
-  });
 
   return (
     <Section name="Stories" caption={!enabled() ? 'NotificationsStoriesImportantInfo' : undefined}>
@@ -232,15 +257,17 @@ const StoriesNotifySection = () => {
 };
 
 // * Reactions notifications (account.getReactionsNotifySettings / set…). Each of
-// * messages / stories is a 3-state `ReactionNotificationsFrom`: absent = off,
-// * fromContacts, fromAll — chosen via a per-row menu (default "contacts" like iOS).
-// * `show_previews` (shown when either category is on) gates the sender's name.
-// * `sound` / `poll_votes_notify_from` have no UI here, so they're carried through.
+// * messages / stories / poll votes (tdesktop's "Votes in my polls") is a 3-state
+// * `ReactionNotificationsFrom`: absent = off, fromContacts, fromAll — chosen via
+// * a per-row menu (default "contacts" like iOS).
+// * `show_previews` (shown when any category is on) gates the sender's name.
+// * `sound` has no UI here, so it's carried through.
 type ReactionsFrom = 'off' | 'contacts' | 'all';
 
-const ReactionsNotifySection = () => {
+const ReactionsNotifySection = (props: {reset: ResetState}) => {
   const [messages, setMessages] = createSignal<ReactionsFrom>('off');
   const [stories, setStories] = createSignal<ReactionsFrom>('off');
+  const [pollVotes, setPollVotes] = createSignal<ReactionsFrom>('off');
   const [showPreviews, setShowPreviews] = createSignal(true);
   const [settings, setSettings] = createSignal<ReactionsNotifySettings>();
 
@@ -258,12 +285,13 @@ const ReactionsNotifySection = () => {
 
     setMessages(fromToStr(s.messages_notify_from));
     setStories(fromToStr(s.stories_notify_from));
+    setPollVotes(fromToStr(s.poll_votes_notify_from));
     setShowPreviews(!!s.show_previews);
   });
 
   const save = () => {
     const s = settings();
-    if(!s) {
+    if(!s || props.reset.pending) {
       return;
     }
 
@@ -273,7 +301,7 @@ const ReactionsNotifySection = () => {
       show_previews: showPreviews(),
       messages_notify_from: strToFrom(messages()),
       stories_notify_from: strToFrom(stories()),
-      poll_votes_notify_from: s.poll_votes_notify_from
+      poll_votes_notify_from: strToFrom(pollVotes())
     }).then(setSettings);
   };
 
@@ -281,6 +309,13 @@ const ReactionsNotifySection = () => {
     if(!settings()) {
       setSettings(s);
     }
+  });
+
+  // * whatever "Reset All Notifications" left of them, asked for again
+  subscribeOn(rootScope)('notify_settings_reset', () => {
+    // * nothing is saved from the toggles until they take what the reset left
+    setSettings(undefined);
+    rootScope.managers.appNotificationsManager.getReactionsNotifySettings().then(setSettings);
   });
 
   const CategoryRows = (props: {
@@ -331,7 +366,8 @@ const ReactionsNotifySection = () => {
     <Section name="Reactions">
       <CategoryRows title="ReactionsNotifyMessages" value={messages} setValue={setMessages} />
       <CategoryRows title="ReactionsNotifyStories" value={stories} setValue={setStories} />
-      <Show when={messages() !== 'off' || stories() !== 'off'}>
+      <CategoryRows title="ReactionsNotifyPollVotes" value={pollVotes} setValue={setPollVotes} />
+      <Show when={messages() !== 'off' || stories() !== 'off' || pollVotes() !== 'off'}>
         <Row>
           <Row.CheckboxFieldToggle>
             <CheckboxFieldTsx
@@ -350,19 +386,34 @@ const ReactionsNotifySection = () => {
   );
 };
 
-const OtherSection = () => {
+const OtherSection = (props: {reset: ResetState}) => {
   const [contactJoined, setContactJoined] = createSignal(true);
   const owner = getOwner();
-  rootScope.managers.appNotificationsManager.getContactSignUpNotification().then((enabled) => {
+  // * what the server has, to tell a change of the user's from it
+  let saved: boolean;
+  const load = () => rootScope.managers.appNotificationsManager.getContactSignUpNotification().then((enabled) => {
+    saved = enabled;
     setContactJoined(enabled);
+  });
 
+  props.reset.discards.add(() => {
+    if(saved !== undefined) {
+      setContactJoined(saved);
+    }
+  });
+
+  load().then(() => {
     runWithOwner(owner, () => onCleanup(() => {
+      // * only what the user switched since the switch took what is saved, as NotifySection
       const _enabled = contactJoined();
-      if(_enabled !== enabled) {
+      if(!props.reset.pending && _enabled !== saved) {
         rootScope.managers.appNotificationsManager.setContactSignUpNotification(!_enabled);
       }
     }));
   });
+
+  // * whatever "Reset All Notifications" left of it, asked for again
+  subscribeOn(rootScope)('notify_settings_reset', load);
 
   return (
     <Section name="NotificationsOther">
@@ -544,7 +595,58 @@ const SoundEffectsSection = () => {
   );
 };
 
+// * iOS's and Android's "Reset All Notifications" (tdesktop has none): every exception and every type's settings
+// * back to the server's defaults
+const ResetSection = (props: {reset: ResetState}) => {
+  const [tab] = useSuperTab<typeof AppNotificationsTab>();
+
+  const onClick = async() => {
+    const {managers} = tab;
+    try {
+      await confirmationPopup({
+        titleLangKey: 'ResetNotificationsAlertTitle',
+        descriptionLangKey: 'ResetNotificationsAlert',
+        button: {
+          langKey: 'Reset',
+          isDanger: true
+        }
+      });
+    } catch(err) {
+      return;
+    }
+
+    const discardUnsaved = () => props.reset.discards.forEach((discard) => discard());
+    discardUnsaved();
+    props.reset.pending = true;
+    try {
+      await managers.appNotificationsManager.resetNotifySettings();
+    } catch(err) {
+      toastNew({langPackKey: 'Error.AnError'});
+      return;
+    } finally {
+      props.reset.pending = false;
+      // * and what was switched while it was out, on toggles that had yet to take what it left
+      discardUnsaved();
+    }
+
+    toastNew({langPackKey: 'ResetNotificationsText'});
+  };
+
+  return (
+    <Section caption="UndoAllCustom">
+      <Button
+        class="btn-primary btn-transparent danger"
+        icon="delete"
+        text="ResetAllNotifications"
+        onClick={onClick}
+      />
+    </Section>
+  );
+};
+
 const Notifications = () => {
+  const reset: ResetState = {discards: new Set(), pending: false};
+
   return (
     <>
       <NotificationsSection />
@@ -554,20 +656,24 @@ const Notifications = () => {
         name="NotificationsPrivateChats"
         typeText="NotificationsForPrivateChats"
         inputKey="inputNotifyUsers"
+        reset={reset}
       />
       <NotifySection
         name="NotificationsGroups"
         typeText="NotificationsForGroups"
         inputKey="inputNotifyChats"
+        reset={reset}
       />
       <NotifySection
         name="NotificationsChannels"
         typeText="NotificationsForChannels"
         inputKey="inputNotifyBroadcasts"
+        reset={reset}
       />
-      <StoriesNotifySection />
-      <ReactionsNotifySection />
-      <OtherSection />
+      <StoriesNotifySection reset={reset} />
+      <ReactionsNotifySection reset={reset} />
+      <OtherSection reset={reset} />
+      <ResetSection reset={reset} />
     </>
   );
 }

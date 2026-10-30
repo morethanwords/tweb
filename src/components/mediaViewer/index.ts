@@ -31,7 +31,9 @@ import wrapEmojiText from '@richTextProcessor/wrapEmojiText';
 import wrapWebPageDescription from '@components/wrappers/webPageDescription';
 import Button from '@components/button';
 import onQuoteClick from '@helpers/dom/onQuoteClick';
-import {canCopyMediaToClipboard} from '@helpers/copyMediaToClipboard';
+import {canCopyMediaToClipboard, canCopyVideoFrameToClipboard} from '@helpers/copyMediaToClipboard';
+import toHHMMSS from '@helpers/string/toHHMMSS';
+import {getPeerProfilePhotoActions, reportProfilePhoto, setMainProfilePhoto} from '@components/mediaViewer/profilePhotoActions';
 import {setButtonLoader} from '@components/putPreloader';
 import copyMessageMediaWithFeedback from '@components/copyMessageMediaWithFeedback';
 import {canEditMessageMediaWithEditor, getEditMediaLangKey} from '@components/chat/editMessageMedia';
@@ -87,8 +89,16 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
   protected btnMenuDownload: ButtonMenuItemOptionsVerifiable;
   protected btnMenuDelete: ButtonMenuItemOptionsVerifiable;
   protected btnMenuEdit: ButtonMenuItemOptionsVerifiable;
+  protected btnMenuShareAtTime: ButtonMenuItemOptionsVerifiable;
+  protected btnMenuSetMainPhoto: ButtonMenuItemOptionsVerifiable;
+  protected btnMenuReportPhoto: ButtonMenuItemOptionsVerifiable;
   private deleteAsChatPhoto = false;
   private btnMenuEditText = new I18n.IntlElement({key: 'EditThisPhoto'});
+  private btnMenuCopyText = new I18n.IntlElement({key: 'MediaViewer.Context.Copy'});
+  private btnMenuShareAtTimeText = new I18n.IntlElement();
+  private canShareAtTime = false;
+  // * the second the menu offered, so that what is shared is what it said
+  private shareAtTime = 0;
   private videoAvatarCleanup?: () => void;
   private albumThumbItems = createSignal<AlbumThumbItem[]>([]);
   private albumThumbIndex = createSignal(0);
@@ -192,9 +202,14 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       icon: 'forward',
       text: 'Forward',
       onClick: this.onForwardClick
+    }, this.btnMenuShareAtTime = {
+      icon: 'forward',
+      textElement: this.btnMenuShareAtTimeText.element,
+      onClick: this.onShareAtTimeClick,
+      verify: this.verifyShareAtTime
     }, this.btnMenuCopy = {
       icon: 'copy',
-      text: 'MediaViewer.Context.Copy',
+      textElement: this.btnMenuCopyText.element,
       onClick: this.onCopyMediaClick,
       keepOpen: true,
       verify: () => false
@@ -202,6 +217,16 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       icon: 'download',
       text: 'MediaViewer.Context.Download',
       onClick: this.onDownloadClick
+    }, this.btnMenuSetMainPhoto = {
+      icon: 'user',
+      text: 'SetAsMain',
+      onClick: this.onSetMainPhotoClick,
+      verify: () => false
+    }, this.btnMenuReportPhoto = {
+      icon: 'flag',
+      text: 'ReportChat',
+      onClick: this.onReportPhotoClick,
+      verify: () => false
     }, this.btnMenuDelete = {
       icon: 'delete',
       className: 'danger',
@@ -209,7 +234,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       onClick: this.onDeleteClick
     }];
 
-    this.setBtnMenuToggle(buttons);
+    this.setBtnMenuToggle(buttons, [this.btnMenuShareAtTime, this.btnMenuSetMainPhoto, this.btnMenuReportPhoto]);
 
     // * constructing html end
 
@@ -374,9 +399,55 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     copyMessageMediaWithFeedback({
       message,
       index,
+      video: this.getShownVideo(),
       button: this.btnMenuCopy,
       cleanup: setButtonLoader(this.buttons.copy as HTMLButtonElement)
     });
+  };
+
+  // * tdesktop's "Share at 0:42": the forward starts the video there for whoever it goes to. Only once this slide's
+  // * video is there, as tdesktop's needs its player (the base refreshes the menu when it comes)
+  private verifyShareAtTime = () => {
+    const video = this.canShareAtTime && this.getShownVideo();
+    if(!video) {
+      return false;
+    }
+
+    this.shareAtTime = Math.floor(video.currentTime || 0);
+    this.btnMenuShareAtTimeText.compareAndUpdate({
+      key: 'MediaViewer.Context.ShareAtTime',
+      args: [toHHMMSS(this.shareAtTime)]
+    });
+    return true;
+  };
+
+  // * the actions only the menus have act on the slide their menu was opened on (`getMenuTarget`)
+  onShareAtTimeClick = () => {
+    const target = this.getMenuTarget();
+    if(!target) return;
+    this.getShownVideo()?.pause();
+    hotReloadGuard.showForwardPopup({
+      [target.peerId]: [target.mid]
+    }, () => {
+      return this.close();
+    }, undefined, undefined, undefined, this.shareAtTime);
+  };
+
+  private getPhotoId({message, index}: AppMediaViewerTargetType) {
+    return (getMediaFromMessage(message, true, index) as MyPhoto).id;
+  }
+
+  onSetMainPhotoClick = async() => {
+    const target = this.getMenuTarget();
+    if(!target) return;
+    if(await setMainProfilePhoto(this.managers, target.peerId, this.getPhotoId(target)) && this.target === target) {
+      this.close();
+    }
+  };
+
+  onReportPhotoClick = () => {
+    const target = this.getMenuTarget();
+    if(target) reportProfilePhoto(target.peerId, this.getPhotoId(target));
   };
 
   private setCaption(message: MyMessage) {
@@ -620,18 +691,32 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     cantDownload: boolean,
     cantDelete: boolean,
     cantEdit: boolean,
-    editLangKey?: LangPackKey
+    cantShareAtTime?: boolean,
+    cantSetMainPhoto?: boolean,
+    cantReportPhoto?: boolean,
+    editLangKey?: LangPackKey,
+    copyFrame?: boolean
   }) {
     if(options.editLangKey) {
       this.btnMenuEditText.compareAndUpdate({key: options.editLangKey});
       this.buttons.edit.setAttribute('aria-label', I18n.format(options.editLangKey, true));
     }
 
+    const copyLangKey: LangPackKey = options.copyFrame ? 'MediaViewer.Context.CopyFrame' : 'MediaViewer.Context.Copy';
+    if(this.btnMenuCopyText.key !== copyLangKey) {
+      this.btnMenuCopyText.compareAndUpdate({key: copyLangKey});
+      this.buttons.copy.setAttribute('aria-label', I18n.format(copyLangKey, true));
+    }
+
+    this.canShareAtTime = !(options.cantShareAtTime ?? true);
+
     const actions: [(HTMLElement | ButtonMenuItemOptionsVerifiable)[], boolean][] = [
       [[this.buttons.edit, this.btnMenuEdit], options.cantEdit],
       [[this.buttons.forward, this.btnMenuForward], options.cantForward],
       [[this.buttons.copy, this.btnMenuCopy], options.cantCopy],
       [[this.buttons.download, this.btnMenuDownload], options.cantDownload],
+      [[this.btnMenuSetMainPhoto], options.cantSetMainPhoto ?? true],
+      [[this.btnMenuReportPhoto], options.cantReportPhoto ?? true],
       [[this.buttons.delete, this.btnMenuDelete], options.cantDelete]
     ];
 
@@ -646,6 +731,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     });
 
     this.wholeDiv.classList.toggle('no-forwards', options.cantDownload);
+    this.updateMoreMenu();
   }
 
   public openMedia({
@@ -701,7 +787,8 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       isServiceMessage || noAuthor ? Promise.resolve(false) : this.managers.appMessagesManager.canForward(message),
       isChatPhotoEdit ?
         this.managers.appChatsManager.hasRights(message.peerId.toChatId(), 'change_info') :
-        this.managers.appMessagesManager.canDeleteMessage(message),
+        // * a local message (an Instant View's, a bot's preview) is in no history to be deleted from
+        this.local ? Promise.resolve(false) : this.managers.appMessagesManager.canDeleteMessage(message),
       canOpenEditor ? this.managers.appMessagesManager.canEditMessage(message, 'text') : Promise.resolve(false)
     ]);
 
@@ -717,6 +804,10 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       this.isFirstOpen ? nextTargets : this.listLoader.next
     );
 
+    // * a video shared at a moment ("Share at 0:42") starts there, as in tdesktop; a seek asked for (a timestamp
+    // * link) goes first
+    const messageMedia = (message as Message.message).media;
+    const sharedAt = messageMedia?._ === 'messageMediaDocument' ? messageMedia.video_timestamp || undefined : undefined;
     const promise = super._openMedia({
       media: media as MyPhoto | MyDocument,
       timestamp: message.date,
@@ -727,7 +818,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       prevTargets,
       nextTargets,
       message,
-      mediaTimestamp,
+      mediaTimestamp: mediaTimestamp ?? sharedAt,
       noAuthor
       /* , needLoadMore */
     });
@@ -744,16 +835,29 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       if(this.target?.message !== message) return;
       const cantForward = !canForward;
       const cantDownload = (isServiceMessage ? noForwards : cantForward && !isSponsored) || !canSaveMessageMedia(message, noForwards);
-      const cantCopy = cantDownload || !canCopyMediaToClipboard(media);
+      const copyFrame = canCopyVideoFrameToClipboard(media as MyDocument);
+      const cantCopy = cantDownload || !(copyFrame || canCopyMediaToClipboard(media));
       const cantDelete = !canDelete;
       this.deleteAsChatPhoto = isChatPhotoEdit && !cantDelete;
+      // * a chat's photo: the right asked for it is to change the chat's info
+      const photoActions = isChatPhotoEdit && (media as MyPhoto)?._ === 'photo' ? getPeerProfilePhotoActions({
+        peerId: message.peerId,
+        photoId: (media as MyPhoto).id,
+        canChangeInfo: canDelete
+      }) : undefined;
+      // * the message's own video, not a link preview's, as tdesktop has it
+      const isOwnVideo = (message as Message.message).media?._ === 'messageMediaDocument' && (media as MyDocument)?.type === 'video';
       this.setMessageActionVisibility({
         cantForward,
         cantCopy,
         cantDownload,
         cantDelete,
         cantEdit: !canEdit,
-        editLangKey: getEditMediaLangKey(message as Message.message)
+        cantShareAtTime: cantForward || !isOwnVideo,
+        cantSetMainPhoto: !photoActions?.canSetMain,
+        cantReportPhoto: !photoActions?.canReport,
+        editLangKey: getEditMediaLangKey(message as Message.message),
+        copyFrame
       });
     }).catch((error) => {
       this.log.warn('failed to resolve media viewer actions', error);

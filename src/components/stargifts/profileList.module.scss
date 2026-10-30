@@ -56,3 +56,13 @@
   color: var(--secondary-text-color);
   margin-bottom: 0.75rem;
 }
+
+// * stays at the bottom of the view while the gifts scroll past it, then rests under the last of them
+.notify {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  background-color: var(--surface-color);
+}

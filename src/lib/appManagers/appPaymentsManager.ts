@@ -57,6 +57,11 @@ export default class AppPaymentsManager extends AppManager {
     };
   }
 
+  /** What the server knows of a bank card number in a message: its issuer and where to look it up. */
+  public getBankCardData(number: string) {
+    return this.apiManager.invokeApiSingle('payments.getBankCardData', {number});
+  }
+
   public getPaymentForm(invoice: InputInvoice) {
     return this.apiManager.invokeApi('payments.getPaymentForm', {
       invoice,

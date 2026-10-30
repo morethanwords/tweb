@@ -77,6 +77,11 @@ export default function filterMessagesByInputFilter({
       neededDocTypes.push('audio');
       break;
 
+    case 'inputMessagesFilterGif':
+      neededContents['messageMediaDocument'] = true;
+      neededDocTypes.push('gif');
+      break;
+
     case 'inputMessagesFilterUrl':
       neededContents['url'] = true;
       break;

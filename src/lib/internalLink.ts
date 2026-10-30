@@ -30,7 +30,8 @@ export enum INTERNAL_LINK_TYPE {
   CONTACTS,
   CHATS,
   CONFERENCE_CALL,
-  ADD_AI_STYLE
+  ADD_AI_STYLE,
+  CONTACT_TOKEN
 };
 
 export type InternalLink =
@@ -61,7 +62,8 @@ export type InternalLink =
   InternalLink.InternalLinkContacts |
   InternalLink.InternalLinkChats |
   InternalLink.InternalLinkConferenceCall |
-  InternalLink.InternalLinkAddAiStyle;
+  InternalLink.InternalLinkAddAiStyle |
+  InternalLink.InternalLinkContactToken;
 
 export namespace InternalLink {
   export interface InternalLinkMessage {
@@ -78,6 +80,7 @@ export namespace InternalLink {
     t?: string, // media timestamp
     single?: string, // present (empty) when the link is to this one item of an album, not to the whole album
     text?: string,
+    game?: string, // a bot's game, by its short name, to share to a chat
     stack?: ChatSetPeerOptions['stack'] // local
   }
 
@@ -248,6 +251,13 @@ export namespace InternalLink {
     _: INTERNAL_LINK_TYPE.ADD_AI_STYLE,
     slug: string
   }
+
+  // t.me/contact/<token> and tg://contact?token=<token> — the one-time link "My QR code" shows
+  // (`contacts.exportContactToken`): whoever opens it gets its owner as a contact
+  export interface InternalLinkContactToken {
+    _: INTERNAL_LINK_TYPE.CONTACT_TOKEN,
+    token: string
+  }
 }
 
 export type InternalLinkTypeMap = {
@@ -279,4 +289,5 @@ export type InternalLinkTypeMap = {
   [INTERNAL_LINK_TYPE.CHATS]: InternalLink.InternalLinkChats,
   [INTERNAL_LINK_TYPE.CONFERENCE_CALL]: InternalLink.InternalLinkConferenceCall,
   [INTERNAL_LINK_TYPE.ADD_AI_STYLE]: InternalLink.InternalLinkAddAiStyle,
+  [INTERNAL_LINK_TYPE.CONTACT_TOKEN]: InternalLink.InternalLinkContactToken,
 };

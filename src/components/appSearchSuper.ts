@@ -17,7 +17,7 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {getMiddleware, Middleware, MiddlewareHelper} from '@helpers/middleware';
-import {BotMenuButton, ChannelParticipant, Chat, ChatFull, ChatParticipant, ChatParticipants, Document, Message, MessageMedia, MessagesChats, MessagesFilter, Peer, Photo, StoryItem, Update, User, UserFull, WebPage} from '@layer';
+import {BotMenuButton, BotPreviewMedia, ChannelParticipant, Chat, ChatFull, ChatParticipant, ChatParticipants, Document, Message, MessageMedia, MessagesChats, MessagesFilter, Peer, Photo, StoryItem, Update, User, UserFull, UsersUsers, WebPage} from '@layer';
 import SortedUserList, {SortedUserListRank} from '@components/sortedUserList';
 import findUpTag from '@helpers/dom/findUpTag';
 import mediaSizes from '@helpers/mediaSizes';
@@ -31,6 +31,7 @@ import {renderSearchWebPageRow} from '@components/searchWebPageRow';
 import htmlToDocumentFragment from '@helpers/dom/htmlToDocumentFragment';
 import {SearchSelection} from '@components/chat/selection';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
+import {makeGridMediaAccessible} from '@helpers/dom/mediaPreviewAccessibility';
 import {MyDocument} from '@appManagers/appDocsManager';
 import lockTouchScroll from '@helpers/dom/lockTouchScroll';
 import copy from '@helpers/object/copy';
@@ -119,6 +120,7 @@ import {supportsSharedMediaScrollDate} from '@components/sharedMediaScrollDate';
 import createSharedMediaScrollDateBadge from '@components/sharedMediaScrollDateBadge';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import type appSidebarRight from '@components/sidebarRight';
+import type AppMediaViewer from '@components/mediaViewer';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import verifyMenuItem from '@helpers/verifyMenuItem';
 
@@ -141,8 +143,8 @@ export type SearchSuperContext = {
 } & Pick<RequestHistoryOptions, 'chatType' | 'communityId'>;
 
 export type SearchSuperMediaType = 'stories' | 'members' | 'media' |
-  'files' | 'links' | 'music' | 'chats' | 'voice' | 'groups' | 'similar' |
-  'savedDialogs' | 'saved' | 'channels' | 'apps' | 'gifts' | 'posts';
+  'files' | 'links' | 'music' | 'chats' | 'voice' | 'gifs' | 'groups' | 'similar' |
+  'savedDialogs' | 'saved' | 'channels' | 'apps' | 'gifts' | 'posts' | 'botPreviews';
 export type SearchSuperMediaTab = {
   inputFilter?: SearchSuperType,
   name: LangPackKey,
@@ -180,6 +182,12 @@ type SearchSuperLoadTypeOptions = {
   middleware: Middleware,
   side: 'top' | 'bottom'
 };
+
+// * a preview is a photo or a video
+function getBotPreviewMedia({media}: BotPreviewMedia) {
+  return (media as MessageMedia.messageMediaPhoto).photo as Photo.photo ||
+    (media as MessageMedia.messageMediaDocument).document as Document.document;
+}
 
 type PerformSearchResultArgs = {
   messages: (Message.message | Message.messageService)[];
@@ -509,11 +517,13 @@ const PREFETCHED_MEDIA_TYPES: Set<SearchSuperMediaType> = new Set([
   'links',
   'music',
   'voice',
+  'gifs',
   'channels',
   'apps',
   'members',
   'groups',
-  'similar'
+  'similar',
+  'botPreviews'
 ]);
 // * the tabs whose loaders show nothing until they are through: held with nothing in them (`holdTab`), they show
 // * the preloader the message tabs have (`cleanupHTML`) - not gifts, stories or posts, which show their own
@@ -522,7 +532,14 @@ const PRELOADED_MEDIA_TYPES: Set<SearchSuperMediaType> = new Set([
   'apps',
   'members',
   'groups',
-  'similar'
+  'similar',
+  'botPreviews'
+]);
+// * the tabs laid out as the media tab is, a grid of square thumbs
+const GRID_MEDIA_TYPES: Set<SearchSuperMediaType> = new Set([
+  'media',
+  'gifs',
+  'botPreviews'
 ]);
 
 export default class AppSearchSuper {
@@ -578,6 +595,8 @@ export default class AppSearchSuper {
   private _loadSavedDialogs: (side: 'top' | 'bottom') => Promise<any>;
 
   private _loadMoreApps: () => Promise<void>;
+  // * what the bot previews' grid shows, in its order
+  private botPreviews: BotPreviewMedia[];
 
   private skipScroll: boolean;
 
@@ -625,6 +644,7 @@ export default class AppSearchSuper {
   public stargiftsStore: StarGiftsProfileStore;
   public stargiftsActions: StarGiftsProfileActions;
   public stargiftsSetCollection: (collectionId: number) => void;
+  private stargiftsStopReorder: () => void;
   private menuGradient: HTMLElement;
 
   constructor(options: Pick<
@@ -733,8 +753,8 @@ export default class AppSearchSuper {
     }
 
     const noSectionTypes: Set<SearchSuperMediaType> = new Set([
+      ...GRID_MEDIA_TYPES,
       'stories',
-      'media',
       'gifts',
       'chats',
       'channels',
@@ -765,7 +785,7 @@ export default class AppSearchSuper {
           });
         });
         itemsContainer = items;
-      } else if(mediaTab.type === 'media') {
+      } else if(GRID_MEDIA_TYPES.has(mediaTab.type)) {
         const grid = document.createElement('div');
         grid.classList.add('search-super-content-media-grid');
         content.append(grid);
@@ -821,6 +841,10 @@ export default class AppSearchSuper {
 
       const fromMediaTab = this.mediaTab;
       this.mediaTab = newMediaTab;
+      // * the collections' reorder is of their list: it ends as another is shown, whose selection may take the row
+      if(fromMediaTab?.type === 'gifts' && newMediaTab !== fromMediaTab) {
+        this.stargiftsStopReorder?.();
+      }
 
       if(!supportsSharedMediaScrollDate(newMediaTab.type)) {
         this.scrollDateBadge?.hide();
@@ -952,6 +976,19 @@ export default class AppSearchSuper {
       }
     }, {capture: true, passive: false, listenerSetter: this.listenerSetter});
 
+    // * a media still behind its spoiler (a sensitive one's included) is revealed by the click, not opened
+    const revealMediaSpoiler = (target: HTMLElement, e: MouseEvent) => {
+      const mediaSpoiler: HTMLElement = target.querySelector('.media-spoiler-container');
+      if(mediaSpoiler) {
+        onMediaSpoilerClick({
+          event: e,
+          mediaSpoiler
+        });
+      }
+
+      return !!mediaSpoiler;
+    };
+
     const onMediaClick = async(className: string, targetClassName: string, inputFilter: SearchSuperType, e: MouseEvent) => {
       const target = findUpClassName(e.target as HTMLDivElement, className);
       if(!target) return;
@@ -962,12 +999,7 @@ export default class AppSearchSuper {
         return;
       }
 
-      const mediaSpoiler: HTMLElement = target.querySelector('.media-spoiler-container');
-      if(mediaSpoiler) {
-        onMediaSpoilerClick({
-          event: e,
-          mediaSpoiler
-        });
+      if(revealMediaSpoiler(target, e)) {
         return;
       }
 
@@ -1008,26 +1040,46 @@ export default class AppSearchSuper {
       });
     };
 
-    const mediaTab = this.mediaTabsMap.get('media');
-    mediaTab?.itemsTab && attachClickEvent(
-      mediaTab.itemsTab,
+    // * the grids of the messages' media; the media tab's own waits while its filter is being changed
+    (['media', 'gifs'] as SearchSuperMediaType[]).forEach((type) => {
+      const mediaTab = this.mediaTabsMap.get(type);
+      if(!mediaTab?.itemsTab) {
+        return;
+      }
+
+      const isStaging = () => type === 'media' && !!this.mediaFilterStagingItemsTab;
+      attachClickEvent(
+        mediaTab.itemsTab,
+        (e) => {
+          if(isStaging()) return;
+          return onMediaClick('grid-item', 'grid-item', mediaTab.inputFilter, e);
+        },
+        {listenerSetter: this.listenerSetter}
+      );
+      attachMediaPeekListeners({
+        listenTo: mediaTab.itemsTab,
+        listenerSetter: this.listenerSetter,
+        findTarget: (target) => {
+          // * a press while selecting selects
+          if(this.selection?.isSelecting || isStaging()) return;
+          const element = findUpClassName(target, 'grid-item');
+          return element && !hasMediaSpoiler(element) ? element : undefined;
+        },
+        getSource: async(element) => getMessageMediaPeekSource(await this.getItemMessage(element))
+      });
+    });
+
+    const botPreviewsTab = this.mediaTabsMap.get('botPreviews');
+    botPreviewsTab && attachClickEvent(
+      botPreviewsTab.itemsTab,
       (e) => {
-        if(this.mediaFilterStagingItemsTab) return;
-        return onMediaClick('grid-item', 'grid-item', mediaTab.inputFilter, e);
+        const element = findUpClassName(e.target, 'grid-item');
+        if(element && !revealMediaSpoiler(element, e)) {
+          this.openBotPreview(element);
+        }
       },
       {listenerSetter: this.listenerSetter}
     );
-    mediaTab?.itemsTab && attachMediaPeekListeners({
-      listenTo: mediaTab.itemsTab,
-      listenerSetter: this.listenerSetter,
-      findTarget: (target) => {
-        // * a press while selecting selects
-        if(this.selection?.isSelecting || this.mediaFilterStagingItemsTab) return;
-        const element = findUpClassName(target, 'grid-item');
-        return element && !hasMediaSpoiler(element) ? element : undefined;
-      },
-      getSource: async(element) => getMessageMediaPeekSource(await this.getItemMessage(element))
-    });
     this.tabs.inputMessagesFilterDocument && attachClickEvent(
       this.tabs.inputMessagesFilterDocument,
       onMediaClick.bind(null, 'document-with-thumb', 'media-container', 'inputMessagesFilterDocument'),
@@ -1124,7 +1176,11 @@ export default class AppSearchSuper {
       return;
     }
 
-    const hide = !this.counters[type];
+    this.setMediaTabHidden(mediaTab, !this.counters[type]);
+  }
+
+  /** A tab coming or going once the tabs are laid out (`loadFirstTime`): one that comes into none is opened */
+  private setMediaTabHidden(mediaTab: SearchSuperMediaTab, hide: boolean) {
     if(mediaTab.menuTab.classList.contains('hide') === hide) {
       return;
     }
@@ -1136,8 +1192,12 @@ export default class AppSearchSuper {
       needChangeActive = mediaTab.menuTab.classList.contains('active');
       mediaTab.menuTab.classList.remove('active');
     } else {
-      // * there was nothing to select when every tab was empty
+      // * there was nothing to select when every tab was empty; opened by nobody's hand, it leaves the profile
+      // * where it was scrolled, as the first tab does (`loadFirstTime`)
       needChangeActive = !this.mediaTabs.some((tab) => tab.menuTab.classList.contains('active'));
+      if(needChangeActive) {
+        this.skipScroll = true;
+      }
     }
 
     this.updateContainerHidden(needChangeActive);
@@ -1150,6 +1210,15 @@ export default class AppSearchSuper {
     ) {
       this.load(true);
     }
+  }
+
+  private setMediaTabName(mediaTab: SearchSuperMediaTab, name: LangPackKey) {
+    if(mediaTab.name === name) {
+      return;
+    }
+
+    mediaTab.name = name;
+    mediaTab.menuTabName.replaceWith(mediaTab.menuTabName = i18n(name));
   }
 
   private setMediaCounters(counters: Partial<SearchSuperMediaCounters>) {
@@ -1396,11 +1465,30 @@ export default class AppSearchSuper {
   }
 
   private async processPhotoVideoFilter({message, promises, middleware}: ProcessSearchSuperResult) {
-    const media = getMediaFromMessage(message, true);
+    const sensitive = this.isMessageSensitive(message);
+    const element = await this.wrapGridMedia({
+      media: getMediaFromMessage(message, true),
+      message,
+      middleware,
+      promises,
+      spoiler: !!(message.media as MessageMedia.messageMediaPhoto).pFlags.spoiler,
+      sensitive
+    });
 
+    return {element, message};
+  }
+
+  /** A thumb of a media grid: a photo, or the still of a video or a GIF */
+  private async wrapGridMedia({media, message, middleware, promises, spoiler, sensitive}: {
+    media: Photo.photo | Document.document,
+    message?: Message.message,
+    middleware: Middleware,
+    promises: Promise<any>[],
+    spoiler?: boolean,
+    sensitive?: boolean
+  }) {
     const div = document.createElement('div');
     div.classList.add('grid-item');
-    // this.log(message, photo);
 
     let wrapped: Awaited<ReturnType<typeof wrapPhoto>>;
     const size = choosePhotoSize(media, 200, 200);
@@ -1433,9 +1521,7 @@ export default class AppSearchSuper {
       });
     }
 
-    const sensitive = this.isMessageSensitive(message);
-
-    if((message.media as MessageMedia.messageMediaPhoto).pFlags.spoiler || sensitive) {
+    if(spoiler || sensitive) {
       const mediaSpoiler = await wrapMediaSpoiler({
         animationGroup: 'chat',
         media,
@@ -1449,6 +1535,9 @@ export default class AppSearchSuper {
       div.append(mediaSpoiler);
     }
 
+    // * after the spoiler: a reveal button in it is the control till the spoiler goes
+    makeGridMediaAccessible(div, media);
+
     [
       wrapped.images.thumb,
       wrapped.images.full
@@ -1458,7 +1547,7 @@ export default class AppSearchSuper {
 
     promises.push(wrapped.loadPromises.thumb);
 
-    return {element: div, message};
+    return div;
   }
 
   private async processDocumentFilter({message, inputFilter, middleware}: ProcessSearchSuperResult) {
@@ -1658,7 +1747,8 @@ export default class AppSearchSuper {
 
       case 'inputMessagesFilterPhotos':
       case 'inputMessagesFilterPhotoVideo':
-      case 'inputMessagesFilterVideo': {
+      case 'inputMessagesFilterVideo':
+      case 'inputMessagesFilterGif': {
         processCallback = this.processPhotoVideoFilter;
         break;
       }
@@ -2437,16 +2527,32 @@ export default class AppSearchSuper {
     return promise;
   }
 
-  private async loadSimilarChannels({mediaTab}: SearchSuperLoadTypeOptions) {
-    const middlewareHelper = this.middleware.get().create();
+  /**
+   * The peers like the one in view: a channel's similar channels, a bot's similar bots. Without Premium the
+   * server gives a part of them, with the count of them all
+   */
+  private async getSimilarPeers(managers: ReadingManagers = this.managers) {
+    const {peerId} = this.searchContext;
+    const result = peerId.isUser() ?
+      await managers.appBotsManager.getBotRecommendations(peerId.toUserId()) :
+      await managers.appChatsManager.getChannelRecommendations(peerId.toChatId());
+    const peers: (User | Chat)[] = 'users' in result ? result.users : result.chats;
+    const count = (result as UsersUsers.usersUsersSlice | MessagesChats.messagesChatsSlice).count ?? peers.length;
+    return {peers, count};
+  }
 
-    const renderChats = async(chats: Chat[], middleware: Middleware) => {
+  private async loadSimilarPeers({mediaTab}: SearchSuperLoadTypeOptions) {
+    const managers = bindManagersToSession(this.managers);
+    const middlewareHelper = this.middleware.get().create();
+    const isBots = this.searchContext.peerId.isUser();
+
+    const renderPeers = async(peers: (User | Chat)[], middleware: Middleware) => {
       const chatlist = hotReloadGuard.appDialogsManager.createChatList({new: true});
 
-      const promises = chats.map(async(chat) => {
+      const promises = peers.map(async(peer) => {
         const loadPromises: Promise<any>[] = [];
         const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
-          peerId: chat.id.toPeerId(true),
+          peerId: peer.id.toPeerId(!isBots),
           container: chatlist,
           avatarSize: 'abitbigger',
           autonomous: false,
@@ -2455,7 +2561,9 @@ export default class AppSearchSuper {
           },
           loadPromises
         });
-        dom.lastMessageSpan.append(await getChatMembersString(chat.id, this.managers, chat));
+        dom.lastMessageSpan.append(isBots ?
+          getUserStatusString(peer as User.user) :
+          await getChatMembersString(peer.id, managers, peer as Chat));
 
         return Promise.all(loadPromises);
       });
@@ -2469,13 +2577,13 @@ export default class AppSearchSuper {
     const createPaywall = (limit: number) => {
       const wall = document.createElement('div');
       wall.classList.add('similar-channels-paywall');
-      const btn = Button('btn-primary btn-color-primary', {icon: 'premium_unlock_filled', text: 'UnlockSimilar'});
+      const btn = Button('btn-primary btn-color-primary', {icon: 'premium_unlock_filled', text: isBots ? 'MoreSimilarBotsButton' : 'UnlockSimilar'});
       btn.classList.add('similar-channels-paywall-button');
       const onClick = () => hotReloadGuard.showPremiumPopup();
       const anchor = anchorCallback(onClick);
       attachClickEvent(btn, onClick);
       anchor.classList.add('primary');
-      const subtitle = i18n('SimilarChannels.Unlock', [limit, anchor]);
+      const subtitle = i18n(isBots ? 'SimilarBots.Unlock' : 'SimilarChannels.Unlock', [limit, anchor]);
       subtitle.classList.add('similar-channels-paywall-subtitle');
       wall.append(btn, subtitle);
       return wall;
@@ -2494,13 +2602,13 @@ export default class AppSearchSuper {
       const middleware = middlewareHelper.get();
       const rowsHelper = this.middleware.get().create();
 
-      const [messagesChats, premiumLimit, isPremiumFeaturesHidden] = await Promise.all([
-        this.managers.appChatsManager.getChannelRecommendations(this.searchContext.peerId.toChatId()),
-        this.managers.apiManager.getLimit('recommendedChannels', true),
+      const [{peers, count}, premiumLimit, isPremiumFeaturesHidden] = await Promise.all([
+        this.getSimilarPeers(managers),
+        managers.apiManager.getLimit('recommendedChannels', true),
         apiManagerProxy.isPremiumFeaturesHidden()
       ]);
 
-      const chatlist = await renderChats(messagesChats.chats, rowsHelper.get());
+      const chatlist = await renderPeers(peers, rowsHelper.get());
       if(!middleware()) {
         rowsHelper.destroy();
         return;
@@ -2511,11 +2619,10 @@ export default class AppSearchSuper {
       shownRowsHelper = rowsHelper;
       this.afterPerforming(1, mediaTab);
       this.loaded[mediaTab.type] = true;
-
-      const count = (messagesChats as MessagesChats.messagesChatsSlice).count ?? messagesChats.chats.length;
       this.setCounter(mediaTab.type, count);
 
-      if(!isPremium && !isPremiumFeaturesHidden) {
+      // * offered only when there are more of them than came (tdesktop)
+      if(!isPremium && !isPremiumFeaturesHidden && count > peers.length) {
         paywall ||= createPaywall(premiumLimit);
         mediaTab.itemsTab.append(paywall);
       }
@@ -2527,6 +2634,93 @@ export default class AppSearchSuper {
     });
 
     return onPremium(rootScope.premium);
+  }
+
+  /** The screenshots and videos a bot shows in its profile, in the grid the media tab has */
+  private async loadBotPreviews({mediaTab, middleware}: SearchSuperLoadTypeOptions) {
+    const managers = bindManagersToSession(this.managers);
+    let previews: BotPreviewMedia[];
+    try {
+      previews = (await managers.appBotsManager.getPreviewMedias(this.searchContext.peerId.toUserId()))
+      .filter((preview) => getBotPreviewMedia(preview));
+    } catch(err) {
+      // * not an empty answer: the tab stays unloaded, and opening or scrolling it asks again
+      this.log.error('bot previews error:', err);
+      return;
+    }
+
+    if(!middleware()) return;
+
+    // * a bot marked sensitive has its previews covered, as a profile's shared media are
+    const sensitive = this.isPeerSensitive(this.searchContext.peerId);
+    const promises: Promise<any>[] = [];
+    const elements = await Promise.all(previews.map((preview) => {
+      return this.wrapGridMedia({media: getBotPreviewMedia(preview), middleware, promises, sensitive});
+    }));
+
+    if(this.loadMutex) {
+      promises.push(this.loadMutex);
+    }
+
+    // * a picture that did not come does not keep the others out
+    await Promise.all(promises).catch(noop);
+    if(!middleware()) return;
+
+    this.botPreviews = previews;
+    mediaTab.itemsTab.replaceChildren(...elements);
+    this.loaded[mediaTab.type] = true;
+    this.setCounter(mediaTab.type, previews.length);
+    this.afterPerforming(previews.length, mediaTab);
+  }
+
+  /**
+   * A bot's preview in the media viewer, the others beside it - each in a message of its own that stands
+   * nowhere else, as an Instant View page's media are. It is only looked at: nothing to forward or save
+   */
+  private async openBotPreview(element: HTMLElement) {
+    const managers = bindManagersToSession(this.managers);
+    const middleware = this.middleware.get();
+    const {peerId} = this.searchContext;
+    const previews = this.botPreviews;
+    const children = Array.from(element.parentElement.children) as HTMLElement[];
+    if(!previews?.[children.indexOf(element)]) {
+      return;
+    }
+
+    // * the viewer pages past those still behind the sensitive-content cover, as the shared media's does
+    const shown = previews.map((preview, idx) => ({preview, element: children[idx]}))
+    .filter((item) => !hasSensitiveSpoiler(item.element));
+    const index = shown.findIndex((item) => item.element === element);
+    if(index === -1) {
+      return;
+    }
+
+    const targets: AppMediaViewer['target'][] = await Promise.all(shown.map(async({preview, element: tile}, idx) => {
+      const message = await managers.appMessagesManager.generateStandaloneOutgoingMessage(peerId);
+      message.media = preview.media;
+      message.id = message.mid = 0;
+      message.date = preview.date;
+      message.fromId = peerId;
+      message.pFlags.noforwards = true;
+      return {element: tile, mid: 0, peerId, index: idx, message};
+    }));
+
+    if(!middleware() || !element.isConnected) {
+      return;
+    }
+
+    // * of no chat, as an Instant View's: a photo the bot sends meanwhile does not join the list
+    new hotReloadGuard.AppMediaViewer(true)
+    .setSearchContext({peerId: NULL_PEER_ID, inputFilter: {_: 'inputMessagesFilterEmpty'}, useSearch: false})
+    .openMedia({
+      message: targets[index].message,
+      index,
+      target: element,
+      fromRight: 0,
+      reverse: false,
+      prevTargets: targets.slice(0, index),
+      nextTargets: targets.slice(index + 1)
+    });
   }
 
   private async loadSavedDialogs({mediaTab, middleware, side}: SearchSuperLoadTypeOptions) {
@@ -2845,9 +3039,17 @@ export default class AppSearchSuper {
 
         const scrollTarget = this.scrollable.container;
 
-        const {render: giftsList, store, actions, setCollection} = StarGiftsProfileTab({
+        const {render: giftsList, store, actions, setCollection, stopReorder} = StarGiftsProfileTab({
           peerId: this.searchContext.peerId,
           scrollParent: scrollTarget,
+          selectionMount: this.navScrollableContainer,
+          // * the media's selection, kept as the tabs are swiped, gives the row up - at once, or its transition would
+          // * take the row's classes off the reorder's bar as it ends; a stories' plate gives way by itself
+          onReorderStart: () => {
+            if(this.selection?.isSelecting) {
+              this.selection.cancelSelection(true);
+            }
+          },
           onCountChange: (count) => {
             this.setCounter('gifts', count);
 
@@ -2868,6 +3070,7 @@ export default class AppSearchSuper {
         this.stargiftsStore = store;
         this.stargiftsActions = actions;
         this.stargiftsSetCollection = setCollection;
+        this.stargiftsStopReorder = stopReorder;
 
         mediaTab.itemsTab.append(getFirstChild(giftsList, (v) => v instanceof Element) as Element);
 
@@ -2907,7 +3110,9 @@ export default class AppSearchSuper {
     } else if(type === 'stories') {
       promise = this.loadStories(options);
     } else if(type === 'similar') {
-      promise = this.loadSimilarChannels(options);
+      promise = this.loadSimilarPeers(options);
+    } else if(type === 'botPreviews') {
+      promise = this.loadBotPreviews(options);
     } else if(type === 'savedDialogs') {
       promise = this.loadSavedDialogs(options);
     } else if(type === 'channels') {
@@ -3107,8 +3312,12 @@ export default class AppSearchSuper {
     return !this.loaded[mediaTab.type] || (this.historyStorage[inputFilter] && this.usedFromHistory[inputFilter] < this.historyStorage[inputFilter].length);
   }
 
+  private isPeerSensitive(peerId: PeerId) {
+    return isSensitive((usePeer(peerId) as User.user)?.restriction_reason || []);
+  }
+
   private isMessageSensitive(message: Message.message) {
-    return isSensitive((usePeer(message.peerId) as User.user)?.restriction_reason || []) || isMessageSensitive(message);
+    return this.isPeerSensitive(message.peerId) || isMessageSensitive(message);
   }
 
   public getSearchCounters(filters: MessagesFilter[], canCache = true) {
@@ -3131,6 +3340,11 @@ export default class AppSearchSuper {
     }
     const filters = Array.from(filterTypes, (inputFilter) => ({_: inputFilter} as MessagesFilter));
 
+    // * the similar peers are a request of their own, which the other tabs do not wait for: their tab comes
+    // * with the others if they are there by then, and after them if not (tdesktop, Android)
+    let canViewSimilar: boolean;
+    const canViewSimilarPromise = this.canViewSimilar().then((canView) => canViewSimilar = canView);
+
     const [
       counters,
       canViewSavedDialogs,
@@ -3138,8 +3352,8 @@ export default class AppSearchSuper {
       canViewMembers,
       canViewGroups,
       canViewStories,
-      canViewSimilar,
       canViewGifts,
+      canViewBotPreviews,
       profileTabsData,
       maybePinnedGifts
     ] = await Promise.all([
@@ -3149,8 +3363,8 @@ export default class AppSearchSuper {
       this.canViewMembers(),
       this.canViewGroups(),
       this.canViewStories(),
-      this.canViewSimilar(),
       this.canViewGifts(),
+      this.canViewBotPreviews(),
       this.getProfileTabsData(),
       peerId === rootScope.myId && this.managers.appGiftsManager.getPinnedGifts(peerId)
     ]);
@@ -3195,6 +3409,7 @@ export default class AppSearchSuper {
     const groupsTab = this.mediaTabsMap.get('groups');
     const similarTab = this.mediaTabsMap.get('similar');
     const giftsTab = this.mediaTabsMap.get('gifts');
+    const botPreviewsTab = this.mediaTabsMap.get('botPreviews');
 
     const giftsCount = profileTabsData.giftsCount ?? 0;
     const showGiftsTab = canViewGifts && giftsCount !== 0;
@@ -3205,8 +3420,9 @@ export default class AppSearchSuper {
       [storiesTab, canViewStories],
       [membersTab, canViewMembers],
       [groupsTab, canViewGroups],
-      [similarTab, canViewSimilar],
-      [giftsTab, showGiftsTab]
+      [similarTab, !!canViewSimilar],
+      [giftsTab, showGiftsTab],
+      [botPreviewsTab, canViewBotPreviews]
     ];
 
     a.forEach(([tab, value]) => {
@@ -3224,8 +3440,18 @@ export default class AppSearchSuper {
     this.setCounter('gifts', giftsCount);
 
     if(canViewStories) {
-      const newTitle = i18n(peerId.isUser() ? 'Stories' : 'ProfileStories');
-      storiesTab.menuTabName.replaceWith(storiesTab.menuTabName = newTitle);
+      this.setMediaTabName(storiesTab, peerId.isUser() ? 'Stories' : 'ProfileStories');
+    }
+
+    if(similarTab) {
+      this.setMediaTabName(similarTab, peerId.isUser() ? 'SimilarBots' : 'SimilarChannels');
+      if(canViewSimilar === undefined) {
+        canViewSimilarPromise.then((canView) => {
+          if(canView && middleware()) {
+            this.setMediaTabHidden(similarTab, false);
+          }
+        });
+      }
     }
 
     if(maybePinnedGifts) {
@@ -3714,18 +3940,33 @@ export default class AppSearchSuper {
     return !!(chatFull as ChatFull.channelFull).pFlags.stories_pinned_available;
   }
 
+  // * a profile of a bot (not a topic of it)
+  private isBotProfile() {
+    const {peerId, threadId} = this.searchContext;
+    return !threadId && peerId.isUser() && !!apiManagerProxy.getUser(peerId.toUserId())?.pFlags.bot;
+  }
+
   public async canViewSimilar() {
-    const {peerId} = this.searchContext;
-    if(peerId.isUser()) {
+    const {peerId, threadId} = this.searchContext;
+    if(!this.mediaTabsMap.has('similar') || threadId || (peerId.isUser() && !this.isBotProfile())) {
       return false;
     }
 
     try {
-      const messagesChats = await this.managers.appChatsManager.getChannelRecommendations(peerId.toChatId());
-      return !!messagesChats.chats.length;
+      const {peers} = await this.getSimilarPeers();
+      return !!peers.length;
     } catch(err) {
       return false;
     }
+  }
+
+  public async canViewBotPreviews() {
+    if(!this.mediaTabsMap.has('botPreviews') || !this.isBotProfile()) {
+      return false;
+    }
+
+    const userFull = await this.managers.appProfileManager.getProfile(this.searchContext.peerId.toUserId());
+    return !!userFull.bot_info?.pFlags.has_preview_medias;
   }
 
   public canViewGifts() {
@@ -3805,6 +4046,7 @@ export default class AppSearchSuper {
     // * the last query's paging, whose middleware may be let go only once its results are off screen
     this._loadMoreApps = undefined;
     this._loadSavedDialogs = undefined;
+    this.botPreviews = undefined;
   }
 
   public cleanScrollPositions() {

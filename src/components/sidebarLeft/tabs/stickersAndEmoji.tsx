@@ -1,4 +1,4 @@
-import {Component, createResource, onMount} from 'solid-js';
+import {Component, createResource, onMount, Show} from 'solid-js';
 import assumeType from '@helpers/assumeType';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';
@@ -22,6 +22,7 @@ import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {IconTsx} from '@components/iconTsx';
 import {mountSolidComponent, unwrapSolidElement} from '@helpers/solid/wrapSolidComponent';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
 
 const StickersAndEmoji: Component = () => {
   const [tab] = useSuperTab();
@@ -32,6 +33,12 @@ const StickersAndEmoji: Component = () => {
     return reaction._ === 'availableReaction' ?
       reaction.static_icon :
       tab.managers.appEmojiManager.getCustomEmojiDocument(reaction.document_id);
+  });
+
+  // * the row to the archive stands only while there is something in it, as in Android; a failed
+  // * answer leaves it out rather than failing the tab
+  const [archivedCount, {refetch: refetchArchivedCount}] = createResource(() => {
+    return tab.managers.appStickersManager.getArchivedStickers(0, 0).then(({count}) => count, () => 0);
   });
 
   onMount(() => {
@@ -57,6 +64,17 @@ const StickersAndEmoji: Component = () => {
 
       const section = unwrapSolidElement(
         <Section caption="LoopAnimatedStickersInfo">
+          <Show when={archivedCount()}>
+            <Row clickable={() => tab.slider.createTab(hotReloadGuard.tabs.AppArchivedStickersTab).open()}>
+              <Row.Icon icon="archive" />
+              <Row.Title
+                titleRight={numberThousandSplitter(archivedCount())}
+                titleRightSecondary
+              >
+                {i18n('ArchivedStickers')}
+              </Row.Title>
+            </Row>
+          </Show>
           <Row
             havePadding
             clickable={() => tab.slider.createTab(hotReloadGuard.tabs.AppQuickReactionTab).open()}
@@ -214,9 +232,19 @@ const StickersAndEmoji: Component = () => {
         if(!stickerSets[set.id]) {
           renderStickerSet(set, 'prepend');
         }
+
+        // * it may have come out of the archive
+        if(archivedCount()) {
+          refetchArchivedCount();
+        }
       });
 
       tab.listenerSetter.add(rootScope)('stickers_deleted', (set) => {
+        // * archived by hand, or by the server to make room for a set just added
+        if(set.pFlags.archived) {
+          refetchArchivedCount();
+        }
+
         const row = stickerSets[set.id];
         if(row) {
           row.dispose();

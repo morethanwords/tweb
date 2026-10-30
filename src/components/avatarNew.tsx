@@ -48,6 +48,8 @@ import {resolveElements} from '@solid-primitives/refs';
 import toArray from '@helpers/array/toArray';
 import computeLockColor from '@helpers/computeLockColor';
 import createAvatarVideo from '@components/createAvatarVideo';
+import canPollPeerStories from '@appManagers/utils/stories/canPollPeerStories';
+import {unwatchPeerStories, watchPeerStories} from '@components/stories/peerStoriesPolling';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import WeakRefSet from '@helpers/weakRefSet';
 import {hotListen} from '@helpers/hotModule';
@@ -835,6 +837,13 @@ export const AvatarNew = (props: {
 
     const _isForum = !!(peer as Chat.channel)?.pFlags?.forum;
     const _isSubscribed = props.isSubscribed ?? !!(peer as Chat.channel)?.subscription_until_date;
+    // * what a peer the story feed does not follow has in stories is asked again while it is in sight
+    if(withStories && !isOtherAccount() && canPollPeerStories(peer)) {
+      watchPeerStories(node, peerId, managers);
+    } else {
+      unwatchPeerStories(node);
+    }
+
     const storiesSegmentsResult = withStories && ((peer as User.user | Chat.channel)?.stories_max_id || storyId) && await getStoriesSegments(peerId, storyId);
     const storiesSegments = storiesSegmentsResult?.cached ? await storiesSegmentsResult.result : undefined;
     if(!middleware()) {
@@ -964,6 +973,7 @@ export const AvatarNew = (props: {
 
     if(_props?.peerId !== undefined && props.peerId !== _props.peerId) {
       node.dataset.peerId = '' + _props.peerId;
+      unwatchPeerStories(node);
     }
 
     if(_props) Object.assign(props, _props);
@@ -1176,6 +1186,7 @@ export const AvatarNew = (props: {
 
   // * The strong edge the weak registry leans on: while the element is reachable, so is its avatar
   avatarByElement.set(node, ret);
+  middlewareHelper.onDestroy(() => unwatchPeerStories(node));
 
   if(
     props.peerId !== undefined ||

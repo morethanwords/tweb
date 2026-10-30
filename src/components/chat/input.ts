@@ -470,6 +470,8 @@ export default class ChatInput {
   public webPageOptions: Parameters<AppMessagesManager['sendText']>[0]['webPageOptions'] = {};
   /** @internal — used by ChatRecording */
   public forwarding: {[fromPeerId: PeerId]: number[]};
+  /** the second the forwarded video starts at ("Share at 0:42") */
+  public forwardingVideoTimestamp: number;
   private forwardingHasProtectedRichMessages = false;
   public replyToMsgId: MessageSendingParams['replyToMsgId'];
   public replyToStoryId: MessageSendingParams['replyToStoryId'];
@@ -4797,6 +4799,7 @@ export default class ChatInput {
     this.helperWaitingForward = true;
 
     const forwarding = copy(this.forwarding);
+    const videoTimestamp = this.forwardingVideoTimestamp;
     const helperFunc = this.helperFunc;
     this.clearHelper();
     this.updateSendBtn();
@@ -4813,7 +4816,9 @@ export default class ChatInput {
         if(!selected) {
           helperFunc();
         }
-      }
+      },
+      undefined,
+      videoTimestamp
     );
   }
 
@@ -5117,7 +5122,7 @@ export default class ChatInput {
     /** media of its own, one message sent after the text: a story shared with a comment */
     media?: InputMedia,
     sendTextParams?: Parameters<AppMessagesManager['sendText']>[0],
-    forwardParams?: Pick<Parameters<AppMessagesManager['forwardMessages']>[0], 'dropAuthor' | 'dropCaptions'>,
+    forwardParams?: Pick<Parameters<AppMessagesManager['forwardMessages']>[0], 'dropAuthor' | 'dropCaptions' | 'videoTimestamp'>,
     slowModeParams: Pick<Parameters<typeof ChatInput['showSlowModeTooltipIfNeeded']>[0], 'peerId' | 'managers' | 'element'>,
     paidMessageInterceptor?: PaidMessagesInterceptor,
     ephemeral?: boolean,
@@ -5405,7 +5410,8 @@ export default class ChatInput {
         dropAuthor: !this.forwardingHasProtectedRichMessages &&
           this.forwardElements &&
           this.forwardElements.hideSender.checkboxField.checked,
-        dropCaptions: !this.forwardingHasProtectedRichMessages && this.isDroppingCaptions()
+        dropCaptions: !this.forwardingHasProtectedRichMessages && this.isDroppingCaptions(),
+        videoTimestamp: this.forwardingVideoTimestamp
       } : undefined,
       sendTextParams: {
         noWebPage: this.noWebPage,
@@ -5849,7 +5855,7 @@ export default class ChatInput {
     }
   }
 
-  public initMessagesForward(fromPeerIdsMids: {[fromPeerId: PeerId]: number[]}) {
+  public initMessagesForward(fromPeerIdsMids: {[fromPeerId: PeerId]: number[]}, videoTimestamp?: number) {
     const f = async() => {
       // const peerTitles: string[]
       const fromPeerIds = Object.keys(fromPeerIdsMids).map((fromPeerId) => fromPeerId.toPeerId());
@@ -5973,6 +5979,7 @@ export default class ChatInput {
 
       this.setCurrentHover(this.forwardHover, newReply);
       this.forwarding = fromPeerIdsMids;
+      this.forwardingVideoTimestamp = videoTimestamp;
     };
 
     f();
@@ -6180,6 +6187,7 @@ export default class ChatInput {
     if(type !== 'reply') {
       this.setReplyTo(undefined);
       this.forwarding = undefined;
+      this.forwardingVideoTimestamp = undefined;
       this.forwardingHasProtectedRichMessages = false;
     }
 

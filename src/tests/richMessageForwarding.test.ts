@@ -206,3 +206,25 @@ describe('rich-message forward author privacy', () => {
     expect(outgoingMessages[0].fwd_from).toBeUndefined();
   });
 });
+
+describe('forward at a time', () => {
+  test('starts the forwarded video at the second asked for ("Share at 0:42")', async() => {
+    const {invokeApiAfter, manager} = makeManager({premium: false, rich: false});
+
+    await manager.forwardMessages({peerId: targetPeerId, fromPeerId: sourcePeerId, mids: [mid], videoTimestamp: 42});
+
+    expect(invokeApiAfter).toHaveBeenCalledWith(
+      'messages.forwardMessages',
+      expect.objectContaining({video_timestamp: 42}),
+      expect.any(Object)
+    );
+  });
+
+  test('leaves the time out of a plain forward', async() => {
+    const {invokeApiAfter, manager} = makeManager({premium: false, rich: false});
+
+    await manager.forwardMessages({peerId: targetPeerId, fromPeerId: sourcePeerId, mids: [mid]});
+
+    expect(invokeApiAfter.mock.calls[0][1].video_timestamp).toBeUndefined();
+  });
+});

@@ -61,6 +61,24 @@ import parseChatSpecificTag from '@lib/richTextProcessor/parseChatSpecificTag';
 import searchByTag from '@lib/richTextProcessor/searchByTag';
 import {APP_TABS} from '@lib/appColumns';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import openBankCardMenu from '@components/bankCardMenu';
+import confirmationPopup from '@components/confirmationPopup';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import wrapRichText from '@lib/richTextProcessor/wrapRichText';
+import {getManagersSession, isSessionLeaving} from '@lib/accounts/getCurrentAccount';
+
+/**
+ * For a lookup whose failure is only a miss: any error is one but MIDDLEWARE, the end of the account
+ * session it was asked in - the flow it belongs to stops there rather than go on as a miss on the
+ * account the tab shows now.
+ */
+const missUnlessSessionEnded = (err: ApiError): undefined => {
+  if(err?.type === 'MIDDLEWARE') {
+    throw err;
+  }
+
+  return undefined;
+};
 
 /**
  * A link whose section we know but whose path we do not — the one thing worse
@@ -84,6 +102,31 @@ export class InternalLinkProcessor {
     }
   }
 
+  /**
+   * Asks before a link goes where its address points - a masked link's real address, a tg:// link
+   * this client cannot open - and Open follows it as a plain link, within that press of the button.
+   */
+  private showOpenUrlAlert(element: HTMLAnchorElement) {
+    const href = element.href;
+
+    const a = element.cloneNode(true) as HTMLAnchorElement;
+    a.className = 'anchor-url';
+    a.innerText = href;
+    a.removeAttribute('onclick');
+
+    showPeerPopup('popup-masked-url', {
+      titleLangKey: 'OpenUrlTitle',
+      descriptionLangKey: 'OpenUrlAlert2',
+      descriptionLangArgs: [a],
+      buttons: [{
+        langKey: 'Open',
+        callback: () => {
+          a.click();
+        }
+      }]
+    });
+  }
+
   public construct(managers: TabManagers) {
     this.managers = managers;
 
@@ -93,27 +136,22 @@ export class InternalLinkProcessor {
 
     addAnchorListener<{}>({
       name: 'showMaskedAlert',
-      callback: ({element}) => {
-        const href = element.href;
-
-        const a = element.cloneNode(true) as HTMLAnchorElement;
-        a.className = 'anchor-url';
-        a.innerText = href;
-        a.removeAttribute('onclick');
-
-        showPeerPopup('popup-masked-url', {
-          titleLangKey: 'OpenUrlTitle',
-          descriptionLangKey: 'OpenUrlAlert2',
-          descriptionLangArgs: [a],
-          buttons: [{
-            langKey: 'Open',
-            callback: () => {
-              a.click();
-            }
-          }]
-        });
-      }
+      callback: ({element}) => this.showOpenUrlAlert(element)
     });
+
+    // a tg:// link that nothing below handles (wrapUrl names this handler for it)
+    addAnchorListener<{}>({
+      name: 'unknownDeepLink',
+      noPathnameParams: true,
+      noUriParams: true,
+      callback: ({element}) => this.processUnknownDeepLink(element)
+    });
+
+    // a bank card number in a text (wrapRichText) is a link to its menu, not to anywhere
+    (window as any).onBankCardClick = (element: HTMLElement, e: MouseEvent) => {
+      cancelEvent(e);
+      openBankCardMenu(element, e);
+    };
 
     addAnchorListener<{uriParams: {command: string, bot: string}}>({
       name: 'execBotCommand',
@@ -320,7 +358,7 @@ export class InternalLinkProcessor {
     }
 
     type K1 = {thread?: string, comment?: string, t?: string, option?: string, single?: string};
-    type K2 = {thread?: string, comment?: string, start?: string, startgroup?: string, startchannel?: string, admin?: string, t?: string, text?: string, option?: string, single?: string};
+    type K2 = {thread?: string, comment?: string, start?: string, startgroup?: string, startchannel?: string, admin?: string, t?: string, text?: string, option?: string, single?: string, game?: string};
     type K3 = {startattach?: string, attach?: string, choose?: TelegramChoosePeerType};
     type K4 = {startapp?: string, mode?: 'compact' | 'fullscreen'};
     type K5 = {story?: string};
@@ -420,7 +458,8 @@ export class InternalLinkProcessor {
             stack: appImManager.getStackFromElement(element),
             t: uriParams.t,
             text: uriParams.text,
-            single: uriParams.single
+            single: uriParams.single,
+            game: uriParams.game
           };
         }
 
@@ -1019,6 +1058,35 @@ export class InternalLinkProcessor {
         return this.processInternalLink(link);
       }
     });
+
+    // t.me/contact/<token>
+    addAnchorListener<{pathnameParams: ['contact', string]}>({
+      name: 'contact',
+      callback: ({pathnameParams}) => {
+        // the path keeps the token percent-encoded; a broken escape leaves it as it came, a dead link
+        let token = pathnameParams[1] || '';
+        try {
+          token = decodeURIComponent(token);
+        } catch{}
+
+        const link: InternalLink = {
+          _: INTERNAL_LINK_TYPE.CONTACT_TOKEN,
+          token
+        };
+
+        return this.processInternalLink(link);
+      }
+    });
+
+    // tg://contact?token=<token>
+    addAnchorListener<{uriParams: {token?: string}}>({
+      name: 'contact',
+      protocol: 'tg',
+      callback: ({uriParams}) => {
+        const link = this.makeLink(INTERNAL_LINK_TYPE.CONTACT_TOKEN, {token: uriParams.token || ''});
+        return this.processInternalLink(link);
+      }
+    });
   }
 
   /** What `tg://chats/emoji-status` — and its `tg://settings` alias — opens. */
@@ -1088,6 +1156,10 @@ export class InternalLinkProcessor {
   }
 
   public processMessageLink = (link: InternalLink.InternalLinkMessage) => {
+    if(link.game) {
+      return this.shareGame(link);
+    }
+
     if(link.startgroup !== undefined || link.startchannel !== undefined) {
       const requestedRights = parseBotAdminRights(link.admin);
       const scope = getBotAddToChatScope(link, requestedRights);
@@ -1125,6 +1197,61 @@ export class InternalLinkProcessor {
       wholeAlbum: link.single === undefined
     });
   };
+
+  /**
+   * `t.me/<bot>?game=<short_name>`: the game goes to a chat the user picks - a forum's topic, never
+   * Saved Messages - once they confirm it, and that chat opens (tdesktop's `ShowShareGameBox`). A name
+   * that is not a bot's opens as it would without the game.
+   */
+  private async shareGame(link: InternalLink.InternalLinkMessage): Promise<unknown> {
+    const managers = bindManagersToSession(this.managers);
+    const bot = await managers.appUsersManager.resolveUserByUsername(link.domain).catch(missUnlessSessionEnded);
+    if(!bot || !bot.pFlags.bot) {
+      return this.processMessageLink({...link, game: undefined});
+    }
+
+    let chosen: Awaited<ReturnType<typeof showSharingPicker2Popup>>;
+    try {
+      chosen = await showSharingPicker2Popup({
+        chatRightsActions: ['send_games'],
+        exceptSelf: true,
+        useTopics: true
+      });
+
+      await confirmationPopup({
+        descriptionLangKey: 'SendGameToText',
+        // * a channel's direct-message conversation is named by its other side, as the picker's row is
+        descriptionLangArgs: [await wrapPeerTitle({peerId: chosen.peerId, threadId: chosen.threadId ?? chosen.monoforumThreadId})],
+        button: {langKey: 'OK'}
+      });
+    } catch{
+      return;
+    }
+
+    // * confirmed for the account it was asked on: nothing is sent or opened once the tab is on another
+    if(isSessionLeaving(getManagersSession(managers))) {
+      return;
+    }
+
+    const {peerId, threadId, monoforumThreadId} = chosen;
+    managers.appGamesManager.shareGame({
+      peerId,
+      threadId,
+      monoforumThreadId,
+      botId: bot.id,
+      shortName: link.game
+    }).catch((err: ApiError) => {
+      // * no message stands for the game until the server sends it, so the chat cannot show that it
+      // * failed: it is said here, as tdesktop does; a slow mode wait has its own popup (appImManager)
+      if(err?.type === 'MIDDLEWARE' || err?.type?.startsWith('SLOWMODE_WAIT')) {
+        return;
+      }
+
+      toastNew({langPackKey: 'Error.AnError'});
+    });
+
+    return appImManager.setInnerPeer({peerId, threadId, monoforumThreadId});
+  }
 
   public processPrivatePostLink = async(link: InternalLink.InternalLinkPrivatePost) => {
     const managers = bindManagersToSession(this.managers);
@@ -1671,6 +1798,45 @@ export class InternalLinkProcessor {
     }
   };
 
+  /**
+   * Someone's "My QR code" link: the server makes its owner a contact and names them; a token that
+   * has expired, or a user who is gone, is a dead link (tdesktop's `resolveContactToken`).
+   */
+  public processContactTokenLink = async(link: InternalLink.InternalLinkContactToken) => {
+    const managers = bindManagersToSession(this.managers);
+    const user = link.token ?
+      await managers.appUsersManager.importContactToken(link.token).catch(missUnlessSessionEnded) :
+      undefined;
+    if(!user || user._ !== 'user' || user.pFlags.deleted) {
+      toastNew({langPackKey: 'ContactLinkInvalid'});
+      return;
+    }
+
+    return appImManager.setInnerPeer({peerId: user.id.toPeerId(false)});
+  };
+
+  /**
+   * A tg:// link this client does not know: the server is asked about it, and what it has to say is
+   * shown (tdesktop's `HandleUnknown`; its offer to update the app is for an installed one). When it
+   * has nothing to say, the link may still be another Telegram app's: it is offered to the system the
+   * way a plain link went before, on a press of Open: after the lookup the click that brought it here
+   * no longer counts as the user's, and the browser would block it.
+   */
+  public processUnknownDeepLink = async(element: HTMLAnchorElement) => {
+    const managers = bindManagersToSession(this.managers);
+    // tdesktop asks with what follows `tg://` up to the query
+    const path = element.href.replace(/^tg:(?:\/\/)?/i, '').split(/[?#]/)[0];
+    const info = await managers.apiManager.getDeepLinkInfo(path).catch(missUnlessSessionEnded);
+    if(info && info._ === 'help.deepLinkInfo') {
+      return confirmationPopup({
+        button: {langKey: 'OK', isCancel: true},
+        description: wrapRichText(info.message, {entities: info.entities})
+      }).catch(noop);
+    }
+
+    this.showOpenUrlAlert(element);
+  };
+
   public processInstantViewLink = (link: InternalLink.InternalLinkInstantView) => {
     openInstantViewInAppBrowser({
       cachedPage: link.url,
@@ -1705,7 +1871,8 @@ export class InternalLinkProcessor {
       [INTERNAL_LINK_TYPE.STORY_ALBUM]: this.processStoryAlbumLink,
       [INTERNAL_LINK_TYPE.INSTANT_VIEW]: this.processInstantViewLink,
       [INTERNAL_LINK_TYPE.CONFERENCE_CALL]: this.processConferenceCallLink,
-      [INTERNAL_LINK_TYPE.ADD_AI_STYLE]: this.processAddAiStyleLink
+      [INTERNAL_LINK_TYPE.ADD_AI_STYLE]: this.processAddAiStyleLink,
+      [INTERNAL_LINK_TYPE.CONTACT_TOKEN]: this.processContactTokenLink
     };
 
     const processor = map[link._];

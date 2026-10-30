@@ -3,6 +3,7 @@ import {DEBUG, MOUNT_CLASS_TO} from '@config/debug';
 import {IS_CHROMIUM} from '@environment/userAgent';
 import EventListenerBase from '@helpers/eventListenerBase';
 import noop from '@helpers/noop';
+import deferredPromise from '@helpers/cancellablePromise';
 import pause from '@helpers/schedulers/pause';
 import {GroupCallParticipant, GroupCallParticipantVideo, GroupCallParticipantVideoSourceGroup} from '@layer';
 import {GroupCallId, GroupCallConnectionType} from '@appManagers/appGroupCallsManager';
@@ -151,6 +152,8 @@ export class GroupCallsController extends EventListenerBase<{
   private pendingConferenceRecovery?: {instance: GroupCallInstance, reason: string};
   private outboundMediaRecoveryUsed = new WeakSet<GroupCallInstance>();
   private groupCallRejoins = new WeakMap<GroupCallInstance, Promise<void>>();
+  // * a first join holding that place: the recovery asked for meanwhile (its reason), run once it settles
+  private groupCallFirstJoins = new WeakMap<GroupCallInstance, {recoveryReason?: string}>();
   private groupCallRejoinAttempts = new WeakMap<GroupCallInstance, number>();
 
   public construct(managers: TabManagers) {
@@ -212,6 +215,11 @@ export class GroupCallsController extends EventListenerBase<{
 
   get groupCall() {
     return this.currentGroupCall;
+  }
+
+  /** Whether `instance` is still the call in progress: what an action started for it checks after each wait. */
+  public isCurrentGroupCall(instance: GroupCallInstance) {
+    return this.currentGroupCall === instance && !instance.isClosing;
   }
 
   public setCurrentGroupCall(groupCall: GroupCallInstance, isRecovery = false) {
@@ -285,7 +293,9 @@ export class GroupCallsController extends EventListenerBase<{
     rejoin?: boolean,
     joinVideo?: boolean,
     // * the account the call is joined on: the caller's when it asked
-    account = captureCallAccount(this.managers)
+    account = captureCallAccount(this.managers),
+    // a channel to be shown as instead of the account (getGroupCallJoinAs)
+    joinAs?: PeerId
   ) {
     this.audioAsset.createAudio();
 
@@ -304,7 +314,7 @@ export class GroupCallsController extends EventListenerBase<{
     }
 
     const streamManager = await createMainStreamManager(muted, joinVideo);
-    return this.joinGroupCallInternal(chatId, groupCallId, streamManager, muted, joinVideo, account)
+    return this.joinGroupCallInternal(chatId, groupCallId, streamManager, muted, joinVideo, account, joinAs)
     .then(() => {
       // have to refresh participants because of the new connection
       const {currentGroupCall} = this;
@@ -340,7 +350,8 @@ export class GroupCallsController extends EventListenerBase<{
     streamManager: StreamManager,
     muted: boolean,
     joinVideo: boolean,
-    account: CallAccount
+    account: CallAccount,
+    joinAs?: PeerId
   ) {
     const log = this.log.bindPrefix('joinGroupCallInternal');
     log('start', groupCallId);
@@ -350,6 +361,19 @@ export class GroupCallsController extends EventListenerBase<{
       id: groupCallId,
       ...account
     });
+    if(joinAs && joinAs !== account.myId) {
+      currentGroupCall.joinAsPeerId = joinAs;
+    }
+
+    // The first join holds the place of a rejoin until it settles: one started meanwhile ("Display me
+    // as..." picked while phone.joinGroupCall is out) would replace the connection this join negotiates,
+    // and this join's rollback would then close the replacement and end the call.
+    // A recovery asked for meanwhile (a transport already failed when the negotiation ends) is held
+    // and run after it, instead of being folded into this join and lost.
+    const joined = deferredPromise<void>();
+    const firstJoin: {recoveryReason?: string} = {};
+    this.groupCallRejoins.set(currentGroupCall, joined);
+    this.groupCallFirstJoins.set(currentGroupCall, firstJoin);
 
     try {
       currentGroupCall.fixSafariAudio();
@@ -387,6 +411,19 @@ export class GroupCallsController extends EventListenerBase<{
         streamManager
       });
       throw err;
+    } finally {
+      if(this.groupCallRejoins.get(currentGroupCall) === joined) {
+        this.groupCallRejoins.delete(currentGroupCall);
+      }
+
+      this.groupCallFirstJoins.delete(currentGroupCall);
+      // * before the waiters wake: an identity change waits for this rejoin too, and goes after it
+      // * (a failed join left no call to recover: the rejoin sees it and does nothing)
+      if(firstJoin.recoveryReason !== undefined) {
+        void this.recoverGroupCall(currentGroupCall, firstJoin.recoveryReason);
+      }
+
+      joined.resolve();
     }
   }
 
@@ -413,7 +450,8 @@ export class GroupCallsController extends EventListenerBase<{
         type,
         isMuted: options.muted,
         joinVideo: options.joinVideo,
-        rejoin: options.rejoin
+        rejoin: options.rejoin,
+        joinAs: instance.joinAsPeerId
       }
     });
 
@@ -564,6 +602,9 @@ export class GroupCallsController extends EventListenerBase<{
 
     const pending = this.groupCallRejoins.get(instance);
     if(pending) {
+      // * a first join is not a rejoin: what it was asked for runs after it (joinGroupCallInternal)
+      const firstJoin = this.groupCallFirstJoins.get(instance);
+      if(firstJoin) firstJoin.recoveryReason ??= reason;
       return pending;
     }
 
@@ -614,6 +655,32 @@ export class GroupCallsController extends EventListenerBase<{
 
     this.groupCallRejoins.set(instance, promise);
     return promise;
+  }
+
+  /**
+   * Show us as someone else in a live video chat: join again as them (tdesktop GroupCall::rejoinAs),
+   * keeping the microphone and the camera, the way a transport rejoin does. A rejoin already under
+   * way finishes first; if it went out as the previous identity, this one follows it.
+   */
+  public async changeGroupCallJoinAs(instance: GroupCallInstance, joinAs: PeerId): Promise<void> {
+    if(instance.isConference) {
+      throw new Error('A conference is joined as the account only');
+    }
+
+    instance.joinAsPeerId = joinAs !== instance.myId ? joinAs : undefined;
+    for(;;) {
+      const pending = this.groupCallRejoins.get(instance);
+      if(!pending) break;
+      await pending;
+    }
+
+    const main = instance.connections.main;
+    if(this.currentGroupCall !== instance || instance.isClosing ||
+      (main?.options?.type === 'main' && main.options.joinAs === instance.joinAsPeerId)) {
+      return;
+    }
+
+    await this.rejoinGroupCall(instance, 'join-as');
   }
 
   // phone.checkGroupCall: which of `sources` the server still has for us.

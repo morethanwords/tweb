@@ -994,11 +994,11 @@ export default class WebApp {
     const managers = bindManagersToSession(this.managers);
 
     try {
-      const allow = await managers.apiManager.invokeApiSingle('bots.checkDownloadFileParams', {
-        bot: await managers.appUsersManager.getUserInput(webViewOptions.botId),
-        file_name: event.file_name,
-        url: event.url
-      });
+      const allow = await managers.appBotsManager.checkDownloadFileParams(
+        webViewOptions.botId,
+        event.file_name,
+        event.url
+      );
 
       if(!allow) {
         telegramWebView.dispatchWebViewEvent('file_download_requested', {status: 'cancelled'});

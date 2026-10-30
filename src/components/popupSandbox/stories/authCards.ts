@@ -22,6 +22,22 @@ const PHONE = '+99966 1234567';
 const HASH = 'sandbox-phone-code-hash';
 const EMAIL_PATTERN = 'jo**@gm***.com';
 
+/** A request the server turns down the way it would with `type` */
+const refuse = (type: string) => () => {
+  throw {type};
+};
+
+/** What the cards ask the server for, refused: a typed code with `codeError`, anything else with `otherError` */
+const refuseSignIn = (codeError: string, otherError: string) => ({
+  signIn: refuse(codeError),
+  sendCode: refuse(otherError),
+  resendCode: refuse(otherError),
+  resetLoginEmail: refuse(otherError),
+  signUp: refuse(otherError),
+  // * the way back to the number does not wait for it
+  cancelCode: (): undefined => undefined
+});
+
 /**
  * Enough for the email flow to actually walk end to end offline: an address is accepted, its code
  * verifies, and the login continues into the phone code the server would send next. Everything the
@@ -48,12 +64,8 @@ const managers: ManagerHandlers = {
         next_type: {_: 'auth.codeTypeCall'},
         timeout: 20
       }
-    })
-  },
-  apiManager: {
-    invokeApi: (method: string) => {
-      throw {type: method === 'auth.signIn' ? 'PHONE_CODE_INVALID' : 'FLOOD_WAIT_60'};
-    }
+    }),
+    ...refuseSignIn('PHONE_CODE_INVALID', 'FLOOD_WAIT_60')
   }
 };
 
@@ -96,17 +108,12 @@ defineStories('SIGN IN', [
       ...managers,
       appAccountManager: {
         ...managers.appAccountManager,
+        sendCode: refuse('FLOOD_WAIT_22098'),
         // the passkey button under the form asks for these as the card mounts
         initPasskeyLogin: () => ({_: 'auth.passkeyLoginOptions', options: {_: 'dataJSON', data: '{}'}})
       },
       apiManager: {
-        invokeApi: (method: string) => {
-          if(method === 'help.getNearestDc') {
-            return {_: 'nearestDc', country: 'US', this_dc: 2, nearest_dc: 2};
-          }
-
-          throw {type: 'FLOOD_WAIT_22098'};
-        }
+        getNearestDc: () => ({_: 'nearestDc', country: 'US', this_dc: 2, nearest_dc: 2})
       }
     },
     open: () => mount({_: 'authStateSignIn'})
@@ -155,10 +162,9 @@ defineStories('SIGN IN', [
     fixtureOnly: true,
     managers: {
       ...managers,
-      apiManager: {
-        invokeApi: (method: string) => {
-          throw {type: method === 'auth.signIn' ? 'FLOOD_WAIT_90' : 'PHONE_CODE_INVALID'};
-        }
+      appAccountManager: {
+        ...managers.appAccountManager,
+        ...refuseSignIn('FLOOD_WAIT_90', 'PHONE_CODE_INVALID')
       }
     },
     open: code({_: 'auth.sentCodeTypeSms', length: 5})

@@ -432,6 +432,13 @@ export class ChatReactionsMenu {
       noSearch: this.noSearch,
       managers: this.managers,
       mainSets: this.isTags ? this.loadTags : (this.isEffects ? this.loadEffects : this.loadReactions),
+      // * the recent reactions can be cleared from the picker, as in Web A, iOS and Android; the top
+      // * reactions past the first row stay in their place
+      clearRecent: this.isTags || this.isEffects ? undefined : {
+        titleLangKey: 'ClearRecentReactionsAlertTitle',
+        descriptionLangKey: 'ClearRecentReactionsAlertMessage',
+        clear: (managers) => managers.appReactionsManager.clearRecentReactions().then(() => this.loadReactions()[1])
+      },
       additionalLocalStickerSet: this.isEffects ? async() => {
         const availableEffects = await this.managers.appReactionsManager.getAvailableEffects();
         return (await this.splitAvailableEffects(availableEffects)).localStickerSet;

@@ -32,6 +32,13 @@ const RECENT_MAX_LENGTH = 32;
 
 type EmojiType = 'native' | 'custom';
 type EmojiGroupType = 'esg' | 'stickers' | 'status' | 'profilePhoto';
+// * the stickers panel has groups of its own, as tdesktop's EmojiStatuses::requestStickerGroups asks for them
+const EMOJI_GROUPS_METHODS: {[type in EmojiGroupType]: 'messages.getEmojiGroups' | 'messages.getEmojiStickerGroups' | 'messages.getEmojiStatusGroups' | 'messages.getEmojiProfilePhotoGroups'} = {
+  esg: 'messages.getEmojiGroups',
+  stickers: 'messages.getEmojiStickerGroups',
+  status: 'messages.getEmojiStatusGroups',
+  profilePhoto: 'messages.getEmojiProfilePhotoGroups'
+};
 
 export class AppEmojiManager extends AppManager {
   private static POPULAR_EMOJI = ['😂', '😘', '❤️', '😍', '😊', '😁', '👍', '☺️', '😔', '😄', '😭', '💋', '😒', '😳', '😜', '🙈', '😉', '😃', '😢', '😝', '😱', '😡', '😏', '😞', '😅', '😚', '🙊', '😌', '😀', '😋', '😆', '👌', '😐', '😕'];
@@ -426,7 +433,7 @@ export class AppEmojiManager extends AppManager {
     };
 
     return this.emojiGroups[type] ??= this.apiManager.invokeApiSingleProcess({
-      method: type === 'esg' || type === 'stickers' ? 'messages.getEmojiGroups' : (type === 'status' ? 'messages.getEmojiStatusGroups' : 'messages.getEmojiProfilePhotoGroups'),
+      method: EMOJI_GROUPS_METHODS[type],
       params: {hash: 0},
       processResult: async(messagesEmojiGroups) => {
         assumeType<MessagesEmojiGroups.messagesEmojiGroups>(messagesEmojiGroups);

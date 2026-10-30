@@ -1133,7 +1133,8 @@ export default class ChatTopbar {
   };
 
   private onMuteClick = () => {
-    showMutePopup(this.peerId);
+    // * the topic's, as the menu item's own check and Unmute read it
+    showMutePopup(this.peerId, this.chat.threadId);
   };
 
   private onUnmuteClick = () => {

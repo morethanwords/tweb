@@ -55,6 +55,8 @@ export type NotifyOptions = Partial<{
   silent: boolean;
   onclick: () => void;
   noIncrement: boolean;
+  /** the chat's sound is off */
+  noSound: boolean;
 }>;
 
 export type NotificationSettings = StateSettings['notifications'];
@@ -444,6 +446,7 @@ export class UiNotificationsManager {
       fwdCount,
       peerReaction,
       peerTypeNotifySettings,
+      noSound,
       isOtherTabActive,
       accountNumber
     } = payload;
@@ -491,6 +494,8 @@ export class UiNotificationsManager {
     if(peerReaction) {
       notification.noIncrement = true;
     }
+
+    notification.noSound = noSound;
 
     const peerTitleOptions/* : Partial<Parameters<typeof getPeerTitle>[0]> */ = {
       plainText: true as const,
@@ -961,7 +966,7 @@ export class UiNotificationsManager {
     this.toggleToggler();
 
     const now = tsNow();
-    if(this.settings.volume > 0 && this.settings.sound && !data.noIncrement) {
+    if(this.settings.volume > 0 && this.settings.sound && !data.noIncrement && !data.noSound) {
       this.testSound(this.settings.volume);
       this.soundsPlayed[data.tag] = now;
     }

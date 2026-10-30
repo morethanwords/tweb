@@ -7,7 +7,6 @@ import PasskeyLoginButton from '@components/passkeyLoginButton';
 import MediaHeader from '@components/mediaHeader';
 import TelInputField from '@components/telInputField';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
-import App from '@config/app';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import focusWhenSettled from '@helpers/dom/focusWhenSettled';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
@@ -130,15 +129,7 @@ export default function SignInCard(_props: {spec: Spec}) {
     // * the code card's sticker is fetched alongside the code itself, not when that card mounts: by
     // * then the card is already open, and the monkey turns up in it a moment later
     preloadTrackingMonkey().catch(() => {});
-    managers.apiManager.invokeApi('auth.sendCode', {
-      phone_number,
-      api_id: App.id,
-      api_hash: App.hash,
-      settings: {
-        _: 'codeSettings',
-        pFlags: {}
-      }
-    }).then((code) => {
+    managers.appAccountManager.sendCode(phone_number).then((code) => {
       // the very first send has no previous `phone_code_hash` to sign up with
       return continueLogin(code, {managers, navigate, toIm, phone_number});
     }).catch((err: ApiError) => {
@@ -170,7 +161,7 @@ export default function SignInCard(_props: {spec: Spec}) {
   /* ---------- DC pre-warm cascade ---------- */
 
   function tryAgain() {
-    managers.apiManager.invokeApi('help.getNearestDc').then((nearestDcResult) => {
+    managers.apiManager.getNearestDc().then((nearestDcResult) => {
       if(cancelled) return nearestDcResult;
 
       const langPack = commonStateStorage.getFromCache('langPack');

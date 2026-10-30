@@ -359,6 +359,16 @@ export default abstract class ApiManagerMethods extends AppManager {
     });
   }
 
+  /** The DC this connection landed on, the one nearest to the user, and the user's country by IP */
+  public getNearestDc() {
+    return this.invokeApi('help.getNearestDc');
+  }
+
+  /** What the server has to say about a `tg://` link this client does not know (tdesktop's `requestDeepLinkInfo`). */
+  public getDeepLinkInfo(path: string) {
+    return this.invokeApiSingle('help.getDeepLinkInfo', {path});
+  }
+
   public getTimezonesList() {
     return this.invokeApiCacheable('help.getTimezonesList', {hash: 0}, {cacheSeconds: 86400, syncIfHasResult: true});
   }

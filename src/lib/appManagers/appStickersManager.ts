@@ -25,8 +25,25 @@ import {ReferenceContext} from '@lib/storages/references';
 import {STICKERS_LOCAL_IDS, STICKERS_LOCAL_IDS_SET, STICKER_LOCAL_SET_ID, MyMessagesStickerSet, MyStickerSetInput} from '@lib/appManagers/utils/stickers/constants';
 import {getStickerSetInputByDice, getStickerSetInputById, getStickerSetInputByLocalId, getStickerSetInputByShortName, getStickerSetInputByStickerSet} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 import isStickerSetAdded from '@lib/appManagers/utils/stickers/isStickerSetAdded';
+import filterUnique from '@helpers/array/filterUnique';
+import noop from '@helpers/noop';
+import App from '@config/app';
 
 const CACHE_TIME = 3600e3;
+// * a page of messages.searchStickers, as tdesktop asks for it (stickers_list_widget.cpp)
+const SEARCH_STICKERS_LIMIT = 50;
+// * a page of messages.getOldFeaturedStickers: kOfficialLoadLimit in tdesktop, 40 in Android as well
+const OLD_FEATURED_STICKERS_LIMIT = 40;
+// * a page of messages.getArchivedStickers, as Android's ArchivedStickersActivity asks for it
+const ARCHIVED_STICKERS_LIMIT = 15;
+// * kReadFeaturedSetsTimeout in tdesktop's apiwrap.cpp: the trending sets seen meanwhile are read together
+const READ_FEATURED_STICKERS_DELAY = 1000;
+
+export type FoundStickersPage = {
+  stickers: MyDocument[],
+  // * undefined once the server has nothing more
+  nextOffset?: number
+};
 
 export class AppStickersManager extends AppManager {
   private storage: AppStorage<Record<Long, MyMessagesStickerSet>, AccountDatabase>;
@@ -47,6 +64,14 @@ export class AppStickersManager extends AppManager {
   private names: Record<string, InputStickerSet.inputStickerSetID>;
 
   private attachedStickers: Map<string, Promise<StickerSet.stickerSet[]>>;
+
+  // * the server's sticker search, page by page, per query and languages: kept for the session
+  private foundStickers: Map<string, Promise<FoundStickersPage>>;
+
+  // * the trending sets the server counts as unseen, and those seen since that go to it together
+  private featuredUnread: Set<string>;
+  private featuredRead: Set<string>;
+  private readFeaturedTimeout: number;
 
   private indexes: Partial<{
     stickers: SearchIndex<DocId>,
@@ -88,6 +113,14 @@ export class AppStickersManager extends AppManager {
 
       updateRecentStickers: () => this.onStickersUpdated('recent', true),
 
+      // * some trending sets were seen on another device, which ones it does not say: their read marks are
+      // asked for again, as tdesktop's api_updates.cpp does — with none unread here, none can change
+      updateReadFeaturedStickers: () => {
+        if(this.featuredUnread.size) {
+          this.getFeaturedStickers().catch(noop);
+        }
+      },
+
       updateFavedStickers: () => this.onStickersUpdated('faved', true),
 
       updateMoveStickerSetToTop: (update) => {
@@ -127,6 +160,13 @@ export class AppStickersManager extends AppManager {
     this.names = {};
     this.indexes = {};
     this.attachedStickers = new Map();
+    this.foundStickers = new Map();
+    this.featuredUnread = new Set();
+    this.featuredRead = new Set();
+    if(this.readFeaturedTimeout) {
+      ctx.clearTimeout(this.readFeaturedTimeout);
+      this.readFeaturedTimeout = undefined;
+    }
   };
 
   private async onStickersUpdated(type: 'faved' | 'recent', overwrite: boolean) {
@@ -541,6 +581,22 @@ export class AppStickersManager extends AppManager {
     //return promise;
   } */
 
+  /**
+   * Covered sets — trending, found — carry the set and some of its stickers: kept, so that opening one
+   * starts from what is already here
+   */
+  private saveCoveredStickerSets(sets: StickerSetCovered[]) {
+    sets.forEach((covered) => {
+      this.saveStickerSet({
+        set: covered.set,
+        documents: [],
+        packs: [],
+        keywords: [],
+        ...(covered as StickerSetCovered.stickerSetFullCovered)
+      }, this.getCacheKey(getStickerSetInputById(covered.set)));
+    });
+  }
+
   public async getFeaturedStickers() {
     const res = await this.apiManager.invokeApiHashable({
       method: 'messages.getFeaturedStickers',
@@ -553,13 +609,15 @@ export class AppStickersManager extends AppManager {
         //   }
         // });
 
-        res.sets.forEach((covered) => {
-          this.saveStickerSet({
-            documents: [],
-            packs: [],
-            keywords: [],
-            ...(covered as StickerSetCovered.stickerSetFullCovered)
-          }, this.getCacheKey(getStickerSetInputById(covered.set)));
+        this.saveCoveredStickerSets(res.sets);
+        // * the current sets' read marks are the server's, the older sets' stay as their pages said
+        // (tdesktop's featuredSetsReceived), and a set seen here that is yet to be sent stays read
+        res.sets.forEach((covered) => this.featuredUnread.delete('' + covered.set.id));
+        res.unread.forEach((id) => {
+          const key = '' + id;
+          if(!this.featuredRead.has(key)) {
+            this.featuredUnread.add(key);
+          }
         });
 
         return res;
@@ -567,6 +625,90 @@ export class AppStickersManager extends AppManager {
     });
 
     return res.sets;
+  }
+
+  /**
+   * The trending sets that are no longer among the current ones (`messages.getOldFeaturedStickers`), page by
+   * page as the trending list is scrolled on, the way tdesktop and Android load them. `offset` counts the
+   * old sets loaded so far; `nextOffset` is undefined once there are no more.
+   */
+  public getOldFeaturedStickers(offset: number) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'messages.getOldFeaturedStickers',
+      params: {
+        offset,
+        limit: OLD_FEATURED_STICKERS_LIMIT,
+        hash: 0
+      },
+      processResult: (res) => {
+        if(res._ !== 'messages.featuredStickers') {
+          return {sets: [] as StickerSetCovered[], nextOffset: undefined as number};
+        }
+
+        this.saveCoveredStickerSets(res.sets);
+        res.unread.forEach((id) => this.featuredUnread.add('' + id));
+
+        return {
+          sets: res.sets,
+          // * a short page is the last one (Android's endReached)
+          nextOffset: res.sets.length < OLD_FEATURED_STICKERS_LIMIT ? undefined : offset + res.sets.length
+        };
+      }
+    });
+  }
+
+  /**
+   * Trending sets the user has seen: those the server still counts as unread are marked read
+   * (`messages.readFeaturedStickers`), together with the others seen within a second, as tdesktop's
+   * readFeaturedSetDelayed does. Any other set is left alone, so a list can report all it shows.
+   */
+  public readFeaturedStickerSets(ids: StickerSet.stickerSet['id'][]) {
+    for(const id of ids) {
+      const key = '' + id;
+      if(this.featuredUnread.delete(key)) {
+        this.featuredRead.add(key);
+      }
+    }
+
+    if(!this.featuredRead.size || this.readFeaturedTimeout) {
+      return;
+    }
+
+    this.readFeaturedTimeout = ctx.setTimeout(() => {
+      this.readFeaturedTimeout = undefined;
+      const id = [...this.featuredRead];
+      this.featuredRead.clear();
+      this.apiManager.invokeApi('messages.readFeaturedStickers', {id});
+    }, READ_FEATURED_STICKERS_DELAY);
+  }
+
+  /**
+   * One page of the user's archived sets, newest first: `offsetId` is the last set of the page before
+   * (0 for the first), and `count` how many there are in all — a `limit` of 0 asks for just that.
+   */
+  public getArchivedStickers(offsetId: StickerSet.stickerSet['id'] = 0, limit = ARCHIVED_STICKERS_LIMIT) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'messages.getArchivedStickers',
+      params: {
+        offset_id: offsetId,
+        limit
+      },
+      processResult: (archived) => {
+        const sets = archived.sets.map((covered) => covered.set as StickerSet.stickerSet);
+        // * a set kept here as the user's own that the server lists archived was archived on another
+        // device: so it is here too, documents kept — or Add, which toggles, would remove it instead
+        sets.forEach((set) => {
+          if(this.getCachedStickerSets(set).some(({stickerSet}) => isStickerSetAdded(stickerSet.set))) {
+            this.onStickerSetArchived(set);
+          }
+        });
+
+        return {
+          count: archived.count,
+          sets
+        };
+      }
+    });
   }
 
   public getPromoPremiumStickers() {
@@ -752,15 +894,7 @@ export class AppStickersManager extends AppManager {
         //   }
         // });
 
-        res.sets.forEach((covered) => {
-          this.saveStickerSet({
-            set: covered.set,
-            documents: [],
-            keywords: [],
-            packs: [],
-            ...(covered as StickerSetCovered.stickerSetFullCovered)
-          }, this.getCacheKey(getStickerSetInputById(covered.set)));
-        });
+        this.saveCoveredStickerSets(res.sets);
 
         return res;
       }
@@ -900,16 +1034,20 @@ export class AppStickersManager extends AppManager {
       } */
 
       const stickers = [...new Set(cachedStickersAnimated.concat(cachedStickersStatic, foundStickers))]/* .filter((doc) => !doc.animated) */;
-
-      forEachReverse(stickers, (sticker, idx, arr) => {
-        if((sticker.sticker === StickerType.WebM && !getEnvironment().IS_WEBM_SUPPORTED) ||
-          (excludePremiumEffectStickers && !this.rootScope.premium && getStickerEffectThumb(sticker))) {
-          arr.splice(idx, 1);
-        }
-      });
-
-      return stickers;
+      return this.filterShowableStickers(stickers, excludePremiumEffectStickers);
     });
+  }
+
+  /** Leaves out (in place) what this browser cannot play, and premium effects when asked to */
+  private filterShowableStickers(stickers: MyDocument[], excludePremiumEffectStickers?: boolean) {
+    forEachReverse(stickers, (sticker, idx, arr) => {
+      if((sticker.sticker === StickerType.WebM && !getEnvironment().IS_WEBM_SUPPORTED) ||
+        (excludePremiumEffectStickers && !this.rootScope.premium && getStickerEffectThumb(sticker))) {
+        arr.splice(idx, 1);
+      }
+    });
+
+    return stickers;
   }
 
   private async splitSearchQuery(query: string): Promise<string[]> {
@@ -931,11 +1069,77 @@ export class AppStickersManager extends AppManager {
     return emojis;
   }
 
+  /**
+   * The user's own stickers — installed and recent — for the emoji the query stands for. The server's
+   * search for the same query is `searchStickersOnServer`; the official clients show these first.
+   */
   public async searchStickers(query: string): Promise<MyDocument[]> {
     return this.getStickersByEmoticon({
       emoticon: await this.splitSearchQuery(query),
       includeOurStickers: true
     });
+  }
+
+  /**
+   * The languages a sticker query is taken to be in: the interface's and English — those the local search
+   * reads emoji keywords in (AppEmojiManager.getBothEmojiKeywords). tdesktop sends the input method's,
+   * which a browser does not tell.
+   */
+  private getStickersSearchLangCodes() {
+    return filterUnique([this.networkerFactory.language, App.langPackCode]);
+  }
+
+  /**
+   * One page of the server's sticker search (`messages.searchStickers`) for the query as typed, like
+   * tdesktop's StickersListWidget: `offset` 0 is the first page, and the page's `nextOffset` the one after
+   * it — undefined once there is nothing more. Pages are kept for the session per query and languages;
+   * `langCodes` are the interface's unless a page is asked for again as it was (a file reference's refresh).
+   */
+  public searchStickersOnServer(
+    query: string,
+    offset = 0,
+    overwrite?: boolean,
+    langCodes = this.getStickersSearchLangCodes()
+  ): Promise<FoundStickersPage> {
+    query = query.trim();
+    if(!query) {
+      return Promise.resolve({stickers: []});
+    }
+
+    const key = [langCodes.join(','), offset, query].join('\n');
+    const cached = this.foundStickers.get(key);
+    if(cached && !overwrite) {
+      return cached;
+    }
+
+    const promise = this.apiManager.invokeApi('messages.searchStickers', {
+      q: query,
+      emoticon: '',
+      lang_code: langCodes,
+      offset,
+      limit: SEARCH_STICKERS_LIMIT,
+      hash: 0
+    }).then((found): FoundStickersPage => {
+      const stickers = found._ === 'messages.foundStickers' ?
+        // * the languages too: a page asked for in others may not hold the same stickers
+        this.saveStickers(found.stickers, {type: 'stickerSearchQuery', q: query, offset, langCodes}) :
+        [];
+
+      return {
+        stickers: this.filterShowableStickers(stickers.slice()),
+        // * only an offset past this one goes on, as tdesktop's searchStickersResultsDone reads it
+        nextOffset: found.next_offset > offset ? found.next_offset : undefined
+      };
+    }, (err) => {
+      if(this.foundStickers.get(key) === promise) {
+        this.foundStickers.delete(key);
+      }
+
+      throw err;
+    });
+
+    this.foundStickers.set(key, promise);
+    return promise;
   }
 
   public clearRecentStickers() {

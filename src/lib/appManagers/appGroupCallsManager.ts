@@ -8,7 +8,7 @@
 import type GroupCallConnectionInstance from '@lib/calls/groupCallConnectionInstance';
 import safeReplaceObject from '@helpers/object/safeReplaceObject';
 import {nextRandomUint} from '@helpers/random';
-import {Chat, ChatFull, DataJSON, GroupCall, GroupCallParticipant, GroupCallParticipantVideoSourceGroup, GroupCallStreamChannel, InputFileLocation, InputGroupCall, Peer, PhoneGroupCall, PhoneGroupParticipants, PhoneJoinGroupCall, PhoneJoinGroupCallPresentation, Update, Updates} from '@layer';
+import {Chat, ChatFull, DataJSON, GroupCall, GroupCallParticipant, GroupCallParticipantVideoSourceGroup, GroupCallStreamChannel, InputFileLocation, InputGroupCall, InputPeer, Peer, PhoneGroupCall, PhoneGroupParticipants, PhoneJoinGroupCall, PhoneJoinGroupCallPresentation, Update, Updates} from '@layer';
 import {FOLDER_ID_ALL, NULL_PEER_ID} from '@appManagers/constants';
 import {AppManager} from '@appManagers/manager';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
@@ -26,6 +26,7 @@ import {
 import {toTelegramSource} from '@lib/calls/utils';
 import {CONFERENCE_PREVIEW_PARTICIPANTS_LIMIT, GROUP_CALL_PARTICIPANTS_LOAD_LIMIT} from '@lib/calls/constants';
 import pause from '@helpers/schedulers/pause';
+import filterUnique from '@helpers/array/filterUnique';
 
 export type GroupCallId = GroupCall['id'];
 
@@ -41,6 +42,18 @@ export type MyGroupCall = GroupCall | Exclude<
 >;
 
 export type GroupCallConnectionType = 'main' | 'presentation';
+
+/**
+ * Who we can be shown as in a chat's video chat — the account and the channels
+ * it may speak as there — and the one to start from.
+ */
+export type GroupCallJoinAsOptions = {
+  peerIds: PeerId[],
+  /** The chat's saved choice, when it is still one of `peerIds`. */
+  savedPeerId?: PeerId,
+  /** What to preselect: the saved choice, else the account, else the first (tdesktop processList). */
+  defaultPeerId: PeerId
+};
 
 export type JoinGroupCallJsonPayload = {
   fingerprints: {
@@ -60,6 +73,8 @@ export type JoinGroupCallJsonPayload = {
 const MAX_CONFERENCE_ROSTER_PAGES = 20;
 // How many CALL_MIGRATE_x hops one RTMP stream-channels fetch may follow.
 const MAX_RTMP_STATE_MIGRATIONS = 3;
+// Users per phone.inviteToGroupCall request (tdesktop kMaxInvitePerSlice).
+const MAX_INVITES_PER_REQUEST = 10;
 
 // A `min` participant row is the server's non-personalised broadcast form: it
 // carries no `muted_by_you` / `volume` / `volume_by_admin` for THIS viewer
@@ -418,10 +433,14 @@ export class AppGroupCallsManager extends AppManager {
     const participantPeerId = getPeerId(participant.peer);
     const cachedParticipant = optimistic ? undefined : this.getCachedParticipants(groupCallId).get(participantPeerId);
     const cachedParticipantRevision = cachedParticipant && this.participantRevisions.get(cachedParticipant);
-    const peerId = participant.pFlags.self ? NULL_PEER_ID : participantPeerId;
+    // Our own row is addressed as whoever we joined as: a channel when we speak as one
+    // (tdesktop sendSelfUpdate passes joinAs()->input()).
+    const peerId = participant.pFlags.self && (!participantPeerId || participantPeerId.isUser()) ?
+      NULL_PEER_ID :
+      participantPeerId;
     const updates = await this.apiManager.invokeApiSingle('phone.editGroupCallParticipant', {
       call: this.getGroupCallInput(groupCallId),
-      participant: peerId === NULL_PEER_ID ? this.appPeersManager.getInputPeerSelf() : this.appPeersManager.getInputPeerById(peerId),
+      participant: this.getJoinAsInputPeer(peerId),
       muted: options.muted,
       volume: options.volume,
       raise_hand: options.raiseHand,
@@ -454,6 +473,54 @@ export class AppGroupCallsManager extends AppManager {
 
   public getGroupCall(id: GroupCallId) {
     return this.groupCalls.get(id);
+  }
+
+  /** The account itself unless `peerId` is someone else we speak as. */
+  private getJoinAsInputPeer(peerId?: PeerId): InputPeer {
+    return !peerId || peerId === this.rootScope.myId ?
+      this.appPeersManager.getInputPeerSelf() :
+      this.appPeersManager.getInputPeerById(peerId);
+  }
+
+  /**
+   * phone.getGroupCallJoinAs plus the chat's saved `groupcall_default_join_as`, resolved the way
+   * tdesktop's ChooseJoinAsProcess::processList does.
+   */
+  public async getGroupCallJoinAs(peerId: PeerId): Promise<GroupCallJoinAsOptions> {
+    const [result, chatFull] = await Promise.all([
+      this.apiManager.invokeApiSingle('phone.getGroupCallJoinAs', {
+        peer: this.appPeersManager.getInputPeerById(peerId)
+      }),
+      // only for the preselection: without it the account is preselected
+      Promise.resolve(this.appProfileManager.getChatFull(peerId.toChatId())).catch((err): ChatFull => {
+        this.log.warn('chat full for the default join-as failed', err);
+        return undefined;
+      })
+    ]);
+
+    this.appPeersManager.saveApiPeers(result);
+    const peerIds = filterUnique(result.peers.map((peer) => getPeerId(peer)));
+    const saved = (chatFull as ChatFull.chatFull | ChatFull.channelFull)?.groupcall_default_join_as;
+    const savedPeerId = saved && peerIds.includes(getPeerId(saved)) ? getPeerId(saved) : undefined;
+    const {myId} = this.rootScope;
+    return {
+      peerIds,
+      savedPeerId,
+      defaultPeerId: savedPeerId ?? (peerIds.includes(myId) ? myId : peerIds[0])
+    };
+  }
+
+  public async saveDefaultGroupCallJoinAs(peerId: PeerId, joinAsPeerId: PeerId): Promise<void> {
+    await this.apiManager.invokeApi('phone.saveDefaultGroupCallJoinAs', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      join_as: this.getJoinAsInputPeer(joinAsPeerId)
+    });
+
+    // what the next getGroupCallJoinAs preselects, without refetching the chat
+    const chatFull = this.appProfileManager.getCachedFullChat(peerId.toChatId());
+    if(chatFull && chatFull._ !== 'communityFull') {
+      chatFull.groupcall_default_join_as = this.appPeersManager.getOutputPeer(joinAsPeerId);
+    }
   }
 
   /**
@@ -1181,7 +1248,7 @@ export class AppGroupCallsManager extends AppManager {
     if(options.type === 'main') {
       const request: PhoneJoinGroupCall = {
         call: groupCallInput,
-        join_as: this.appPeersManager.getInputPeerSelf(),
+        join_as: this.getJoinAsInputPeer(options.joinAs),
         params,
         muted: options.isMuted,
         video_stopped: !options.joinVideo
@@ -1493,6 +1560,47 @@ export class AppGroupCallsManager extends AppManager {
     this.apiUpdatesManager.processUpdateMessage(updates);
 
     return {call, link};
+  }
+
+  /** tdesktop GroupCall::changeTitle; an empty title gives the call back the chat's name. */
+  public async editGroupCallTitle(id: GroupCallId, title: string): Promise<void> {
+    const updates = await this.apiManager.invokeApi('phone.editGroupCallTitle', {
+      call: this.getGroupCallInput(id),
+      title
+    });
+
+    this.apiUpdatesManager.processUpdateMessage(updates);
+  }
+
+  /**
+   * phone.inviteToGroupCall in slices, the way tdesktop GroupCall::inviteUsers sends them.
+   * Resolves with the users of the slices the server accepted; a refused slice is not an
+   * error of the others.
+   */
+  public async inviteToGroupCall(id: GroupCallId, userIds: UserId[]): Promise<UserId[]> {
+    const call = this.getGroupCallInput(id);
+    const slices: UserId[][] = [];
+    for(let i = 0; i < userIds.length; i += MAX_INVITES_PER_REQUEST) {
+      slices.push(userIds.slice(i, i + MAX_INVITES_PER_REQUEST));
+    }
+
+    const invited = await Promise.all(slices.map(async(slice) => {
+      let updates: Updates;
+      try {
+        updates = await this.apiManager.invokeApi('phone.inviteToGroupCall', {
+          call,
+          users: slice.map((userId) => this.appUsersManager.getUserInput(userId))
+        });
+      } catch(err) {
+        this.log.warn('invite to group call failed', slice, err);
+        return [];
+      }
+
+      this.apiUpdatesManager.processUpdateMessage(updates);
+      return slice;
+    }));
+
+    return invited.flat();
   }
 
   // Wraps phone.exportGroupCallInvite. `can_self_unmute` is the listener /

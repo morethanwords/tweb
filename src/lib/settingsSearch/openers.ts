@@ -37,7 +37,9 @@ export const NON_NAVIGABLE_SECTIONS = new Set([
   'AppBusinessHoursDayTab',
   'AppTimezoneTab',
   // the debugging tools under the version line, kept out of the way like every client's debug menu
-  'AppExperimentalTab'
+  'AppExperimentalTab',
+  // one chat type's exceptions, whose list the Notifications tab keeps
+  'AppNotificationExceptionsTab'
 ]);
 
 /**
@@ -123,6 +125,8 @@ const SECTION_OPENERS: {[sectionId: string]: SectionOpener} = {
   // a free account gets the Business promo instead, as it does from Edit Profile
   AppBusinessHoursTab: (slider) => hotReloadGuard.tabs.openBusinessEditorTab(slider, hotReloadGuard.tabs.AppBusinessHoursTab),
   AppBusinessLocationTab: (slider) => hotReloadGuard.tabs.openBusinessEditorTab(slider, hotReloadGuard.tabs.AppBusinessLocationTab),
+  AppBusinessChatLinksTab: (slider) => hotReloadGuard.tabs.openBusinessEditorTab(slider, hotReloadGuard.tabs.AppBusinessChatLinksTab),
+  AppBusinessIntroTab: (slider) => hotReloadGuard.tabs.openBusinessEditorTab(slider, hotReloadGuard.tabs.AppBusinessIntroTab),
   // the current passcode is asked for first, as it is from Privacy and Security
   AppPasscodeLockTab: (slider) => hotReloadGuard.tabs.AppPasscodeLockTab.openChecked(slider),
   // and so is the cloud password while one is set

@@ -1,0 +1,16 @@
+// * the chat's background, as wide as the tab, the greeting in the middle of it
+.preview {
+  padding: 1.5rem 0;
+  margin-bottom: .5rem;
+}
+
+// * the empty chat's greeting bubble (`.empty-bubble-placeholder`), standing in the flow here instead
+// * of over the middle of a chat; a picture of it, so it takes no press
+.bubble.bubble {
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
+  margin: 0 auto;
+  pointer-events: none;
+}

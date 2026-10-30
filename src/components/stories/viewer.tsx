@@ -41,8 +41,6 @@ import middlewarePromise from '@helpers/middlewarePromise';
 import emoticonsDropdown from '@components/emoticonsDropdown';
 import showStoryViewersPopup from '@components/popups/storyViewers';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
-import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
-import {copyTextToClipboard} from '@helpers/clipboard';
 import {hideToast, toastNew} from '@components/toast';
 import debounce from '@helpers/schedulers/debounce';
 import appDownloadManager from '@lib/appDownloadManager';
@@ -108,7 +106,7 @@ import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
 import {showStorySettingsForStory} from '@components/popups/storySettings';
 import {useAppConfig} from '@stores/appState';
 import {wrapStoriesStealthModeDuration} from '@components/wrappers/wrapDuration';
-import {handleShareStory, makeStoryLink} from './share';
+import {copyStoryLink, handleShareStory, hasStoryLink} from './share';
 import createListenerSetter from '@helpers/solid/createListenerSetter';
 import pillStyles from '@components/stories/storyPill.module.scss';
 import StoryWeatherArea, {toggleTemperatureUnit} from '@components/stories/weatherArea';
@@ -1048,6 +1046,10 @@ const Stories = (props: {
   const onShareButtonClick = (e: MouseEvent, listenTo: HTMLElement) => {
     const story = currentStory() as StoryItem.storyItem;
     if(story.pFlags.noforwards) {
+      if(!hasStoryLink(story, props.state.peerId)) {
+        return;
+      }
+
       const {open} = createContextMenu({
         buttons: [{
           icon: 'link',
@@ -1692,8 +1694,6 @@ const Stories = (props: {
     const date = story.date;
     const edited = (story as StoryItem.storyItem).pFlags.edited;
     const isPublic = !!(story as StoryItem.storyItem).pFlags.public;
-    const peer = apiManagerProxy.getPeer(props.state.peerId);
-    const usernames = getPeerActiveUsernames(peer);
     // only a track that can be named gets a pill — a nameless document would render an empty one.
     // `unwrap` like the media above: the panel hands this document to a manager, and a Solid store
     // proxy cannot be structure-cloned across the worker port
@@ -1705,7 +1705,8 @@ const Stories = (props: {
     setNoSound(noSound);
     setVideoDuration(videoDuration && (videoDuration * 1000));
     setIsPublic(isPublic);
-    setCanShareStory(isPublic && (!(story as StoryItem.storyItem).pFlags.noforwards || !!usernames[0]));
+    // * a story that cannot be forwarded is shared by its link alone
+    setCanShareStory(isPublic && (!(story as StoryItem.storyItem).pFlags.noforwards || hasStoryLink(story, props.state.peerId)));
     // shareButton.classList.toggle('hide', !isPublic);
   };
 
@@ -2346,10 +2347,7 @@ const Stories = (props: {
   );
 
   const copyLink = () => {
-    copyTextToClipboard(makeStoryLink(getPeerActiveUsernames(peer)[0], currentStory().id));
-    toastNew({
-      langPackKey: 'LinkCopied'
-    });
+    copyStoryLink(bindManagersToSession(rootScope.managers), props.state.peerId, currentStory().id);
   };
 
   const topMenuOptions: Partial<Parameters<typeof createContextMenu>[0]> = {
@@ -2951,14 +2949,7 @@ const Stories = (props: {
       icon: 'link',
       text: 'CopyLink',
       onClick: copyLink,
-      verify: () => {
-        if(story._ !== 'storyItem') {
-          return false;
-        }
-
-        // const appConfig = await rootScope.managers.apiManager.getAppConfig();
-        return (story.pFlags.public/*  || appConfig.stories_export_nopublic_link */) && !!getPeerActiveUsernames(peer)[0];
-      }
+      verify: () => hasStoryLink(story, peerId)
     }, {
       icon: STORY_QUALITY_ICON,
       text: 'Story.ContextMenuSD',

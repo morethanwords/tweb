@@ -4,8 +4,9 @@ import {
 } from '@components/sharedMediaScrollDate';
 
 describe('shared media scroll date', () => {
-  test('supports media and stories tabs', () => {
+  test('supports the media grids and stories tabs', () => {
     expect(supportsSharedMediaScrollDate('media')).toBe(true);
+    expect(supportsSharedMediaScrollDate('gifs')).toBe(true);
     expect(supportsSharedMediaScrollDate('stories')).toBe(true);
     expect(supportsSharedMediaScrollDate('links')).toBe(false);
   });

@@ -483,12 +483,18 @@ const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
   }),
   'channelAdminLogEventActionParticipantJoinByRequest': ({action}) => ({
     group: 'participants',
-    Message: () => i18n('AdminRecentActionMessage.ParticipantJoinedByRequest'),
+    Message: () => i18n(action.invite._ === 'chatInvitePublicJoinRequests' ?
+      'AdminRecentActionMessage.ParticipantJoinedByPublicRequest' :
+      'AdminRecentActionMessage.ParticipantJoinedByRequest'
+    ),
     ExpandableContent: () => (
-      <ParticipantKeyValue
-        label={i18n('AdminRecentActions.ApprovedBy')}
-        peerId={action.approved_by.toPeerId()}
-      />
+      <>
+        <InviteKeyValue invite={action.invite} />
+        <ParticipantKeyValue
+          label={i18n('AdminRecentActions.ApprovedBy')}
+          peerId={action.approved_by.toPeerId()}
+        />
+      </>
     )
   }),
   'channelAdminLogEventActionToggleNoForwards': ({action}) => ({

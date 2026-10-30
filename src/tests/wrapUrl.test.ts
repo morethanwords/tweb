@@ -72,4 +72,40 @@ describe('wrapUrl Telegram links', () => {
     expect(() => wrapUrl(url)).not.toThrow();
     expect(wrapUrl(url)).toEqual({url, onclick: undefined});
   });
+
+  test('sends a contact token link to its own handler, not to a username', () => {
+    vi.stubGlobal('im', vi.fn());
+    vi.stubGlobal('contact', vi.fn());
+    vi.stubGlobal('tg_contact', vi.fn());
+
+    expect(wrapUrl('https://t.me/contact/AbC123_-').onclick).toBe('contact');
+    expect(wrapUrl('tg://contact?token=AbC123').onclick).toBe('tg_contact');
+    // with no token there is nothing but a name
+    expect(wrapUrl('https://t.me/contact').onclick).toBe('im');
+  });
+});
+
+describe('wrapUrl unknown tg:// links', () => {
+  test('hands a tg:// link no handler knows to the server-asking one', () => {
+    vi.stubGlobal('unknownDeepLink', vi.fn());
+    vi.stubGlobal('tg_resolve', vi.fn());
+
+    expect(wrapUrl('tg://nothing_like_it?x=1').onclick).toBe('unknownDeepLink');
+    expect(wrapUrl('tg://nothing/like/it').onclick).toBe('unknownDeepLink');
+    // a known one keeps its own
+    expect(wrapUrl('tg://resolve?domain=durov').onclick).toBe('tg_resolve');
+  });
+
+  test('leaves a link plain where nothing asks the server', () => {
+    expect(wrapUrl('tg://nothing_like_it').onclick).toBeUndefined();
+  });
+
+  test('keeps an unsafe Instant View link plain, and a web link without a handler too', () => {
+    vi.stubGlobal('unknownDeepLink', vi.fn());
+    vi.stubGlobal('tg_iv', vi.fn());
+
+    expect(wrapUrl('tg://iv?url=' + encodeURIComponent('https://example.com/')).onclick).toBeUndefined();
+    // `call` is not registered where group calls are not supported: not a tg:// link either way
+    expect(wrapUrl('https://t.me/call/abc').onclick).toBeUndefined();
+  });
 });

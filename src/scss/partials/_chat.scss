@@ -310,6 +310,35 @@
   }
 }
 
+// * "Rate transcription" over 👍 and 👎, on top of a voice message's menu
+.btn-menu-rate-transcription {
+  display: flex;
+  flex-direction: column;
+
+  &-title {
+    padding: .25rem .75rem 0;
+    text-align: center;
+    color: var(--secondary-text-color);
+    font-size: var(--font-size-12);
+    line-height: var(--line-height-14);
+  }
+
+  &-buttons {
+    display: flex;
+  }
+
+  &-button.btn-menu-item {
+    flex: 1 1 0;
+    justify-content: center;
+    padding-inline: .5rem;
+    font-size: var(--font-size-20);
+
+    .btn-menu-item-text {
+      flex: 0 0 auto;
+    }
+  }
+}
+
 @keyframes chat-input-ai-editor-button-star-animation {
   0% {
     opacity: 0;

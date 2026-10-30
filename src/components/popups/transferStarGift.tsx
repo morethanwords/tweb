@@ -238,10 +238,7 @@ export default function transferStarGift(gift: MyStarGift, toPeerId?: PeerId): P
           button: {
             langKey: 'Confirm'
           },
-          callback: (password) => rootScope.managers.apiManager.invokeApi('payments.getStarGiftWithdrawalUrl', {
-            stargift: input,
-            password: password
-          })
+          callback: (password) => rootScope.managers.appGiftsManager.getGiftWithdrawalUrl(input, password)
         })
 
         safeWindowOpen(url.url);

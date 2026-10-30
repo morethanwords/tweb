@@ -177,9 +177,26 @@
     margin-top: 3px;
   }
 
-  &-content-media {
+  &-content-media,
+  &-content-gifs,
+  &-content-botPreviews {
     .grid-item {
       overflow: hidden;
+
+      // * the global focus ring is painted under the positioned thumbnail (`.grid-item-media`) and never seen:
+      // * an overlay above it draws the ring instead, the way the wallpapers' grid does (`.background-item`)
+      :where(.a11y) &:focus-visible {
+        outline: none;
+
+        &:after {
+          content: " ";
+          position: absolute;
+          inset: 0;
+          border: var(--focus-ring-width) solid var(--focus-ring-color);
+          box-shadow: inset 0 0 0 var(--focus-ring-width) var(--surface-color);
+          pointer-events: none;
+        }
+      }
     }
 
     /* span.video-play {
@@ -213,6 +230,7 @@
   }
 
   &-content-media,
+  &-content-gifs,
   &-content-stories {
     .checkbox-field {
       inset-inline-end: .25rem;
@@ -244,6 +262,8 @@
   }
 
   &-container-media,
+  &-container-gifs,
+  &-container-botPreviews,
   &-container-stories {
     padding: 0 1px 1px;
   }
@@ -504,6 +524,16 @@
 
           :where(.a11y) & {
             visibility: visible;
+          }
+        }
+
+        // * the bar of another list, waiting in the same row (`SelectionPlate`); over `is-single`'s too
+        .search-super-selection-idle .search-super-selection-container {
+          opacity: 0 !important;
+          pointer-events: none;
+
+          :where(.a11y) & {
+            visibility: hidden;
           }
         }
       }

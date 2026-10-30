@@ -117,6 +117,19 @@ defineStories('Chat & moderation', [
     }
   },
   {
+    id: 'report/profilePhoto',
+    title: 'Report a profile photo',
+    fixtureOnly: true,
+    managers: {
+      appProfileManager: {reportProfilePhoto: () => true}
+    },
+    open: async(ctx) => {
+      const {showProfilePhotoReport} = await import('@components/popups/reportAd');
+      // * the photo goes no further than the report, which the sandbox answers
+      showProfilePhotoReport(ctx.peer('private'), 'sandbox-photo', 'ReportProfilePhotoTitle');
+    }
+  },
+  {
     id: 'joinChatInvite',
     title: 'Join a chat by invite link',
     open: async(ctx) => {

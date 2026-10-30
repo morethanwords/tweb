@@ -65,6 +65,9 @@ export interface MTAppConfig {
   default_emoji_statuses_stickerset_id?:     string;
   premium_promo_order?:                      PremiumPromoFeatureType[];
   business_promo_order?:                     PremiumPromoFeatureType[];
+  business_chat_links_limit?:                number;
+  intro_title_length_limit?:                 number;
+  intro_description_length_limit?:           number;
   premium_bot_username?:                     string;
   premium_invoice_slug?:                     string;
   premium_playmarket_direct_currency_list?:  string[];

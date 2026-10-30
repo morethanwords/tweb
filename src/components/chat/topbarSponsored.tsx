@@ -24,6 +24,8 @@ import {createTopbarPlate, TopbarPlateController} from '@components/chat/topbarP
 import I18n from '@lib/langPack';
 import A11yButton from '@components/a11yButton';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import rootScope from '@lib/rootScope';
+import {subscribeOn} from '@helpers/solid/subscribeOn';
 
 export type ChatSponsoredPlate = TopbarPlateController & {
   setPeerId: (peerId: PeerId) => void
@@ -36,16 +38,29 @@ function SponsoredPlateBody(props: {
   setHidden: (hidden: boolean) => void
 }) {
   const [message, setMessage] = createSignal<SponsoredMessage>();
+  // * a toggle of Do Not Hide Ads outdates an answer on its way
+  let generation = 0;
 
-  createEffect(on(props.peerId, (peerId$) => {
+  const hide = () => {
     setMessage(undefined);
     props.setHidden(true);
+  };
+
+  // * turned off, the bot's ad goes at once, as a channel's do (`ChatBubbles`); turned on, the next chat asks again
+  subscribeOn(rootScope)('sponsored_messages_toggle', (enabled) => {
+    ++generation;
+    if(!enabled) hide();
+  });
+
+  createEffect(on(props.peerId, (peerId$) => {
+    hide();
     if(peerId$ === NULL_PEER_ID || !peerId$.isUser()) return;
     if(!props.chat.isBot) return;
 
+    const requestGeneration = ++generation;
     props.managers.appMessagesManager.getSponsoredMessage(peerId$)
     .then((m) => {
-      if(props.peerId() !== peerId$) return;
+      if(props.peerId() !== peerId$ || generation !== requestGeneration) return;
 
       if(m._ === 'messages.sponsoredMessages' && m.messages.length) {
         setMessage(m.messages[0]);

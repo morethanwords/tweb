@@ -2,12 +2,14 @@ import {
   AccountConnectedBots,
   BusinessBotRecipients,
   BusinessBotRights,
+  BusinessChatLink,
   BusinessIntro,
   BusinessLocation,
   BusinessWorkHours,
   ConnectedBot,
   GeoPoint,
   InputBusinessBotRecipients,
+  InputBusinessChatLink,
   InputUser,
   MessageEntity,
   Update,
@@ -15,12 +17,15 @@ import {
 } from '@layer';
 import {AppManager} from '@appManagers/manager';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
+import getDocumentInput from '@appManagers/utils/docs/getDocumentInput';
 import {
   DEFAULT_AUTHORIZATION_AUTOCONFIRM_PERIOD,
   normalizeAuthorizationAutoconfirmPeriod
 } from '@appManagers/utils/authorizationAutoconfirmPeriod';
 import ctx from '@environment/ctx';
 import isSameUserId from '@helpers/isSameUserId';
+import createSerializedQueue, {SerializedQueue} from '@helpers/createSerializedQueue';
+import noop from '@helpers/noop';
 
 const MAX_TIMEOUT = 0x7fffffff;
 
@@ -72,6 +77,38 @@ export function filterExpiredBotConnectionReviews(
   autoconfirmPeriod = DEFAULT_AUTHORIZATION_AUTOCONFIRM_PERIOD
 ) {
   return reviews.filter((review) => !review.date || review.date + autoconfirmPeriod > now);
+}
+
+/** A link to chat as it is edited: the preset message and the name only its owner sees. */
+export type BusinessChatLinkDraft = {
+  message: string,
+  entities?: MessageEntity[],
+  title?: string
+};
+
+/** The start page as it is edited: an empty title and message show the defaults, no sticker a random one. */
+export type BusinessIntroDraft = {
+  title: string,
+  description: string,
+  stickerId?: DocId
+};
+
+/**
+ * What `account.createBusinessChatLink` and `editBusinessChatLink` take: an empty name and no entities
+ * are left out, as tdesktop's `Api::ChatLinks` sends them.
+ */
+export function toInputBusinessChatLink(
+  draft: BusinessChatLinkDraft,
+  getInputEntities: (entities: MessageEntity[]) => MessageEntity[] | undefined
+): InputBusinessChatLink.inputBusinessChatLink {
+  const title = draft.title?.trim();
+  const entities = draft.entities?.length ? getInputEntities(draft.entities) : undefined;
+  return {
+    _: 'inputBusinessChatLink',
+    message: draft.message,
+    entities: entities?.length ? entities : undefined,
+    title: title || undefined
+  };
 }
 
 export function normalizeBusinessBotUsername(query: string) {
@@ -133,6 +170,15 @@ export default class AppBusinessManager extends AppManager {
   private botConnectionReviewsLoaded = false;
   private authorizationAutoconfirmPeriod = DEFAULT_AUTHORIZATION_AUTOCONFIRM_PERIOD;
   private authorizationAutoconfirmPeriodVersion = 0;
+
+  /** The links to chat as the server last gave them, by the link: what a change of one part keeps the rest of */
+  private chatLinks = new Map<string, BusinessChatLink.businessChatLink>();
+  /** One link's edits and its deletion go out one at a time, each from what the one before it left */
+  private chatLinkWrites = new Map<string, SerializedQueue>();
+  /** Counts the writes to links as they start and as they end */
+  private chatLinkWriteVersion = 0;
+  /** Each link's last such count: a list asked for before it knows less of the link than `chatLinks` does */
+  private chatLinkWritten = new Map<string, number>();
 
   protected after() {
     this.rootScope.addEventListener('app_config', (appConfig) => {
@@ -219,6 +265,147 @@ export default class AppBusinessManager extends AppManager {
     });
 
     return businessLocation;
+  }
+
+  /**
+   * `account.updateBusinessIntro` — the start page others see in an empty chat with this account.
+   * Nothing to show (no title, no message, no sticker) resets it to the default one, as tdesktop's
+   * `BusinessInfo::saveChatIntro` does.
+   */
+  public async updateBusinessIntro(draft?: BusinessIntroDraft) {
+    const title = draft?.title?.trim() || '';
+    const description = draft?.description?.trim() || '';
+    const sticker = draft?.stickerId ? this.appDocsManager.getDoc(draft.stickerId) : undefined;
+    const hasIntro = !!(title || description || sticker);
+
+    const result = await this.apiManager.invokeApi('account.updateBusinessIntro', {
+      intro: hasIntro ? {
+        _: 'inputBusinessIntro',
+        title,
+        description,
+        sticker: sticker ? getDocumentInput(sticker) : undefined
+      } : undefined
+    });
+
+    if(!result) {
+      throw new Error('ACCOUNT_UPDATE_BUSINESS_INTRO_FAILED');
+    }
+
+    const intro: BusinessIntro.businessIntro = hasIntro ? {
+      _: 'businessIntro',
+      title,
+      description,
+      sticker
+    } : undefined;
+
+    this.appProfileManager.modifyCachedFullUser(this.rootScope.myId.toUserId(), (userFull) => {
+      if(intro) userFull.business_intro = intro;
+      else delete userFull.business_intro;
+    });
+
+    return intro;
+  }
+
+  /**
+   * `account.getBusinessChatLinks` — the account's links to chat, in the server's order. Asked once the
+   * writes on their way have gone out, so that it has them as the server does; a link written to while
+   * it was on its way (from another tab, say) is taken as that write left it, not as the answer has it.
+   */
+  public async getBusinessChatLinks() {
+    await Promise.all([...this.chatLinkWrites.values()].map((queue) => queue.enqueue(noop)));
+    const askedAt = this.chatLinkWriteVersion;
+    const isWrittenSince = (link: string) => (this.chatLinkWritten.get(link) ?? 0) > askedAt;
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'account.getBusinessChatLinks',
+      params: {},
+      processResult: (result) => {
+        this.appPeersManager.saveApiPeers(result);
+        const chatLinks = new Map<string, BusinessChatLink.businessChatLink>();
+        (result.links as BusinessChatLink.businessChatLink[]).forEach((link) => {
+          // * a link deleted since is not there any more
+          const kept = isWrittenSince(link.link) ? this.chatLinks.get(link.link) : link;
+          if(kept) chatLinks.set(link.link, kept);
+        });
+        // * and one created since comes after the rest, the newest last as the server lists them
+        this.chatLinks.forEach((link, key) => {
+          if(isWrittenSince(key) && !chatLinks.has(key)) chatLinks.set(key, link);
+        });
+        this.chatLinks = chatLinks;
+        return [...chatLinks.values()];
+      }
+    });
+  }
+
+  public async createBusinessChatLink(draft: BusinessChatLinkDraft) {
+    const link = await this.apiManager.invokeApi('account.createBusinessChatLink', {
+      link: this.toInputBusinessChatLink(draft)
+    }) as BusinessChatLink.businessChatLink;
+    this.chatLinks.set(link.link, link);
+    this.markChatLinkWritten(link.link);
+    return link;
+  }
+
+  private markChatLinkWritten(link: string) {
+    this.chatLinkWritten.set(link, ++this.chatLinkWriteVersion);
+  }
+
+  private writeBusinessChatLink<T>(link: string, send: () => Promise<T>) {
+    let queue = this.chatLinkWrites.get(link);
+    if(!queue) {
+      this.chatLinkWrites.set(link, queue = createSerializedQueue());
+    }
+
+    return queue.enqueue(async() => {
+      this.markChatLinkWritten(link);
+      try {
+        return await send();
+      } finally {
+        this.markChatLinkWritten(link);
+      }
+    });
+  }
+
+  /**
+   * `account.editBusinessChatLink`. The link itself is the slug the server takes, the way tdesktop
+   * and Android pass it; the name and the message are replaced together, so what `changes` leaves out
+   * is taken from the link as the edits before this one left it, when this one goes out.
+   */
+  public editBusinessChatLink(link: string, changes: Partial<BusinessChatLinkDraft>) {
+    return this.writeBusinessChatLink(link, async() => {
+      const current = this.chatLinks.get(link);
+      if(!current) {
+        throw new Error('BUSINESS_CHAT_LINK_NOT_FOUND');
+      }
+
+      const draft: BusinessChatLinkDraft = {
+        message: current.message,
+        entities: current.entities,
+        title: current.title,
+        ...changes
+      };
+      const edited = await this.apiManager.invokeApi('account.editBusinessChatLink', {
+        slug: link,
+        link: this.toInputBusinessChatLink(draft)
+      }) as BusinessChatLink.businessChatLink;
+      this.chatLinks.set(link, edited);
+      return edited;
+    });
+  }
+
+  public deleteBusinessChatLink(link: string) {
+    return this.writeBusinessChatLink(link, async() => {
+      const result = await this.apiManager.invokeApi('account.deleteBusinessChatLink', {slug: link});
+      if(!result) {
+        throw new Error('ACCOUNT_DELETE_BUSINESS_CHAT_LINK_FAILED');
+      }
+
+      this.chatLinks.delete(link);
+      return result;
+    });
+  }
+
+  private toInputBusinessChatLink(draft: BusinessChatLinkDraft) {
+    return toInputBusinessChatLink(draft, (entities) => this.appMessagesManager.getInputEntities(entities));
   }
 
   public resolveBusinessChatLink(slug: string) {

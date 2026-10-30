@@ -9,7 +9,7 @@ import {AnimationList} from '@helpers/solid/animationList';
 import Animated from '@helpers/solid/animations';
 import {ChipTab, ChipTabs} from '@components/chipTabs';
 import {I18nTsx} from '@helpers/solid/i18n';
-import I18n from '@lib/langPack';
+import I18n, {i18n} from '@lib/langPack';
 import classNames from '@helpers/string/classNames';
 import {StickerTsx} from '@components/wrappers/sticker';
 import {MyDocument} from '@appManagers/appDocsManager';
@@ -18,6 +18,9 @@ import {IconTsx} from '@components/iconTsx';
 import InputField from '@components/inputField';
 import confirmationPopup, {PopupConfirmationOptions} from '@components/confirmationPopup';
 import Button from '@components/buttonTsx';
+import Row from '@components/rowTsx';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
+import {attachReorder, createReorderMode, REORDERABLE_CLASS_NAME, ReorderBarContent, SelectionPlate} from '@components/reorderMode';
 
 import styles from '@components/stargifts/profileList.module.scss';
 import {ALL_COLLECTIONS_ID, createProfileGiftsStore, StarGiftsProfileActions, StarGiftsProfileStore} from '@components/stargifts/profileStore';
@@ -55,11 +58,7 @@ async function openCreateCollectionPopup({actions, peerId}: {
     return
   }
 
-  const collection = await managers.apiManager.invokeApi('payments.createStarGiftCollection', {
-    title: inputField.value,
-    peer: await managers.appPeersManager.getInputPeerById(peerId),
-    stargift: []
-  })
+  const collection = await managers.appGiftsManager.createCollection(peerId, inputField.value)
 
   actions.updateCollection(collection)
 }
@@ -206,12 +205,26 @@ const ADD_COLLECTION_ID = -2
 export function StarGiftsProfileTab(props: {
   peerId: PeerId
   scrollParent?: HTMLElement
+  /** the profile's tab row, which the bar of the collections' reorder takes while it is on */
+  selectionMount?: HTMLElement
+  /** the reorder starts: a selection of another list that holds the tab row ends */
+  onReorderStart?: () => void
   onCountChange?: (count: number) => void
 }) {
   const [store, actions] = createProfileGiftsStore({
     peerId: props.peerId,
-    onCountChange: props.onCountChange
+    onCountChange: props.onCountChange,
+    onSaveFailed: () => toastNew({langPackKey: 'Error.AnError'})
   });
+
+  // * as the albums of the stories: each drop is saved as it lands, so leaving the mode has nothing left to save
+  const reorder = createReorderMode({onStart: props.onReorderStart});
+  const moveCollections = (ids: number[]) => actions.reorderCollections(ids)
+
+  const onNotifyChange = (enabled: boolean) => {
+    toastNew({langPackKey: enabled ? 'Gift2ChannelNotifyChecked' : 'Gift2ChannelNotifyNotChecked'})
+    actions.toggleChatNotifications(enabled)
+  }
 
   onMount(() => actions.loadNext())
 
@@ -337,9 +350,18 @@ export function StarGiftsProfileTab(props: {
             }
             setCollection(Number(id))
           }}
+          scrollableRef={(list) => attachReorder({
+            list,
+            axis: 'x',
+            scrollable: {container: list},
+            active: reorder.active,
+            key: 'value',
+            onMove: moveCollections
+          })}
           contextMenuButtons={(id_) => {
             const id = Number(id_)
-            if(id === ALL_COLLECTIONS_ID || id === ADD_COLLECTION_ID) return []
+            // * a long press is what picks a chip up while they are being rearranged
+            if(id === ALL_COLLECTIONS_ID || id === ADD_COLLECTION_ID || reorder.active()) return []
 
 
             const buttons: ButtonMenuItemOptionsVerifiable[] = [
@@ -375,6 +397,12 @@ export function StarGiftsProfileTab(props: {
                   }
                 },
                 {
+                  icon: 'menu',
+                  text: 'Gift2Reorder',
+                  verify: () => store.collections.length > 1,
+                  onClick: () => reorder.start()
+                },
+                {
                   icon: 'delete',
                   text: 'Delete',
                   danger: true,
@@ -391,10 +419,7 @@ export function StarGiftsProfileTab(props: {
                         isDanger: true
                       }
                     })
-                    managers.apiManager.invokeApi('payments.deleteStarGiftCollection', {
-                      collection_id: id,
-                      peer: await managers.appPeersManager.getInputPeerById(props.peerId)
-                    })
+                    managers.appGiftsManager.deleteCollection(props.peerId, id)
                     actions.deleteCollection(id)
                   }
                 }
@@ -411,7 +436,10 @@ export function StarGiftsProfileTab(props: {
           </ChipTab>
           <For each={store.collections}>
             {(collection) => (
-              <ChipTab value={collection.collection_id.toString()}>
+              <ChipTab
+                class={classNames('gift-collection-chip', reorder.active() && REORDERABLE_CLASS_NAME)}
+                value={collection.collection_id.toString()}
+              >
                 {collection.icon && (
                   <StickerTsx
                     sticker={unwrap(collection.icon) as MyDocument}
@@ -442,8 +470,28 @@ export function StarGiftsProfileTab(props: {
           {collectionContent()}
         </AnimationList>
       </div>
+
+      {/* the server says it only to who can manage a channel's gifts; pinned to the bottom, as the other apps keep it */}
+      <Show when={store.chatNotificationsEnabled !== undefined}>
+        <div class={/* @once */ styles.notify}>
+          <Row>
+            <Row.CheckboxField>
+              <CheckboxFieldTsx checked={store.chatNotificationsEnabled} onChange={onNotifyChange} />
+            </Row.CheckboxField>
+            <Row.Title>{i18n('Gift2ChannelNotify')}</Row.Title>
+          </Row>
+        </div>
+      </Show>
+
+      {/* only while it is on: the tab row it takes is shared with the other lists' bars */}
+      <Show when={reorder.active()}>
+        <SelectionPlate shown={reorder.active} mount={props.selectionMount} giveWay={reorder.stop}>
+          <ReorderBarContent titleKey="Gift2Reorder" onDone={reorder.stop} />
+        </SelectionPlate>
+      </Show>
     </div>
   );
 
-  return {render, store, actions, setCollection};
+  // * `stopReorder`: the reorder is of this list, it ends as another is shown
+  return {render, store, actions, setCollection, stopReorder: reorder.stop};
 }

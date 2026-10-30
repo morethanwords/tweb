@@ -31,7 +31,7 @@ import PeerTitle from '@components/peerTitle';
 import {PopupPeerCheckboxOptions} from '@components/popups/peer';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import cancelEvent from '@helpers/dom/cancelEvent';
-import {holdLinkPlate} from '@helpers/dom/linkPress';
+import openTextLinkMenu from '@helpers/dom/openTextLinkMenu';
 import disableTransition from '@helpers/dom/disableTransition';
 import type {TextHighlightMatch} from '@helpers/dom/textHighlight';
 import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';
@@ -85,6 +85,7 @@ import callTransitionCoordinator from '@lib/calls/callTransitionCoordinator';
 import {CallAccount, captureCallAccount} from '@lib/calls/callAccount';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import groupCallsController from '@lib/calls/groupCallsController';
+import {chooseGroupCallJoinAs} from '@components/groupCall/joinAs';
 import showConferenceJoinPopup from '@components/call/conferenceJoinPopup';
 import conferenceInvitesController from '@lib/calls/conferenceInvitesController';
 import GROUP_CALL_STATE from '@lib/calls/groupCallState';
@@ -167,9 +168,7 @@ import {canUploadAsWhenEditing} from '@components/chat/utils';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {usePeer} from '@stores/peers';
 import {createEffect, createRoot, on, untrack} from 'solid-js';
-import {ButtonMenuItemOptions, ButtonMenuSync} from '@components/buttonMenu';
-import contextMenuController from '@helpers/contextMenuController';
-import positionMenu from '@helpers/positionMenu';
+import {ButtonMenuItemOptions} from '@components/buttonMenu';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import showDatePickerPopup from '@components/popups/datePicker';
 import noop from '@helpers/noop';
@@ -793,19 +792,7 @@ export class AppImManager extends EventListenerBase<{
         }
       }];
 
-      const menu = ButtonMenuSync({buttons: buttons.filter(Boolean)});
-      menu.classList.add('contextmenu');
-
-      getOverlayRoot().append(menu);
-      positionMenu(e, menu);
-      // the date lights its plate while its menu is open
-      const releaseLinkPlate = holdLinkPlate(element);
-      contextMenuController.openBtnMenu(menu, () => {
-        releaseLinkPlate?.();
-        setTimeout(() => {
-          menu.remove();
-        }, 300);
-      });
+      openTextLinkMenu({link: element, event: e, buttons: buttons.filter(Boolean)});
     };
 
     // Hover-to-play stickers — follow the active window so it still works in a Document PiP window
@@ -1454,8 +1441,9 @@ export class AppImManager extends EventListenerBase<{
       return;
     }
 
+    const managers = bindManagersToSession(this.managers);
     try {
-      const callbackAnswer = await this.managers.appInlineBotsManager.callbackButtonClick(
+      const callbackAnswer = await managers.appInlineBotsManager.callbackButtonClick(
         message.peerId,
         message.mid,
         undefined,
@@ -1469,6 +1457,13 @@ export class AppImManager extends EventListenerBase<{
         message,
         url: callbackAnswer.url
       });
+
+      // * the chat sees that a game is being played, as tdesktop shows it (api_bot.cpp) - a channel's
+      // * readers excepted
+      const {peerId} = message;
+      if(!(await managers.appPeersManager.isBroadcast(peerId))) {
+        managers.appMessagesManager.setTyping(peerId, {_: 'sendMessageGamePlayAction'});
+      }
     } catch(err) {}
   }
 
@@ -2439,25 +2434,6 @@ export class AppImManager extends EventListenerBase<{
     return this.callTransitions.run(async() => {
       const chatId = peerId.toChatId();
       const hasRights = await managers.appChatsManager.hasRights(chatId, 'manage_call');
-      const next = async() => {
-        const chatFull = await managers.appProfileManager.getChatFull(chatId);
-        if(chatFull._ === 'communityFull') {
-          return;
-        }
-        let call: MyGroupCall;
-        if(!chatFull.call) {
-          if(!hasRights) {
-            return;
-          }
-
-          call = await managers.appGroupCallsManager.createGroupCall(chatId);
-        } else {
-          call = chatFull.call as InputGroupCall.inputGroupCall;
-        }
-
-        await groupCallsController.joinGroupCall(chatId, call.id, true, false, undefined, account);
-      };
-
       if(groupCallId) {
         const groupCall = await managers.appGroupCallsManager.getGroupCallFull(groupCallId);
         if(groupCall._ === 'groupCallDiscarded') {
@@ -2478,8 +2454,33 @@ export class AppImManager extends EventListenerBase<{
         }
       }
 
+      // * the chat as it is now: none when it has neither a call to join nor the right to start one
+      const getTargetChatFull = async() => {
+        const chatFull = await managers.appProfileManager.getChatFull(chatId);
+        return chatFull._ === 'communityFull' || (!chatFull.call && !hasRights) ? undefined : chatFull;
+      };
+
+      let chatFull = await getTargetChatFull();
+      if(!chatFull) {
+        return;
+      }
+
+      // Who to be is asked before the current call is left: dismissing the question leaves it be.
+      const joinAs = await chooseGroupCallJoinAs({account, peerId, hasCall: !!chatFull.call});
+      if(joinAs === undefined) {
+        return;
+      }
+
       await this.discardCurrentCall(peerId, 'Voice');
-      await next();
+      // * the call may have ended or been replaced while the questions were open
+      chatFull = await getTargetChatFull();
+      if(!chatFull) {
+        return;
+      }
+
+      const call: MyGroupCall = (chatFull.call as InputGroupCall.inputGroupCall) ||
+        await managers.appGroupCallsManager.createGroupCall(chatId);
+      await groupCallsController.joinGroupCall(chatId, call.id, true, false, undefined, account, joinAs);
     });
   }
 
@@ -3771,6 +3772,9 @@ export class AppImManager extends EventListenerBase<{
     el.classList.add(c);
     el.dataset.action = action._;
     switch(action._) {
+      // * choosing what to share is shown with the dots of typing, the way tdesktop and Android do
+      case 'sendMessageChooseContactAction':
+      case 'sendMessageGeoLocationAction':
       case 'sendMessageTypingAction': {
       // default: {
         c += '-text';
@@ -3865,7 +3869,9 @@ export class AppImManager extends EventListenerBase<{
         'sendMessageRecordRoundAction': 'Peer.Activity.User.RecordingVideo',
         'sendMessageGamePlayAction': 'Peer.Activity.User.PlayingGame',
         'sendMessageChooseStickerAction': 'Peer.Activity.User.ChoosingSticker',
-        'sendMessageEmojiInteractionSeen': 'Peer.Activity.User.EnjoyingAnimations'
+        'sendMessageEmojiInteractionSeen': 'Peer.Activity.User.EnjoyingAnimations',
+        'sendMessageChooseContactAction': 'SelectingContact',
+        'sendMessageGeoLocationAction': 'SelectingLocation'
       },
       chat: {
         'sendMessageTypingAction': 'Peer.Activity.Chat.TypingText',
@@ -3879,7 +3885,9 @@ export class AppImManager extends EventListenerBase<{
         'sendMessageRecordRoundAction': 'Peer.Activity.Chat.RecordingVideo',
         'sendMessageGamePlayAction': 'Peer.Activity.Chat.PlayingGame',
         'sendMessageChooseStickerAction': 'Peer.Activity.Chat.ChoosingSticker',
-        'sendMessageEmojiInteractionSeen': 'Peer.Activity.Chat.EnjoyingAnimations'
+        'sendMessageEmojiInteractionSeen': 'Peer.Activity.Chat.EnjoyingAnimations',
+        'sendMessageChooseContactAction': 'IsSelectingContact',
+        'sendMessageGeoLocationAction': 'IsSelectingLocation'
       },
       multi: {
         'sendMessageTypingAction': 'Peer.Activity.Chat.Multi.TypingText1',
@@ -3892,7 +3900,10 @@ export class AppImManager extends EventListenerBase<{
         'sendMessageRecordAudioAction': 'Peer.Activity.Chat.Multi.RecordingAudio1',
         'sendMessageRecordRoundAction': 'Peer.Activity.Chat.Multi.RecordingVideo1',
         'sendMessageGamePlayAction': 'Peer.Activity.Chat.Multi.PlayingGame1',
-        'sendMessageChooseStickerAction': 'Peer.Activity.Chat.Multi.ChoosingSticker1'
+        'sendMessageChooseStickerAction': 'Peer.Activity.Chat.Multi.ChoosingSticker1',
+        // * several people choosing what to share read as typing, as on Android
+        'sendMessageChooseContactAction': 'Peer.Activity.Chat.Multi.TypingText1',
+        'sendMessageGeoLocationAction': 'Peer.Activity.Chat.Multi.TypingText1'
       },
       pair: {
         'sendMessageTypingAction': 'Peer.Activity.Chat.Pair.TypingText',
@@ -3905,7 +3916,9 @@ export class AppImManager extends EventListenerBase<{
         'sendMessageRecordAudioAction': 'Peer.Activity.Chat.Pair.RecordingAudio',
         'sendMessageRecordRoundAction': 'Peer.Activity.Chat.Pair.RecordingVideo',
         'sendMessageGamePlayAction': 'Peer.Activity.Chat.Pair.PlayingGame',
-        'sendMessageChooseStickerAction': 'Peer.Activity.Chat.Pair.ChoosingSticker'
+        'sendMessageChooseStickerAction': 'Peer.Activity.Chat.Pair.ChoosingSticker',
+        'sendMessageChooseContactAction': 'Peer.Activity.Chat.Pair.TypingText',
+        'sendMessageGeoLocationAction': 'Peer.Activity.Chat.Pair.TypingText'
       }
     };
 

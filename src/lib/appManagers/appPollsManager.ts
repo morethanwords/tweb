@@ -642,18 +642,40 @@ export class AppPollsManager extends AppManager {
     if(message.media?._ !== 'messageMediaPoll') return;
 
     const peerId = this.appPeersManager.getPeerMigratedTo(message.peerId) || message.peerId;
-    const messageId = message.mid;
-
     const uploadingMedia = media ? this.uploadPollMedia(peerId, media) : undefined;
 
+    return this.invokeWhenPollIsSent(message, 'addPollAnswer', (message) => {
+      return this.finalizeAddingPollAnswer(message, text, uploadingMedia);
+    });
+  }
+
+  /** Takes back an option someone added to an open-answers poll (desktop's `Polls::deleteAnswer`) */
+  public async deletePollAnswer(message: Message.message, option: Uint8Array) {
+    if(this.appMessagesManager.isEphemeralMessage(message)) return;
+    if(message.media?._ !== 'messageMediaPoll') return;
+
+    return this.invokeWhenPollIsSent(message, 'deletePollAnswer', async(message) => {
+      const peerId = this.appPeersManager.getPeerMigratedTo(message.peerId) || message.peerId;
+      const updates = await this.apiManager.invokeApi('messages.deletePollAnswer', {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        msg_id: getServerMessageId(message.mid),
+        option
+      });
+
+      this.apiUpdatesManager.processUpdateMessage(updates);
+    });
+  }
+
+  /** A poll still being sent has no id to change it by: the change waits for the message to be sent */
+  private invokeWhenPollIsSent(message: Message.message, callbackName: string, callback: (message: Message.message) => Promise<void>) {
     if(message.pFlags.is_outgoing) {
-      return this.appMessagesManager.invokeAfterMessageIsSent(messageId, 'addPollAnswer', (message) => {
+      return this.appMessagesManager.invokeAfterMessageIsSent(message.mid, callbackName, (message) => {
         if(message?._ !== 'message') return;
-        return this.finalizeAddingPollAnswer(message, text, uploadingMedia);
+        return callback(message);
       });
     }
 
-    return this.finalizeAddingPollAnswer(message, text, uploadingMedia);
+    return callback(message);
   }
 
   private async finalizeAddingPollAnswer(message: Message.message, text: TextWithEntities, uploadingMedia?: UploadPollMediaResult) {

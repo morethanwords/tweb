@@ -10,7 +10,7 @@ import {i18n, LangPackKey, _i18n} from '@lib/langPack';
 import {toastNew} from '@components/toast';
 import showMutePopup from '@components/popups/mute';
 import {TabManagers} from '@lib/managers';
-import {CAN_HIDE_TOPIC, FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, REAL_FOLDER_ID, REAL_FOLDERS} from '@appManagers/constants';
+import {CAN_HIDE_TOPIC, FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, REAL_FOLDER_ID, REAL_FOLDERS, REPLIES_PEER_ID, VERIFICATION_CODES_BOT_ID} from '@appManagers/constants';
 import showPinLimitReached from '@components/showPinLimitReached';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import showChatPreviewPopup, {chatPreviewAnchorFromDialogRow} from '@components/popups/chatPreview';
@@ -44,6 +44,7 @@ import {
 } from '@components/communities/communityMute';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import blockUserWithConfirmation, {unblockUser} from '@components/blockUser';
 
 /**
  * What an item does on a chat row inside a Community panel (`data-community-chat-kind`),
@@ -434,6 +435,16 @@ export default class DialogsContextMenu {
       onClick: this.onRemoveFromCommunityClick,
       verify: () => this.canRemoveFromCommunity
     }, {
+      icon: 'lock',
+      text: 'BlockUser',
+      onClick: () => blockUserWithConfirmation({peerId: this.peerId}),
+      verify: () => this.verifyBlock(false)
+    }, {
+      icon: 'lockoff',
+      text: 'Unblock',
+      onClick: () => unblockUser(this.peerId),
+      verify: () => this.verifyBlock(true)
+    }, {
       icon: 'crossround',
       text: 'DeleteFromRecent',
       onClick: () => this.managers.appUsersManager.removeRecentSearch(this.peerId),
@@ -653,6 +664,32 @@ export default class DialogsContextMenu {
     if(chat?._ !== 'channel' || !chat?.send_paid_messages_stars) return false;
 
     return requirePayment ? !!this.dialog.pFlags?.nopaid_messages_exception : !this.dialog.pFlags?.nopaid_messages_exception;
+  };
+
+  /**
+   * tdesktop's chat list blocks someone who is not a contact from their row, and unblocks them there. Whether one
+   * is blocked is known from their full profile, a block update or the blocked list: one not known yet reads as not
+   * blocked, as in tdesktop (the menu waits for no request), and the manager looks them up for the next opening.
+   */
+  private verifyBlock = async(blocked: boolean) => {
+    const {peerId} = this;
+    if(
+      !isDialog(this.dialog) ||
+      this.threadId ||
+      !peerId.isUser() ||
+      peerId === rootScope.myId ||
+      peerId === REPLIES_PEER_ID ||
+      peerId === VERIFICATION_CODES_BOT_ID.toPeerId()
+    ) {
+      return false;
+    }
+
+    const user = apiManagerProxy.getUser(peerId.toUserId());
+    if(!user || user.pFlags.contact || user.pFlags.deleted) {
+      return false;
+    }
+
+    return await this.managers.appProfileManager.isUserKnownBlocked(peerId.toUserId()) === blocked;
   };
 
   private onToggleFeeClick = async(requirePayment: boolean) => {

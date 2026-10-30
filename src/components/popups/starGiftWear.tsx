@@ -31,24 +31,16 @@ export default function showStarGiftWearPopup(options: {
   const gift = gift$.raw as StarGift.starGiftUnique;
   const [show, setShow] = createSignal(true);
 
-  const onWear = async() => {
+  const onWear = () => {
     const managers = bindManagersToSession(rootScope.managers);
     const promise = peerId === rootScope.myId ?
       managers.appUsersManager.updateEmojiStatus({
         _: 'inputEmojiStatusCollectible',
         collectible_id: gift$.raw.id
       }) :
-      managers.apiManager.invokeApiSingleProcess({
-        method: 'channels.updateEmojiStatus',
-        params: {
-          channel: await managers.appChatsManager.getChannelInput(peerId.toChatId()),
-          emoji_status: {
-            _: 'inputEmojiStatusCollectible',
-            collectible_id: gift$.raw.id
-          }
-        }
-      }).then((updates) => {
-        managers.apiUpdatesManager.processUpdateMessage(updates);
+      managers.appChatsManager.updateEmojiStatus(peerId.toChatId(), {
+        _: 'inputEmojiStatusCollectible',
+        collectible_id: gift$.raw.id
       });
 
     promise.then(() => {

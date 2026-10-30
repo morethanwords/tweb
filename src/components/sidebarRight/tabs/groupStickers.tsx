@@ -1,4 +1,4 @@
-import {Component, For, JSX, Show, createEffect, createResource, createSignal, on, onCleanup} from 'solid-js';
+import {Component, For, Show, createEffect, createResource, createSignal, on, onCleanup} from 'solid-js';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
@@ -10,20 +10,17 @@ import Button from '@components/buttonTsx';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import openBoosts from '@components/openBoosts';
 import showStickersPopup from '@components/popups/stickers';
-import RadioFieldTsx from '@components/radioFieldTsx';
 import Section from '@components/section';
 import {SearchEmpty, SearchLoading} from '@components/searchStatus';
-import wrapStickerSetThumb from '@components/wrappers/stickerSetThumb';
+import StickerSetRow from '@components/stickerSetRow';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type {AppGroupStickersTab} from '@components/solidJsTabs/tabs';
-import styles from '@components/sidebarRight/tabs/groupStickers.module.scss';
 
 type AppGroupStickersTabType = typeof AppGroupStickersTab;
 
 const SEARCH_DEBOUNCE = 300;
-const THUMB_SIZE = 36;
 const STICKERS_BOT_USERNAME = 'stickers';
 
 /**
@@ -65,64 +62,6 @@ async function loadGroupStickersData(tab: InstanceType<AppGroupStickersTabType>)
 }
 
 type GroupStickersData = Awaited<ReturnType<typeof loadGroupStickersData>>;
-
-function StickerSetRow(props: {
-  set: StickerSet.stickerSet,
-  isEmoji: boolean,
-  lazyLoadQueue: LazyLoadQueue,
-  action?: () => JSX.Element,
-  radioChecked?: boolean,
-  radioName?: string,
-  radioValue?: string,
-  onRadioChange?: (checked: boolean) => void,
-  onClick?: () => void
-}) {
-  const [tab] = useSuperTab<AppGroupStickersTabType>();
-  const {Row, i18n, wrapEmojiText} = useHotReloadGuard();
-
-  const thumb = document.createElement('div');
-  wrapStickerSetThumb({
-    set: props.set,
-    container: thumb,
-    group: 'GENERAL-SETTINGS',
-    lazyLoadQueue: props.lazyLoadQueue,
-    width: THUMB_SIZE,
-    height: THUMB_SIZE,
-    autoplay: true,
-    middleware: tab.middlewareHelper.get()
-  });
-
-  return (
-    <Row
-      class={styles.setRow}
-      clickable={props.radioName ? undefined : props.onClick}
-    >
-      <Show when={props.radioName}>
-        <Row.RadioField>
-          <RadioFieldTsx
-            alignRight
-            class="disable-hover"
-            checked={props.radioChecked}
-            name={props.radioName}
-            value={props.radioValue}
-            onChange={props.onRadioChange}
-          />
-        </Row.RadioField>
-      </Show>
-      <Row.Media>{thumb}</Row.Media>
-      <Row.Title>{wrapEmojiText(props.set.title)}</Row.Title>
-      <Row.Subtitle>{i18n(props.isEmoji ? 'EmojiCount' : 'Stickers', [props.set.count])}</Row.Subtitle>
-      <Show when={props.action}>
-        <Row.RightContent
-          class={styles.setAction}
-          onClick={(event) => event.stopPropagation()}
-        >
-          {props.action()}
-        </Row.RightContent>
-      </Show>
-    </Row>
-  );
-}
 
 function GroupStickersForm(props: {data: GroupStickersData}) {
   const [tab] = useSuperTab<AppGroupStickersTabType>();

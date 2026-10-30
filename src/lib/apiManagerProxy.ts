@@ -148,6 +148,8 @@ export type NotificationBuildMessageTaskPayload = {
   fwdCount?: number,
   peerReaction?: MessagePeerReaction,
   peerTypeNotifySettings?: PeerNotifySettings,
+  /** the chat's sound is off: shown without one */
+  noSound?: boolean,
   accountNumber: ActiveAccountNumber,
   isOtherTabActive?: boolean
 };

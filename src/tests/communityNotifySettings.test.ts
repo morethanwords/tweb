@@ -304,6 +304,7 @@ describe('community pinned dialog order', () => {
       },
       appCommunitiesManager: communitiesManager,
       appDraftsManager: {addMissedDialogs: vi.fn()},
+      appNotificationsManager: {getSettingsClock: () => 0},
       appPeersManager: {getInputPeerById: vi.fn()},
       dialogsStorage: storage,
       log,
@@ -420,6 +421,7 @@ describe('community pinned dialog order', () => {
       appMessagesManager: {
         getChannelAvailableMinIdGeneration
       },
+      appNotificationsManager: {getSettingsClock: () => 0},
       appPeersManager: {
         getPeerId: (peer: Dialog.dialog['peer']) => {
           return peer._ === 'peerUser' ?
@@ -525,6 +527,7 @@ describe('community pinned dialog order', () => {
       appMessagesManager: {
         getChannelAvailableMinIdGeneration
       },
+      appNotificationsManager: {getSettingsClock: () => 0},
       appPeersManager: {
         getPeerId: (peer: Dialog.dialog['peer']) => {
           return peer._ === 'peerUser' ?

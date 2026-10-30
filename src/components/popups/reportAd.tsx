@@ -1,6 +1,6 @@
 import PopupElement, {createPopup, PopupContext} from '@components/popups/indexTsx';
 import {ChatType} from '@components/chat/chatType';
-import {ChannelsSponsoredMessageReportResult, MessageReportOption, ReportResult, SponsoredMessageReportOption} from '@layer';
+import {ChannelsSponsoredMessageReportResult, MessageReportOption, Photo, ReportReason, ReportResult, SponsoredMessageReportOption} from '@layer';
 import {Accessor, createSignal, For, Setter, createResource, createEffect, onCleanup, createMemo, untrack, useContext} from 'solid-js';
 import Section from '@components/section';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
@@ -19,6 +19,7 @@ import classNames from '@helpers/string/classNames';
 import Row from '@components/rowTsx';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import type {AppManagers} from '@lib/managers';
 
 const STICKER_EMOJI = '👮‍♀️';
 
@@ -46,7 +47,7 @@ type RenderedSection = {
 };
 
 export default function showReportAdPopup(
-  type: 'ad' | 'message' | 'story' | 'peer',
+  type: 'ad' | 'message' | 'story' | 'peer' | 'photo',
   report: ReportFn,
   onAdHide?: () => void,
   onError?: (err: ApiError, option?: Uint8Array, text?: string) => boolean | void,
@@ -62,6 +63,11 @@ export default function showReportAdPopup(
 
   // * returns whether the popup should hide, and toasts otherwise
   const handleError = (err: ApiError, option?: Uint8Array, text?: string) => {
+    // * the account it was made on is left (session-bound managers, as a photo's report has): it goes, saying nothing
+    if(err?.type === 'MIDDLEWARE') {
+      return true;
+    }
+
     console.error('report error', err);
     if(onError?.(err, option, text)) {
       return true;
@@ -427,4 +433,55 @@ export function showStoryReport(peerId: PeerId, ids: number[], onFinish?: () => 
     (option, text) => rootScope.managers.appStoriesManager.report(peerId, ids, option, text),
     onFinish
   );
+}
+
+/**
+ * The reasons tdesktop and iOS give for a profile or chat photo, in their order. "Other" asks what is wrong, as
+ * on Android and iOS; the rest are sent at once.
+ */
+const PROFILE_PHOTO_REPORT_REASONS: [LangPackKey, ReportReason['_']][] = [
+  ['ReportChatSpam', 'inputReportReasonSpam'],
+  ['ReportChatViolence', 'inputReportReasonViolence'],
+  ['ReportChatChild', 'inputReportReasonChildAbuse'],
+  ['ReportChatPornography', 'inputReportReasonPornography'],
+  ['ReportChatCopyright', 'inputReportReasonCopyright'],
+  ['ReportChatOther', 'inputReportReasonOther']
+];
+
+/**
+ * A photo is reported by a reason (`account.reportProfilePhoto`), not by the server's options: the reasons are
+ * put to the report popup as options of its own, one byte each — the reason's place in the list, from 1.
+ */
+export function createProfilePhotoReport(
+  managers: Pick<AppManagers, 'appProfileManager'>,
+  peerId: PeerId,
+  photoId: Photo.photo['id'],
+  titleKey: LangPackKey
+): ReportFn {
+  return async(option, text): Promise<ReportResult> => {
+    const reason = PROFILE_PHOTO_REPORT_REASONS[option[0] - 1];
+    if(!reason) {
+      return {
+        _: 'reportResultChooseOption',
+        title: I18n.format(titleKey, true),
+        options: PROFILE_PHOTO_REPORT_REASONS.map(([key], index) => ({
+          _: 'messageReportOption',
+          text: I18n.format(key, true),
+          option: new Uint8Array([index + 1])
+        }))
+      };
+    }
+
+    const [, reasonType] = reason;
+    if(reasonType === 'inputReportReasonOther' && text === undefined) {
+      return {_: 'reportResultAddComment', pFlags: {}, option};
+    }
+
+    await managers.appProfileManager.reportProfilePhoto(peerId, photoId, {_: reasonType}, text);
+    return {_: 'reportResultReported'};
+  };
+}
+
+export function showProfilePhotoReport(peerId: PeerId, photoId: Photo.photo['id'], titleKey: LangPackKey) {
+  showReportAdPopup('photo', createProfilePhotoReport(bindManagersToSession(rootScope.managers), peerId, photoId, titleKey));
 }

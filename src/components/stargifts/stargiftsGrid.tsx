@@ -140,21 +140,16 @@ function StarGiftGridItem(props: {
           icon: isWearing ? 'crownoff' : 'crown',
           text: isWearing ? 'StarGiftWearStopFull' : 'StarGiftWearFull',
           verify: () => isEditableUniqueGift,
-          onClick: async() => {
+          onClick: () => {
             const managers = bindManagersToSession(rootScope.managers);
             if(isWearing) {
               if(profilePeerId === rootScope.myId) {
                 managers.appUsersManager.updateEmojiStatus({_: 'emojiStatusEmpty'});
               } else {
-                managers.apiManager.invokeApiSingleProcess({
-                  method: 'channels.updateEmojiStatus',
-                  params: {
-                    channel: await managers.appChatsManager.getChannelInput(profilePeerId.toChatId()),
-                    emoji_status: {_: 'emojiStatusEmpty'}
-                  }
-                }).then((updates) => {
-                  managers.apiUpdatesManager.processUpdateMessage(updates);
-                }).catch(() => {
+                managers.appChatsManager.updateEmojiStatus(
+                  profilePeerId.toChatId(),
+                  {_: 'emojiStatusEmpty'}
+                ).catch(() => {
                   toastNew({langPackKey: 'Error.AnError'});
                 });
               }

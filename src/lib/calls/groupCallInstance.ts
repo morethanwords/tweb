@@ -210,6 +210,9 @@ export default class GroupCallInstance extends CallInstanceBase<{
   public connections: {[k in GroupCallConnectionType]?: GroupCallConnectionInstance};
   public groupCall: GroupCall;
   public participant: GroupCallParticipant;
+  // Who a legacy video chat shows us as when it is not the account: a channel we speak as.
+  // Every main join (and rejoin) asks for it; changeGroupCallJoinAs switches it.
+  public joinAsPeerId?: PeerId;
 
   // ===== E2E (conference) mode =====
   // When set, this instance is a TdE2E-encrypted conference call rather than
@@ -2178,7 +2181,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
   }
 
   public get selfPeerId(): PeerId {
-    return this.participant ? getPeerId(this.participant.peer) : this.myId;
+    return this.participant ? getPeerId(this.participant.peer) : (this.joinAsPeerId ?? this.myId);
   }
 
   /**
@@ -2310,8 +2313,9 @@ export default class GroupCallInstance extends CallInstanceBase<{
     return state === GROUP_CALL_STATE.CLOSED;
   }
 
+  // * none for a call that never joined: it has no transport yet
   public get streamManager(): StreamManager {
-    return this.connections.main.streamManager;
+    return this.connections.main?.streamManager;
   }
 
   public get description(): localConferenceDescription {
@@ -2367,7 +2371,8 @@ export default class GroupCallInstance extends CallInstanceBase<{
 
     return {
       _: 'groupCallParticipant',
-      peer: {_: 'peerUser', user_id: peerId.toUserId()},
+      // a channel when we join as one: those are the only other peers getGroupCallJoinAs offers
+      peer: peerId.isUser() ? {_: 'peerUser', user_id: peerId.toUserId()} : {_: 'peerChannel', channel_id: peerId.toChatId()},
       pFlags: {self: true, can_self_unmute: true, ...(this.isMicrophoneMuted && {muted: true as const})},
       source: 0,
       // where it sorts stays put

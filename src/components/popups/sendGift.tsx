@@ -232,9 +232,7 @@ function GiftOptionsPage(props: {
     }
 
     if(gift.locked_until_date > tsNow(true)) {
-      const result = await rootScope.managers.apiManager.invokeApi('payments.checkCanSendGift', {
-        gift_id: gift.id
-      })
+      const result = await rootScope.managers.appGiftsManager.checkCanSendGift(gift.id)
 
       if(result._ === 'payments.checkCanSendGiftResultFail') {
         confirmationPopup({

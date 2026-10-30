@@ -2,7 +2,8 @@ import {AccountDatabase, getDatabaseState} from '@config/databases/state';
 import {TelegramWebViewSendEventMap} from '@types';
 import AppStorage from '@lib/storage';
 import {AppManager} from '@appManagers/manager';
-import {User} from '@layer';
+import {BotPreviewMedia, User, UsersUsers} from '@layer';
+import type {ReferenceContext} from '@lib/storages/references';
 import {getFloodWaitTime} from './utils/getFloodWaitTime';
 
 type InternalWebAppStorageKey = 'locationPermission' | 'deviceStorageUsed' | 'deviceStorageUsedKeys';
@@ -29,9 +30,74 @@ type CreateManagedBotResult = {
 
 export default class AppBotsManager extends AppManager {
   private webAppStorage: AppStorage<Record<string, string>, AccountDatabase>;
+  // * a bot's similar bots: how many of them come depends on Premium, so they go with it
+  private recommendations: Map<BotId, MaybePromise<UsersUsers>> = new Map();
+  private recommendationsGeneration = 0;
+  private previewMedias: Map<BotId, MaybePromise<BotPreviewMedia[]>> = new Map();
 
   protected after() {
     this.webAppStorage = new AppStorage(getDatabaseState(this.getAccountNumber()), 'webapp')
+    this.rootScope.addEventListener('premium_toggle', () => {
+      ++this.recommendationsGeneration;
+      this.recommendations.clear();
+    });
+  }
+
+  // * what a request brought is kept, and a request under way is joined; one that failed is not kept
+  private getCached<T>(cache: Map<BotId, MaybePromise<T>>, botId: BotId, request: () => Promise<T>, overwrite?: boolean) {
+    const cached = !overwrite && cache.get(botId);
+    if(cached) {
+      return cached;
+    }
+
+    const promise = request();
+    cache.set(botId, promise);
+    promise.then((result) => {
+      if(cache.get(botId) === promise) {
+        cache.set(botId, result);
+      }
+    }, () => {
+      if(cache.get(botId) === promise) {
+        cache.delete(botId);
+      }
+    });
+
+    return promise;
+  }
+
+  /** The bots like this one: without Premium a slice of them, with the count of them all */
+  public getBotRecommendations(botId: BotId) {
+    const generation = this.recommendationsGeneration;
+    return this.getCached(this.recommendations, botId, () => this.apiManager.invokeApiSingleProcess({
+      method: 'bots.getBotRecommendations',
+      params: {
+        bot: this.appUsersManager.getUserInput(botId)
+      },
+      // * asked after a Premium toggle, it never joins one asked before it; that one's answer is not kept (getCached)
+      options: {cacheKey: botId + '_' + generation},
+      processResult: (usersUsers) => {
+        this.appUsersManager.saveApiUsers(usersUsers.users);
+        return usersUsers;
+      }
+    }));
+  }
+
+  /** The screenshots and videos a bot shows in its profile (`bot_info.has_preview_medias`) */
+  public getPreviewMedias(botId: BotId, overwrite?: boolean) {
+    return this.getCached(this.previewMedias, botId, () => this.apiManager.invokeApiSingleProcess({
+      method: 'bots.getPreviewMedias',
+      params: {
+        bot: this.appUsersManager.getUserInput(botId)
+      },
+      processResult: (previews) => {
+        const context: ReferenceContext = {type: 'botPreview', botId};
+        previews.forEach((preview) => {
+          this.appMessagesManager.saveMessageMedia(preview, 'media', context);
+        });
+
+        return previews;
+      }
+    }), overwrite);
   }
 
   public canSendMessage(botId: BotId) {
@@ -52,6 +118,15 @@ export default class AppBotsManager extends AppManager {
       processResult: (updates) => {
         this.apiUpdatesManager.processUpdateMessage(updates);
       }
+    });
+  }
+
+  /** Whether the bot's mini app may offer this file for download (`web_app_request_file_download`) */
+  public checkDownloadFileParams(botId: BotId, fileName: string, url: string) {
+    return this.apiManager.invokeApiSingle('bots.checkDownloadFileParams', {
+      bot: this.appUsersManager.getUserInput(botId),
+      file_name: fileName,
+      url
     });
   }
 

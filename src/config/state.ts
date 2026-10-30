@@ -250,7 +250,10 @@ export type State = {
   topPeersCache: {
     [type in TopPeerType]?: {
       peers: MyTopPeer[],
-      cachedTime: number
+      cachedTime: number,
+      // * `contacts.topPeersDisabled`: the user turned the lists off. Missing from a list kept before
+      // * the switch was there: an empty one of those says nothing of it
+      disabled?: boolean
     }
   },
   recentSearch: PeerId[],

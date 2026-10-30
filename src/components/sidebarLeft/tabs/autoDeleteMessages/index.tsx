@@ -2,6 +2,7 @@ import {resolveFirst} from '@solid-primitives/refs';
 import {createMemo, createSignal, For} from 'solid-js';
 import {Portal} from 'solid-js/web';
 import {I18nTsx} from '@helpers/solid/i18n';
+import anchorCallback from '@helpers/dom/anchorCallback';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import useIsConfirmationNeededOnClose from '@hooks/useIsConfirmationNeededOnClose';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
@@ -14,10 +15,11 @@ import {AppMessagesAutoDeleteTab} from '@components/solidJsTabs/tabs';
 import Space from '@components/space';
 import {findExistingOrCreateCustomOption, findMatchingCustomOption, getDefaultOptions, Option} from '@components/sidebarLeft/tabs/autoDeleteMessages/options';
 import showAutoDeleteMessagesCustomTimePopup from '@components/sidebarLeft/tabs/autoDeleteMessages/customTimePopup';
+import applyAutoDeleteToChats from '@components/applyAutoDeleteToChats';
 
 
 const AutoDeleteMessages = () => {
-  const {Row, rootScope, HotReloadGuard} = useHotReloadGuard();
+  const {Row, rootScope, HotReloadGuard, i18n} = useHotReloadGuard();
 
   const [tab] = useSuperTab<typeof AppMessagesAutoDeleteTab>();
 
@@ -84,6 +86,9 @@ const AutoDeleteMessages = () => {
     });
   };
 
+  // * the period picked here, saved or not yet, the way Android hands it to its picker
+  const applyToExistingLink = anchorCallback(() => applyAutoDeleteToChats(tab.managers, period()));
+
   return (
     <>
       <Portal mount={tab.header}>
@@ -95,7 +100,7 @@ const AutoDeleteMessages = () => {
       <SettingsTabLottieAnimation name="UtyanDisappear" />
       <Space amount='2rem' />
 
-      <Section name='AutoDeleteMessages.SectionTitle' caption='AutoDeleteMessages.SectionCaption'>
+      <Section name='AutoDeleteMessages.SectionTitle' caption={i18n('GlobalAutoDeleteInfo', [applyToExistingLink])}>
         <For each={options()}>
           {(option) => (
             <Row>

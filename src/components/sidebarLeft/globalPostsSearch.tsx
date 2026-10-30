@@ -159,9 +159,7 @@ export function GlobalPostsSearch(props: {
 
   const loadFlood = () => {
     const myQuery = props.query
-    rootScope.managers.apiManager.invokeApi('channels.checkSearchPostsFlood', {
-      query: myQuery
-    }).then((res) => {
+    rootScope.managers.appMessagesManager.checkSearchPostsFlood(myQuery).then((res) => {
       if(myQuery !== props.query) return
       setFlood(res)
       setCanShowButtonAfterEmpty(true)

@@ -89,6 +89,7 @@ describe('selector dialog readiness', () => {
       selected: new Set(),
       renderedPeerIds: new Set(),
       pendingLists: new Set(),
+      channelParticipantsSkipped: new Set(),
       wrapSubtitle: vi.fn(async() => document.createTextNode('Subtitle'))
     });
     document.body.append(selector.list);
@@ -248,5 +249,116 @@ describe('selector dialog readiness', () => {
     // * the results took its place
     listMiddlewareHelper.destroy();
     expect(rowAlive()).toBe(false);
+  });
+});
+
+describe('selector channel members paging', () => {
+  const range = (from: number, to: number) => Array.from({length: to - from + 1}, (_, i) => (from + i).toPeerId());
+
+  /**
+   * A selector over a chat whose members the server lists as `members` (changed by a test the way the
+   * server's list changes), with a row for each member neither `excluded` nor listed already.
+   */
+  function makeSelector(members: PeerId[], excluded: Set<PeerId> = new Set()) {
+    const list = document.createElement('ul');
+    const selector = Object.assign(Object.create(AppSelectPeers.prototype), {
+      peerType: ['channelParticipants'],
+      peerId: (77).toPeerId(true),
+      query: '',
+      list,
+      loadedWhat: {channelParticipants: false},
+      tempIds: {},
+      participants: new Map(),
+      channelParticipantsSkipped: new Set(),
+      pendingLists: new Set(),
+      renderedPeerIds: new Set(),
+      processPlaceholderOnResults: vi.fn(),
+      renderResultsFunc: vi.fn(async(peerIds: PeerId[], append?: boolean) => {
+        for(const peerId of peerIds) {
+          if(excluded.has(peerId) || list.querySelector(`[data-peer-id="${peerId}"]`)) continue;
+          const row = document.createElement('a');
+          row.dataset.peerId = '' + peerId;
+          list[append === false ? 'prepend' : 'append'](row);
+        }
+      }),
+      managers: {appProfileManager: {getParticipants: vi.fn(async({offset, limit}: {offset: number, limit: number}) => ({
+        _: 'channels.channelParticipants',
+        count: members.length,
+        participants: members.slice(offset, offset + limit).map((peerId) => ({
+          _: 'channelParticipant',
+          user_id: peerId.toUserId(),
+          date: 0
+        })),
+        chats: [],
+        users: []
+      }))}}
+    });
+
+    return {
+      selector,
+      loadAll: async() => {
+        for(let i = 0; i < 20 && !selector.loadedWhat.channelParticipants; ++i) {
+          await selector.getMoreChannelParticipants();
+        }
+      },
+      rows: () => Array.from(list.children, (row) => (row as HTMLElement).dataset.peerId.toPeerId()),
+      offsets: (): number[] => selector.managers.appProfileManager.getParticipants.mock.calls.map(([{offset}]: any) => offset),
+      // * what the chat_participant handler does for a member that left the list
+      leave: (peerId: PeerId) => {
+        members.splice(members.indexOf(peerId), 1);
+        selector.participants.delete(peerId);
+        selector.deletePeerId(peerId);
+      }
+    };
+  }
+
+  it('pages on past members that got no row, and gives up the place of one that left', async() => {
+    const members = range(1, 120);
+    // * in the call already: the whole first page, and one further on
+    const excluded = new Set([...range(1, 50), (60).toPeerId()]);
+    const {selector, loadAll, rows, offsets, leave} = makeSelector(members, excluded);
+
+    await selector.getMoreChannelParticipants();
+    await selector.getMoreChannelParticipants();
+    expect(offsets()).toEqual([0, 50]);
+
+    // * unbanned, demoted: one with no row leaves the server's list
+    leave((3).toPeerId());
+    await loadAll();
+
+    expect(offsets()).toEqual([0, 50, 99]);
+    expect(rows()).toEqual(range(51, 120).filter((peerId) => peerId !== (60).toPeerId()));
+    expect(selector.loadedWhat.channelParticipants).toBe(true);
+  });
+
+  it('lists everyone when a member joins before the page boundary and leaves after the next page', async() => {
+    const members = range(1, 200);
+    const {selector, loadAll, rows, leave} = makeSelector(members);
+
+    await selector.getMoreChannelParticipants();
+    // * the server lists who joined first, the list shows them on top
+    const joined = (201).toPeerId();
+    members.unshift(joined);
+    await selector.renderResultsFunc([joined], false);
+    await selector.getMoreChannelParticipants();
+    leave(joined);
+    await loadAll();
+
+    expect(rows()).toEqual(range(1, 200));
+  });
+
+  it('does not count the answer of a search typed over', async() => {
+    const {selector} = makeSelector(range(1, 5), new Set(range(1, 5)));
+    const answer = deferredPromise<any>();
+    selector.managers.appProfileManager.getParticipants.mockReturnValueOnce(answer);
+    const loading = selector.getMoreChannelParticipants();
+    // * what onInput does for a new query
+    ++selector.tempIds.channelParticipants;
+    answer.resolve({_: 'channels.channelParticipants', count: 5, participants: [], chats: [], users: []});
+    await loading;
+
+    expect(selector.channelParticipantsSkipped.size).toBe(0);
+    expect(selector.loadedWhat.channelParticipants).toBe(false);
+    expect(selector.renderResultsFunc).not.toHaveBeenCalled();
   });
 });

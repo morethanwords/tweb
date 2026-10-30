@@ -1,24 +1,14 @@
-import {Accessor, createEffect, createSignal, For, JSX, createMemo, on, onCleanup, untrack, createReaction, Show, Switch, Match} from 'solid-js';
+import {createEffect, createSignal, For, JSX, createMemo, onCleanup, untrack, createReaction, Show, Switch, Match} from 'solid-js';
 import {getOverlayRoot} from '@helpers/appWindow';
-import {Portal} from 'solid-js/web';
 import {Document, MessageMedia, Photo, StoryItem} from '@layer';
 import wrapStoryGridItem from '@components/stories/gridItem';
 import getMediaThumbIfNeeded from '@helpers/getStrippedThumbIfNeeded';
 import {StoriesContext, useStories, createStoriesStore, StoriesContextState, StoriesContextActions} from '@components/stories/store';
-import Sortable, {PRESSABLE_DRAG_THRESHOLD, SortableAxis} from '@helpers/dom/sortable';
-import getSortableRun from '@helpers/dom/sortableRun';
-import findUpAsChild from '@helpers/dom/findUpAsChild';
-import getInlineArrowKeys from '@helpers/dom/getInlineArrowKeys';
-import {isElementRTL} from '@helpers/dom/isDocumentRTL';
-import createMiddleware from '@helpers/solid/createMiddleware';
-import appNavigationController, {NavigationItem} from '@components/appNavigationController';
-import {IS_MOBILE_SAFARI} from '@environment/userAgent';
-import type {ScrollableBase} from '@components/scrollable';
+import {attachReorder, createReorderMode, REORDERABLE_CLASS_NAME, ReorderBarContent, ReorderMode, SelectionPlate} from '@components/reorderMode';
 import {AppManagers} from '@lib/managers';
 import Icon from '@components/icon';
 import {ChipTab, ChipTabs} from '@components/chipTabs';
 import I18n, {i18n} from '@lib/langPack';
-import Modes from '@config/modes';
 import classNames from '@helpers/string/classNames';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {PreloaderTsx} from '@components/putPreloader';
@@ -48,10 +38,9 @@ import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
 import {toastNew} from '@components/toast';
 import {IconTsx} from '@components/iconTsx';
 import LottieAnimation from '@components/lottieAnimation';
-import Tabs from '@components/tabs';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import {copyTextToClipboard} from '@helpers/clipboard';
-import {handleShareStory, makeStoryLink} from './share';
+import {copyStoryLink, handleShareStory, hasStoryLink} from './share';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import verifyMenuItem from '@helpers/verifyMenuItem';
@@ -62,8 +51,6 @@ const ADD_ALBUM_ID = -2;
 const TEST_ONE = false;
 const TEST_TWO = false;
 
-/** Carried by a story tile or an album chip that can be dragged to a new place right now */
-const REORDERABLE_CLASS_NAME = 'is-reorderable';
 const ALBUM_CHIP_CLASS_NAME = 'stories-album-chip';
 
 /**
@@ -72,10 +59,7 @@ const ALBUM_CHIP_CLASS_NAME = 'stories-album-chip';
  * has nothing left to save. The stories pinned to the top are not among them, unlike there: the
  * server keeps those newest first whatever order it is sent.
  */
-type StoriesReorder = {
-  active: Accessor<boolean>,
-  start: () => void,
-  stop: () => void,
+type StoriesReorder = ReorderMode & {
   /** whether the stories of the list shown now can be moved: those of an album */
   canMoveStories: () => boolean,
   /** the album's stories, in their new order - of the album they were dragged in, which may be left by now */
@@ -90,53 +74,25 @@ function createStoriesReorder({peerId, state, actions, selection, managers}: {
   selection?: StoriesSelection,
   managers: AppManagers
 }): StoriesReorder {
-  const [active, setActive] = createSignal(false);
-  let navigationItem: NavigationItem;
-
-  const stop = () => {
-    if(navigationItem) {
-      appNavigationController.removeItem(navigationItem);
-      navigationItem = undefined;
+  const mode = createReorderMode({
+    onStart: () => {
+      if(selection?.isSelecting) {
+        selection.cancelSelection();
+      }
     }
-
-    setActive(false);
-  };
-
-  onCleanup(stop);
+  });
 
   // * a selection started from the header's menu takes the bar and the presses over
   createEffect(() => {
     if(selection?.selecting()) {
-      untrack(stop);
+      untrack(mode.stop);
     }
   });
 
   const onError = () => toastNew({langPackKey: 'Error.AnError'});
 
   return {
-    active,
-    start: () => {
-      if(active()) {
-        return;
-      }
-
-      if(selection?.isSelecting) {
-        selection.cancelSelection();
-      }
-
-      setActive(true);
-      // * Escape and the back gesture leave it, as they leave a selection
-      if(!IS_MOBILE_SAFARI) {
-        appNavigationController.pushItem(navigationItem = {
-          type: 'multiselect',
-          onPop: () => {
-            navigationItem = undefined;
-            setActive(false);
-          }
-        });
-      }
-    },
-    stop,
+    ...mode,
     canMoveStories: () => state.albumId !== undefined,
     moveStories: (albumId, ids) => {
       if(state.albumId === albumId) {
@@ -158,76 +114,6 @@ function createStoriesReorder({peerId, state, actions, selection, managers}: {
  */
 export function isStoryReorderTarget(target: EventTarget) {
   return !!(target as HTMLElement).closest?.(`.search-super-item.${REORDERABLE_CLASS_NAME}`);
-}
-
-/** The ids of a run of items, `dataset[key]`, with the one at `from` put at `to` */
-function moveInRun(items: HTMLElement[], from: number, to: number, key: 'mid' | 'value') {
-  const ids = items.map((item) => +item.dataset[key]);
-  ids.splice(to, 0, ...ids.splice(from, 1));
-  return ids;
-}
-
-/**
- * Lets the elements of a list be put in a new order by dragging them while the reorder is on, and
- * with the layer, by Alt and an arrow along the line - one place at a time, focus kept on the moved
- * element. Only the ones carrying `REORDERABLE_CLASS_NAME` take part, and only in their run.
- */
-function attachStoriesReorder({list, axis, scrollable, reorder, key, onMove}: {
-  list: HTMLElement,
-  axis: SortableAxis,
-  scrollable: Pick<ScrollableBase, 'container'>,
-  reorder: StoriesReorder,
-  key: 'mid' | 'value',
-  onMove: (ids: number[]) => void
-}) {
-  const sortable = new Sortable({
-    list,
-    axis,
-    scrollable,
-    middleware: createMiddleware().get(),
-    // * a press on a tile opens the story and on a chip the album: a click is not a drag
-    threshold: PRESSABLE_DRAG_THRESHOLD,
-    // * the list renders its order from the store, which is put in the new one on the drop
-    moveInDom: false,
-    sortableClassName: REORDERABLE_CLASS_NAME,
-    enabled: reorder.active,
-    onSort: (prevIdx, newIdx, {items, from, to}) => onMove(moveInRun(items, from, to, key))
-  });
-
-  // * Escape or back can end the mode with an element still held: it goes back, and nothing is saved
-  createEffect(on(reorder.active, (active) => {
-    if(!active) {
-      sortable.cancel();
-    }
-  }, {defer: true}));
-
-  const onKeyDown = (e: KeyboardEvent) => {
-    if(!Modes.a11y || !reorder.active() || !e.altKey || e.defaultPrevented) {
-      return;
-    }
-
-    const {next, previous} = getInlineArrowKeys(isElementRTL(list));
-    const step = e.key === next ? 1 : e.key === previous ? -1 : 0;
-    const item = findUpAsChild(e.target as HTMLElement, list);
-    if(!step || !item?.classList.contains(REORDERABLE_CLASS_NAME)) {
-      return;
-    }
-
-    e.preventDefault();
-    const items = getSortableRun(item, REORDERABLE_CLASS_NAME);
-    const from = items.indexOf(item);
-    const to = from + step;
-    if(to < 0 || to >= items.length) {
-      return;
-    }
-
-    onMove(moveInRun(items, from, to, key));
-    // * the element is moved in the document, which takes the focus off it
-    item.focus();
-  };
-
-  list.addEventListener('keydown', onKeyDown);
-  onCleanup(() => list.removeEventListener('keydown', onKeyDown));
 }
 
 class StoriesContextMenu {
@@ -368,15 +254,8 @@ class StoriesContextMenu {
     }, {
       icon: 'link',
       text: 'CopyLink',
-      onClick: async() => {
-        const username = await rootScope.managers.appPeersManager.getPeerUsername(this.peerId);
-        copyTextToClipboard(makeStoryLink(username, this.storyItem.id));
-        toastNew({langPackKey: 'LinkCopied'});
-      },
-      verify: async() => {
-        const username = await rootScope.managers.appPeersManager.getPeerUsername(this.peerId);
-        return !!username;
-      }
+      onClick: () => copyStoryLink(managers, this.peerId, this.storyItem.id),
+      verify: () => hasStoryLink(this.storyItem, this.peerId)
     }, {
       icon: 'forward',
       text: 'ShareFile',
@@ -464,11 +343,11 @@ function StoriesAlbums(props: {
         view="surface"
         center
         needIntersectionObserver
-        scrollableRef={reorder && ((list) => attachStoriesReorder({
+        scrollableRef={reorder && ((list) => attachReorder({
           list,
           axis: 'x',
           scrollable: {container: list},
-          reorder,
+          active: reorder.active,
           key: 'value',
           onMove: reorder.moveAlbums
         }))}
@@ -837,11 +716,11 @@ function StoriesGrid(props: {
           </Match>
           <Match when={true}>
             <div
-              ref={(list) => reorder && stories.albumId !== undefined && attachStoriesReorder({
+              ref={(list) => reorder && stories.albumId !== undefined && attachReorder({
                 list,
                 axis: 'grid',
                 scrollable: props.scrollable,
-                reorder,
+                active: reorder.active,
                 key: 'mid',
                 // * the grid is the album's own: a drop that lands after another is chosen still goes to it
                 onMove: reorder.moveStories.bind(null, stories.albumId)
@@ -886,17 +765,7 @@ function StoriesSelectionToolbar(props: {
   }, false);
 
   const reorderContent = (
-    <div class="search-super-selection-container">
-      <div class="search-super-selection-count search-super-reorder-title">
-        <I18nTsx key="Stories.Reorder" />
-      </div>
-      <ButtonTsx
-        icon="check"
-        class="btn-icon primary"
-        aria-label={I18n.format('Done', true)}
-        onClick={() => props.reorder.stop()}
-      />
-    </div>
+    <ReorderBarContent titleKey="Stories.Reorder" onDone={() => props.reorder.stop()} />
   );
 
   const selectionContent = (
@@ -962,36 +831,12 @@ function StoriesSelectionToolbar(props: {
     </Show>
   );
 
-  // * the plate shows the bar only while it goes `forwards`, as the transitions of a selection leave it
-  if(props.mount) {
-    const setShown = (selecting: boolean) => {
-      props.mount.classList.toggle('is-selecting', selecting);
-      props.mount.classList.toggle('forwards', selecting);
-      props.mount.classList.toggle('backwards', !selecting);
-    };
+  const giveWay = () => {
+    if(props.selection.isSelecting) props.selection.cancelSelection();
+    props.reorder?.stop();
+  };
 
-    let wasShown = false;
-    createEffect(() => setShown(wasShown = shown()));
-    // * the mount is the profile's own tab row, which outlives the list: it is handed back as it is when
-    // * nothing is selected
-    onCleanup(() => {
-      if(wasShown) {
-        setShown(false);
-      }
-    });
-
-    return <Portal mount={props.mount}>{content}</Portal>;
-  }
-
-  // with nowhere to mount into, the toolbar brings the plate the search tabs would have sat on
-  return (
-    <Tabs.MenuShell
-      class="search-super-tabs-scrollable sticky is-single search-super-selection-plate"
-      classList={{'is-selecting': shown(), 'forwards': shown(), 'backwards': !shown()}}
-    >
-      {content}
-    </Tabs.MenuShell>
-  );
+  return <SelectionPlate shown={shown} mount={props.mount} giveWay={giveWay}>{content}</SelectionPlate>;
 }
 
 export function profileStoriesButtonMenu(props: {

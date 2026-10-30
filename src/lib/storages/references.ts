@@ -8,6 +8,7 @@ import type {MyStickerSetInput} from '@lib/appManagers/utils/stickers/constants'
 export type ReferenceContext =
   ReferenceContext.referenceContextProfilePhoto |
   ReferenceContext.referenceContextMessage |
+  ReferenceContext.referenceContextScheduledMessage |
   ReferenceContext.referenceContextMessageRich |
   ReferenceContext.referenceContextMessageRichTranslation |
   ReferenceContext.referenceContextEmojiesSounds |
@@ -20,6 +21,7 @@ export type ReferenceContext =
   ReferenceContext.referenceContextPremiumPromo |
   ReferenceContext.referenceContextWebPage |
   ReferenceContext.referenceContextBotApp |
+  ReferenceContext.referenceContextBotPreview |
   ReferenceContext.referenceContextChatInvite |
   ReferenceContext.referenceContextEffects |
   ReferenceContext.referenceContextStarsTransaction |
@@ -29,6 +31,7 @@ export type ReferenceContext =
   ReferenceContext.referenceContextStickerSet |
   ReferenceContext.referenceContextAvailableEffects |
   ReferenceContext.referenceContextStickerSearch |
+  ReferenceContext.referenceContextStickerSearchQuery |
   ReferenceContext.referenceContextSavedMusic |
   ReferenceContext.referenceContextDraft;
 
@@ -40,6 +43,13 @@ export namespace ReferenceContext {
 
   export type referenceContextMessage = {
     type: 'message',
+    peerId: PeerId,
+    messageId: number
+  };
+
+  /** A scheduled message has ids of its own, which `messages.getMessages` does not know */
+  export type referenceContextScheduledMessage = {
+    type: 'scheduledMessage',
     peerId: PeerId,
     messageId: number
   };
@@ -106,6 +116,12 @@ export namespace ReferenceContext {
     appName: string
   };
 
+  /** A bot's preview media, shown in its profile (`bots.getPreviewMedias`) */
+  export type referenceContextBotPreview = {
+    type: 'botPreview',
+    botId: BotId
+  };
+
   export type referenceContextChatInvite = {
     type: 'chatInvite',
     hash: string
@@ -145,6 +161,14 @@ export namespace ReferenceContext {
   export type referenceContextStickerSearch = {
     type: 'stickerSearch',
     emoticon: string
+  };
+
+  /** A page of the server's sticker search for a query (messages.searchStickers) */
+  export type referenceContextStickerSearchQuery = {
+    type: 'stickerSearchQuery',
+    q: string,
+    offset: number,
+    langCodes: string[]
   };
 
   export type referenceContextSavedMusic = {
@@ -262,6 +286,9 @@ export class ReferencesStorage extends AppManager {
         // });
       }
 
+      case 'scheduledMessage':
+        return this.appMessagesManager.reloadScheduledMessage(context.peerId, context.messageId);
+
       case 'messageRich':
         return this.appMessagesManager.refreshRichMessage(
           context.peerId,
@@ -304,6 +331,9 @@ export class ReferencesStorage extends AppManager {
       case 'botApp':
         return this.appAttachMenuBotsManager.getBotApp(context.botId, context.appName);
 
+      case 'botPreview':
+        return this.appBotsManager.getPreviewMedias(context.botId, true);
+
       case 'chatInvite':
         return this.appChatInvitesManager.checkChatInvite(context.hash);
 
@@ -331,6 +361,9 @@ export class ReferencesStorage extends AppManager {
           includeServerStickers: true,
           includeOurStickers: false
         });
+
+      case 'stickerSearchQuery':
+        return this.appStickersManager.searchStickersOnServer(context.q, context.offset, true, context.langCodes);
 
       case 'savedMusic':
         // Ask for the exact document rather than re-reading page 0 — a track that sits deeper in

@@ -132,7 +132,11 @@ export class AppReactionsManager extends AppManager {
 
         this.setSavedReactionTags(savedPeerId, tags);
       },
-      updatePaidReactionPrivacy: this.onUpdatePaidReactionPrivacy
+      updatePaidReactionPrivacy: this.onUpdatePaidReactionPrivacy,
+      // * changed elsewhere — cleared on another device: the next picker asks again
+      updateRecentReactions: () => {
+        delete this.reactions.recent;
+      }
     });
 
     this.rootScope.addEventListener('messages_reactions', (arr) => {
@@ -326,6 +330,12 @@ export class AppReactionsManager extends AppManager {
 
   public getRecentReactions() {
     return this.getReactions('recent');
+  }
+
+  /** Forgets the reactions used lately (`messages.clearRecentReactions`), as the reaction picker offers */
+  public clearRecentReactions() {
+    this.reactions.recent = [];
+    return this.apiManager.invokeApi('messages.clearRecentReactions');
   }
 
   public getTagReactions(peerId?: PeerId) {

@@ -1997,6 +1997,7 @@ describe('manager cache race guards', () => {
           getOffsetDate: () => 0,
           getFolderDialogs: (): any[] => []
         },
+        appNotificationsManager: {getSettingsClock: () => 0},
         appPeersManager: {getInputPeerById: () => ({_: 'inputPeerEmpty'})},
         saveApiResult
       });
@@ -2051,6 +2052,7 @@ describe('manager cache race guards', () => {
           saveDialog: vi.fn(),
           updateForumTopicsPaginationOffsets
         },
+        appNotificationsManager: {getSettingsClock: () => 0},
         appPeersManager: {
           getInputPeerById: () => ({_: 'inputPeerEmpty'}),
           isChannel: () => true
@@ -2136,6 +2138,7 @@ describe('manager cache race guards', () => {
             ++cutoffGeneration;
           }
         },
+        appNotificationsManager: {getSettingsClock: () => 0},
         saveFullPeerResult
       });
 
@@ -2168,7 +2171,7 @@ describe('manager cache race guards', () => {
       expect(applyChannelAvailableMinId).toHaveBeenCalledTimes(1);
       expect(applyChannelAvailableMinId).toHaveBeenCalledWith(channelId, 0, true);
       expect(saveFullPeerResult).toHaveBeenCalledTimes(1);
-      expect(saveFullPeerResult).toHaveBeenCalledWith(channelPeerId, expect.objectContaining({full_chat: currentFull}));
+      expect(saveFullPeerResult).toHaveBeenCalledWith(channelPeerId, expect.objectContaining({full_chat: currentFull}), 0);
     });
 
     test('late API results are filtered by the channel cutoff', async() => {

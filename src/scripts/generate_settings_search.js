@@ -54,7 +54,8 @@ const DENY_KEY_SHAPE = /(Info\d*$|Caption|Desc$|Description|Help$|Notice|Hint$|S
 // Too generic to ever be a useful hit on its own.
 const STOP_KEYS = new Set([
   'On', 'Off', 'Delete', 'Clear', 'Save', 'Done', 'Cancel', 'OK', 'Ok', 'Edit', 'Add', 'Close',
-  'Loading', 'Terminate', 'Continue', 'Next', 'Back', 'Yes', 'No', 'Search'
+  'Loading', 'Terminate', 'Continue', 'Next', 'Back', 'Yes', 'No', 'Search', 'Create', 'Copy', 'Share',
+  'Rename'
 ]);
 
 // A section's icon comes from the row that opens it. Edit Profile has no such

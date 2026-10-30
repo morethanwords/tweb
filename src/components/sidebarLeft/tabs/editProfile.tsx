@@ -421,6 +421,14 @@ const EditProfileForm = (props: {
             {i18n('BusinessLocation')}
           </Row.Title>
         </Row>
+        <Row clickable={() => hotReloadGuard.tabs.openBusinessEditorTab(tab.slider, hotReloadGuard.tabs.AppBusinessChatLinksTab)}>
+          <Row.Icon icon="link_filled" />
+          <Row.Title>{i18n('PremiumBusinessChatLinks')}</Row.Title>
+        </Row>
+        <Row clickable={() => hotReloadGuard.tabs.openBusinessEditorTab(tab.slider, hotReloadGuard.tabs.AppBusinessIntroTab)}>
+          <Row.Icon icon="message_quote" />
+          <Row.Title>{i18n('PremiumBusinessIntro')}</Row.Title>
+        </Row>
       </Section>
 
       <Section

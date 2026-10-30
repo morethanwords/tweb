@@ -104,7 +104,7 @@ export default function SignUpCard(props: {spec: Spec}) {
 
     setSignUpKey('PleaseWait');
 
-    managers.apiManager.invokeApi('auth.signUp', params).then(async(response) => {
+    managers.appAccountManager.signUp(params).then(async(response) => {
       switch(response._) {
         case 'auth.authorization':
           await managers.apiManager.setUser(response.user);

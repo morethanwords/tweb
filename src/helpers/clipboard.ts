@@ -112,3 +112,32 @@ export async function copyTextToClipboard(text: string, html?: string, options?:
     fallbackCopyTextToClipboard(text, html, options, appWindow);
   }
 }
+
+/**
+ * Copies a text that is still to come (one the worker answers with). Safari writes only within the click that asks
+ * for it, and an answer from the worker comes after it, so the write starts at once with the text promised; where a
+ * ClipboardItem cannot be written, or its write is refused, the text is written once it comes
+ * (`copyTextToClipboard`, down to `execCommand`). Rejects when it is not copied.
+ */
+export function copyPendingTextToClipboard(text: Promise<string>) {
+  const appWindow = getAppWindow();
+  const copyOnceCome = () => text.then((text) => copyTextToClipboard(text, undefined, {rethrow: true}));
+  if(!canWriteClipboardItem('text/plain', appWindow)) {
+    return copyOnceCome();
+  }
+
+  const BlobConstructor = (appWindow as any).Blob as typeof Blob;
+  let written: Promise<void>;
+  try {
+    written = writeClipboardItem({
+      'text/plain': text.then((text) => new BlobConstructor([text], {type: 'text/plain'}))
+    }, appWindow);
+  } catch(err) {
+    written = Promise.reject(err);
+  }
+
+  return written.catch((err) => {
+    console.error('clipboard error', err);
+    return copyOnceCome();
+  });
+}

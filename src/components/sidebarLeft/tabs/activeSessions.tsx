@@ -3,13 +3,11 @@ import Button from '@components/buttonTsx';
 import InputField from '@components/inputField';
 import PeerTitle from '@components/peerTitle';
 import Section from '@components/section';
-import InlineSelect from '@components/sidebarLeft/tabs/passcodeLock/inlineSelect';
+import InactivityPeriodRow, {SESSION_TTL_OPTIONS} from '@components/sidebarLeft/tabs/inactivityPeriodRow';
 import {joinSessionParts} from '@components/sidebarLeft/tabs/joinSessionParts';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {type AppActiveSessionsTab} from '@components/solidJsTabs/tabs';
-import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import {formatDateAccordingToTodayNew} from '@helpers/date';
-import {DurationType} from '@helpers/formatDuration';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import getAuthorizationErrorLangKey from '@helpers/getAuthorizationErrorLangKey';
 import getSessionPlatformIcon from '@helpers/sessionPlatformIcon';
@@ -22,26 +20,10 @@ const TERMINATE_CONNECTED_BOT_KEY = 'ChatAutomation.TerminateConnectedBot';
 const MAX_DEVICE_MODEL_LENGTH = 32;
 /** tdesktop's `kShortPollTimeout` — the sessions list has no update to listen to. */
 const REFRESH_INTERVAL = 60e3;
-/** The periods tdesktop offers for `account.setAuthorizationTTL`, in days. */
-const TTL_OPTIONS = [
-  {days: 7, duration: 1, type: DurationType.Weeks},
-  {days: 30, duration: 1, type: DurationType.Months},
-  {days: 90, duration: 3, type: DurationType.Months},
-  {days: 180, duration: 6, type: DurationType.Months},
-  {days: 365, duration: 1, type: DurationType.Years}
-].map((option) => ({
-  value: option.days,
-  label: () => wrapFormattedDuration([option])
-}));
 
 const isSameHash = (a: Authorization.authorization, b: Authorization.authorization) => {
   return '' + a.hash === '' + b.hash;
 };
-
-/** A server is free to hold a period this list doesn't offer (183 days, say). */
-const nearestTTLOption = (days: number) => TTL_OPTIONS.reduce((nearest, option) => {
-  return Math.abs(days - option.value) < Math.abs(days - nearest.value) ? option : nearest;
-}, TTL_OPTIONS[0]).value;
 
 const ActiveSessions: Component = () => {
   const [tab] = useSuperTab<typeof AppActiveSessionsTab>();
@@ -59,7 +41,8 @@ const ActiveSessions: Component = () => {
 
   const [authorizations, setAuthorizations] = createSignal(tab.payload.authorizations || []);
   const [connectedBot, setConnectedBot] = createSignal(tab.payload.connectedBot);
-  const [ttlDays, setTtlDays] = createSignal(tab.payload.ttlDays || 0);
+  const ttlDaysSignal = createSignal(tab.payload.ttlDays || 0);
+  const [ttlDays, setTtlDays] = ttlDaysSignal;
 
   // A renamed device only reaches the server on the next initConnection, so
   // show the local name right away — as tdesktop does.
@@ -233,18 +216,6 @@ const ActiveSessions: Component = () => {
     return anchor;
   };
 
-  const setTTL = async(days: number) => {
-    const previous = ttlDays();
-    setTtlDays(days);
-
-    try {
-      await tab.managers.appAccountManager.setAuthorizationTTL(days);
-    } catch(err) {
-      setTtlDays(previous);
-      toastNew({langPackKey: 'Error.AnError'});
-    }
-  };
-
   const openSession = (authorization: Authorization.authorization) => {
     tab.slider.createTab(hotReloadGuard.tabs.AppSessionTab).open({
       authorization,
@@ -263,31 +234,6 @@ const ActiveSessions: Component = () => {
       onClick
     }]
   });
-
-  const TTLRow = () => {
-    const [rowEl, setRowEl] = createSignal<HTMLElement>();
-    const [isOpen, setIsOpen] = createSignal(false);
-    const selected = createMemo(() => nearestTTLOption(ttlDays()));
-
-    return (
-      <Row ref={setRowEl} clickable={() => setIsOpen(true)}>
-        <Row.Title>{i18n('AuthSessions.TerminateIfAwayFor')}</Row.Title>
-        <Row.RightContent>
-          <InlineSelect
-            value={selected()}
-            isOpen={isOpen()}
-            onClose={() => setIsOpen(false)}
-            options={TTL_OPTIONS}
-            onChange={(days: number) => {
-              setIsOpen(false);
-              if(days !== selected()) setTTL(days);
-            }}
-            parent={rowEl()}
-          />
-        </Row.RightContent>
-      </Row>
-    );
-  };
 
   const SessionRow = (props: {authorization: Authorization.authorization}) => {
     const authorization = () => props.authorization;
@@ -389,7 +335,13 @@ const ActiveSessions: Component = () => {
 
       <Show when={ttlDays()}>
         <Section name="AuthSessions.TerminateIfAwayTitle">
-          <TTLRow />
+          <InactivityPeriodRow
+            title="AuthSessions.TerminateIfAwayFor"
+            options={SESSION_TTL_OPTIONS}
+            days={ttlDaysSignal}
+            save={(days) => tab.managers.appAccountManager.setAuthorizationTTL(days)}
+            reload={() => tab.managers.appAccountManager.getAuthorizationTTL()}
+          />
         </Section>
       </Show>
     </>

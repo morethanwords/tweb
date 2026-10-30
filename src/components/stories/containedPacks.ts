@@ -1,8 +1,9 @@
-import {Document, InputStickerSet, MessageEntity, Photo, Reaction, StickerSet, StoryItem} from '@layer';
+import {Document, InputStickerSet, MessageEntity, Reaction, StickerSet, StoryItem} from '@layer';
 import type {AppManagers} from '@lib/managers';
 import {i18n} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {getStickerSetInputById} from '@appManagers/utils/stickers/getStickerSetInput';
+import getStickeredMedia from '@appManagers/utils/stickers/getStickeredMedia';
 
 // * the packs a story takes its stickers and emoji from - those put on its media, which the server
 // * names, and those of the custom emoji in its caption and reaction areas - for "This story contains
@@ -13,20 +14,6 @@ export type StoryContainedPacks = {
   inputs: InputStickerSet.inputStickerSetID[],
   // * of the only pack
   title?: string
-};
-
-const getStickeredMedia = (story: StoryItem.storyItem): {type: 'photo' | 'document', id: Long} => {
-  const media = story.media;
-  if(media?._ === 'messageMediaPhoto') {
-    const photo = media.photo as Photo.photo;
-    return photo?.pFlags?.has_stickers ? {type: 'photo', id: photo.id} : undefined;
-  }
-
-  if(media?._ === 'messageMediaDocument') {
-    const doc = media.document as Document.document;
-    const hasStickers = doc?.attributes?.some((attribute) => attribute._ === 'documentAttributeHasStickers');
-    return hasStickers ? {type: 'document', id: doc.id} : undefined;
-  }
 };
 
 const getCustomEmojiIds = (story: StoryItem.storyItem) => {
@@ -47,14 +34,14 @@ const getCustomEmojiIds = (story: StoryItem.storyItem) => {
 };
 
 export const storyHasContainedPacks = (story: StoryItem.storyItem) => {
-  return !!getStickeredMedia(story) || !!getCustomEmojiIds(story).length;
+  return !!getStickeredMedia(story.media) || !!getCustomEmojiIds(story).length;
 };
 
 export async function getStoryContainedPacks(
   story: StoryItem.storyItem,
   managers: AppManagers
 ): Promise<Record<StoryContainedPacksKind, StoryContainedPacks>> {
-  const stickeredMedia = getStickeredMedia(story);
+  const stickeredMedia = getStickeredMedia(story.media);
   const emojiIds = getCustomEmojiIds(story);
   const [attachedSets, cachedEmojiDocs] = await Promise.all([
     stickeredMedia ? managers.appStickersManager.getAttachedStickers(stickeredMedia.type, stickeredMedia.id).catch((): StickerSet.stickerSet[] => []) : [],

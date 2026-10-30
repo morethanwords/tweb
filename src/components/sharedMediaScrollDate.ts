@@ -3,7 +3,7 @@ export const SHARED_MEDIA_SCROLL_DATE_HIDE_TIMEOUT = 1000;
 const SAME_ROW_TOLERANCE = 1;
 
 export function supportsSharedMediaScrollDate(type: string) {
-  return type === 'media' || type === 'stories';
+  return type === 'media' || type === 'gifs' || type === 'stories';
 }
 
 export function findSharedMediaScrollDateItemIndex(

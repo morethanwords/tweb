@@ -1228,22 +1228,17 @@ export default function showStarGiftInfoPopup(options: {
                 class="popup-star-gift-info-action"
                 icon={isWearing() ? 'crownoff_filled' : 'crown_filled'}
                 text={isWearing() ? 'StarGiftWearStop' : 'StarGiftWear'}
-                onClick={async() => {
+                onClick={() => {
                   const managers = bindManagersToSession(rootScope.managers);
                   if(ownerPeerId === undefined) return;
                   if(isWearing()) {
                     if(ownerPeerId === rootScope.myId) {
                       managers.appUsersManager.updateEmojiStatus({_: 'emojiStatusEmpty'});
                     } else {
-                      managers.apiManager.invokeApiSingleProcess({
-                        method: 'channels.updateEmojiStatus',
-                        params: {
-                          channel: await managers.appChatsManager.getChannelInput(ownerPeerId.toChatId()),
-                          emoji_status: {_: 'emojiStatusEmpty'}
-                        }
-                      }).then((updates) => {
-                        managers.apiUpdatesManager.processUpdateMessage(updates);
-                      }).catch(() => {
+                      managers.appChatsManager.updateEmojiStatus(
+                        ownerPeerId.toChatId(),
+                        {_: 'emojiStatusEmpty'}
+                      ).catch(() => {
                         toastNew({langPackKey: 'Error.AnError'});
                       });
                     }

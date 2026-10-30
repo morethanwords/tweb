@@ -166,7 +166,9 @@ function createDefaultHandlers(): ManagerHandlers {
     },
     appStoriesManager: {
       getUnreadType: () => undefined,
-      getPeerStoriesSegments: () => undefined
+      getPeerStoriesSegments: () => undefined,
+      // * avatars of peers the feed does not follow ask what they have in stories while in sight
+      pollPeersStories: () => undefined
     },
     appNotificationsManager: {
       getNotifyPeerTypeSettings: () => undefined,

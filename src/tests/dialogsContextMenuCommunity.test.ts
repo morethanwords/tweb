@@ -12,7 +12,10 @@ const mocks = vi.hoisted(() => ({
   isDialogUnread: vi.fn(),
   isPeerLocalMuted: vi.fn(),
   getDialogFilters: vi.fn(),
-  getDeleteButtonText: vi.fn()
+  getDeleteButtonText: vi.fn(),
+  blockUserWithConfirmation: vi.fn(),
+  unblockUser: vi.fn(),
+  isUserKnownBlocked: vi.fn()
 }));
 
 vi.mock('@helpers/dom/createContextMenu', () => ({
@@ -47,6 +50,7 @@ vi.mock('@lib/apiManagerProxy', () => ({
   default: {
     getChat: (chatId: ChatId) => mocks.chats.get(+chatId),
     getPeer: (peerId: PeerId) => mocks.peers.get(+peerId),
+    getUser: (userId: UserId) => mocks.peers.get(+userId.toPeerId(false)),
     getCommunityDialog: (): undefined => undefined,
     isForum: () => false,
     isBotforum: () => false
@@ -88,6 +92,10 @@ vi.mock('@components/communities/leaveCommunity', () => ({
   canLeaveCommunity: () => true
 }));
 vi.mock('@components/clearHistory', () => ({default: vi.fn()}));
+vi.mock('@components/blockUser', () => ({
+  default: mocks.blockUserWithConfirmation,
+  unblockUser: mocks.unblockUser
+}));
 
 import DialogsContextMenu from '@components/dialogsContextMenu';
 import appDialogsManager from '@lib/appDialogsManager';
@@ -139,6 +147,9 @@ const managers = {
   },
   filtersStorage: {
     getDialogFilters: mocks.getDialogFilters
+  },
+  appProfileManager: {
+    isUserKnownBlocked: mocks.isUserKnownBlocked
   }
 } as any;
 
@@ -407,5 +418,66 @@ describe('DialogsContextMenu on a Community chat row', () => {
 
     expect(texts(buttons)).toContain('ChatList.Context.Unmute');
     expect(texts(buttons)).not.toContain('ChatList.Context.Mute');
+  });
+});
+
+describe('DialogsContextMenu on a private chat row', () => {
+  const userId = 30 as UserId;
+  const userPeerId = userId.toPeerId(false);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.contextMenuOptions = undefined;
+    mocks.chats = new Map<number, any>();
+    mocks.peers = new Map<number, any>([
+      [+userPeerId, {_: 'user', id: userId, pFlags: {}}]
+    ]);
+    mocks.dialogs = new Map<number, any>([
+      [+userPeerId, {_: 'dialog', peerId: userPeerId, folder_id: 0, unread_count: 0, pFlags: {}}]
+    ]);
+    mocks.isDialogUnread.mockResolvedValue(false);
+    mocks.isPeerLocalMuted.mockResolvedValue(false);
+    mocks.getDialogFilters.mockResolvedValue([{id: 0}, {id: 1}]);
+    mocks.getDeleteButtonText.mockResolvedValue('DeleteChat');
+    mocks.isUserKnownBlocked.mockResolvedValue(false);
+  });
+
+  it('blocks someone who is not a contact with the confirmation the chat\'s menu shows', async() => {
+    const buttons = await openMenu(makeRow({peerId: userPeerId}));
+    expect(texts(buttons)).toContain('BlockUser');
+    expect(texts(buttons)).not.toContain('Unblock');
+
+    buttons.find((button) => button.text === 'BlockUser').onClick();
+    expect(mocks.blockUserWithConfirmation).toHaveBeenCalledWith({peerId: userPeerId});
+  });
+
+  it('unblocks someone already blocked', async() => {
+    mocks.isUserKnownBlocked.mockResolvedValue(true);
+    const buttons = await openMenu(makeRow({peerId: userPeerId}));
+    expect(texts(buttons)).toContain('Unblock');
+    expect(texts(buttons)).not.toContain('BlockUser');
+
+    buttons.find((button) => button.text === 'Unblock').onClick();
+    expect(mocks.unblockUser).toHaveBeenCalledWith(userPeerId);
+  });
+
+  it('offers neither for a contact, a deleted account or oneself', async() => {
+    for(const pFlags of [{contact: true}, {deleted: true}]) {
+      mocks.peers.set(+userPeerId, {_: 'user', id: userId, pFlags});
+      const buttons = await openMenu(makeRow({peerId: userPeerId}));
+      expect(texts(buttons)).not.toContain('BlockUser');
+      expect(texts(buttons)).not.toContain('Unblock');
+    }
+
+    const myPeerId = (1 as UserId).toPeerId(false);
+    mocks.peers.set(+myPeerId, {_: 'user', id: 1, pFlags: {self: true}});
+    mocks.dialogs.set(+myPeerId, {_: 'dialog', peerId: myPeerId, folder_id: 0, unread_count: 0, pFlags: {}});
+    const buttons = await openMenu(makeRow({peerId: myPeerId}));
+    expect(texts(buttons)).not.toContain('BlockUser');
+  });
+
+  it('keeps Delete last, where the menu renames it', async() => {
+    const buttons = await openMenu(makeRow({peerId: userPeerId}));
+    expect(texts(buttons)[buttons.length - 1]).toBe('Delete');
   });
 });

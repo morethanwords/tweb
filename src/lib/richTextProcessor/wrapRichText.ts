@@ -97,6 +97,7 @@ const ENTITY_DIRECTIONS: {[type in MessageEntity['_']]?: 'ltr' | 'auto'} = {
   messageEntityUrl: 'ltr',
   messageEntityEmail: 'ltr',
   messageEntityPhone: 'ltr',
+  messageEntityBankCard: 'ltr',
   messageEntityBotCommand: 'ltr',
   messageEntityMention: 'ltr',
   messageEntityCashtag: 'ltr',
@@ -466,6 +467,21 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           element = document.createElement('a');
           element.classList.add('phone-url');
           (element as HTMLAnchorElement).href = encodeEntities('tel:' + target);
+        }
+        break;
+      }
+
+      // a click opens the card's menu: its number to copy, and what the server knows of it
+      // (`onBankCardClick`, tdesktop's BankCardClickHandler)
+      case 'messageEntityBankCard': {
+        if(!(options.noLinks && !passEntities[entity._]) && !options.wrappingDraft) {
+          element = document.createElement('a');
+          element.classList.add('bank-card');
+          (element as HTMLAnchorElement).href = '#';
+          element.dataset.bankCard = fullEntityText;
+          element.setAttribute('aria-haspopup', 'menu');
+          element.setAttribute('aria-expanded', 'false');
+          element.setAttribute('onclick', 'onBankCardClick(this, event)');
         }
         break;
       }

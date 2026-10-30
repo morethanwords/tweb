@@ -17,6 +17,29 @@ export default class AppGamesManager extends AppManager {
     return game;
   }
 
+  /** Sends a bot's game by its short name - what `t.me/<bot>?game=<short_name>` shares (tdesktop's `ShareBotGame`). */
+  public shareGame({peerId, threadId, monoforumThreadId, botId, shortName}: {
+    peerId: PeerId,
+    threadId?: number,
+    monoforumThreadId?: PeerId,
+    botId: BotId,
+    shortName: string
+  }) {
+    return this.appMessagesManager.sendOther({
+      peerId,
+      threadId,
+      replyToMonoforumPeerId: monoforumThreadId,
+      inputMedia: {
+        _: 'inputMediaGame',
+        id: {
+          _: 'inputGameShortName',
+          bot_id: this.appUsersManager.getUserInput(botId),
+          short_name: shortName
+        }
+      }
+    });
+  }
+
   public setGameScore({peerId, mid, userId, score, editMessage, force}: {
     peerId: PeerId,
     mid: number,

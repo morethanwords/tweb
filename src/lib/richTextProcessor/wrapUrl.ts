@@ -52,6 +52,7 @@ export default function wrapUrl(url: string, safe?: boolean) {
       case 'share':
       case 'nft':
       case 'addstyle':
+      case 'contact':
         if(path.length !== 1 && !prefix) {
           onclick = path[0];
           break;
@@ -96,7 +97,9 @@ export default function wrapUrl(url: string, safe?: boolean) {
   } */
 
   if(!(window as any)[onclick]) {
-    onclick = undefined;
+    // * a tg:// link no handler here knows is the server's to explain (`help.getDeepLinkInfo`); an
+    // * `iv` link refused above stays a plain one
+    onclick = tgMatch && onclick && (window as any).unknownDeepLink ? 'unknownDeepLink' : undefined;
   }
 
   out.onclick = onclick;

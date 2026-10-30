@@ -1,19 +1,24 @@
 /*
- * Inviting people into a conference call, one server answer per person.
+ * Inviting people into a group call, and reporting how it went in one toast.
  *
- * `phone.inviteConferenceCallParticipant` is a per-user request that can fail
- * for reasons that are not errors at all — the person is already in the call,
- * their privacy settings do not allow the invite, they were banned from it.
- * tdesktop therefore collects a per-user verdict (`InviteResult`,
+ * A conference: `phone.inviteConferenceCallParticipant` is a per-user request
+ * that can fail for reasons that are not errors at all — the person is already
+ * in the call, their privacy settings do not allow the invite, they were banned
+ * from it. tdesktop therefore collects a per-user verdict (`InviteResult`,
  * calls_group_common.h:60), classifies each failure by error type
  * (`GroupCall::inviteToConference`, calls_group_call.cpp:4069) and reports the
  * whole batch in one toast (`ComposeInviteResultToast`, calls_group_call.cpp:4294).
+ *
+ * A video chat: `phone.inviteToGroupCall` takes the chat's members in slices and
+ * answers a slice as a whole (`GroupCall::inviteUsers`), so a person there is
+ * either invited or not, and tdesktop reports only who was (PrepareInviteBox).
  * This is that model for tweb.
  */
 
-import {toast} from '@components/toast';
+import {toast, toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import groupCallsController from '@lib/calls/groupCallsController';
+import type GroupCallInstance from '@lib/calls/groupCallInstance';
 import {i18n, LangPackKey} from '@lib/langPack';
 
 export type ConferenceInviteOutcome =
@@ -97,14 +102,54 @@ export async function inviteConferenceParticipants(
   return result;
 }
 
-const OUTCOME_LANG_KEYS: {[outcome in ConferenceInviteOutcome]: [user: LangPackKey, many: LangPackKey]} = {
-  invited: ['ConferenceCall.Invite.Done', 'ConferenceCall.Invite.DoneMany'],
-  alreadyIn: ['ConferenceCall.Invite.Already', 'ConferenceCall.Invite.AlreadyMany'],
-  // tdesktop words a privacy refusal exactly like any other failure — the
-  // buckets stay apart because the server tells them apart, not the phrasing.
-  privacyRestricted: ['ConferenceCall.Invite.Fail', 'ConferenceCall.Invite.FailMany'],
-  kicked: ['ConferenceCall.Invite.Kicked', 'ConferenceCall.Invite.KickedMany'],
-  failed: ['ConferenceCall.Invite.Fail', 'ConferenceCall.Invite.FailMany']
+/**
+ * A video chat's invites, in phone.inviteToGroupCall's slices: everyone the
+ * server took is `invited`, everyone else `failed`.
+ */
+export async function inviteVideoChatParticipants(
+  instance: Pick<GroupCallInstance, 'id' | 'managers'>,
+  peerIds: PeerId[],
+  options: {isAlive?: () => boolean} = {}
+): Promise<ConferenceInviteResult> {
+  let invited: UserId[] = [];
+  try {
+    invited = await instance.managers.appGroupCallsManager.inviteToGroupCall(
+      instance.id,
+      peerIds.map((peerId) => peerId.toUserId())
+    );
+  } catch(err) {
+    console.error('invite video chat participants failed', err);
+  }
+
+  const result = createConferenceInviteResult();
+  if(options.isAlive && !options.isAlive()) {
+    return result;
+  }
+
+  const invitedSet = new Set(invited);
+  peerIds.forEach((peerId) => {
+    result[invitedSet.has(peerId.toUserId()) ? 'invited' : 'failed'].push(peerId);
+  });
+
+  return result;
+}
+
+export type GroupCallInviteKind = 'conference' | 'videoChat';
+
+type OutcomeLangKeys = Partial<{[outcome in ConferenceInviteOutcome]: [user: LangPackKey, many: LangPackKey]}>;
+const OUTCOME_LANG_KEYS: {[kind in GroupCallInviteKind]: OutcomeLangKeys} = {
+  conference: {
+    invited: ['ConferenceCall.Invite.Done', 'ConferenceCall.Invite.DoneMany'],
+    alreadyIn: ['ConferenceCall.Invite.Already', 'ConferenceCall.Invite.AlreadyMany'],
+    // tdesktop words a privacy refusal exactly like any other failure — the
+    // buckets stay apart because the server tells them apart, not the phrasing.
+    privacyRestricted: ['ConferenceCall.Invite.Fail', 'ConferenceCall.Invite.FailMany'],
+    kicked: ['ConferenceCall.Invite.Kicked', 'ConferenceCall.Invite.KickedMany'],
+    failed: ['ConferenceCall.Invite.Fail', 'ConferenceCall.Invite.FailMany']
+  },
+  videoChat: {
+    invited: ['VoipGroupInvitedUser', 'VoiceChat.Invite.DoneMany']
+  }
 };
 
 const OUTCOME_ORDER: ConferenceInviteOutcome[] = [
@@ -120,15 +165,17 @@ const OUTCOME_ORDER: ConferenceInviteOutcome[] = [
  * and counting them otherwise.
  */
 export async function composeConferenceInviteToast(
-  result: ConferenceInviteResult
+  result: ConferenceInviteResult,
+  kind: GroupCallInviteKind = 'conference'
 ): Promise<DocumentFragment | undefined> {
+  const langKeys = OUTCOME_LANG_KEYS[kind];
   const lines = await Promise.all(OUTCOME_ORDER.map(async(outcome) => {
     const peerIds = result[outcome];
-    if(!peerIds.length) {
+    if(!peerIds.length || !langKeys[outcome]) {
       return;
     }
 
-    const [userKey, manyKey] = OUTCOME_LANG_KEYS[outcome];
+    const [userKey, manyKey] = langKeys[outcome];
     return peerIds.length === 1 ?
       i18n(userKey, [await wrapPeerTitle({peerId: peerIds[0], onlyFirstName: true})]) :
       i18n(manyKey, [peerIds.length]);
@@ -149,9 +196,15 @@ export async function composeConferenceInviteToast(
   return fragment;
 }
 
-export async function showConferenceInviteResultToast(result: ConferenceInviteResult) {
-  const content = await composeConferenceInviteToast(result);
+export async function showConferenceInviteResultToast(
+  result: ConferenceInviteResult,
+  kind: GroupCallInviteKind = 'conference'
+) {
+  const content = await composeConferenceInviteToast(result, kind);
   if(content) {
     toast(content);
+  } else if(OUTCOME_ORDER.some((outcome) => result[outcome].length)) {
+    // a video chat names no refusal; a batch nobody got into still answers the press
+    toastNew({langPackKey: 'Error.AnError'});
   }
 }

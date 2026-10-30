@@ -44,10 +44,14 @@ export default function ChatsTipCard() {
   // Top peers are a manager fetch (state cache, refreshed daily); the other two are mirrored
   // state, so they update themselves as chats are searched for and closed. Reading a REJECTED
   // resource re-throws inside the memo below, so the fetch fails soft — a FLOOD_WAIT on
-  // `contacts.getTopPeers` should cost this card its Popular list, nothing more.
-  const [topPeers] = createResource(() => rootScope.managers.appUsersManager
+  // `contacts.getTopPeers` should cost this card its Popular list, nothing more. Asked again when
+  // "Suggest frequent contacts" flips, which the mirrored cache says: off, the list is gone at once.
+  const [topPeers] = createResource(
+    () => appState.topPeersCache?.correspondents?.disabled ? 'off' : 'on',
+    () => rootScope.managers.appUsersManager
     .getTopPeers('correspondents')
-    .catch(() => [] as MyTopPeer[]));
+    .catch(() => [] as MyTopPeer[])
+  );
 
   // A close updates recent peers on every conversation switch. Keep the rendered cards while
   // covered, and read the latest lists synchronously when the empty column is shown again.

@@ -27,14 +27,21 @@ import type GroupCallInstance from '@lib/calls/groupCallInstance';
 import GROUP_CALL_STATE from '@lib/calls/groupCallState';
 import groupCallsController from '@lib/calls/groupCallsController';
 import requestGroupCallLeave from '@components/groupCall/requestLeave';
+import editGroupCallTitle from '@components/groupCall/editTitle';
+import {canSwitchGroupCallJoinAs, switchGroupCallJoinAs} from '@components/groupCall/joinAs';
+import type {GroupCallJoinAsOptions} from '@appManagers/appGroupCallsManager';
+import {AvatarNewTsx} from '@components/avatarNew';
+import PeerTitle from '@components/peerTitle';
 
 import '@components/call/settingsPopup.scss';
 
 // The shared in-call settings sheet. Both the group-call panel (legacy video chat)
 // and the 1-on-1 call panel open this — the only difference is which sections show:
 //
-//   group call:  [Mute new participants?] [Speakers] [Microphone+meter] [Share invite] [Leave]
-//   P2P call:    .............................. [Speakers] [Microphone+meter] ........ [End]
+//   group call:  [Display me as?] [Edit title? Mute new participants?] [Speakers] [Microphone+meter]
+//                [Share invite] [Leave]
+//   P2P call:    ......................................................... [Speakers] [Microphone+meter]
+//                ........ [End]
 //
 // The settings popup owns no call-state; everything routes through the
 // instance handed in. It follows that instance's lifecycle so a closed or
@@ -56,7 +63,8 @@ export default function showCallSettingsPopup(options: CallSettingsPopupOptions)
     const isGroupCall = options.mode === 'groupCall';
     const groupCallInstance = isGroupCall ? options.instance : undefined;
     const p2pInstance = !isGroupCall ? options.instance : undefined;
-    const canManage = isGroupCall ? options.canManage : false;
+    // * read again when the chat changes while the sheet is open (below): rights given or taken away
+    const [canManage, setCanManage] = createSignal(isGroupCall ? options.canManage : false);
     const [, setAppSettings] = useAppSettings();
     const callDevices = useCallDeviceSettings();
     const {SnitchPopupContext, popupContext} = useSnitchedPopupContext();
@@ -71,6 +79,32 @@ export default function showCallSettingsPopup(options: CallSettingsPopupOptions)
       !!(groupCallInstance?.groupCall as GroupCall.groupCall)?.pFlags?.join_muted
     );
     const [shareInviteBusy, setShareInviteBusy] = createSignal(false);
+    // A legacy video chat only: a conference is joined as the account and has no chat to rename it in.
+    const isVideoChat = !!groupCallInstance && !groupCallInstance.e2e;
+    const [isBroadcast, setIsBroadcast] = createSignal(false);
+    // what "Display me as..." offers, once the server said there is a choice (tdesktop showChooseJoinAs)
+    const [joinAsOptions, setJoinAsOptions] = createSignal<GroupCallJoinAsOptions>();
+    if(isVideoChat) {
+      const {managers, chatId} = groupCallInstance;
+      managers.appChatsManager.isBroadcast(chatId).then(setIsBroadcast, (err) => {
+        console.error('group call chat kind failed', err);
+      });
+      managers.appGroupCallsManager.getGroupCallJoinAs(chatId.toPeerId(true)).then(setJoinAsOptions, (err) => {
+        console.error('group call join-as list failed', err);
+      });
+
+      // * the latest question's answer is the one kept
+      let manageRightsGeneration = 0;
+      subscribeOn(rootScope)('chat_update', (updatedChatId) => {
+        if(updatedChatId !== chatId) return;
+        const generation = ++manageRightsGeneration;
+        managers.appChatsManager.hasRights(chatId, 'manage_call').then((value) => {
+          if(generation === manageRightsGeneration) setCanManage(value);
+        }, (err) => {
+          console.error('group call manage rights failed', err);
+        });
+      });
+    }
 
     const closePopup = () => popupContext()?.hide();
 
@@ -169,12 +203,27 @@ export default function showCallSettingsPopup(options: CallSettingsPopupOptions)
       if(!groupCallInstance || shareInvitePromise || !shareInviteMiddleware()) return;
 
       setShareInviteBusy(true);
-      const operation = shareGroupCallInviteLink(groupCallInstance, {canManage, isAlive: shareInviteMiddleware});
+      const operation = shareGroupCallInviteLink(groupCallInstance, {canManage: canManage(), isAlive: shareInviteMiddleware});
       const tracked = operation.finally(() => {
         if(shareInvitePromise === tracked) shareInvitePromise = undefined;
         if(shareInviteMiddleware()) setShareInviteBusy(false);
       });
       shareInvitePromise = tracked;
+    };
+
+    const onEditTitle = () => {
+      closePopup();
+      void editGroupCallTitle({
+        instance: groupCallInstance,
+        isBroadcast: isBroadcast(),
+        isAlive: () => groupCallsController.isCurrentGroupCall(groupCallInstance)
+      });
+    };
+
+    const onSwitchJoinAs = () => {
+      const options = joinAsOptions();
+      closePopup();
+      void switchGroupCallJoinAs({instance: groupCallInstance, joinAs: options, isBroadcast: isBroadcast()});
     };
 
     const leaveP2pCall = async() => {
@@ -189,7 +238,7 @@ export default function showCallSettingsPopup(options: CallSettingsPopupOptions)
     const onEnd = () => {
       if(groupCallInstance) {
         closePopup();
-        void requestGroupCallLeave(groupCallInstance, canManage);
+        void requestGroupCallLeave(groupCallInstance, canManage());
       } else if(p2pInstance) {
         closePopup();
         void leaveP2pCall();
@@ -212,8 +261,32 @@ export default function showCallSettingsPopup(options: CallSettingsPopupOptions)
         </PopupElement.Header>
         <PopupElement.Body class="call-settings-popup-body">
           <PopupElement.Scrollable>
-            <Show when={isGroupCall && canManage}>
+            <Show when={joinAsOptions() && canSwitchGroupCallJoinAs(joinAsOptions(), groupCallInstance.myId)}>
               <Section>
+                <Row clickable={onSwitchJoinAs}>
+                  <Row.Media size="abitbigger">
+                    <AvatarNewTsx
+                      peerId={groupCallInstance.selfPeerId}
+                      accountNumber={groupCallInstance.accountNumber}
+                      size={42}
+                    />
+                  </Row.Media>
+                  <Row.Title>{i18n('VoipGroupDisplayAs')}</Row.Title>
+                  <Row.Subtitle>
+                    {new PeerTitle({peerId: groupCallInstance.selfPeerId, accountNumber: groupCallInstance.accountNumber}).element}
+                  </Row.Subtitle>
+                </Row>
+              </Section>
+            </Show>
+
+            <Show when={isGroupCall && canManage()}>
+              <Section>
+                <Show when={isVideoChat}>
+                  <Row clickable={onEditTitle}>
+                    <Row.Icon icon="edit" />
+                    <Row.Title>{i18n(isBroadcast() ? 'VoipChannelEditTitle' : 'VoipGroupEditTitle')}</Row.Title>
+                  </Row>
+                </Show>
                 <Row>
                   <Row.CheckboxFieldToggle>
                     <CheckboxFieldTsx

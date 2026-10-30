@@ -14,6 +14,8 @@ import {appSettings} from '@stores/appSettings';
 import type {EditProfileTabPayload} from '@components/sidebarLeft/tabs/editProfile';
 import type {BusinessHoursTabPayload} from '@components/sidebarLeft/tabs/businessHours';
 import type {BusinessLocationTabPayload} from '@components/sidebarLeft/tabs/businessLocation';
+import type {BusinessChatLinksTabPayload} from '@components/sidebarLeft/tabs/businessChatLinks';
+import type {BusinessIntroTabPayload} from '@components/sidebarLeft/tabs/businessIntro';
 import type {TimezoneTabPayload} from '@components/sidebarLeft/tabs/timezone';
 import type {BusinessPeriod} from '@components/sidebarLeft/tabs/businessHoursShared';
 import type {StoriesSearch} from '@components/stories/store';
@@ -26,6 +28,7 @@ import type {
   SelectSearchPeerType
 } from '@components/appSelectPeers';
 import type {IsPeerType} from '@appManagers/appPeersManager';
+import type {NotifyException} from '@appManagers/appNotificationsManager';
 import type {AppChatFull} from '@appManagers/appProfileManager';
 
 
@@ -126,6 +129,19 @@ export const AppNotificationsTab =
   });
 
 
+export type AppNotificationExceptionsTabPayload = {
+  inputKey: 'inputNotifyUsers' | 'inputNotifyChats' | 'inputNotifyBroadcasts',
+  /** the type's exceptions, kept up to date by the Notifications tab under this one */
+  exceptions: () => NotifyException[] | undefined
+};
+
+export const AppNotificationExceptionsTab =
+  scaffoldSolidJSTab<AppNotificationExceptionsTabPayload>({
+    title: 'NotificationsExceptions',
+    getComponentModule: () => import('../sidebarLeft/tabs/notificationExceptions')
+  });
+
+
 export function getEditProfileInitArgs(overwriteConnectedBot?: boolean): EditProfileTabPayload {
   return {
     bioMaxLength: rootScope.managers.apiManager.getLimit('bio'),
@@ -208,23 +224,71 @@ export const AppBusinessLocationTab = Object.assign(
 );
 (AppBusinessLocationTab as any).noSame = true;
 
+
+export function getBusinessChatLinksInitArgs(): BusinessChatLinksTabPayload {
+  return {
+    animationData: lottieLoader.loadAnimationFromURLManually('BusinessLinks'),
+    links: rootScope.managers.appBusinessManager.getBusinessChatLinks()
+  };
+}
+
+export const AppBusinessChatLinksTab = Object.assign(
+  scaffoldSolidJSTab<BusinessChatLinksTabPayload>({
+    title: 'PremiumBusinessChatLinks',
+    getComponentModule: () => import('../sidebarLeft/tabs/businessChatLinks')
+  }),
+  {getInitArgs: getBusinessChatLinksInitArgs}
+);
+(AppBusinessChatLinksTab as any).noSame = true;
+
+
+export function getBusinessIntroInitArgs(): BusinessIntroTabPayload {
+  return {
+    userFull: rootScope.managers.appProfileManager.getProfile(rootScope.myId.toUserId())
+  };
+}
+
+export const AppBusinessIntroTab = Object.assign(
+  scaffoldSolidJSTab<BusinessIntroTabPayload>({
+    title: 'PremiumBusinessIntro',
+    getComponentModule: () => import('../sidebarLeft/tabs/businessIntro')
+  }),
+  {getInitArgs: getBusinessIntroInitArgs}
+);
+(AppBusinessIntroTab as any).noSame = true;
+
+type BusinessEditorTab =
+  | typeof AppBusinessHoursTab
+  | typeof AppBusinessLocationTab
+  | typeof AppBusinessChatLinksTab
+  | typeof AppBusinessIntroTab;
+
+/** The Business promo feature a free account is shown instead of each editor. */
+function getBusinessEditorFeature(Tab: BusinessEditorTab): PremiumPromoFeatureType {
+  if(Tab === AppBusinessHoursTab) return 'business_hours';
+  if(Tab === AppBusinessLocationTab) return 'business_location';
+  if(Tab === AppBusinessChatLinksTab) return 'business_links';
+  return 'business_intro';
+}
+
 /**
- * Opens one of the Business editors. Both save through `account.updateBusiness*`, which a
- * free account is refused, so one gets the Business promo instead of a form that could only
- * fail on save — the way Android gates them.
+ * Opens one of the Business editors. They save through `account.*Business*`, which a free
+ * account is refused, so one gets the Business promo instead of a form that could only fail
+ * on save — the way Android gates them.
  */
 export async function openBusinessEditorTab(
   slider: SidebarSlider,
-  Tab: typeof AppBusinessHoursTab | typeof AppBusinessLocationTab
+  Tab: BusinessEditorTab
 ) {
   if(!rootScope.premium) {
     const {showBusinessPopup} = await import('@components/popups/premium');
-    showBusinessPopup({feature: Tab === AppBusinessHoursTab ? 'business_hours' : 'business_location'});
+    showBusinessPopup({feature: getBusinessEditorFeature(Tab)});
     return;
   }
 
-  const tab = slider.createTab(Tab);
-  await tab.open(Tab.getInitArgs() as BusinessHoursTabPayload & BusinessLocationTabPayload);
+  // * the editors differ in their payload alone, which each one's own `getInitArgs` makes
+  const tab = slider.createTab(Tab as typeof AppBusinessHoursTab);
+  await tab.open(Tab.getInitArgs() as BusinessHoursTabPayload);
   return tab;
 }
 
@@ -356,6 +420,16 @@ export const AppStickersAndEmojiTab =
   scaffoldSolidJSTab({
     title: 'StickersName',
     getComponentModule: () => import('../sidebarLeft/tabs/stickersAndEmoji')
+  });
+
+export const AppArchivedStickersTab =
+  scaffoldSolidJSTab({
+    title: 'ArchivedStickers',
+    getComponentModule: () => import('../sidebarLeft/tabs/archivedStickers'),
+    // * a first page that does not fill the tab asks for the next one
+    onOpenAfterTimeout: function() {
+      this.scrollable.onScroll();
+    }
   });
 
 

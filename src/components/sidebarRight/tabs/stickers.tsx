@@ -17,13 +17,21 @@ import isStickerSetAdded from '@lib/appManagers/utils/stickers/isStickerSetAdded
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 
+// * a trending set counts as seen once (all but a sliver of) it is on the screen
+const READ_VISIBLE_RATIO = 0.95;
+
 const Stickers: Component = () => {
   const [tab] = useSuperTab();
   const {appImManager, appSidebarRight} = useHotReloadGuard();
 
+  // * an answer that comes after the tab closed renders nothing
+  const middleware = tab.middlewareHelper.get();
   let inputSearch: InputSearch;
   let setsDiv: HTMLDivElement;
   const lazyLoadQueue = new LazyLoadQueue();
+  // * the old trending sets loaded below the current ones: undefined once there are no more
+  let oldFeaturedOffset = 0, loadingOldFeatured = false;
+  let readObserver: IntersectionObserver;
 
   const renderSet = (set: StickerSet.stickerSet) => {
     const div = document.createElement('div');
@@ -66,6 +74,10 @@ const Stickers: Component = () => {
     }
 
     tab.managers.appStickersManager.getStickerSet(getStickerSetInputById(set)).then((set) => {
+      if(!middleware()) {
+        return;
+      }
+
       for(let i = 0; i < count; ++i) {
         const div = stickersDiv.children[i] as HTMLDivElement;
         const doc = set.documents[i];
@@ -94,6 +106,48 @@ const Stickers: Component = () => {
     div.append(header, stickersDiv);
 
     setsDiv.append(div);
+    return div;
+  };
+
+  const getRenderedSet = (id: StickerSet.stickerSet['id']) => {
+    return setsDiv.querySelector<HTMLElement>(`.sticker-set[data-sticker-set="${id}"]`);
+  };
+
+  /**
+   * Trending sets are shown — those not in the list yet rendered — as the user is to see them: each,
+   * new or kept from before (a search's), is marked read once it is on the screen whole (as tdesktop's
+   * readVisibleFeatured does); one read already the manager lets alone
+   */
+  const renderFeaturedSets = (coveredSets: StickerSetCovered[]) => {
+    coveredSets.forEach((covered) => {
+      const set = covered.set as StickerSet.stickerSet;
+      readObserver.observe(getRenderedSet(set.id) || renderSet(set));
+    });
+  };
+
+  // * the older trending sets, a page at a time as the list is scrolled to its end (tdesktop, Android)
+  const loadOldFeatured = () => {
+    const offset = oldFeaturedOffset;
+    if(inputSearch.value || loadingOldFeatured || offset === undefined) {
+      return;
+    }
+
+    loadingOldFeatured = true;
+    tab.managers.appStickersManager.getOldFeaturedStickers(offset).then(({sets, nextOffset}) => {
+      loadingOldFeatured = false;
+      // * the list may have been searched in, or gone back to the start, or closed meanwhile
+      if(!middleware() || inputSearch.value || oldFeaturedOffset !== offset) {
+        return;
+      }
+
+      oldFeaturedOffset = nextOffset;
+      renderFeaturedSets(sets);
+      // * the end still in reach — a page that added little or nothing new — asks for the next one;
+      // a page that did not come waits for the next scroll to the end
+      tab.scrollable.checkForTriggers();
+    }, () => {
+      loadingOldFeatured = false;
+    });
   };
 
   const filterRendered = (query: string, coveredSets: StickerSetCovered[]) => {
@@ -107,6 +161,8 @@ const Stickers: Component = () => {
       if(index !== -1) {
         coveredSets.splice(index, 1);
       } else if(!query || !el.dataset.title.toLowerCase().includes(query.toLowerCase())) {
+        // * a trending row not seen yet is watched no longer: it is gone
+        readObserver.unobserve(el);
         el.remove();
       }
     });
@@ -118,14 +174,16 @@ const Stickers: Component = () => {
 
   const renderFeatured = () => {
     return tab.managers.appStickersManager.getFeaturedStickers().then((coveredSets) => {
-      if(inputSearch.value) {
+      if(!middleware() || inputSearch.value) {
         return;
       }
 
-      coveredSets = filterRendered('', coveredSets);
-      coveredSets.forEach((set) => {
-        renderSet(set.set);
-      });
+      // * whatever older sets were below are gone with the filter: they load again from the start
+      oldFeaturedOffset = 0;
+      filterRendered('', coveredSets);
+      // * the rows kept are watched again too: a search may have rendered them anew, unwatched
+      renderFeaturedSets(coveredSets);
+      tab.scrollable.checkForTriggers();
     });
   };
 
@@ -135,7 +193,7 @@ const Stickers: Component = () => {
     }
 
     return tab.managers.appStickersManager.searchStickerSets(query, false).then((coveredSets) => {
-      if(inputSearch.value !== query) {
+      if(!middleware() || inputSearch.value !== query) {
         return;
       }
 
@@ -162,6 +220,21 @@ const Stickers: Component = () => {
     setsDiv = document.createElement('div');
     setsDiv.classList.add('sticker-sets');
     tab.scrollable.append(setsDiv);
+
+    readObserver = new IntersectionObserver((entries) => {
+      const ids = entries
+      .filter((entry) => entry.intersectionRatio >= READ_VISIBLE_RATIO)
+      .map((entry) => {
+        readObserver.unobserve(entry.target);
+        return (entry.target as HTMLElement).dataset.stickerSet;
+      });
+
+      if(ids.length) {
+        tab.managers.appStickersManager.readFeaturedStickerSets(ids);
+      }
+    }, {root: tab.scrollable.container, threshold: READ_VISIBLE_RATIO});
+
+    tab.scrollable.onScrolledBottom = loadOldFeatured;
 
     attachMediaPeekListeners({listenTo: setsDiv, listenerSetter: tab.listenerSetter});
 
@@ -221,6 +294,8 @@ const Stickers: Component = () => {
   });
 
   onCleanup(() => {
+    readObserver?.disconnect();
+    lazyLoadQueue.clear();
     setsDiv.replaceChildren();
     animationIntersector.checkAnimations(undefined, 'STICKERS-SEARCH');
   });

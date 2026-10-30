@@ -134,6 +134,10 @@ const EPHEMERAL_REPLY_RESOLVE_DELAY = 2e3;
 const EPHEMERAL_RETRY_KEEP_DURATION = 15 * 60e3;
 const EPHEMERAL_RETRY_MAX_COUNT = 20;
 const STREAMED_MESSAGE_DRAFT_TTL = 30_000;
+// * messages.reportMessagesDelivery: the messages saved meanwhile go in one request per chat, of at most
+// * as many ids as tdesktop sends (data_histories.cpp, kReportDeliveriesPerRequest)
+const DELIVERY_REPORT_DELAY = 100;
+const DELIVERY_REPORTS_PER_REQUEST = 50;
 
 export const SUGGESTED_POST_MIN_THRESHOLD_SECONDS = 60; // avoid last minute suggests, or if the user was thinking a lot before clicking send
 
@@ -282,6 +286,7 @@ export type MyInputMessagesFilter = 'inputMessagesFilterEmpty'
   | 'inputMessagesFilterRoundVoice'
   | 'inputMessagesFilterRoundVideo'
   | 'inputMessagesFilterMusic'
+  | 'inputMessagesFilterGif'
   | 'inputMessagesFilterUrl'
   | 'inputMessagesFilterMyMentions'
   | 'inputMessagesFilterChatPhotos'
@@ -400,7 +405,9 @@ export type MessageForwardParams = MessageSendingParams & {
   dropCaptions: boolean,
   /** layer 229: `mids` are ephemeral messages, forwarded by their ephemeral ids. INNER USE ONLY */
   fromEphemeral: boolean,
-  allowDropRichAuthor: boolean
+  allowDropRichAuthor: boolean,
+  /** the second a forwarded video starts at for whoever gets it ("Share at 0:42") */
+  videoTimestamp: number
 }>;
 
 export type RequestHistoryOptions = {
@@ -795,9 +802,21 @@ export class AppMessagesManager extends AppManager {
   private historyMaxIdSubscribed: Map<HistoryStorageKey, number> = new Map();
 
   private factCheckBatcher: Batcher<PeerId, number, FactCheck>;
+  // * `${peerId}_${mid}` of every message whose delivery has been reported, so that it is reported once
+  private reportedDeliveries: Set<string> = new Set();
+  // * the messages of each chat waiting for their report, and the chats whose report is on its way: a chat
+  // * sends one at a time, and one that hangs holds up no other (tdesktop's `_pendingDeliveryReport`,
+  // * `_deliveryReportSent`)
+  private pendingDeliveryReports: Map<PeerId, Set<number>> = new Map();
+  private deliveryReportsSending: Set<PeerId> = new Set();
+  private deliveryReportsTimeout: number;
   private checklistBatcher: Batcher<string, {taskId: number, oldItem?: TodoCompletion, action: 'complete' | 'uncomplete'}, void>;
 
   private waitingTranscriptions: Map<string, CancellablePromise<MessagesTranscribedAudio>>;
+  // * the finished transcription of a voice or round message by `${peerId}_${mid}`, which is what is
+  // * rated (desktop's `Transcribes::_ids`), and the ones rated already, never asked about again
+  private transcriptionIds: Map<string, MessagesTranscribedAudio['transcription_id']>;
+  private ratedTranscriptionIds: Set<string> = new Set();
   private paidMessagesQueue = new PaidMessagesQueue;
 
   public repayRequestHandler: RepayRequestHandler;
@@ -1076,6 +1095,7 @@ export class AppMessagesManager extends AppManager {
     this.threadsToReplies = {};
     this.references = {};
     this.waitingTranscriptions = new Map();
+    this.transcriptionIds = new Map();
     this.pendingNewBotforumTopics = {};
     this.pendingEditingMessages = new Map();
     this.ephemeralMidsByPeerId = new Map();
@@ -1092,6 +1112,8 @@ export class AppMessagesManager extends AppManager {
     }
     this.richMessages.clear();
     this.richMessageRefreshes.clear();
+    this.reportedDeliveries.clear();
+    this.pendingDeliveryReports.clear();
     this.channelAvailableMinIds.clear();
     this.channelAvailableMinIdGenerations.clear();
     this.channelAvailableMinIdRequestGenerations.clear();
@@ -3120,6 +3142,28 @@ export class AppMessagesManager extends AppManager {
     return promise || ret;
   }
 
+  /** Whether the message's transcription is finished and not rated yet (desktop's `HasRateTranscribeItem`) */
+  public canRateTranscription(peerId: PeerId, mid: number) {
+    const transcriptionId = this.transcriptionIds.get(`${peerId}_${mid}`);
+    return !!transcriptionId && !this.ratedTranscriptionIds.has('' + transcriptionId);
+  }
+
+  /** Rates the message's transcription once: the session does not ask about it again */
+  public rateTranscribedAudio(peerId: PeerId, mid: number, good: boolean) {
+    const transcriptionId = this.transcriptionIds.get(`${peerId}_${mid}`);
+    if(!this.canRateTranscription(peerId, mid)) {
+      return Promise.resolve(false);
+    }
+
+    this.ratedTranscriptionIds.add('' + transcriptionId);
+    return this.apiManager.invokeApi('messages.rateTranscribedAudio', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      msg_id: getServerMessageId(mid),
+      transcription_id: transcriptionId,
+      good
+    });
+  }
+
   private getCommonThingsForSending() {
     return namedPromises({
       config: this.apiManager.getConfig(),
@@ -4514,7 +4558,10 @@ export class AppMessagesManager extends AppManager {
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
     options.peerId = peerId;
 
-    const noOutgoingMessage = /* inputMedia?._ === 'inputMediaPhotoExternal' ||  */inputMedia?._ === 'inputMediaDocumentExternal';
+    // * a game shared by its short name has no `Game` here to draw before the server answers - the
+    // * message comes with the update, as tdesktop and Android show it
+    const noOutgoingMessage = /* inputMedia?._ === 'inputMediaPhotoExternal' ||  */inputMedia?._ === 'inputMediaDocumentExternal' ||
+      inputMedia?._ === 'inputMediaGame';
     const ephemeralContext = options.forceOrdinary ?
       options.ephemeral ? {drop: true} as EphemeralSendContext : undefined :
       this.getEphemeralSendContext(
@@ -5776,6 +5823,8 @@ export class AppMessagesManager extends AppManager {
     const cutoffGeneration = filterType === FilterType.Saved ?
       undefined :
       this.getChannelAvailableMinIdGeneration();
+    // * read before the request: the dialogs' notification settings are older than what changed since
+    const settingsAskedAt = this.appNotificationsManager.getSettingsClock();
 
     const processResult = (result: MessagesDialogs | MessagesForumTopics | MessagesSavedDialogs) => {
       if(!middleware()) {
@@ -5840,7 +5889,8 @@ export class AppMessagesManager extends AppManager {
           shouldResetPinnedOrder && folderId === FOLDER_ID_ALL ? (order) => {
             log('seeding pinned order', folderId, order);
             this.dialogsStorage.handleDialogsPinned(folderId, order);
-          } : undefined
+          } : undefined,
+          settingsAskedAt
         );
       }
 
@@ -5856,7 +5906,8 @@ export class AppMessagesManager extends AppManager {
         this.dialogsStorage.saveDialog({
           dialog,
           ignoreOffsetDate: !isSearch,
-          saveGlobalOffset
+          saveGlobalOffset,
+          settingsAskedAt
         });
 
         if(dialog.peerId === undefined) {
@@ -6256,6 +6307,7 @@ export class AppMessagesManager extends AppManager {
       drop_media_captions: dropCaptions || undefined,
       send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
       top_msg_id: options.threadId ? this.appMessagesIdsManager.generateMessageId(options.threadId) : undefined,
+      video_timestamp: options.videoTimestamp,
       allow_paid_stars: paidStars,
       reply_to: this.getInputReplyTo({
         peerId,
@@ -6908,6 +6960,7 @@ export class AppMessagesManager extends AppManager {
             [...cutoffGenerations].some(([peerId, generation]) => (
               generation !== this.getChannelAvailableMinIdGeneration(peerId)
             ));
+          const settingsAskedAt = this.appNotificationsManager.getSettingsClock();
           const result = await this.apiManager.invokeApi(
             'messages.getPeerDialogs',
             {peers: inputDialogPeers},
@@ -6936,7 +6989,7 @@ export class AppMessagesManager extends AppManager {
             }
           }
 
-          this.dialogsStorage.applyDialogs(result);
+          this.dialogsStorage.applyDialogs(result, undefined, settingsAskedAt);
 
           result.dialogs.forEach((dialog) => {
             if(dialog._ !== 'dialog') {
@@ -7659,11 +7712,7 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
-    const mediaContext: ReferenceContext = options.isOutgoing ? undefined : {
-      type: 'message',
-      peerId,
-      messageId: mid
-    };
+    const mediaContext = options.isOutgoing ? undefined : this.getMessageReferenceContext(peerId, mid, options.isScheduled);
     if(isMessage && message.rich_message) {
       message.rich_message = this.processRichMessage(
         message.rich_message,
@@ -7947,10 +7996,74 @@ export class AppMessagesManager extends AppManager {
       this.appPeersManager.registerMessagePeers(message);
     }
 
+    // * only the chat's own copy: a scheduled, log or welcome one is not a delivered message
+    if(isMessage && message.report_delivery_until_date && storage.type === 'history') {
+      this.reportMessageDelivery(message);
+    }
+
     this.setMessageToStorage(storage, message);
 
     return message;
   }
+
+  /**
+   * The server wants to hear that a message reached the device, until `report_delivery_until_date`.
+   * Like tdesktop (history_item.cpp), every message that comes from the server is checked, wherever
+   * from (an update, a history page); each is reported once, with the others of its chat that came
+   * in meanwhile, and a failed report is not repeated.
+   */
+  private reportMessageDelivery(message: Message.message) {
+    const {peerId, mid} = message;
+    const key = `${peerId}_${mid}`;
+    if(
+      this.reportedDeliveries.has(key) ||
+      message.report_delivery_until_date <= this.timeManager.getServerTime() ||
+      this.isEphemeralMessage(message) ||
+      !getServerMessageId(mid)
+    ) {
+      return;
+    }
+
+    this.reportedDeliveries.add(key);
+    let mids = this.pendingDeliveryReports.get(peerId);
+    if(!mids) {
+      this.pendingDeliveryReports.set(peerId, mids = new Set());
+    }
+
+    mids.add(mid);
+    this.scheduleDeliveryReports();
+  }
+
+  private scheduleDeliveryReports() {
+    this.deliveryReportsTimeout ??= ctx.setTimeout(this.sendDeliveryReports, DELIVERY_REPORT_DELAY);
+  }
+
+  private sendDeliveryReports = () => {
+    this.deliveryReportsTimeout = undefined;
+    this.pendingDeliveryReports.forEach((pendingMids, peerId) => {
+      if(this.deliveryReportsSending.has(peerId)) {
+        return;
+      }
+
+      const mids = [...pendingMids].slice(0, DELIVERY_REPORTS_PER_REQUEST);
+      mids.forEach((mid) => pendingMids.delete(mid));
+      if(!pendingMids.size) {
+        this.pendingDeliveryReports.delete(peerId);
+      }
+
+      this.deliveryReportsSending.add(peerId);
+      // * a failed report is dropped: the other clients drop it too
+      this.apiManager.invokeApi('messages.reportMessagesDelivery', {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        id: mids.map((mid) => getServerMessageId(mid))
+      }).catch(noop).finally(() => {
+        this.deliveryReportsSending.delete(peerId);
+        if(this.pendingDeliveryReports.has(peerId)) {
+          this.scheduleDeliveryReports();
+        }
+      });
+    });
+  };
 
   public saveMessages(messages: any[], options: Partial<{
     storage: MessagesStorage,
@@ -8243,6 +8356,23 @@ export class AppMessagesManager extends AppManager {
         }
       }
     }
+  }
+
+  /**
+   * What renews the file references of a message's media. A scheduled message is asked for by its
+   * own method (tdesktop apiwrap.cpp, iOS AccountViewTracker): its id means another message, or
+   * none, to `messages.getMessages`.
+   */
+  private getMessageReferenceContext(
+    peerId: PeerId,
+    mid: number,
+    isScheduled?: boolean
+  ): ReferenceContext.referenceContextMessage | ReferenceContext.referenceContextScheduledMessage {
+    return {
+      type: isScheduled ? 'scheduledMessage' : 'message',
+      peerId,
+      messageId: mid
+    };
   }
 
   private getRichMessageReferenceContext(
@@ -10531,6 +10661,7 @@ export class AppMessagesManager extends AppManager {
     ]).then(([_, peerTypeNotifySettings]) => {
       return {
         muted: this.appNotificationsManager.isPeerLocalMuted({peerId, respectType: true, threadId}),
+        soundOff: this.appNotificationsManager.isPeerLocalSoundOff({peerId, threadId}),
         peerTypeNotifySettings
       };
     });
@@ -10565,9 +10696,9 @@ export class AppMessagesManager extends AppManager {
       }
 
       this.getNotifyPeerSettings(notifyPeerId, threadId ? +threadId : undefined)
-      .then(({muted, peerTypeNotifySettings}) => {
+      .then((notifySettings) => {
         const topMessage = notifyPeerToHandle.topMessage;
-        if((muted && !topMessage.pFlags.mentioned) || !topMessage.pFlags.unread) {
+        if((notifySettings.muted && !topMessage.pFlags.mentioned) || !topMessage.pFlags.unread) {
           return;
         }
 
@@ -10575,7 +10706,7 @@ export class AppMessagesManager extends AppManager {
         if(topMessage.pFlags.unread) {
           this.notifyAboutMessage(topMessage, {
             fwdCount: notifyPeerToHandle.fwdCount,
-            peerTypeNotifySettings,
+            notifySettings,
             isInitialSync: notifyPeerToHandle.isInitialSync
           });
         }
@@ -11211,11 +11342,11 @@ export class AppMessagesManager extends AppManager {
           !deepEqual(recentReaction, previousRecentReactions[previousRecentReactions.length - 1])
         ) && isUnread !== wasUnread
       ) {
-        this.getNotifyPeerSettings(peerId).then(({muted, peerTypeNotifySettings}) => {
-          if(/* muted ||  */!peerTypeNotifySettings.show_previews) return;
+        this.getNotifyPeerSettings(peerId).then((notifySettings) => {
+          if(/* notifySettings.muted ||  */!notifySettings.peerTypeNotifySettings.show_previews) return;
           this.notifyAboutMessage(message, {
             peerReaction: recentReaction,
-            peerTypeNotifySettings
+            notifySettings
           });
         });
       }
@@ -12468,6 +12599,12 @@ export class AppMessagesManager extends AppManager {
     const mid = this.appMessagesIdsManager.generateMessageId(update.msg_id, channelId);
 
     const key = `${peerId}_${mid}`;
+    if(!update.pFlags.pending && text && update.transcription_id) {
+      this.transcriptionIds.set(key, update.transcription_id);
+    } else {
+      this.transcriptionIds.delete(key);
+    }
+
     const waitingPromise = this.waitingTranscriptions.get(key);
     if(!update.pFlags.pending && waitingPromise) {
       waitingPromise.resolve({
@@ -12982,7 +13119,8 @@ export class AppMessagesManager extends AppManager {
   private async notifyAboutMessage(message: MyMessage, options: Partial<{
     fwdCount: number,
     peerReaction: MessagePeerReaction,
-    peerTypeNotifySettings: PeerNotifySettings,
+    /** the chat's, as {@link getNotifyPeerSettings} gives them: its type's, and whether its sound is off */
+    notifySettings: Awaited<ReturnType<AppMessagesManager['getNotifyPeerSettings']>>,
     /** captured when the notification was queued, since the sync is over by the time it's flushed */
     isInitialSync: boolean
   }> = {}) {
@@ -12992,7 +13130,8 @@ export class AppMessagesManager extends AppManager {
       message,
       fwdCount: options.fwdCount,
       peerReaction: options.peerReaction,
-      peerTypeNotifySettings: options.peerTypeNotifySettings
+      peerTypeNotifySettings: options.notifySettings?.peerTypeNotifySettings,
+      noSound: options.notifySettings?.soundOff
     }, options.isInitialSync);
   }
 
@@ -13028,6 +13167,36 @@ export class AppMessagesManager extends AppManager {
 
       return [];
     });
+  }
+
+  /**
+   * A scheduled message asked for again, for the file references of its media. Only the copy kept is
+   * renewed: one sent or deleted, or a cache cleared, while the request is on its way is not brought
+   * back by its answer, and one edited meanwhile, which came with fresh references of its own, is newer
+   * than the answer and stays as it is.
+   */
+  public async reloadScheduledMessage(peerId: PeerId, mid: number) {
+    const storage = this.scheduledMessagesStorage[peerId];
+    const message = storage?.get(mid);
+    if(!message) {
+      return;
+    }
+
+    const messagesResult = await this.apiManager.invokeApiSingle('messages.getScheduledMessages', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      id: [getServerMessageId(mid)]
+    });
+    if(this.scheduledMessagesStorage[peerId] !== storage) {
+      return;
+    }
+
+    if(messagesResult._ === 'messages.messagesNotModified' || storage.get(mid) !== message) {
+      return this.getMessageFromStorage(storage, mid);
+    }
+
+    this.appPeersManager.saveApiPeers(messagesResult);
+    this.saveMessages(messagesResult.messages, {storage, isScheduled: true});
+    return this.getMessageFromStorage(storage, mid);
   }
 
   public sendScheduledMessages(peerId: PeerId, mids: number[]) {
@@ -13943,6 +14112,11 @@ export class AppMessagesManager extends AppManager {
     return historyResult;
   }
 
+  /** How many free public post searches are left, and whether this query is one of them */
+  public checkSearchPostsFlood(query: string) {
+    return this.apiManager.invokeApi('channels.checkSearchPostsFlood', {query});
+  }
+
   public requestHistory(
     requestOptions: RequestHistoryOptions,
     overwrite = false
@@ -14629,11 +14803,8 @@ export class AppMessagesManager extends AppManager {
     preserveMedia = false
   ) {
     const media = (message as Message.message).media;
-    const mediaContext: ReferenceContext = {
-      type: 'message',
-      peerId: message.peerId,
-      messageId: message.mid
-    };
+    const isScheduled = storage.type === 'scheduled';
+    const mediaContext = this.getMessageReferenceContext(message.peerId, message.mid, isScheduled);
     if(media) {
       const c = (media as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage || media as MessageMedia.messageMediaPhoto | MessageMedia.messageMediaDocument;
       const smth: Photo.photo | MyDocument = (c as MessageMedia.messageMediaPhoto).photo as any || (c as MessageMedia.messageMediaDocument).document as any;
@@ -14646,7 +14817,6 @@ export class AppMessagesManager extends AppManager {
       }
 
       if('webpage' in media && media.webpage) {
-        const isScheduled = this.getScheduledMessagesStorage(message.peerId) === storage;
         const messageKey = this.appWebPagesManager.getMessageKeyForPendingWebPage(message.peerId, message.mid, isScheduled);
         this.appWebPagesManager.deleteWebPageFromPending(media.webpage, messageKey);
       }
@@ -15270,8 +15440,9 @@ export class AppMessagesManager extends AppManager {
     //   ]
     // });
 
-    // * don't show sponsored messages in own channels
-    if(!peerId.isUser() && await this.canSendToPeer(peerId)) {
+    // * don't show sponsored messages in own channels, nor to a Premium account that hid them
+    // * (Android's `isSponsoredDisabled`: the own full user, while it is known)
+    if(this.isSponsoredHidden() || (!peerId.isUser() && await this.canSendToPeer(peerId))) {
       return Promise.resolve({
         _: 'messages.sponsoredMessagesEmpty'
       });
@@ -15305,6 +15476,36 @@ export class AppMessagesManager extends AppManager {
 
       return sponsoredMessages;
     });
+  }
+
+  private isSponsoredHidden() {
+    if(!this.rootScope.premium) {
+      return false;
+    }
+
+    const userFull = this.appProfileManager.getCachedFullUser(this.rootScope.myId.toUserId());
+    return !!userFull && !userFull.pFlags.sponsored_enabled;
+  }
+
+  /**
+   * `account.toggleSponsoredMessages` — whether a Premium account still sees ads (its own, say). The
+   * answers cached for five minutes were given under the old choice, so they go, and the open chats
+   * hear of it (`sponsored_messages_toggle`).
+   */
+  public async toggleSponsoredMessages(enabled: boolean) {
+    const result = await this.apiManager.invokeApi('account.toggleSponsoredMessages', {enabled});
+    if(!result) {
+      throw new Error('ACCOUNT_TOGGLE_SPONSORED_MESSAGES_FAILED');
+    }
+
+    this.appProfileManager.modifyCachedFullUser(this.rootScope.myId.toUserId(), (userFull) => {
+      if(enabled) userFull.pFlags.sponsored_enabled = true;
+      else delete userFull.pFlags.sponsored_enabled;
+    });
+    this.apiManager.clearCache('messages.getSponsoredMessages', () => true);
+    this.rootScope.dispatchEvent('sponsored_messages_toggle', enabled);
+
+    return result;
   }
 
   public viewSponsoredMessage(randomId: SponsoredMessage['random_id']) {

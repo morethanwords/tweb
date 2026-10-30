@@ -106,4 +106,15 @@ describe('the covered chat-tip peer grid', () => {
     expect(peers().map((item) => item.dataset.fixturePeer)).toEqual(['5', '4', '3']);
     expect(mocks.renderPeer).toHaveBeenCalledTimes(3);
   });
+
+  it('asks for the popular peers again when Suggest Frequent Contacts flips', async() => {
+    mocks.getTopPeers.mockResolvedValueOnce([{id: 7}]).mockResolvedValueOnce([]);
+    const {setState, peers} = mount();
+    await vi.waitFor(() => expect(peers().map((item) => item.dataset.fixturePeer)).toEqual(['7']));
+
+    // * the mirrored cache of the people list, turned off
+    (setState as any)('topPeersCache', {correspondents: {peers: [], cachedTime: 1, disabled: true}});
+    await vi.waitFor(() => expect(peers().map((item) => item.dataset.fixturePeer)).toEqual(['1', '2']));
+    expect(mocks.getTopPeers).toHaveBeenCalledTimes(2);
+  });
 });

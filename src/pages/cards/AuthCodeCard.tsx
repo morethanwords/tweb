@@ -137,7 +137,11 @@ export default function AuthCodeCard(props: {spec: Spec}) {
   editButton.setAttribute('aria-label', I18n.format('Edit', true));
   if(Modes.a11y) editButton.tabIndex = 0;
   editButton.append(Icon('edit'));
-  attachClickEvent(editButton, () => navigate({name: 'signIn'}));
+  attachClickEvent(editButton, () => {
+    // * the code is not going to be typed: the server may stop delivering it (tdesktop, Android)
+    managers.appAccountManager.cancelCode(sentCode.phone_number, sentCode.phone_code_hash);
+    navigate({name: 'signIn'});
+  });
 
   /* ---------- code input (rebuilt when the code changes shape) ---------- */
 
@@ -247,7 +251,7 @@ export default function AuthCodeCard(props: {spec: Spec}) {
       params.phone_code = code;
     }
 
-    managers.apiManager.invokeApi('auth.signIn', params, {ignoreErrors: true}).then(async(response) => {
+    managers.appAccountManager.signIn(params).then(async(response) => {
       switch(response._) {
         case 'auth.authorization':
           await managers.apiManager.setUser(response.user);
@@ -412,10 +416,7 @@ export default function AuthCodeCard(props: {spec: Spec}) {
     stopResendTimer();
     setResendContent(i18n('Login.Code.Resending'));
 
-    managers.apiManager.invokeApi('auth.resendCode', {
-      phone_number: sentCode.phone_number,
-      phone_code_hash: sentCode.phone_code_hash
-    }).then((code) => {
+    managers.appAccountManager.resendCode(sentCode.phone_number, sentCode.phone_code_hash).then((code) => {
       resending = false;
 
       return continueLogin(code, {
@@ -441,10 +442,7 @@ export default function AuthCodeCard(props: {spec: Spec}) {
   /* ---------- email reset flow ---------- */
 
   function handleResetEmail() {
-    managers.apiManager.invokeApi('auth.resetLoginEmail', {
-      phone_number: sentCode.phone_number,
-      phone_code_hash: sentCode.phone_code_hash
-    }).then((code) => {
+    managers.appAccountManager.resetLoginEmail(sentCode.phone_number, sentCode.phone_code_hash).then((code) => {
       if(code._ === 'auth.sentCode') {
         const next = withPhoneNumber(code, sentCode.phone_number);
         if(next.type._ === 'auth.sentCodeTypeEmailCode') {

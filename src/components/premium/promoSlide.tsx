@@ -22,6 +22,7 @@ import RowTsx from '@components/rowTsx';
 import createNewBadge from '@components/newBadge';
 import PopupElement from '@components/popups/indexTsx';
 import MediaHeader from '@components/mediaHeader';
+import SponsoredToggle from '@components/premium/sponsoredToggle';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
@@ -106,6 +107,9 @@ export default function PromoSlide(props: {
             <StatusText data={props.data} onClose={props.onClose} />
           </Show>
         </div>
+        <Show when={props.data.type === 'business' && props.data.isPremiumActive}>
+          <SponsoredToggle managers={props.data.managers} />
+        </Show>
       </div>
     </div>
   );

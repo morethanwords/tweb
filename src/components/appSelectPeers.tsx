@@ -83,6 +83,8 @@ export default class AppSelectPeers {
   private folderId = 0;
   private selectedFolderId: number;
   private offsetIndex = 0;
+  // * members the server gave that got no row (excluded, filtered out): with the rows, where its next page starts
+  private channelParticipantsSkipped: Set<PeerId> = new Set();
   private promise: Promise<any>;
 
   private query = '';
@@ -642,8 +644,9 @@ export default class AppSelectPeers {
   }
 
   public deletePeerId(peerId: PeerId) {
-    for(const list of [this.list, ...this.pendingLists]) {
-      const el = list.querySelector(`[data-peer-id="${peerId}"]`);
+    // * from every list it is in: the one shown while a search is on its way (`oldList`) too
+    for(const list of [this.list, this.oldList, ...this.pendingLists]) {
+      const el = list?.querySelector(`[data-peer-id="${peerId}"]`);
       const dialogElement = (el as any)?.dialogElement;
       if(dialogElement) {
         dialogElement.remove();
@@ -653,6 +656,8 @@ export default class AppSelectPeers {
     }
 
     this.renderedPeerIds.delete(peerId);
+    // * one that had no row left the server's list too: the rest moved up (a row's going says it by itself)
+    this.channelParticipantsSkipped.delete(peerId);
 
     if(!this.promise) {
       this.processPlaceholderOnResults();
@@ -716,6 +721,7 @@ export default class AppSelectPeers {
 
     if(this.peerType.includes('channelParticipants')) {
       this.loadedWhat.channelParticipants = false;
+      this.channelParticipantsSkipped.clear();
     }
 
     if(this.peerType.includes('custom')) {
@@ -946,7 +952,9 @@ export default class AppSelectPeers {
       id: this.peerId.toChatId(),
       filter,
       limit: pageCount,
-      offset: this.list.childElementCount
+      // * the rows, which follow members joining and leaving live, and the members that got none: a page of
+      // * excluded ones only would be asked for again otherwise
+      offset: this.getChannelParticipantsOffset()
     });
 
     promise.catch(() => {
@@ -969,13 +977,32 @@ export default class AppSelectPeers {
       this.participants.set(peerId, participant);
       return peerId;
     });
+    const rowsBefore = this.list.childElementCount;
     await this.renderResultsFunc(peerIds);
+    if(!middleware()) {
+      return;
+    }
+
+    // * a member of the page that got no row still holds its place in the server's list - unless it left
+    // * meanwhile (`participants` lets go of it). Looked up only when the page did not all become rows.
+    if(this.list.childElementCount - rowsBefore < peerIds.length) {
+      const rowPeerIds = new Set(Array.from(this.list.children, (row) => (row as HTMLElement).dataset.peerId));
+      for(const peerId of peerIds) {
+        if(!rowPeerIds.has('' + peerId) && this.participants.has(peerId)) {
+          this.channelParticipantsSkipped.add(peerId);
+        }
+      }
+    }
 
     const count = (chatParticipants as ChannelsChannelParticipants.channelsChannelParticipants).count ?? participants.length;
 
-    if(this.list.childElementCount >= count || participants.length < pageCount) {
+    if(this.getChannelParticipantsOffset() >= count || participants.length < pageCount) {
       this.loadedWhat.channelParticipants = true;
     }
+  }
+
+  private getChannelParticipantsOffset() {
+    return this.list.childElementCount + this.channelParticipantsSkipped.size;
   }
 
   private async _getMoreCustom() {
@@ -1491,6 +1518,11 @@ export default class AppSelectPeers {
       return;
     }
 
+    this.reload();
+  }
+
+  /** Loads what the selector lists anew, from the start and for the search it has: what it shows has changed */
+  public reload() {
     this.query = '\x01'; // force onInput to detect a change
     this.onInput();
   }
