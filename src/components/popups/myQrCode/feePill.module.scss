@@ -1,0 +1,67 @@
+@use "../../../scss/mixins" as *;
+@use "./glass" as *;
+
+// The pill under the card: a glass button over the backdrop, in the card's foreground
+// Under the card, in its box: centred on it, as wide as it needs
+.place {
+  position: absolute;
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  height: 2.25rem;
+  padding-block: 0;
+  padding-inline: 1rem;
+  border: 0;
+  border-radius: 1.125rem;
+  background-color: var(--qr-control);
+  color: var(--qr-foreground);
+  @include qr-glass;
+  font: inherit;
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+
+  // the card keeps its box left to right; the words in the pill follow the language
+  :global(.is-rtl) & {
+    direction: rtl;
+  }
+
+  @include animation-level-global(1) {
+    transition: background-color .2s;
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+}
+
+// the pill leaves while a panel is open: shrunk with the card it would not be legible, and the panel takes its room
+.away {
+  visibility: hidden;
+  opacity: 0;
+
+  @include animation-level-global(1) {
+    transition: opacity .2s, visibility 0s .2s;
+  }
+}
+
+// m:ss never reorders in a right-to-left line
+.time {
+  unicode-bidi: isolate;
+  font-variant-numeric: tabular-nums;
+}
+
+.subtitle {
+  display: block;
+  opacity: .72;
+  font-size: var(--font-size-14);
+}
