@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{O as e,f as t}from"./solid-Beq2bZCx.js";import{n}from"./video-DO31GnMs.js";import{Rt as r}from"./appDialogsManager-rnxHvj7E.js";function i(i){return t(r,e(i,{itemKey:`doc`,loader:n}))}function a(e){let t=e.map(Math.floor),n=e.map((e,n)=>({index:n,remainder:e-t[n]})),r=100-t.reduce((e,t)=>e+t,0);n.sort((e,n)=>e.remainder===n.remainder?t[n.index]-t[e.index]:n.remainder-e.remainder);let i=Math.min(r,n.length);for(let e=0;e<i;e++)t[n[e].index]++;return t}var o=e=>{let t=e?.results;if(!t)return[];let n=t.reduce((e,t)=>e+(t.voters??0),0);return n?a(t.map(e=>n?(e.voters??0)/n*100:0)):Array(t.length).fill(0)};export{i as n,o as t};
+//# sourceMappingURL=roundPercents-Cx-WzNq-.js.map

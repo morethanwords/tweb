@@ -5652,7 +5652,7 @@ const lang = {
   'AdminRecentActionMessage.ToggleSignatureProfiles': 'Toggled signature profiles',
   'AdminRecentActionMessage.ParticipantSubscriptionExtended': 'Extended participant subscription',
   'AdminRecentActionMessage.ToggleAutoTranslation': 'Toggled auto‑translation',
-  'AdminRecentActionMessage.ChangeRank': 'Changed rank',
+  'AdminRecentActionMessage.ChangeRank': 'Changed a tag',
 
   'AdminRecentActionsFilters.NewAdminRights': 'New Admin Rights',
   'AdminRecentActionsFilters.RemovedAdminRights': 'Removed Admin Rights',
