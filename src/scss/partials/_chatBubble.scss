@@ -166,7 +166,7 @@
   &-avatar {
     position: sticky !important;
     top: 0;
-    bottom: calc(var(--chat-padding-bottom) + var(--chat-input-height-surplus, 0px) + #{$bubble-overflow-big} + .25rem);
+    bottom: calc(var(--chat-padding-bottom) + var(--chat-input-height-surplus, 0px) + var(--chat-input-keyboard-height, 0px) + #{$bubble-overflow-big} + .25rem);
     cursor: pointer;
     pointer-events: all;
     overflow: hidden;
@@ -2907,14 +2907,6 @@
     z-index: 3;
   }
 
-  .reply-markup-button-bg {
-    background-color: rgba(var(--background-color-rgb), .8) !important;
-
-    @include hover() {
-      background-color: rgb(var(--background-color-rgb)) !important;
-    }
-  }
-
   &.has-service-description {
     .service-msg {
       flex-direction: column;
@@ -4249,8 +4241,14 @@
       pointer-events: none;
     }
 
+    // * a bubble's and the bot keyboard's under the input (`.reply-keyboard`) alike
     &-bg {
       color: #fff !important;
+      background-color: rgba(var(--background-color-rgb), .8) !important;
+
+      @include hover() {
+        background-color: rgb(var(--background-color-rgb)) !important;
+      }
 
       &-success {
         --background-color-rgb: var(--green-color-rgb);

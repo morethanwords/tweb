@@ -46,6 +46,7 @@ import SendMenu from '@components/chat/sendContextMenu';
 import rootScope from '@lib/rootScope';
 import showPinMessagePopup from '@components/popups/unpinMessage';
 import tsNow from '@helpers/tsNow';
+import noop from '@helpers/noop';
 import mediaSizes from '@helpers/mediaSizes';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import {IS_MOBILE, IS_MOBILE_SAFARI} from '@environment/userAgent';
@@ -361,10 +362,17 @@ export default class ChatInput {
       onInput: this.onMessageInput,
       onHeightChange: (height) => {this.messageInputNaturalHeight = height; this.notifyChatInputHeight();},
       onExpandedChange: (expanded) => {
-        if(!expanded) return;
+        if(!expanded) {
+          // * once the field has shrunk back, if it does (`canShowReplyKeyboard`, `onResizeEnd`)
+          this.replyKeyboard?.resume();
+          return;
+        }
+
         this.emoticonsDropdown?.toggle(false);
+        this.replyKeyboard?.suspend();
         this.autocompleteHelperController?.hideOtherHelpers();
       },
+      onResizeEnd: () => this.replyKeyboard?.resume(),
       onReadOnlyClick: () => toastNew({langPackKey: this.chat.isTemporaryThread ? 'WaitForTopicCreation' : POSTING_NOT_ALLOWED_MAP.send_plain}),
       onChooseMedia: (selection, action) => {void this.onAttachClick(false, true, true, selection, false, action);},
       ref: (field) => {this.richMessageInput = field; this.messageInput = field.input;}
@@ -492,6 +500,10 @@ export default class ChatInput {
   // collaborator (extracted from ChatInput). The `recording` getter below
   // forwards to it.
   private recordingController: ChatRecording;
+  // * a tap on the field is taking focus away on its way to give it back (`attachMessageInputListeners`)
+  private blurringByTap = false;
+  // * the saved draft on its way back into the field, as the chat opens (`updateMessageInput`)
+  private draftRestoring: Promise<unknown>;
 
   // private scrollTop = 0;
   // private scrollOffsetTop = 0;
@@ -1136,15 +1148,73 @@ export default class ChatInput {
   private constructReplyMarkup() {
     this.btnToggleReplyMarkup = this.createButtonIcon('botcom toggle-reply-markup float hide', {noRipple: true, ariaLabel: 'General.Keyboard'});
     this.replyKeyboard = new ReplyKeyboard({
-      appendTo: this.rowsWrapper,
+      // * under the field, which it lifts
+      appendTo: this.chatInput,
       listenerSetter: this.listenerSetter,
       managers: this.managers,
       btnHover: this.btnToggleReplyMarkup,
       chatInput: this,
       middleware: this.middlewareHelper.get()
     });
-    this.listenerSetter.add(this.replyKeyboard)('open', () => this.btnToggleReplyMarkup.classList.add('active'));
-    this.listenerSetter.add(this.replyKeyboard)('close', () => this.btnToggleReplyMarkup.classList.remove('active'));
+    this.listenerSetter.add(this.replyKeyboard)('open', () => {
+      this.btnToggleReplyMarkup.classList.add('active');
+      if(this.emoticonsDropdown?.isActive()) this.emoticonsDropdown.toggle(false);
+      // * one under the field is out of it at once, closed now or still fading (it is no more active then, but laid
+      // * out for its time): the two would stand one on another, the field on both
+      const element = this.emoticonsDropdown?.getElement();
+      if(element?.classList.contains('is-under') && this.emoticonsDropdown.chatInput === this) element.style.display = 'none';
+      this.updateReplyMarkupToggle();
+    });
+    this.listenerSetter.add(this.replyKeyboard)('close', () => {
+      this.btnToggleReplyMarkup.classList.remove('active');
+      this.updateReplyMarkupToggle();
+    });
+  }
+
+  // * the keyboard's button goes with an empty field, like the other side buttons - but not while the
+  // * keyboard is open, or nothing would close it; and a keyboard that is not to be closed has none
+  public updateReplyMarkupToggle(isInputEmpty = this.isInputEmpty()) {
+    this.btnToggleReplyMarkup?.classList.toggle(
+      'show',
+      (isInputEmpty || this.replyKeyboard.isActive()) &&
+        !this.replyKeyboard.isPermanent() &&
+        this.chat.type !== ChatType.Scheduled &&
+        !this.isWelcomeComposer
+    );
+  }
+
+  /**
+   * Whether the bot's keyboard may stand under the field: the field is there - a view with one (not Recent Actions or
+   * a static preview), not given way to a control, expanded or on its way back from it (held at a height of its own,
+   * which the keyboard is not in), hidden or locked by a recording - and not among scheduled messages, which have the
+   * chat's keyboard but no button for it: a press of it would send at once
+   */
+  public canShowReplyKeyboard() {
+    return !this.chat.noInput &&
+      this.chat.type !== ChatType.Scheduled &&
+      !this.recording &&
+      !this.fakeWrapperTo &&
+      !this.messageInputExpanded &&
+      !this.chatInput.classList.contains('is-message-input-resizing') &&
+      !this.chatInput.classList.contains('is-hidden');
+  }
+
+  /** And whether it may open by itself (`ReplyKeyboard.autoShow`): not over what the user writes, edits, or has saved */
+  public canShowReplyKeyboardItself() {
+    return this.canShowReplyKeyboard() && !this.draftRestoring && this.isInputEmpty() && !this.editMsgId;
+  }
+
+  /** The field takes focus with its caret at the end, a touch device's too (a keyboard user's focus, given back) */
+  public focusMessageInput() {
+    const editor = getChatInputEditor(this.messageInput);
+    if(editor) editor.focusAtEnd(true);
+    else this.messageInput.focus();
+  }
+
+  /** A recording takes the field's place (`ChatRecording`): the bot's keyboard goes while it lasts, and comes back */
+  public onRecordingChange(recording: boolean) {
+    if(recording) this.replyKeyboard?.suspend();
+    else this.replyKeyboard?.resume();
   }
 
   private constructBotCommands() {
@@ -1716,6 +1786,7 @@ export default class ChatInput {
           createEffect(() => {
             const shouldBeTop = windowSize.height >= 570 && windowSize.width > 600;
             this.emoticonsDropdown.getElement().classList.toggle('is-under', !shouldBeTop);
+            if(!shouldBeTop && this.emoticonsDropdown.isActive()) this.emoticonsDropdown.chatInput.onEmoticonsUnder();
           });
         });
       }
@@ -2213,6 +2284,10 @@ export default class ChatInput {
 
     this.fakeWrapperTo = neededFakeContainer;
 
+    // * the field gives way to a control (selection, Start, Unblock...): the keyboard goes with it, and comes back with it
+    if(forwards) this.replyKeyboard?.suspend();
+    else this.replyKeyboard?.resume();
+
     const duration = animate ? 200 : 0;
     SetTransition({
       element: this.inputContainer,
@@ -2420,11 +2495,30 @@ export default class ChatInput {
 
   private onEmoticonsOpen = () => {
     this.onEmoticonsToggle(true);
+    // * the panel is every chat's: this field's only when it opens over it
+    if(this.emoticonsDropdown.chatInput === this && this.emoticonsDropdown.getElement().classList.contains('is-under')) {
+      this.onEmoticonsUnder();
+    }
   };
+
+  /**
+   * The emoji panel open under this field - opened there, or moved there by the window's size: the bot's keyboard, which
+   * stands there too, is out of it at once, or the field would stand on both meanwhile
+   */
+  public onEmoticonsUnder() {
+    this.replyKeyboard?.suspend(false);
+  }
 
   private onEmoticonsClose = () => {
     this.onEmoticonsToggle(false);
+    // * a bot keyboard that came while the user had it open: once it is closed, which it is after the event
+    if(this.emoticonsDropdown.chatInput === this) queueMicrotask(() => this.replyKeyboard?.resume());
   };
+
+  // * the emoji panel the user has open over or under this field: the panel is every chat's
+  public isEmoticonsOpen() {
+    return !!this.emoticonsDropdown?.isActive() && this.emoticonsDropdown.chatInput === this;
+  }
 
   public getReadyToSend(callback: () => void) {
     return this.chat.type === ChatType.Scheduled ? (this.scheduleSending(callback), true) : (callback(), false);
@@ -2721,6 +2815,8 @@ export default class ChatInput {
     if(this.chat && !this.chat.peerId) {
       this.chatInput.classList.add('hide');
       this.goDownBtn.classList.add('hide');
+      // * with the field it stood under, and what closed it with it
+      this.replyKeyboard?.toggle(false, false, false);
     }
 
     cancelSelection();
@@ -3180,8 +3276,10 @@ export default class ChatInput {
 
       this.botStartBtn.classList.toggle('hide', haveSomethingInControl);
 
+      // * the saved draft, back in the field
+      let draftRestored: Promise<unknown>;
       if(this.messageInput) {
-        this.updateMessageInput(
+        draftRestored = this.updateMessageInput(
           canSend || haveSomethingInControl,
           canSendPlain && !this.chat.isTemporaryThread,
           placeholderParams,
@@ -3210,6 +3308,9 @@ export default class ChatInput {
       const applyLayout = () => {
         this.messageInputField?.measureHeight(undefined, true);
         this._center(neededFakeContainer, false);
+        // * the chat opens with its bot's keyboard, as on iOS and Android: at once, as the rest of it - once a draft
+        // * it has is in the field, over which it does not
+        if(replyKeyboard) Promise.resolve(draftRestored).then(() => middleware() && replyKeyboard.autoShow(false), noop);
       };
       if(options.deferInputLayout) options.deferInputLayout(applyLayout);
       else applyLayout();
@@ -3487,10 +3588,11 @@ export default class ChatInput {
     placeholderParams: Parameters<ChatInput['updateMessageInputPlaceholder']>[0],
     text?: string,
     entities?: MessageEntity[]
-  ) {
+  ): Promise<unknown> | undefined {
     const {chatInput, messageInput} = this;
     const isHidden = chatInput.classList.contains('is-hidden');
     const willBeHidden = !canSend;
+    if(willBeHidden) this.replyKeyboard?.toggle(false);
     if(isHidden !== willBeHidden) {
       chatInput.classList.add('no-transition');
       chatInput.classList.toggle('is-hidden', !canSend);
@@ -3499,6 +3601,7 @@ export default class ChatInput {
     }
 
     const isEditingAndLocked = canSend && !canSendPlain && this.restoreInputLock;
+    let draftRestored: Promise<unknown>;
 
     !isEditingAndLocked && this.updateMessageInputPlaceholder(placeholderParams);
 
@@ -3519,7 +3622,13 @@ export default class ChatInput {
       if(text) {
         this.managers.appDraftsManager.setDraft(this.chat.peerId, undefined, text, entities);
       }
-      this.setDraft(undefined, false);
+      // * a keyboard that comes meanwhile does not open by itself over the field it is restored to
+      // * (`canShowReplyKeyboardItself`): the chat's opening asks once it is there
+      const restoring = this.draftRestoring = draftRestored = this.setDraft(undefined, false);
+      const restored = () => {
+        if(this.draftRestoring === restoring) this.draftRestoring = undefined;
+      };
+      restoring.then(restored, restored);
 
       if(!messageInput.innerHTML) {
         this.messageInputField.measureHeight(undefined, true);
@@ -3527,6 +3636,7 @@ export default class ChatInput {
     }
 
     this.updateSendBtn();
+    return draftRestored;
   }
 
   private notifyChatInputHeight() {
@@ -3551,6 +3661,8 @@ export default class ChatInput {
   private attachMessageInputListeners() {
     if(IS_TOUCH_SUPPORTED) {
       attachClickEvent(this.messageInput, (e) => {
+        this.replyKeyboard?.giveWayToDeviceKeyboard();
+
         if(this.emoticonsDropdown.isActive()) {
           this.emoticonsDropdown.toggle(false);
           blurActiveElement();
@@ -3560,10 +3672,39 @@ export default class ChatInput {
         }
 
         if(!this.chat.isStandalone) {
-          this.appImManager.selectTab(APP_TABS.CHAT); // * set chat tab for album orientation
+          // * the blur it makes on the way is not the device's keyboard going (`focusout` below): the tap brings it
+          this.blurringByTap = true;
+          try {
+            this.appImManager.selectTab(APP_TABS.CHAT); // * set chat tab for album orientation
+          } finally {
+            this.blurringByTap = false;
+          }
         }
         // this.saveScroll();
       }, {listenerSetter: this.listenerSetter});
+
+      // * the device's keyboard put away with the field still focused (Android's back, which blurs nothing - the window
+      // * keeps its size, the visual viewport alone grows): the bot's comes back in its place, as on a blur (`focusout`
+      // * below). Told from a zoom and a turn of the screen by the same scale and window
+      const viewport = window.visualViewport;
+      if(viewport) {
+        // * grown from its lowest since, over as many resizes as the keyboard takes to go
+        let lowest = viewport.height, {scale} = viewport, windowHeight = window.innerHeight;
+        this.listenerSetter.add(viewport)('resize', () => {
+          if(viewport.scale !== scale || window.innerHeight !== windowHeight) {
+            lowest = viewport.height;
+            ({scale} = viewport);
+            windowHeight = window.innerHeight;
+            return;
+          }
+
+          lowest = Math.min(lowest, viewport.height);
+          if(viewport.height - lowest > windowHeight / 4) {
+            lowest = viewport.height;
+            if(this.messageInput.contains(document.activeElement)) this.replyKeyboard?.autoShow();
+          }
+        });
+      }
 
       /* this.listenerSetter.add(window)('resize', () => {
         this.restoreScroll();
@@ -3620,6 +3761,9 @@ export default class ChatInput {
       // this.updateSendBtn();
 
       this.onFocusChange?.(false);
+      // * the device's keyboard gone, the bot's comes back in its place if it would open by itself - a persistent
+      // * one always does (iOS, Android)
+      if(IS_TOUCH_SUPPORTED && !this.blurringByTap) this.replyKeyboard?.autoShow();
     });
   }
 
@@ -4766,9 +4910,7 @@ export default class ChatInput {
       this.btnScheduled.classList.toggle('show', isInputEmpty && this.chat.type !== ChatType.Scheduled && !this.isWelcomeComposer);
     }
 
-    if(this.btnToggleReplyMarkup) {
-      this.btnToggleReplyMarkup.classList.toggle('show', isInputEmpty && this.chat.type !== ChatType.Scheduled && !this.isWelcomeComposer);
-    }
+    this.updateReplyMarkupToggle(isInputEmpty);
 
     if(this.btnSendGift) {
       this.btnSendGift.classList.toggle('show', isInputEmpty && !this.isWelcomeComposer);

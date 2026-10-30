@@ -23,9 +23,16 @@ $menu-search-translateY: -#{$menu-height};
 	flex: 1 1 auto;
   position: absolute;
   inset-inline-end: 0;
-  bottom: calc(var(--chat-input-height) + .5rem);
+  // * over the input, which a bot keyboard under it lifts (`--chat-input-keyboard-height`, Chat)
+  bottom: calc(var(--chat-input-height) + .5rem + var(--chat-input-keyboard-height, 0px));
   max-width: calc(100% - 1rem);
   max-height: 26.25rem;
+
+  // * the composer's, over the input: no higher than the room left under the topbar, which a bot keyboard lifting the
+  // * input takes (a picker of its own, `is-standalone`, is placed by its own height)
+  .chat-input & {
+    max-height: min(26.25rem, calc(var(--100vh-inset) - var(--chat-topbar-height, 3rem) - var(--chat-input-height) - 1rem - var(--chat-input-keyboard-height, 0px)));
+  }
   box-shadow: 0px 5px 10px 5px rgba(16, 35, 47, .14);
   z-index: 4;
   border-radius: 1.25rem;
@@ -70,7 +77,7 @@ $menu-search-translateY: -#{$menu-height};
 
   &.is-under {
     --width: 100%;
-    --height: min(282px, calc(var(--100vh-inset) - 135px));
+    --height: min(282px, var(--under-input-max-height));
     position: relative;
     transform: none;
     inset: unset;

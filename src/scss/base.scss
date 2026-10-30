@@ -44,6 +44,9 @@
   // site, so the right per-scope value is picked up automatically (root
   // scope on the side sidebars, chat scope inside #column-center).
   --100vh-inset: calc(var(--100vh) - 2 * var(--page-chats-padding));
+  // * the most a panel under the message field (the emoji one, a bot's keyboard) may take, so that the field it lifts
+  // * stays clear of the topbar on a short screen
+  --under-input-max-height: calc(var(--100vh-inset) - 135px);
   --main-column-border-radius: #{$border-radius-big};
 
   @include respond-to(handhelds) {

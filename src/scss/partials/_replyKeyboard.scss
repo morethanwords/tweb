@@ -1,91 +1,103 @@
 @use "../shared" as *;
 
+// * the bot keyboard under the message field (ReplyKeyboard): its rows and buttons are the ones under
+// * a bubble (`.reply-markup`, _chatBubble.scss), only the box is its own. Laid out under the field while
+// * it is shown, the gap above it included - the field and the history go up by as much
+$reply-keyboard-gap: .25rem;
+$reply-keyboard-button-radius: .625rem;
+$reply-keyboard-fade: 1.5rem;
+
+// * how far its edges fade where there is more of it past them: typed, so that a fade comes and goes
+@property --reply-keyboard-fade-top {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --reply-keyboard-fade-bottom {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
 .reply-keyboard {
-  background: var(--surface-color);
-  position: absolute !important;
-	inset-inline-end: 0;
-	bottom: calc(100% + .625rem);
-	width: 26.25rem !important;
-  max-width: 100%;
-	//height: 26.25rem;
-	max-height: 26.25rem;
-	box-shadow: 0px 5px 10px 5px rgba(16, 35, 47, .14);
-	z-index: 3;
-	border-radius: $border-radius-medium;
-	@include animation-level-transition(transform var(--esg-transition), opacity var(--esg-transition));
-	transform: scale(0);
-	opacity: 0;
-	transform-origin: var(--transform-origin-inline-end) bottom;
-  padding: 0 !important;
-  display: flex !important;
-  flex-direction: column;
-  overflow: hidden;
+  display: none;
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: var(--chat-input-max-width);
+  margin-inline: auto;
+  padding-top: .375rem;
 
-	&.active {
-		opacity: 1;
-		transform: scale(1);
-	}
-
-
-  &-row {
-    display: flex;
-
-    & + & {
-      margin-top: .3125rem;
-    }
+  &.is-shown {
+    display: block;
   }
 
-  &-button {
-    width: 100%;
-    border-radius: .375rem !important;
-    border: 2px solid var(--primary-color);
-    text-align: center;
-    color: var(--primary-color) !important;
-    background-color: transparent;
-    height: 3rem;
-    font-weight: var(--font-weight-bold);
-    font-size: .9375rem;
-    position: relative;
-
-    @include animation-level(1) {
-      transition: color .15s, background-color .15s;
-    }
-
-    &:not(.reply-markup-button-bg) {
-      .custom-emoji-canvas {
-        @include animation-level(1) {
-          transition: filter .15s;
-        }
-      }
-
-      @include hover() {
-        background-color: var(--primary-color);
-        color: #fff !important;
-
-        .custom-emoji-canvas {
-          filter: brightness(0) invert(1);
-        }
-      }
-    }
-
-    & + & {
-      margin-inline-start: .3125rem;
-    }
-
-    &.reply-markup-button-bg {
-      background-color: rgb(var(--background-color-rgb)) !important;
-      border: none;
-    }
+  // * going down: a press of what is on its way out would send what was closed
+  &:not(.active) {
+    pointer-events: none;
   }
 
-  .scrollable-y {
+  &-scrollable {
     position: relative;
-    top: auto;
-    right: auto;
-    bottom: auto;
-    left: auto;
+    inset: auto;
     height: auto;
-    max-height: 100%;
-    padding: .625rem !important;
+    // * less on a short screen, by as much as the input above it grows and the plates under the topbar take
+    max-height: min(15rem, calc(var(--under-input-max-height) - var(--chat-input-height-surplus, 0px) - var(--pinned-floating-height, 0px)));
+
+    // * once it scrolls, its edges fade out where it goes on past them (Scrollable2's `withBorders="manual"`): the
+    // * same stops either way, so that only how far they reach changes
+    &.scrolled-only-start-manual,
+    &.scrolled-only-end-manual,
+    &.scrolled-none-manual {
+      mask-image: linear-gradient(
+        to bottom,
+        transparent,
+        #000 var(--reply-keyboard-fade-top, 0px),
+        #000 calc(100% - var(--reply-keyboard-fade-bottom, 0px)),
+        transparent
+      );
+
+      @include animation-level(1) {
+        transition: --reply-keyboard-fade-top var(--transition-standard-in), --reply-keyboard-fade-bottom var(--transition-standard-in);
+      }
+    }
+
+    &.scrolled-only-end-manual,
+    &.scrolled-none-manual {
+      --reply-keyboard-fade-top: #{$reply-keyboard-fade};
+    }
+
+    &.scrolled-only-start-manual,
+    &.scrolled-none-manual {
+      --reply-keyboard-fade-bottom: #{$reply-keyboard-fade};
+    }
+  }
+
+  .reply-markup {
+    margin-top: 0;
+  }
+
+  // * further apart than under a bubble
+  .reply-markup-row {
+    margin-top: $reply-keyboard-gap;
+    gap: $reply-keyboard-gap;
+  }
+
+  &-row:first-child {
+    margin-top: 0;
+  }
+
+  // * every button rounded alike, the bottom row's too (a bubble's are rounded as it is there: `.is-first`,
+  // * `.is-last`, logical corners, which a shorthand would lose to in the build)
+  .reply-markup-button {
+    border-radius: $reply-keyboard-button-radius;
+
+    &.is-first {
+      border-end-start-radius: $reply-keyboard-button-radius;
+    }
+
+    &.is-last {
+      border-end-end-radius: $reply-keyboard-button-radius;
+    }
   }
 }

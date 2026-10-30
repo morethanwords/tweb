@@ -263,6 +263,8 @@ export type State = {
   userId?: UserId,
   /** Key: `getPinnedMessagesKey(peerId, threadId)` — thread-scoped in a forum topic. */
   hiddenPinnedMessages: {[peerIdOrThreadKey: string]: number},
+  /** Key: a history storage's (a topic's is its own), value: the message of the bot keyboard the user closed there. */
+  closedReplyKeyboards: {[historyStorageKey: string]: number},
   hideChatJoinRequests: {[peerId: PeerId]: number},
   botConnectionReviews: BotConnectionReview[],
   // stateId?: number, // ! DEPRECATED
@@ -649,6 +651,7 @@ export const STATE_INIT: State = {
   },
   userId: undefined,
   hiddenPinnedMessages: {},
+  closedReplyKeyboards: {},
   hideChatJoinRequests: {},
   botConnectionReviews: [],
   // stateId: nextRandomUint(32),

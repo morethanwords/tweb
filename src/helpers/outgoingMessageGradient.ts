@@ -458,6 +458,66 @@ export function holdOutgoingMessageGradient(elements: HTMLElement[]) {
   measureOutgoingMessageGradientHold(elements)?.();
 }
 
+/**
+ * A move of what all the bubbles are in (`container`, by a `translate` along y from `from` to `to`) takes in the pieces
+ * of the gradient in it, the chat's and every bubble's (both phases'), which are then laid out against its padding box, as tall as it is, and a
+ * freeform one as wide: each piece seen on the way is moved from there onto the frame, and back as the container
+ * goes, so that it stays on the frame and the bubbles go through the gradient as they would scrolled there. The reads
+ * are made now, with no transform on the container; what is returned starts the moves, in the container's time
+ */
+export function measureOutgoingMessageGradientCounterMove(container: HTMLElement, from: number, to: number) {
+  const frame = container.closest('.bubbles');
+  const image = frame && getComputedStyle(frame).getPropertyValue(MESSAGE_OUT_GRADIENT_IMAGE_PROPERTY).trim();
+  const {clientWidth: width, clientHeight: height} = container;
+  if(!image || image === 'none' || !height) {
+    return;
+  }
+
+  // * a gradient whose pieces cannot be moved back (no animation of a pseudo-element, an older browser): `null`, so the
+  // * container is not moved at all
+  if(!('pseudoElement' in KeyframeEffect.prototype)) {
+    return null;
+  }
+
+  const frameRect = frame.getBoundingClientRect();
+  const rect = container.getBoundingClientRect();
+  // * scaled from its middle across, from its top down (`message-out-gradient-piece`)
+  const y = frameRect.top - (rect.top + container.clientTop);
+  const scaleY = frameRect.height / height;
+  const freeform = {
+    x: frameRect.left + frameRect.width / 2 - (rect.left + container.clientLeft + width / 2),
+    scaleX: frameRect.width / width
+  };
+  const column = {x: 0, scaleX: 1};
+  const reach = Math.max(Math.abs(from), Math.abs(to));
+  const moves: {element: HTMLElement, pseudoElement: string, across: typeof column}[] = [];
+  // * the chat's piece the bubbles at rest are cut out of (`OutgoingGradientUnion`), and the pieces of those left out
+  container.querySelectorAll<HTMLElement>('.bubbles-gradient, .bubble.is-out .bubble-gradient, .bubble.is-out .bubble-tail').forEach((element) => {
+    // * a transform of its bubble's own has it held there
+    if(element.closest('.is-gradient-held, .is-gesturing-reply, .can-zoom-fade')) {
+      return;
+    }
+
+    const elementRect = element.getBoundingClientRect();
+    if(elementRect.bottom <= frameRect.top - reach || elementRect.top >= frameRect.bottom + reach) {
+      return;
+    }
+
+    for(const pseudoElement of ['::before', '::after']) {
+      const style = getComputedStyle(element, pseudoElement);
+      if(style.position === 'fixed' && style.display !== 'none') {
+        // * a column a pixel wide stretched across any width, or a freeform picture as wide as the frame
+        moves.push({element, pseudoElement, across: parseFloat(style.width) > 1 ? freeform : column});
+      }
+    }
+  });
+
+  return (options: KeyframeAnimationOptions) => moves.map(({element, pseudoElement, across: {x, scaleX}}) => element.animate([
+    {translate: `${x}px ${y - from}px`, scale: `${scaleX} ${scaleY}`},
+    {translate: `${x}px ${y - to}px`, scale: `${scaleX} ${scaleY}`}
+  ], {...options, pseudoElement}));
+}
+
 // * a move with no class of its own to be told by (a change's): the elements are marked while any of theirs lasts
 const MESSAGE_OUT_GRADIENT_HELD_CLASS = 'is-gradient-held';
 const heldBy = new WeakMap<HTMLElement, number>();

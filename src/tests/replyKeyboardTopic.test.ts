@@ -1,5 +1,6 @@
 import '@helpers/peerIdPolyfill';
 import ListenerSetter from '@helpers/listenerSetter';
+import EventListenerBase from '@helpers/eventListenerBase';
 import {getMiddleware} from '@helpers/middleware';
 import {ChatType} from '@components/chat/chatType';
 import {ReplyMarkup} from '@layer';
@@ -23,7 +24,8 @@ function makeKeyboard(chat: object) {
     managers: {} as any,
     appendTo: document.createElement('div'),
     btnHover,
-    chatInput: {chat} as any,
+    // * the app's, whose chat changes and column changes it follows
+    chatInput: {chat: {appImManager: new EventListenerBase(), ...chat}} as any,
     middleware: getMiddleware().get()
   });
 

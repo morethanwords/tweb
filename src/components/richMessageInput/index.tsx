@@ -59,6 +59,8 @@ export type RichMessageInputOptions = Pick<EditorToolbarOptions, 'canInsertMap' 
   onInput?: (event: Event) => void,
   onHeightChange?: (height: number) => void,
   onExpandedChange?: (expanded: boolean) => void,
+  // * the layout's height animated to the expanded or the collapsed one is there (`is-message-input-resizing` gone)
+  onResizeEnd?: () => void,
   onReadOnlyClick?: () => void,
   onChooseMedia?: (selection: Selection, action: RichMediaItemInsertAction) => void,
   ref?: (input: RichMessageInputController) => void
@@ -435,6 +437,8 @@ export class RichMessageInputController {
     if(wasResizing && this.expanded === false) {
       this.field?.setHeightMeasurementEnabled(true);
     }
+
+    if(wasResizing) this.options.onResizeEnd?.();
   }
 
   public get expandable() {return !!this.expandButton && !this.plainOnly;}

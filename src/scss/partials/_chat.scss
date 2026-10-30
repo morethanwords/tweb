@@ -611,6 +611,13 @@
   initial-value: 0px;
 }
 
+// * how much higher the input stands for the bot keyboard under it (ReplyKeyboard), given the same way
+@property --chat-input-keyboard-height {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
 .chat {
   --chat-topbar-height: 3rem;
   --pinned-floating-height: 0px;
@@ -1272,9 +1279,21 @@
   position: absolute;
   inset-inline: 0;
   top: var(--chat-padding-top);
-  bottom: calc(var(--chat-padding-bottom) + var(--chat-input-height-surplus, 0px));
+  bottom: calc(var(--chat-padding-bottom) + var(--chat-input-height-surplus, 0px) + var(--chat-input-keyboard-height, 0px));
   margin-block: calc(var(--page-chats-padding) * -1);
 }
+
+// * where the bot keyboard under the input stands (`--chat-input-keyboard-height`, Chat), from the
+// * bottom of the history's scroller: nothing of the history shows under it, its buttons let the wallpaper
+// * through and a message passing under them would muddle them. With the page's padding below it, once
+// * there is a keyboard (`min()` is that padding then and nothing without one), which the fade above it gives up:
+// * the fade stands where it would without a keyboard, only higher by it - so the history, which goes up and down
+// * with the input by a transform under the mask of one or the other (Chat.setChatInputKeyboardHeight), is
+// * masked alike on the way and once it is there. Written out where it is used rather than kept in a custom
+// * property: one changing on the scroller is worked out anew for every message in it
+$bubbles-keyboard-padding: "min(var(--chat-input-keyboard-height, 0px) * 1000, var(--page-chats-padding))";
+$bubbles-keyboard-zone: string.unquote("(var(--chat-input-keyboard-height, 0px) + #{$bubbles-keyboard-padding})");
+$bubbles-keyboard-fade: string.unquote("(var(--bubbles-scrollable-fade-bottom) - #{$bubbles-keyboard-padding})");
 
 .bubbles {
 	--translateY: 0;
@@ -1341,12 +1360,14 @@
       color-mix(in srgb, #000 66.6%, var(--bubbles-scrollable-fade-color)) calc(var(--bubbles-scrollable-fade-top-add) + var(--bubbles-scrollable-fade-top-ramp) * 0.6),
       color-mix(in srgb, #000 91.4%, var(--bubbles-scrollable-fade-color)) calc(var(--bubbles-scrollable-fade-top-add) + var(--bubbles-scrollable-fade-top-ramp) * 0.8),
       #000 var(--bubbles-scrollable-fade-top),
-      #000 calc(100% - var(--bubbles-scrollable-fade-bottom)),
-      color-mix(in srgb, #000 91.4%, var(--bubbles-scrollable-fade-color)) calc(100% - var(--bubbles-scrollable-fade-bottom) * 0.8),
-      color-mix(in srgb, #000 66.6%, var(--bubbles-scrollable-fade-color)) calc(100% - var(--bubbles-scrollable-fade-bottom) * 0.6),
-      color-mix(in srgb, #000 33.4%, var(--bubbles-scrollable-fade-color)) calc(100% - var(--bubbles-scrollable-fade-bottom) * 0.4),
-      color-mix(in srgb, #000 8.6%, var(--bubbles-scrollable-fade-color)) calc(100% - var(--bubbles-scrollable-fade-bottom) * 0.2),
-      var(--bubbles-scrollable-fade-color) 100%
+      #000 calc(100% - #{$bubbles-keyboard-fade} - #{$bubbles-keyboard-zone}),
+      color-mix(in srgb, #000 91.4%, var(--bubbles-scrollable-fade-color)) calc(100% - #{$bubbles-keyboard-fade} * 0.8 - #{$bubbles-keyboard-zone}),
+      color-mix(in srgb, #000 66.6%, var(--bubbles-scrollable-fade-color)) calc(100% - #{$bubbles-keyboard-fade} * 0.6 - #{$bubbles-keyboard-zone}),
+      color-mix(in srgb, #000 33.4%, var(--bubbles-scrollable-fade-color)) calc(100% - #{$bubbles-keyboard-fade} * 0.4 - #{$bubbles-keyboard-zone}),
+      color-mix(in srgb, #000 8.6%, var(--bubbles-scrollable-fade-color)) calc(100% - #{$bubbles-keyboard-fade} * 0.2 - #{$bubbles-keyboard-zone}),
+      var(--bubbles-scrollable-fade-color) calc(100% - #{$bubbles-keyboard-zone}),
+      transparent calc(100% - #{$bubbles-keyboard-zone}),
+      transparent 100%
     );
   }
 
@@ -1477,7 +1498,7 @@
 	display: flex;
 	flex-direction: column;
 	margin: 0 auto;
-	min-height: calc(100% - var(--chat-padding-top) - var(--chat-padding-bottom) - var(--chat-input-height-surplus, 0px));
+	min-height: calc(100% - var(--chat-padding-top) - var(--chat-padding-bottom) - var(--chat-input-height-surplus, 0px) - var(--chat-input-keyboard-height, 0px));
 	justify-content: flex-end;
 	max-width: calc(var(--chat-width) - var(--chat-bubbles-padding) * 2);
   box-sizing: content-box;

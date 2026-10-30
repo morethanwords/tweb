@@ -67,6 +67,8 @@ import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotRel
 import hasRights from '@appManagers/utils/chats/hasRights';
 import {ChatType} from '@components/chat/chatType';
 import {animateSingle} from '@helpers/animation';
+import {EASING_Y} from '@components/chat/bubbleShape';
+import {measureOutgoingMessageGradientCounterMove} from '@helpers/outgoingMessageGradient';
 import focusSearchInput from '@components/chat/focusSearchInput';
 import createStyleRule from '@helpers/dom/createStyleRule';
 
@@ -297,6 +299,8 @@ export default class Chat extends EventListenerBase<{
   }
 
   private chatInputSurplusPx = 0;
+  private chatInputKeyboardPx = 0;
+  private chatInputKeyboardFinish?: () => void;
   private pinnedFloatingHeightPx = 0;
   private preservePaddingScrollAbort?: () => void;
 
@@ -304,31 +308,124 @@ export default class Chat extends EventListenerBase<{
     if(this.chatInputSurplusPx === surplus) return;
     this.preservePaddingScroll();
     this.chatInputSurplusPx = surplus;
-    this.setChatInputSurplusRule(surplus);
+    this.setChatInputRuleProperty('--chat-input-height-surplus', surplus);
     this.recomputePaddings();
   }
 
-  // * `--chat-input-height-surplus` is not inherited (_chat.scss): a rule of the chat's own gives it to
-  // * the few boxes that read it. Set on the chat, a custom property of its is worked out anew for
-  // * every element in it - a thousand in a short chat, on each line the input grows or a reply shown
-  private chatInputSurplusRule: ReturnType<typeof createStyleRule>;
-  private setChatInputSurplusRule(surplus: number) {
+  /**
+   * The bot keyboard under the input (`ReplyKeyboard`), with the gap above it: the history leaves that much room
+   * under itself, and the boxes laid out against the input (`--chat-input-keyboard-height`) stand that much
+   * higher. Kept apart from the surplus, which the corner buttons also read - they stand on the input's container
+   * and go with it by themselves.
+   *
+   * With `duration` (full animations) a history at its end goes up or down with the input, in the keyboard's
+   * time and curve, and as the input does: moved by the compositor alone. It is laid out where it ends (the room,
+   * the boxes, and the scroll that keeps it where it was on the screen) once it is up, or before it goes down, and
+   * only its messages are moved there, by a `translate`: nothing is laid out or scrolled on the way, so the main
+   * thread being busy cannot hold it back behind the input, and nothing it moves passes under the zone the
+   * keyboard hides (`$bubbles-keyboard-zone`). A history scrolled up stays.
+   */
+  public setChatInputKeyboardHeight(height: number, duration?: number) {
+    this.chatInputKeyboardFinish?.();
+    const delta = height - this.chatInputKeyboardPx;
+    if(!delta) return;
+    this.chatInputKeyboardPx = height;
+
+    const bubbles = this.bubbles;
+    const scrollable = bubbles?.scrollable;
+    const inner = bubbles?.chatInner;
+    const atEnd = !!inner?.isConnected && scrollable.isScrolledToEnd;
+    const commit = () => {
+      // * read before the writes, which would have it laid out for the read
+      const position = atEnd && scrollable.scrollPosition;
+      this.recomputePaddings(true);
+      this.setChatInputRuleProperty('--chat-input-keyboard-height', height);
+      // * the room taken or given back under it: at its end still, where it was on the screen
+      if(atEnd) scrollable.setScrollPositionSilently(position + delta);
+    };
+
+    if(!duration || !liteMode.isAvailable('motion')) {
+      commit();
+      return;
+    }
+
+    let finish: () => void;
+    if(!atEnd) {
+      // * nothing moves: the zone is there while the keyboard is
+      if(delta > 0) {
+        commit();
+        return;
+      }
+
+      const timeout = window.setTimeout(() => finish(), duration);
+      finish = () => {
+        clearTimeout(timeout);
+        this.chatInputKeyboardFinish = undefined;
+        commit();
+      };
+    } else {
+      if(delta < 0) commit();
+      // * from where it was on the screen to where it ends, against where it is laid out meanwhile
+      const from = delta > 0 ? 0 : delta;
+      const to = delta > 0 ? -delta : 0;
+      const options: KeyframeAnimationOptions = {duration, easing: EASING_Y, fill: 'forwards'};
+      const moveGradient = measureOutgoingMessageGradientCounterMove(inner, from, to);
+      // * a gradient the move would take in and cannot give back: it is laid out where it ends at once
+      if(moveGradient === null) {
+        if(delta > 0) commit();
+        return;
+      }
+
+      const animations = [
+        inner.animate([{translate: `0px ${from}px`}, {translate: `0px ${to}px`}], options),
+        ...(moveGradient?.(options) || [])
+      ];
+      // * over, or cut short (the keyboard goes again on the way): it is where it was going
+      finish = () => {
+        this.chatInputKeyboardFinish = undefined;
+        if(delta > 0) commit();
+        animations.forEach((animation) => animation.cancel());
+      };
+      animations[0].finished.then(() => {
+        if(this.chatInputKeyboardFinish === finish) finish();
+      }, noop);
+    }
+
+    this.chatInputKeyboardFinish = finish;
+  }
+
+  // * `--chat-input-height-surplus` and `--chat-input-keyboard-height` are not inherited (_chat.scss): a
+  // * rule of the chat's own gives them to the few boxes that read them. Set on the chat, a custom
+  // * property of its is worked out anew for every element in it - a thousand in a short chat, on each
+  // * line the input grows or a reply shown
+  private chatInputRule: ReturnType<typeof createStyleRule>;
+  private setChatInputRuleProperty(property: string, px: number) {
     if(!this.container) {
       return;
     }
 
-    if(!this.chatInputSurplusRule) {
+    if(!this.chatInputRule) {
       const className = 'chat-surplus-' + this.animationGroup;
       this.container.classList.add(className);
-      this.chatInputSurplusRule = createStyleRule(
+      this.chatInputRule = createStyleRule(
         this.container,
         // * a list rather than an `:is()`: a selector whose own element is a class is looked at for
         // * elements of that class alone, an `:is()` for every element of every restyle
-        ['.bubbles-viewport', '.bubbles-inner', '.bubbles-group-avatar', '.bubbles-corner-button'].map((c) => `.${className} ${c}`).join(', ')
+        [
+          '.bubbles-viewport',
+          '.bubbles-inner',
+          '.bubbles-group-avatar',
+          '.bubbles-corner-button',
+          '.bubbles-scrollable',
+          // * the emoji panel stands over the input: when open, it is a child of its `.chat-input`
+          '.emoji-dropdown',
+          // * the bot keyboard under it is as much shorter as the input grows (_replyKeyboard.scss)
+          '.reply-keyboard-scrollable'
+        ].map((c) => `.${className} ${c}`).join(', ')
       );
     }
 
-    this.chatInputSurplusRule.set('--chat-input-height-surplus', surplus + 'px');
+    this.chatInputRule.set(property, px + 'px');
   }
 
   public updatePinnedFloatingHeight(value: number) {
@@ -392,7 +489,11 @@ export default class Chat extends EventListenerBase<{
     this.preservePaddingScrollAbort?.();
   }
 
-  public recomputePaddings() {
+  /**
+   * @param instant the room under the history changes without its transition: what goes with it moves the list
+   * itself (`setChatInputKeyboardHeight`)
+   */
+  public recomputePaddings(instant?: boolean) {
     // const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
     const rem = 16;
     // Main chat reserves 4.5rem above + 4rem below for the floating topbar / pinned-plate
@@ -406,11 +507,21 @@ export default class Chat extends EventListenerBase<{
     const topBase = collapse ? 3.5 : 4.5;
     const bottomBase = collapse ? 3.5 : 4;
     const top = Math.round(topBase * rem + this.pinnedFloatingHeightPx);
-    const bottom = Math.round(bottomBase * rem + this.chatInputSurplusPx);
+    const bottom = Math.round(bottomBase * rem + this.chatInputSurplusPx + this.chatInputKeyboardPx);
     this.chatPaddingTop[1](top);
     this.chatPaddingBottom[1](bottom);
     if(this.bubbles?.paddingTop) this.bubbles.paddingTop.style.height = top + 'px';
-    if(this.bubbles?.paddingBottom) this.bubbles.paddingBottom.style.height = bottom + 'px';
+    const paddingBottom = this.bubbles?.paddingBottom;
+    if(paddingBottom) {
+      // * the change is styled without a transition first, and only then may it have one again
+      if(instant) {
+        paddingBottom.classList.add('no-transition');
+        doubleRaf().then(() => paddingBottom.classList.remove('no-transition'));
+      }
+
+      paddingBottom.style.height = bottom + 'px';
+    }
+
     this.bubbles?.updateStickyIntersectorRootMargin?.();
   }
 
@@ -908,9 +1019,11 @@ export default class Chat extends EventListenerBase<{
     // * chat, container and shared-media tabs included, which is how 4 951 detached nodes ended up
     // * charged to rootScope in a day-old tab. Peer changes keep cleaning it as before.
     this.middlewareHelper.destroy();
-    this.chatInputSurplusRule?.remove();
+    // * a keyboard's way that would lay it out later would make the rule again, on a chat that is gone
+    this.chatInputKeyboardFinish?.();
+    this.chatInputRule?.remove();
 
-    this.chatInputSurplusRule =
+    this.chatInputRule =
       this.topbar =
       this.bubbles =
       this.input =
