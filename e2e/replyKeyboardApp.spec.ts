@@ -624,7 +624,7 @@ test.describe('the bot keyboard under the field', () => {
     expect((await rows())[0].height).toBeCloseTo(fitted.height, 0);
   });
 
-  test('the field says what the keyboard asks it to while it is open, and what a force reply does while it answers it', async({page}) => {
+  test('the field says what the keyboard asks it to while it is open, and what a force reply does while it answers it, until the user drops it', async({page}) => {
     await holdWrites(page);
     const placeholder = () => page.evaluate(() => {
       const element = (window as any).appImManager.chat.input.messageInputField.placeholder as HTMLElement;
@@ -643,20 +643,163 @@ test.describe('the bot keyboard under the field', () => {
     await settled(page);
     expect(await placeholder()).toEqual(own);
 
-    // * a force reply: the field answers its message, in its words, until that answer is dropped
-    const mid = await page.evaluate(() => {
+    // * a force reply: the field answers its message, in its words
+    const [other, mid] = await page.evaluate(() => {
       const chat = (window as any).appImManager.chat;
-      const mid = Math.max(...Array.from(document.querySelectorAll<HTMLElement>('.bubbles-inner .bubble[data-mid]'), (bubble) => +bubble.dataset.mid));
+      const mids = Array.from(document.querySelectorAll<HTMLElement>('.bubbles-inner .bubble[data-mid]'), (bubble) => +bubble.dataset.mid).sort((a, b) => a - b);
+      const mid = mids[mids.length - 1];
       const [, setStore] = Object.values((window as any).historyStorages).find(([candidate]: any) => candidate === chat.historyStorage) as [any, (key: string, value: any) => void];
       setStore('replyMarkup', undefined);
       setStore('replyMarkup', {_: 'replyKeyboardForceReply', pFlags: {}, mid, fromId: chat.peerId, placeholder: 'Your name'});
       (window as any).rootScope.dispatchEventSingle('history_reply_markup', {peerId: chat.peerId});
+      return [mids[mids.length - 2], mid];
+    });
+    const replyTo = () => page.evaluate(() => (window as any).appImManager.chat.input.replyToMsgId);
+    const hears = () => page.evaluate(() => {
+      const w = window as any;
+      w.rootScope.dispatchEventSingle('history_reply_markup', {peerId: w.appImManager.chat.peerId});
+    });
+    const drop = () => page.locator('.chat-input-main .reply-cancel').click();
+    await expect.poll(placeholder).toEqual({text: 'Your name', dir: 'auto'});
+    expect(await replyTo()).toBe(mid);
+
+    // * the user's own answer to another message is left to them as the chat hears of keyboards, and once they drop
+    // * it the force reply's is back
+    await page.evaluate((other) => (window as any).appImManager.chat.input.initMessageReply({replyToMsgId: other}), other);
+    await expect.poll(replyTo).toBe(other);
+    await hears();
+    await page.waitForTimeout(1000);
+    expect(await replyTo()).toBe(other);
+    await drop();
+    await hears();
+    await expect.poll(replyTo).toBe(mid);
+    // * the app's clearing of it (a captionless file sent as the answer) is no dropping: it is back as the chat hears
+    await page.evaluate(() => (window as any).appImManager.chat.input.onHelperCancel());
+    await expect.poll(replyTo).toBeUndefined();
+    await hears();
+    await expect.poll(replyTo).toBe(mid);
+
+    // * the force reply's own answer dropped: not set again as the chat hears of keyboards, nor as it opens anew
+    await drop();
+    await expect.poll(placeholder).toEqual(own);
+    await hears();
+    await page.waitForTimeout(1000);
+    expect(await replyTo()).toBeUndefined();
+    await page.evaluate(() => (window as any).appImManager.setPeer({peerId: 0}));
+    await page.waitForTimeout(500);
+    await page.evaluate(() => {
+      const w = window as any;
+      w.appImManager.setPeer({peerId: w.rootScope.myId});
+    });
+    await page.waitForFunction(() => {
+      const chat = (window as any).appImManager.chat;
+      return chat.peerId && !chat.setPeerPromise && document.body.classList.contains('has-chat');
+    }, null, {timeout: 30_000});
+    await page.waitForTimeout(1500);
+    expect(await replyTo()).toBeUndefined();
+    expect(await placeholder()).toEqual(own);
+  });
+
+  test('a force reply that comes while the chat changes to another topic has the field answer it once it is there', async({page}) => {
+    await holdWrites(page);
+    const mid = await page.evaluate(() => Math.max(...Array.from(document.querySelectorAll<HTMLElement>('.bubbles-inner .bubble[data-mid]'), (bubble) => +bubble.dataset.mid)));
+    await holdPeerChange(page);
+    // * the same chat's own notes, a topic of it: the keyboard is the same peer's
+    await page.evaluate(async(mid) => {
+      const w = window as any;
+      const myId = w.rootScope.myId;
+      w.appImManager.setPeer({peerId: myId, threadId: myId});
+      const chat = w.appImManager.chat;
+      await new Promise<void>((resolve) => {
+        const interval = setInterval(() => {
+          if(chat.historyStorage?.key !== `replies_${myId}_${myId}`) return;
+          clearInterval(interval);
+          resolve();
+        }, 2);
+      });
+      const [, setStore] = Object.values(w.historyStorages).find(([candidate]: any) => candidate === chat.historyStorage) as [any, (key: string, value: any) => void];
+      setStore('replyMarkup', undefined);
+      setStore('replyMarkup', {_: 'replyKeyboardForceReply', pFlags: {}, mid, fromId: chat.peerId});
+      w.rootScope.dispatchEventSingle('history_reply_markup', {peerId: chat.peerId});
+    }, mid);
+    await page.waitForFunction(() => {
+      const chat = (window as any).appImManager.chat;
+      return chat.threadId && !chat.setPeerPromise && document.body.classList.contains('has-chat');
+    }, null, {timeout: 30_000});
+    await expect.poll(() => page.evaluate(() => (window as any).appImManager.chat.input.replyToMsgId), {timeout: 10_000}).toBe(mid);
+  });
+
+  test('a force reply the chat hears of as one change gives way to another is answered once the last is over', async({page}) => {
+    await holdWrites(page);
+    // * the chat's own, there already: the chat is not told of it yet
+    const mid = await page.evaluate(() => {
+      const w = window as any;
+      const chat = w.appImManager.chat;
+      const mid = Math.max(...Array.from(document.querySelectorAll<HTMLElement>('.bubbles-inner .bubble[data-mid]'), (bubble) => +bubble.dataset.mid));
+      const [, setStore] = Object.values(w.historyStorages).find(([candidate]: any) => candidate === chat.historyStorage) as [any, (key: string, value: any) => void];
+      setStore('replyMarkup', undefined);
+      setStore('replyMarkup', {_: 'replyKeyboardForceReply', pFlags: {}, mid, fromId: chat.peerId});
       return mid;
     });
-    await expect.poll(placeholder).toEqual({text: 'Your name', dir: 'auto'});
-    expect(await page.evaluate(() => (window as any).appImManager.chat.input.replyToMsgId)).toBe(mid);
-    await page.evaluate(() => (window as any).appImManager.chat.input.clearHelper());
-    await expect.poll(placeholder).toEqual(own);
+    await holdPeerChange(page);
+    await page.evaluate(async() => {
+      const w = window as any;
+      const myId = w.rootScope.myId;
+      const chat = w.appImManager.chat;
+      const until = (key: string) => new Promise<void>((resolve) => {
+        const interval = setInterval(() => {
+          if(chat.historyStorage?.key !== key) return;
+          clearInterval(interval);
+          resolve();
+        }, 2);
+      });
+      // * to its own notes, hearing of keyboards on the way, and back to the chat itself before that is over: the
+      // * first change, cut short, settles while the second still goes
+      w.appImManager.setPeer({peerId: myId, threadId: myId});
+      await until(`replies_${myId}_${myId}`);
+      w.rootScope.dispatchEventSingle('history_reply_markup', {peerId: myId});
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      w.appImManager.setPeer({peerId: myId});
+      await until(`history_${myId}`);
+    });
+    await page.waitForFunction(() => {
+      const chat = (window as any).appImManager.chat;
+      return !chat.threadId && !chat.setPeerPromise && document.body.classList.contains('has-chat');
+    }, null, {timeout: 30_000});
+    await expect.poll(() => page.evaluate(() => (window as any).appImManager.chat.input.replyToMsgId), {timeout: 10_000}).toBe(mid);
+  });
+
+  test('a force reply the chat hears of as it changes, closed before the change is over, is answered as it opens again', async({page}) => {
+    await holdWrites(page);
+    const mid = await page.evaluate(() => Math.max(...Array.from(document.querySelectorAll<HTMLElement>('.bubbles-inner .bubble[data-mid]'), (bubble) => +bubble.dataset.mid)));
+    await holdPeerChange(page);
+    await page.evaluate(async(mid) => {
+      const w = window as any;
+      const myId = w.rootScope.myId;
+      const chat = w.appImManager.chat;
+      w.appImManager.setPeer({peerId: myId, threadId: myId});
+      await new Promise<void>((resolve) => {
+        const interval = setInterval(() => {
+          if(chat.historyStorage?.key !== `replies_${myId}_${myId}`) return;
+          clearInterval(interval);
+          resolve();
+        }, 2);
+      });
+      const [, setStore] = Object.values(w.historyStorages).find(([candidate]: any) => candidate === chat.historyStorage) as [any, (key: string, value: any) => void];
+      setStore('replyMarkup', undefined);
+      setStore('replyMarkup', {_: 'replyKeyboardForceReply', pFlags: {}, mid, fromId: myId});
+      w.rootScope.dispatchEventSingle('history_reply_markup', {peerId: myId});
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      // * closed: the change, cut short, settles with no chat to answer in
+      w.appImManager.setPeer({peerId: 0});
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      w.appImManager.setPeer({peerId: myId, threadId: myId});
+    }, mid);
+    await page.waitForFunction(() => {
+      const chat = (window as any).appImManager.chat;
+      return chat.threadId && !chat.setPeerPromise && document.body.classList.contains('has-chat');
+    }, null, {timeout: 30_000});
+    await expect.poll(() => page.evaluate(() => (window as any).appImManager.chat.input.replyToMsgId), {timeout: 10_000}).toBe(mid);
   });
 
   test('a markup the worker puts in place of another keeps nothing of the one before', async({page}) => {
@@ -742,7 +885,7 @@ type KeyboardOptions = {
 };
 
 // * the keyboard a bot's last message would have left in the chat, `rows` rows of it (none: what there was, and the
-// * user's closing of it forgotten)
+// * user's closing of it and dropping of a force reply's answer forgotten)
 async function setKeyboard(page: Page, rows: number, options: KeyboardOptions = {}) {
   await page.evaluate(async([rows, {singleUse, stretched, placeholder, hidden, mid = 1, comes}]) => {
     const chat = (window as any).appImManager.chat;
@@ -755,6 +898,7 @@ async function setKeyboard(page: Page, rows: number, options: KeyboardOptions = 
       setStore('replyMarkup', undefined);
       await keyboard.checkAvailability();
       chat.setAppState('closedReplyKeyboards', chat.historyStorage.key, undefined);
+      chat.setAppState('droppedForceReplies', chat.historyStorage.key, undefined);
       return;
     }
 
@@ -800,6 +944,22 @@ async function holdWrites(page: Page, draft?: string) {
       return invoke(type, payload, ack, ...rest);
     };
   }, draft);
+}
+
+// * a change of the chat waits for the worker a while (`Chat.onChangePeer`, which clears the field's helpers at its end)
+async function holdPeerChange(page: Page) {
+  await page.evaluate(() => {
+    const proxy = (window as any).apiManagerProxy;
+    const invoke = proxy.invoke.bind(proxy);
+    proxy.invoke = (type: string, payload: any, ack: boolean, ...rest: any[]) => {
+      if(type === 'manager' && payload.method === 'noForwards') {
+        const result = new Promise((resolve) => setTimeout(resolve, 1500)).then(() => invoke(type, payload, false, ...rest));
+        return ack ? {cached: false, result} : result;
+      }
+
+      return invoke(type, payload, ack, ...rest);
+    };
+  });
 }
 
 // * the same twice over, and nothing of the field or the history moving: a way that has not started yet (a busy machine

@@ -868,7 +868,7 @@ export default class ChatInput {
 
     // * a press must not take focus from the message field: Enter on a focused cancel button both sends
     // * what is in the field and presses the button again, cancelling an edit that is being saved
-    attachClickEvent(this.replyElements.cancelBtn, this.onHelperCancel, {listenerSetter: this.listenerSetter, cancelMouseDown: true});
+    attachClickEvent(this.replyElements.cancelBtn, this.onHelperCancelByUser, {listenerSetter: this.listenerSetter, cancelMouseDown: true});
     attachClickEvent(this.replyElements.content, this.onHelperClick, {listenerSetter: this.listenerSetter});
 
     const buttons: ButtonMenuItemOptions[] = [{
@@ -885,13 +885,13 @@ export default class ChatInput {
     }, this.replyElements.doNotReply = {
       icon: 'delete',
       text: 'DoNotReply',
-      onClick: this.onHelperCancel,
+      onClick: this.onHelperCancelByUser,
       danger: true/* ,
       separator: true */
     }, this.replyElements.doNotQuote = {
       icon: 'delete',
       text: 'DoNotQuote',
-      onClick: this.onHelperCancel,
+      onClick: this.onHelperCancelByUser,
       danger: true
     }];
     const btnMenu = this.replyElements.menuContainer = ButtonMenuSync({
@@ -4640,6 +4640,19 @@ export default class ChatInput {
     }
   };
 
+  /**
+   * The user's own cancel of the helper - its button, its menu, Escape - not the app's clearing it (after a send, a
+   * message gone): a force reply's answer dropped so is not set again (`ReplyKeyboard.onReplyDropped`). A link's
+   * preview over the reply is what such a cancel takes away, the reply staying
+   */
+  private onHelperCancelByUser = (e?: Event) => {
+    if(this.helperType === 'reply' && !this.willSendWebPage) {
+      this.replyKeyboard?.onReplyDropped(this.replyToMsgId, this.replyToPeerId);
+    }
+
+    return this.onHelperCancel(e);
+  };
+
   public onHelperCancel = async(e?: Event, force?: boolean) => {
     if(e) {
       cancelEvent(e);
@@ -6343,7 +6356,7 @@ export default class ChatInput {
       appNavigationController.pushItem(this.inputHelperNavigationItem = {
         type: 'input-helper',
         onPop: () => {
-          this.onHelperCancel();
+          this.onHelperCancelByUser();
         },
         context: this.chat
       });

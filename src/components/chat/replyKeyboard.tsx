@@ -494,18 +494,41 @@ export default class ReplyKeyboard extends EventListenerBase<{
     this.resizeObserver.observe(this.element);
   }
 
-  public async checkForceReply() {
-    const replyMarkup = await this.getReplyMarkup();
-    if(this.ephemeralMode) {
+  /**
+   * A force reply has the field answer its message while it is the last and unanswered (desktop's `_kbReplyTo`): as the
+   * chat opens or hears of keyboards, if the field answers nothing else and edits nothing. Not once the user has
+   * dropped that answer (`onReplyDropped`): only what the user does is remembered, never that it was set - a field
+   * no one sees (a preview, a chat closed or switched away meanwhile) sets it as well, and is cleared
+   */
+  public checkForceReply() {
+    const replyMarkup = this.getReplyMarkup();
+    const {chatInput} = this;
+    if(
+      !this.ephemeralMode &&
+      isForceReplyMarkup(replyMarkup) &&
+      !replyMarkup.pFlags.hidden &&
+      chatInput.chat.appState.droppedForceReplies?.[chatInput.chat.historyStorage.key] !== replyMarkup.mid &&
+      !chatInput.replyToMsgId &&
+      !chatInput.editMsgId
+    ) {
+      chatInput.initMessageReply({replyToMsgId: replyMarkup.mid});
+    }
+  }
+
+  /**
+   * The user drops the field's answer to `mid` of `peerId` (another chat's message for a reply there): a force reply's is
+   * not set again - and, as desktop has it, a keyboard of the same message goes with it, as the user closes one (a
+   * persistent one stays, and opens with the chat still: the answer is remembered apart from the keyboards closed)
+   */
+  public onReplyDropped(mid: number, peerId?: PeerId) {
+    const replyMarkup = this.getReplyMarkup();
+    const {chat} = this.chatInput;
+    if(!isForceReplyMarkup(replyMarkup) || replyMarkup.mid !== mid || (peerId && peerId !== chat.peerId)) {
       return;
     }
 
-    if(isForceReplyMarkup(replyMarkup) &&
-      !replyMarkup.pFlags.hidden &&
-      !replyMarkup.pFlags.used) {
-      replyMarkup.pFlags.used = true;
-      this.chatInput.initMessageReply({replyToMsgId: replyMarkup.mid});
-    }
+    chat.setAppState('droppedForceReplies', chat.historyStorage.key, mid);
+    if(this.active) this.toggleByUser(false);
   }
 
   /**
