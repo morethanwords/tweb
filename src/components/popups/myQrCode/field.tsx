@@ -265,7 +265,8 @@ function createLiveEmojiField(emojis: ThemeEmoji[], width: number, height: numbe
       ctx.globalAlpha = alpha;
       ctx.save();
       ctx.translate(screenX, screenY);
-      ctx.rotate((node.angle + angle) * Math.PI / 180);
+      // the field turns, each emoji keeps its own tilt (`QrShareView`: `rot + slotRot`, no turn of the field in it)
+      ctx.rotate(node.angle * Math.PI / 180);
       if(frame) {
         ctx.drawImage(frame, -size / 2, -size / 2, size, size);
       } else {

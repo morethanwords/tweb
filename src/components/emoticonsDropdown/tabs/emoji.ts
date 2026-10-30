@@ -239,6 +239,8 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
   private activeElements: EmojiTabItem[];
   private activeDocIds?: Set<DocId>;
   private noPacks: boolean;
+  /** The main sets show as soon as they are known, without waiting for the installed packs */
+  private packsAfterMainSets?: boolean;
   private noSearch: boolean;
   private preloaderDelay: number;
   private freeCustomEmoji: Set<DocId>;
@@ -263,6 +265,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     additionalLocalStickerSet?: EmojiTab['additionalLocalStickerSet'],
     onClick?: EmojiTab['onClick'],
     noPacks?: EmojiTab['noPacks'],
+    packsAfterMainSets?: EmojiTab['packsAfterMainSets'],
     noSearch?: EmojiTab['noSearch'],
     mediaPeekClass?: EmojiTab['mediaPeekClass'],
     preloaderDelay?: EmojiTab['preloaderDelay'],
@@ -572,13 +575,14 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     });
 
     const mainSetsResult = this.mainSets?.();
+    const packsPromise = !this.noPacks && Promise.resolve(apiManagerProxy.isPremiumFeaturesHidden()).then((isPremiumPurchaseHidden) => {
+      return isPremiumPurchaseHidden ? undefined : managers.appEmojiManager.getCustomEmojis();
+    });
     const promise = Promise.all([
       !this.preloaderDelay ? undefined : pause(this.preloaderDelay),
       !this.noRegularEmoji && managers.appEmojiManager.getRecentEmojis('native'),
       !this.isStandalone && managers.appEmojiManager.getRecentEmojis('custom'),
-      !this.noPacks && Promise.resolve(apiManagerProxy.isPremiumFeaturesHidden()).then((isPremiumPurchaseHidden) => {
-        return isPremiumPurchaseHidden ? undefined : managers.appEmojiManager.getCustomEmojis();
-      }),
+      !this.packsAfterMainSets && packsPromise,
       mainSetsResult && Promise.all(Array.isArray(mainSetsResult) ? mainSetsResult : [mainSetsResult]),
       this.additionalSets?.(),
       this.additionalLocalStickerSet?.(),
@@ -693,6 +697,14 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
       }
 
       this.continueInit();
+
+      if(this.packsAfterMainSets && packsPromise) {
+        const middleware = this.middlewareHelper.get();
+        packsPromise.then((packs) => {
+          if(!middleware()) return;
+          packs?.sets.forEach((set) => this.renderEmojiSet(set));
+        });
+      }
     });
 
     attachClickEvent(this.content, this.onContentClick, {listenerSetter: this.listenerSetter});

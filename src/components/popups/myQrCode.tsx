@@ -29,10 +29,11 @@ import {ExpiryPill, FeePill} from './myQrCode/feePill';
 import createQrLink from './myQrCode/linkState';
 import {Rect} from './myQrCode/fieldNodes';
 import {openLayout, PILL_GAP, SHEET_BOTTOM, SHEET_INSET, sheetHeightFor, surfaceGeometry} from './myQrCode/layout';
-import {appearanceToShareTheme, Appearance, giftToInput, isDefaultBackdrop, shareThemeToAppearance, themeEmojiKey, withBackdrop, withEmojiToggled, withGift} from './myQrCode/theme';
+import {appearanceToShareTheme, Appearance, giftToInput, isDefaultBackdrop, shareThemeToAppearance, ThemeEmoji, themeEmojiKey, withBackdrop, withEmojiToggled, withGift} from './myQrCode/theme';
 import {createThemeSaver, getHeldTheme} from './myQrCode/themeSaver';
 import {ColorsPanel} from './myQrCode/colorsPanel';
-import {EmojiPanel} from './myQrCode/emojiPanel';
+import {ChosenEmojiStrip, EmojiPanel} from './myQrCode/emojiPanel';
+import {preloadAppliedEmoji} from './myQrCode/emojiPresets';
 import {GiftsPanel, ThemeGift} from './myQrCode/giftsPanel';
 import {showPremiumGiftsToast} from './myQrCode/premiumToast';
 import styles from './myQrCode.module.scss';
@@ -193,7 +194,8 @@ function MyQrCodePopup(props: {
   };
 
   const pickBackdrop = (option?: ShareThemeBackdropOption) => commit(withBackdrop(appearance(), backdrops(), option));
-  const pickEmoji = (docId: DocId) => commit(withEmojiToggled(appearance(), {documentId: docId}, lastColor ?? withBackdrop(appearance(), backdrops())));
+  const toggleEmoji = (emoji: ThemeEmoji) => commit(withEmojiToggled(appearance(), emoji, lastColor ?? withBackdrop(appearance(), backdrops())));
+  const pickEmoji = (docId: DocId) => toggleEmoji({documentId: docId});
   const pickGift = ({gift, input}: ThemeGift) => {
     const next = withGift(gift);
     if(next) commit(next, giftToInput(gift, isSelf, input));
@@ -297,6 +299,8 @@ function MyQrCodePopup(props: {
   onCleanup(() => {
     appNavigationController.removeItem(navigationItem);
   });
+
+  if(props.canEdit) preloadAppliedEmoji(managers);
 
   /* Copy: the picture is made at the click, from what the screen holds */
   let getQr: () => HTMLCanvasElement | undefined = noop as any;
@@ -427,6 +431,9 @@ function MyQrCodePopup(props: {
               )}
             </For>
           </div>
+          <Show when={panel() === 'emoji' && appearance().emojis.length}>
+            <ChosenEmojiStrip emojis={() => appearance().emojis} onRemove={toggleEmoji} />
+          </Show>
           <div ref={islandElement} class={classNames(styles.island, panel() && styles.islandAway)} role="group" aria-label={I18n.format('QRCode.Title', true)}>
             <For each={PANELS}>
               {(item) => (

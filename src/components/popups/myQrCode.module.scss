@@ -268,6 +268,31 @@
   }
 }
 
+// The chosen emoji, over the sheet in the island's place and of its kind: as wide as they are
+.chosenStrip {
+  width: fit-content;
+  padding-inline: .25rem;
+}
+
+.chosenEmoji {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.5rem;
+  border: 0;
+  border-radius: 1.25rem;
+  padding: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.chosenImage {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
 // Android's own pictures of the buttons
 @mixin qr-icon($name, $size) {
   > :global(.tgico) {
@@ -402,10 +427,31 @@
   display: flex;
   flex-direction: column;
 
-  > :global(.emoji-container),
-  > :global(.emoticons-tab) {
+  // the tab's scroller stands absolutely in its content: the content takes what the menu leaves
+  > :global(.emoticons-container) {
     flex: 1 1 auto;
     min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  :global(.emoticons-menu-wrapper) {
+    flex: none;
+  }
+
+  :global(.emoticons-content) {
+    flex: 1 1 auto;
+    min-height: 0;
+
+    // the dropdown's is a menu taller, for the menu it slides away on a scroll: here the menu stays
+    :global(.scrollable-y) {
+      height: 100%;
+    }
+
+    // the last row scrolls out from under the strip of chosen emoji
+    :global(.emoticons-categories-container) {
+      padding-block-end: 3.5rem;
+    }
   }
 
   :global(.super-emoji.active) {
@@ -424,7 +470,8 @@
     height: 1.875rem;
     margin-block: .1875rem;
     border-radius: .9375rem;
-    color: var(--qr-foreground);
+    // white on every backdrop, as the adaptive emoji beside it
+    color: #fff;
 
     &:global(.active) {
       background-color: rgba(255, 255, 255, .36);

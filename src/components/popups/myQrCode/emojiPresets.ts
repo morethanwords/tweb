@@ -57,6 +57,12 @@ export function getAppliedEmoji(): DocId[] {
   }
 }
 
+/** The screen opening asks for them ahead of the panel, so that they are known when it shows */
+export function preloadAppliedEmoji(managers: ReadingManagers) {
+  const docIds = getAppliedEmoji();
+  if(docIds.length) managers.appEmojiManager.getCustomEmojiDocuments(docIds).catch(() => {});
+}
+
 export function addAppliedEmoji(docId: DocId) {
   const list = [docId, ...getAppliedEmoji().filter((id) => id !== docId)].slice(0, APPLIED_MAX);
   try {
