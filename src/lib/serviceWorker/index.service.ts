@@ -208,13 +208,10 @@ async function startupCheck() {
         windowClient
       );
 
-      let timedOut = false;
-      const timeout = setTimeout(() => timedOut = true, 5000);
+      // * a busy or frozen tab answers long after the worker has started, and is no less alive for it:
+      // * nothing asks it again, so dropping a late answer left the worker with no MTProto port
       promise.finally(() => {
-        if(!timedOut) {
-          clearTimeout(timeout);
-          onWindowConnected(windowClient, 'startup check');
-        }
+        onWindowConnected(windowClient, 'startup check');
       });
     } catch(err) {
       log.error('failed to send hello to window', windowClient.id, err);
@@ -274,6 +271,22 @@ watchCacheStoragesLifetime({
 
 watchMtprotoOnDev({connectedWindows, onWindowConnected});
 
+/**
+ * A tab the worker does not count as connected - its startup answer was lost, or it was taken for gone -
+ * still asks for files, and with no MTProto port they hang until the worker restarts. Asking says it is
+ * alive, so take it back. Costs nothing while the port is there.
+ */
+const reconnectWindowIfNeeded = async(clientId: string) => {
+  if(_mtprotoMessagePort || !clientId) {
+    return;
+  }
+
+  const client = await ctx.clients.get(clientId);
+  if(client?.type === 'window' && !_mtprotoMessagePort) {
+    onWindowConnected(client as WindowClient, 'fetch');
+  }
+};
+
 const onFetch = (event: FetchEvent): void => {
   // Web manifests must reach the network so installed PWA metadata can update.
   if(
@@ -288,6 +301,8 @@ const onFetch = (event: FetchEvent): void => {
   if(import.meta.env.DEV && event.request.url.match(/\.([jt]sx?|s?css)?($|\?)/)) {
     return;
   }
+
+  reconnectWindowIfNeeded(event.clientId);
 
   try {
     // const [, url, scope, params] = /http[:s]+\/\/.*?(\/(.*?)(?:$|\/(.*)$))/.exec(event.request.url) || [];
