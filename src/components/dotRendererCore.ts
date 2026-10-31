@@ -57,12 +57,13 @@ export function drawClippingCircle(
   progress: number,
   coords: {x: number, y: number},
   maxDist: number,
-  dpr: number
+  dpr: number,
+  featherDivisor = 3.5
 ) {
   ctx.save();
   ctx.globalCompositeOperation = 'destination-out';
   ctx.fillStyle = 'white';
-  ctx.shadowBlur = maxDist / 3.5 * dpr * progress;
+  ctx.shadowBlur = maxDist / featherDivisor * dpr * progress;
   ctx.shadowColor = 'white';
   ctx.beginPath();
   ctx.arc(coords.x, coords.y, maxDist * progress, 0, 2 * Math.PI);

@@ -5604,6 +5604,8 @@
 "Experimental.RTL.Subtitle" = "Lays the app out right to left in any language";
 "Experimental.A11y" = "Keyboard and Screen Readers";
 "Experimental.A11y.Subtitle" = "Keyboard navigation, focus rings and screen reader support";
+"Experimental.Spoiler2" = "Spoiler Effect 2.0";
+"Experimental.Spoiler2.Subtitle" = "Dense colored dust on text and media, revealed by a wave from your tap";
 "Experimental.Connection" = "Connection";
 "Experimental.Transport" = "Transport";
 "Experimental.Transport.Auto" = "Automatic";

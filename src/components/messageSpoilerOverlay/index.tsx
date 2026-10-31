@@ -14,6 +14,8 @@ import BluffSpoilerController from '@components/bluffSpoilerController';
 import DotRenderer from '@components/dotRenderer';
 import {observeResize} from '@components/resizeObserver';
 import {drawImageFromSource} from '@components/messageSpoilerOverlay/drawImageFromSource';
+import drawGlyphMask from '@components/messageSpoilerOverlay/glyphMask';
+import Modes from '@config/modes';
 import {
   adjustSpaceBetweenCloseRects,
   computeMaxDistToMargin,
@@ -80,6 +82,7 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
 
   props.controlsRef(controls);
 
+  let glyphsKey: string;
   let unwrapTimeout: number;
   let cancelAnimation: () => void;
 
@@ -230,13 +233,26 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     // * changed a frame before the picture of that size came, and the old one was stretched over it
     canvas.style.setProperty('--dpr', '' + dpr());
 
+    const deviceWidth = Math.round(rect.width * dpr());
+    const deviceHeight = Math.round(height * dpr());
     overlayHandle.update({
-      width: Math.round(rect.width * dpr()),
-      height: Math.round(height * dpr()),
+      width: deviceWidth,
+      height: deviceHeight,
       rects: spanRects(),
       backgroundColor: backgroundColor(),
       particleColor: particleColor()
     });
+
+    if(Modes.spoiler2) {
+      const rects = spanRects();
+      const key = deviceWidth + 'x' + deviceHeight + ':' + props.messageElement.textContent.length + ':' +
+        rects.map((spanRect) => Math.round(spanRect.left) + ',' + Math.round(spanRect.top) + ',' + Math.round(spanRect.width)).join(';');
+      if(key !== glyphsKey && rects.length) {
+        glyphsKey = key;
+        const bitmap = drawGlyphMask(props.messageElement, rect, deviceWidth, deviceHeight, dpr());
+        if(bitmap) overlayHandle.glyphs(bitmap);
+      }
+    }
   }
 
   // * The overlay follows a frame behind the layout, so the text under it stays hidden while the message

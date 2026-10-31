@@ -392,6 +392,7 @@ const ExperimentalTab = () => {
           onChange={onRtlChange}
         />
         <RestartToggle flag="a11y" title="Experimental.A11y" subtitle="Experimental.A11y.Subtitle" />
+        <RestartToggle flag="spoiler2" title="Experimental.Spoiler2" subtitle="Experimental.Spoiler2.Subtitle" />
       </Section>
 
       <Section name="Experimental.Connection">

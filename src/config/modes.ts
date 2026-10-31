@@ -20,6 +20,7 @@ export const KEPT_FLAGS = [
   'debug',
   'logs',
   'a11y',
+  'spoiler2',
   'rtl',
   'noSharedWorker',
   'noServiceWorker',
@@ -151,6 +152,7 @@ const Modes = {
   // until it settles; ?a11y=1 turns it on. ARIA names and roles stay either way,
   // since nobody without assistive technology can tell they are there.
   a11y: isFlagOn('a11y'),
+  spoiler2: isFlagOn('spoiler2'),
   // Lays the app out right to left in whatever language is loaded, to check a layout in RTL
   // without switching to Arabic, Persian or Hebrew; the real switch follows the language.
   rtl: isFlagOn('rtl'),

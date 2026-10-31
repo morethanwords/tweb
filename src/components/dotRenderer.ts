@@ -1,6 +1,7 @@
 // * thanks https://github.com/dkaraush/particles for webgl version
 
 import {MOUNT_CLASS_TO} from '@config/debug';
+import Modes from '@config/modes';
 import {animate} from '@helpers/animation';
 import callbackify from '@helpers/callbackify';
 import deferredPromise from '@helpers/cancellablePromise';
@@ -31,13 +32,24 @@ const TEXT_SPOILER_HEIGHT = 120;
 const IMAGE_SPOILER_SIZE = 480;
 // * how long to wait for the worker's `*-inited` answer before giving up on this init round
 const WORKER_INIT_TIMEOUT = 8000;
+const MEDIA_DUST_SLOWDOWN = 1.9;
+const MEDIA_DUST_MIN_DURATION = 1800;
+const MEDIA_IMAGE_WAIT = 80;
+const MEDIA_THUMBNAIL_HIDE_DELAY = 120;
+
+const getImageSpoilerConfig = (dpr: number): Partial<DotRendererConfig> => Modes.spoiler2 ? {
+  particlesCount: 3.5 * getDefaultParticlesCount(IMAGE_SPOILER_SIZE, IMAGE_SPOILER_SIZE),
+  radius: 1.2 * dpr,
+  timeScale: .9,
+  longevity: 1
+} : {};
 
 const getTextSpoilerConfig = (dpr: number): Partial<DotRendererConfig> => ({
-  particlesCount: 4 * getDefaultParticlesCount(TEXT_SPOILER_WIDTH, TEXT_SPOILER_HEIGHT),
+  particlesCount: (Modes.spoiler2 ? 7 : 4) * getDefaultParticlesCount(TEXT_SPOILER_WIDTH, TEXT_SPOILER_HEIGHT),
   noiseSpeed: 5,
   maxVelocity: 10,
   timeScale: 1.2,
-  radius: 1.8 * dpr,
+  radius: (Modes.spoiler2 ? 1.2 : 1.8) * dpr,
   forceMult: .2,
   velocityMult: .4,
   dampingMult: 2.2,
@@ -184,7 +196,8 @@ export default class DotRenderer implements AnimationItemWrapper {
     middleware: Middleware,
     animationGroup: AnimationItemGroup,
     multiply?: number,
-    config?: Partial<DotRendererConfig>
+    config?: Partial<DotRendererConfig>,
+    thumbnail?: CanvasImageSource
   }) {
     if(BluffSpoilerController.isWorkerSimSupported()) {
       return this.createWithWorker(options);
@@ -280,7 +293,7 @@ export default class DotRenderer implements AnimationItemWrapper {
       type: 'dots'
     });
 
-    function revealWithAnimation(event: Event, underLyingCanvas: HTMLCanvasElement) {
+    function revealWithAnimation(event: Event, underLyingCanvas: HTMLCanvasElement, _mediaSource?: CanvasImageSource) {
       if(!('clientX' in event && 'clientY' in event)) return false;
       const bcr = canvas.getBoundingClientRect();
 
@@ -366,6 +379,8 @@ export default class DotRenderer implements AnimationItemWrapper {
         this.mediaWorkerReady?.resolve();
       } else if(message.type === 'text-inited') {
         this.textWorkerReady?.resolve();
+      } else if(message.type === 'dust-error') {
+        console.error('[spoiler 2.0] fell back to the classic spoiler:', message.message);
       }
     });
   }
@@ -413,7 +428,7 @@ export default class DotRenderer implements AnimationItemWrapper {
       width: IMAGE_SPOILER_SIZE,
       height: IMAGE_SPOILER_SIZE,
       dpr,
-      config: buildDotRendererConfig(IMAGE_SPOILER_SIZE, IMAGE_SPOILER_SIZE, dpr),
+      config: buildDotRendererConfig(IMAGE_SPOILER_SIZE, IMAGE_SPOILER_SIZE, dpr, getImageSpoilerConfig(dpr)),
       ...this.getShaderURLs()
     });
   }
@@ -455,9 +470,9 @@ export default class DotRenderer implements AnimationItemWrapper {
       canvas.height = height * dpr;
     }
 
-    const rotate = (index % 4) === 1;
-    const flipX = (index % 4) === 2;
-    const flipY = (index % 4) === 3;
+    const rotate = !Modes.spoiler2 && (index % 4) === 1;
+    const flipX = !Modes.spoiler2 && (index % 4) === 2;
+    const flipY = !Modes.spoiler2 && (index % 4) === 3;
 
     const transforms: string[] = [
       rotate && 'rotate(180deg)',
@@ -482,7 +497,8 @@ export default class DotRenderer implements AnimationItemWrapper {
     height,
     middleware,
     animationGroup,
-    config
+    config,
+    thumbnail
   }: Parameters<(typeof DotRenderer)['create']>[0]) {
     const connection = this.retainConnection();
     this.initMediaSim();
@@ -501,8 +517,16 @@ export default class DotRenderer implements AnimationItemWrapper {
       canvas: offscreen,
       x,
       y,
-      color: config?.color ? '#' + config.color.toString(16) : undefined
+      color: config?.color ? '#' + config.color.toString(16) : undefined,
+      dust: Modes.spoiler2
     }, [offscreen]);
+
+    if(Modes.spoiler2 && thumbnail) {
+      createImageBitmap(thumbnail).then((bitmap) => {
+        if(this.connection) this.connection.postMessage({type: 'media-thumbnail', id, bitmap}, [bitmap]);
+        else bitmap.close();
+      }, () => {});
+    }
 
     const animation = new AnimationItemNested({
       onPlay: () => this.connection?.postMessage({type: 'media-play', id}),
@@ -521,7 +545,7 @@ export default class DotRenderer implements AnimationItemWrapper {
       type: 'dots'
     });
 
-    const revealWithAnimation = (event: Event, underLyingCanvas: HTMLCanvasElement) => {
+    const revealWithAnimation = (event: Event, underLyingCanvas: HTMLCanvasElement, mediaSource?: CanvasImageSource) => {
       if(!('clientX' in event && 'clientY' in event)) return false;
       const bcr = canvas.getBoundingClientRect();
 
@@ -543,6 +567,34 @@ export default class DotRenderer implements AnimationItemWrapper {
         Math.hypot(bcr.width - rectX, bcr.height - rectY)
       );
       const maxDist = distToMargin * dpr + 50;
+
+      if(Modes.spoiler2) {
+        const dustDuration = Math.max(MEDIA_DUST_MIN_DURATION, (800 + (400 - distToMargin)) * MEDIA_DUST_SLOWDOWN);
+        const deferred = deferredPromise<void>();
+        const imagePromise = mediaSource ?
+          createImageBitmap(mediaSource).catch((): ImageBitmap => undefined) :
+          Promise.resolve<ImageBitmap>(undefined);
+        const waitPromise = new Promise<ImageBitmap>((resolve) => setTimeout(() => resolve(undefined), MEDIA_IMAGE_WAIT));
+        Promise.race([imagePromise, waitPromise]).then((bitmap) => {
+          if(bitmap) {
+            if(this.connection) this.connection.postMessage({type: 'media-image', id, bitmap}, [bitmap]);
+            else bitmap.close();
+          }
+
+          this.connection?.postMessage({
+            type: 'media-reveal',
+            id,
+            coords: {x: rectX * dpr, y: rectY * dpr},
+            maxDist,
+            duration: dustDuration
+          });
+          setTimeout(() => underLyingCanvas.style.visibility = 'hidden', MEDIA_THUMBNAIL_HIDE_DELAY);
+          setTimeout(() => deferred.resolve(), dustDuration);
+        });
+
+        return deferred;
+      }
+
       const duration = 800 + (400/* px/ms */ - distToMargin);
 
       this.connection?.postMessage({
@@ -686,7 +738,7 @@ export default class DotRenderer implements AnimationItemWrapper {
     const id = ++this.createdIndex;
     const dpr = Math.min(2, window.devicePixelRatio);
     const offscreen = canvas.transferControlToOffscreen();
-    connection.postMessage({type: 'overlay-attach', id, canvas: offscreen, dpr}, [offscreen]);
+    connection.postMessage({type: 'overlay-attach', id, canvas: offscreen, dpr, dust: Modes.spoiler2}, [offscreen]);
 
     const animation = new AnimationItemNested({
       onPlay: () => this.connection?.postMessage({type: 'overlay-play', id}),
@@ -715,7 +767,8 @@ export default class DotRenderer implements AnimationItemWrapper {
         unwrap: (coords: [number, number], maxDist: number, duration: number) => this.connection?.postMessage({type: 'overlay-unwrap', id, coords, maxDist, duration}),
         wrap: (duration: number) => this.connection?.postMessage({type: 'overlay-wrap', id, duration}),
         reset: () => this.connection?.postMessage({type: 'overlay-reset', id}),
-        clear: () => this.connection?.postMessage({type: 'overlay-clear', id})
+        clear: () => this.connection?.postMessage({type: 'overlay-clear', id}),
+        glyphs: (bitmap: ImageBitmap) => this.connection?.postMessage({type: 'overlay-glyphs', id, bitmap}, [bitmap])
       }
     };
   }
