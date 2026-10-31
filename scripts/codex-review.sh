@@ -5,13 +5,16 @@
 # Asked for a review, an agent does not review its own change: it hands the
 # change to `codex exec review`, together with what the change is for, then
 # checks what comes back against the code (.claude/skills/codex-review/SKILL.md).
-# Codex reads the change and the code around it in a sandbox of its own, which
+# A second Codex, beside it, checks the change for duplicated code and nothing
+# else, which AGENTS.md's final review asks for: the review looks for bugs, and
+# in its first 65 runs here (to 2026-10) it reported no duplicated code at all.
+# Each reads the change and the code around it in a sandbox of its own, which
 # reads everything and writes nowhere but a temp dir of the run's own, with the
 # network off: it cannot touch a tree other sessions work in. It may run tsc and
 # a test file there to check what it finds; the tests the change needs stay with
 # the agent.
 #
-# Usage: bash scripts/codex-review.sh [--fast] [--about <text>] [--since <sha>] <what>
+# Usage: bash scripts/codex-review.sh [--fast] [--no-duplicates] [--about <text>] [--since <sha>] <what>
 #
 # What is reviewed — exactly one of:
 #   --commit <sha>      what a commit changes
@@ -53,12 +56,19 @@
 # 0–20% faster. A model that does not offer the tier runs at normal speed, and the
 # script says so.
 #
-# Prints the review and keeps it, with Codex's event log, in tmp/codex-review/.
+# --no-duplicates leaves the duplicate check out. It belongs to a change's first
+# round: duplicated code comes with the code a change adds, and the later rounds
+# look at fixes, each of them reviewed by the round after it.
+#
+# Prints the review, then the duplicate check, and keeps them (review.md,
+# duplicates.md), with Codex's event logs, in tmp/codex-review/. A duplicate check
+# that no model answered is printed as such, with why: check that yourself.
 # Exit status:
 #   0  reviewed; the review may still list findings
 #   2  bad arguments, or nothing to review
 #   3  Codex is unavailable: not installed, signed out, every model refused or
-#      failed. The reason is printed; review the change some other way.
+#      failed the review. The reason is printed, and the duplicate check if it
+#      answered all the same; review the change some other way.
 #   4  cannot run here: ~/.codex is not writable, as inside an agent's sandbox,
 #      which keeps Codex off the network too. Run this outside the sandbox.
 #
@@ -66,16 +76,17 @@ set -uo pipefail
 
 say() { echo "[codex-review] $*" >&2; }
 die() { local code=$1; shift; say "$*"; exit "$code"; }
-USAGE='usage: bash scripts/codex-review.sh [--fast] [--about <text>] [--since <sha>] --commit <sha> | --base <branch> | --uncommitted | --paths <path>... | --patch <file>'
+USAGE='usage: bash scripts/codex-review.sh [--fast] [--no-duplicates] [--about <text>] [--since <sha>] --commit <sha> | --base <branch> | --uncommitted | --paths <path>... | --patch <file>'
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || die 2 "not inside a git checkout"
 
 # the options may stand anywhere, before the target or after it
-about= fast=0 since= rest=()
+about= fast=0 duplicates=1 since= rest=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --about) [ $# -ge 2 ] || die 2 "$USAGE"; about=$2; shift 2;;
     --fast) fast=1; shift;;
+    --no-duplicates) duplicates=0; shift;;
     --since) [ $# -ge 2 ] || die 2 "$USAGE"; since=$2; shift 2;;
     *) rest+=("$1"); shift;;
   esac
@@ -236,8 +247,8 @@ if [ "$fast" = 1 ]; then tier=(-c 'service_tier="priority"'); how="$effort, fast
 # it runs to check a finding run: in a sandbox with nowhere to write every vitest it started failed (the forks pool
 # hands the modules to its workers through files in the temp dir), and it spent steps on ways around that. Codex
 # also checks the commit out there to test its exact tree, so the dir is not under a tmp/ dir: the vite config denies
-# every path through one. Only that one dir: Codex mounts guards over .git and the like in every dir it may write,
-# made up on the spot where there are none, and in a dir several reviews share at once those collide.
+# every path through one. One dir for each pass: Codex mounts guards over .git and the like in every dir it may write,
+# made up on the spot where there are none, and in a dir several Codex runs share at once those collide.
 # pnpm checks the dependencies before it runs a script, and in a worktree that check runs an install, which writes
 # into the checkout: it is skipped.
 cache=${XDG_CACHE_HOME:-$HOME/.cache}
@@ -248,36 +259,122 @@ find "$cache" -mindepth 1 -maxdepth 1 -type d -name 'codex-review.*' -mmin +1440
 # vite.config.ts makes this one from its example on its first load in a checkout, which the sandbox cannot do: in a
 # checkout that never had a test run, a build or a dev server (a worktree made for the review), no test would start
 [ -e src/langPackLocalVersion.ts ] || cp -n src/langPackLocalVersion.example.ts src/langPackLocalVersion.ts
-sandbox=(-c 'default_permissions="tweb_review"' -c "permissions.tweb_review.filesystem={\":root\"=\"read\", \"$scratch\"=\"write\"}")
-failures=()
-for model in "${models[@]}"; do
-  say "$model ($how) reviews $what…"
-  TMPDIR=$scratch pnpm_config_verify_deps_before_run=false \
-  "${limit[@]}" codex exec -m "$model" -c "model_reasoning_effort=\"$effort\"" "${tier[@]}" "${sandbox[@]}" --ephemeral \
-    review --commit "$sha" --title "$title" --json -o "$OUT/$model.md" \
-    > "$OUT/$model.jsonl" 2> "$OUT/$model.stderr" < /dev/null
-  code=$?
-  if [ $code -eq 0 ] && grep -q '"type":"turn.completed"' "$OUT/$model.jsonl" && [ -s "$OUT/$model.md" ]; then
-    cp "$OUT/$model.md" "$OUT/review.md"
-    if [ "$fast" = 1 ] && grep -q 'is not advertised as supported' "$OUT/$model.jsonl"; then
-      say "$model does not offer fast mode: it ran at normal speed"
-      how=$effort
+
+# What the duplicate check is asked. `codex exec review` takes no instructions next to a commit, so this is a plain
+# `codex exec`, which answers in the shape asked here: findings with the review's levels, which the rounds go by.
+duplicates_prompt=$(cat <<'EOF'
+Check commit @SHA@ of this repository for duplicated code, and for nothing else: another reviewer is looking for
+bugs in it at the same time. AGENTS.md's rule is that a change never duplicates code: before it adds logic, a
+helper, a component, styles or a constant, it reuses or extends what the codebase already has.
+
+The commit is the change: `git show @SHA@` gives its diff, and its message says what the change is for. The
+checkout's files may differ from the commit's tree, so search and read the commit's own tree:
+`git grep -n <pattern> @SHA@ -- . ':!public'`, `git show @SHA@:<path>`.
+
+Report:
+- what the commit adds that the codebase already has: a function, a component, a hook, a store, a manager
+  method, styles (a block of rules, a mixin, a variable), a constant, a type, a string in src/lang.ts whose text
+  another key already has;
+- what the commit itself writes more than once;
+- code the commit replaces but leaves in place, now used by nothing.
+
+Search for each piece the commit adds by its names, by the calls and literals it is made of and by what it does,
+and read every candidate before reporting it. Report only what you have read on both sides and found to do the
+same thing; code that looks alike and behaves differently is not a duplicate. Leave out generated files
+(src/layer.d.ts, src/scripts/out/, src/lib/settingsSearch/generated.ts, public/) and vendored code (src/vendor/).
+
+Write each finding as:
+
+N. **[P2] What is duplicated** — the new code (path:lines), the code it repeats (path:lines), what both do, and
+how to reuse: call the existing code, extend it with what this case needs, or move the shared part into a module
+of its own. The reuse is as small as the need: one case's need does not go into a mechanism every caller pays for.
+
+[P2] is a function, a component, or a block of styles or logic written again; [P3] is a constant, a string, a
+type or a few lines. If the commit duplicates nothing, say so in one line. Change no files.
+EOF
+)
+[ $duplicates = 0 ] || printf '%s\n' "${duplicates_prompt//@SHA@/$sha}" > "$OUT/duplicates-prompt.md"
+
+# One pass over the change, the models tried in order until one answers. It leaves its answer in $OUT/<pass>.md, and
+# in $OUT/<pass>.status the lines "ok", the model and how it ran, or "failed" and why each model failed.
+run_pass() {
+  local pass=$1 dir=$scratch/$1 how=$how failures=() model log task input code reason
+  mkdir "$dir" || { printf '%s\n' failed "cannot create $dir" > "$OUT/$pass.status"; return; }
+  local sandbox=(-c 'default_permissions="tweb_review"' -c "permissions.tweb_review.filesystem={\":root\"=\"read\", \"$dir\"=\"write\"}")
+  for model in "${models[@]}"; do
+    log=$OUT/$pass-$model
+    case "$pass" in
+      review)
+        say "$model ($how) reviews $what…"
+        task=(review --commit "$sha" --title "$title" --json -o "$log.md") input=/dev/null;;
+      duplicates)
+        say "$model ($how) checks $what for duplicated code…"
+        task=(--json -o "$log.md" -) input=$OUT/duplicates-prompt.md;;
+    esac
+    TMPDIR=$dir pnpm_config_verify_deps_before_run=false \
+    "${limit[@]}" codex exec -m "$model" -c "model_reasoning_effort=\"$effort\"" "${tier[@]}" "${sandbox[@]}" --ephemeral \
+      "${task[@]}" > "$log.jsonl" 2> "$log.stderr" < "$input"
+    code=$?
+    if [ $code -eq 0 ] && grep -q '"type":"turn.completed"' "$log.jsonl" && [ -s "$log.md" ]; then
+      cp "$log.md" "$OUT/$pass.md"
+      if [ "$fast" = 1 ] && grep -q 'is not advertised as supported' "$log.jsonl"; then
+        say "$model does not offer fast mode: it ran at normal speed"
+        how=$effort
+      fi
+      printf '%s\n' ok "$model" "$how" > "$OUT/$pass.status"
+      return
     fi
-    echo "Codex review by $model ($how) of $what:"
-    echo
-    cat "$OUT/review.md"
-    echo
-    echo "(kept in $OUT/)"
-    exit 0
-  fi
-  if [ $code -eq 124 ]; then
-    reason="no answer in $minutes min"
-  else
-    reason=$(failure "$OUT/$model.jsonl")
-    [ -n "$reason" ] || reason=$(grep -v '^[[:space:]]*$' "$OUT/$model.stderr" | tail -1)
-    [ -n "$reason" ] || reason="exit $code"
-  fi
-  say "$model failed: $reason"
-  failures+=("$model: $reason")
-done
-die 3 "Codex is unavailable: $(IFS=';'; echo "${failures[*]}" | sed 's/;/; /g')"
+    if [ $code -eq 124 ]; then
+      reason="no answer in $minutes min"
+    else
+      reason=$(failure "$log.jsonl")
+      [ -n "$reason" ] || reason=$(grep -v '^[[:space:]]*$' "$log.stderr" | tail -1)
+      [ -n "$reason" ] || reason="exit $code"
+    fi
+    say "$model failed ($pass): $reason"
+    failures+=("$model: $reason")
+  done
+  printf '%s\n' failed "${failures[@]}" > "$OUT/$pass.status"
+}
+
+# the two passes at once: the duplicate check takes about as long as the review
+run_pass review &
+if [ $duplicates = 1 ]; then run_pass duplicates & fi
+wait
+
+# what a pass left, into $status; true when it answered
+read_status() {
+  local line
+  status=()
+  [ -s "$OUT/$1.status" ] && while IFS= read -r line; do status+=("$line"); done < "$OUT/$1.status"
+  [ "${status[0]:-}" = ok ]
+}
+# why a pass did not answer
+pass_failures() {
+  local IFS=';'
+  if [ ${#status[@]} -gt 1 ]; then echo "${status[*]:1}" | sed 's/;/; /g'; else echo 'it stopped without an answer'; fi
+}
+show_pass() {
+  echo "$2 by ${status[1]} (${status[2]}) of $what:"
+  echo
+  # an answer may end with no newline, or with several
+  printf '%s\n\n' "$(cat "$OUT/$1.md")"
+}
+
+reviewed=0 unavailable=
+if read_status review; then
+  reviewed=1
+  show_pass review 'Codex review'
+else
+  unavailable=$(pass_failures)
+fi
+if [ $duplicates = 0 ]; then
+  :
+elif read_status duplicates; then
+  show_pass duplicates 'Codex duplicate check'
+elif [ $reviewed = 1 ]; then
+  echo "The duplicate check did not answer ($(pass_failures)): check the change for duplicated code yourself."
+  echo
+fi
+echo "(kept in $OUT/)"
+[ $reviewed = 1 ] || die 3 "Codex is unavailable: $unavailable"

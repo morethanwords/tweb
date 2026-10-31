@@ -44,11 +44,15 @@ Follow `.claude/skills/codex-review/SKILL.md`, steps 1–5:
 - Pass an `--about` that says what the change is for.
 - Add `--fast` when the request says "fast" ("финализируй в fast", "быстро").
 - When Codex is unavailable, review the change yourself, as that skill says.
+- The first round includes the duplicate check, once per change, as that skill
+  says. When that check did not answer, check the change for duplicated code
+  yourself.
 
 ## 3. Fix what the review confirms
 
-- Fix every confirmed finding. Keep the reason for each rejected one, for the
-  report.
+- Fix every confirmed finding, duplicates included: reuse or extend the
+  existing code instead of the copy. Keep the reason for each rejected one, for
+  the report.
 - Review and fix in rounds, as step 6 of the codex-review skill says:
   - 3 rounds on the whole change, with fixes after each;
   - then, while a round still confirms a P0–P2 finding that gets fixed, rounds 4
@@ -108,7 +112,8 @@ report.
   message tells it.
 - **The commit:** its hash and title.
 - **The review:** who reviewed (Codex with its model, and fast if it was, or this
-  session because Codex was unavailable). Each finding, marked as one of:
+  session because Codex was unavailable), and who made the duplicate check. Each
+  finding of either, marked as one of:
   - fixed;
   - rejected, and why;
   - fixed without another review round.

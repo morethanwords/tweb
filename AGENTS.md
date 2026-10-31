@@ -619,7 +619,9 @@ import {Message, Chat, User, InputPeer} from '@layer';
 - **Never duplicate code.** Before adding logic, helpers, components, styles, or
   constants, search the codebase for an existing implementation and reuse or
   extend it. Every final review must explicitly check the completed change for
-  duplicated code and remove any duplication found.
+  duplicated code and remove any duplication found. `scripts/codex-review.sh`
+  makes that check a Codex pass of its own, run beside the first round of the
+  review.
 - **A fix is as small and as local as what it is for.** A one-off need — one
   item, one case, one rename — never goes into a mechanism shared by everything
   (a loop over every item, a global stylesheet, a shared helper): there it is
