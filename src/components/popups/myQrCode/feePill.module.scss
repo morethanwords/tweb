@@ -38,9 +38,48 @@
   @include animation-level-global(1) {
     transition: background-color .2s;
   }
+}
 
-  &:disabled {
-    cursor: default;
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+}
+
+.freePill {
+  position: relative;
+  overflow: hidden;
+}
+
+// the free code's white fill, the words over it in the code's ink; `--fill` is how much of the pill it covers
+.fill {
+  --fill: 0;
+
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding-inline: 1rem;
+  border-radius: inherit;
+  background-color: rgba(255, 255, 255, .97);
+  color: var(--qr-ink);
+  clip-path: inset(0 calc((1 - var(--fill)) * 100%) 0 0);
+  pointer-events: none;
+
+  :global(.is-rtl) & {
+    clip-path: inset(0 0 0 calc((1 - var(--fill)) * 100%));
+  }
+
+  @include animation-level-global(1) {
+    transition: clip-path .34s cubic-bezier(.33, 1, .68, 1);
+  }
+}
+
+// the minute burns it back second by second, in one steady line
+.fillBurning {
+  @include animation-level-global(1) {
+    transition-duration: 1s;
+    transition-timing-function: linear;
   }
 }
 

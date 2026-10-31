@@ -72,7 +72,25 @@
 .backdrop {
   position: absolute;
   inset: 0;
+  overflow: hidden;
   pointer-events: none;
+}
+
+// the light at the front of a new colour's wave: a soft band inside the circle, brightest at its edge
+.waveRing {
+  position: absolute;
+  z-index: 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    transparent calc(100% - 98px),
+    color-mix(in srgb, var(--wave-color) 20%, transparent) calc(100% - 52px),
+    color-mix(in srgb, var(--wave-color) 60%, transparent) calc(100% - 22px),
+    var(--wave-color) calc(100% - 8px),
+    color-mix(in srgb, var(--wave-color) 40%, transparent) calc(100% - 5px),
+    transparent
+  );
+  will-change: transform, opacity;
 }
 
 // What floats on the backdrop: a canvas for the emoji, or for a gift's models and symbols
@@ -200,6 +218,23 @@
   }
 }
 
+// the control a link points at (`tg://settings/qr-code/share`) flashes in the glass's own colours
+.control:global(.is-settings-highlighted) {
+  animation: control-flash 1.6s ease-in-out;
+}
+
+@keyframes control-flash {
+  0%,
+  100% {
+    background-color: var(--qr-control);
+  }
+
+  15%,
+  70% {
+    background-color: var(--qr-control-active);
+  }
+}
+
 // a panel stands open: the side buttons step back, as the island grows on Android
 .controlAway {
   opacity: 0;
@@ -309,14 +344,15 @@
   opacity: 0;
   pointer-events: none;
 
+  // its height follows the gifts it holds (one row for a few), easing as on Android
   @include animation-level-global(1) {
-    transition: opacity .2s ease, visibility 0s .2s;
+    transition: opacity .2s ease, visibility 0s .2s, height .2s ease;
   }
 
   // the island grows into it (a clip from the script), and it stays until the clip has gone back
   @include animation-level-global(2) {
     opacity: 1;
-    transition: visibility 0s .24s;
+    transition: visibility 0s .24s, height .2s ease;
   }
 }
 
@@ -435,8 +471,47 @@
     }
   }
 
+  // `EmojiPickOverlay`: a picked cell is lit 18% (white, or dark on a light backdrop) and its glyph shrinks to 0.9; a
+  // badge at its top end counts it
   :global(.super-emoji.active) {
-    background-color: var(--qr-control-active);
+    position: relative;
+    border-radius: .625rem;
+    background-color: color-mix(in srgb, var(--qr-foreground) 18%, transparent);
+
+    > * {
+      scale: .9;
+
+      @include animation-level-global(2) {
+        transition: scale .18s ease;
+      }
+    }
+  }
+
+  :global(.super-emoji[data-pick])::after {
+    content: attr(data-pick);
+    position: absolute;
+    top: .09375rem;
+    inset-inline-end: .09375rem;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    background-color: color-mix(in srgb, var(--qr-foreground) 18%, transparent);
+    box-shadow: inset 0 0 0 .6px color-mix(in srgb, var(--qr-foreground) 28%, transparent);
+    color: var(--qr-foreground);
+    font-size: .625rem;
+    font-weight: var(--font-weight-bold);
+    line-height: 1rem;
+    text-align: center;
+    text-shadow: 0 .5px 1.5px rgba(0, 0, 0, .35);
+    pointer-events: none;
+
+    @include animation-level-global(1) {
+      animation: pick-badge-in .2s ease-out;
+    }
+
+    @include animation-level-global(2) {
+      animation: pick-badge-pop .3s cubic-bezier(.34, 1.56, .64, 1);
+    }
   }
 
   :global(.menu-horizontal-div) {
@@ -471,7 +546,7 @@
   }
 }
 
-// Gifts: three to a row
+// Gifts: three to a row, a row a third of the sheet high (the script sets both: one or two at the end share the row)
 .giftsScroll {
   flex: 1 1 auto;
   padding: .5rem;
@@ -481,26 +556,60 @@
 
 .gifts {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: .5625rem;
+  gap: .5rem;
 }
 
+// `QrShareView`'s tile: the gift's backdrop washed 7% lighter, a hairline rim, and a white ring for the chosen one
 .giftTile {
   position: relative;
-  aspect-ratio: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: .875rem;
+  border-radius: 1.25rem;
   padding: 0;
   overflow: hidden;
   cursor: pointer;
   background-color: var(--surface-color);
   color: inherit;
 
-  &[aria-pressed="true"] {
-    box-shadow: 0 0 0 .125rem var(--qr-foreground);
+  &::after,
+  &::before {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+  }
+
+  &::after {
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    background-color: rgba(255, 255, 255, .07);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .3);
+  }
+
+  &::before {
+    inset: .25rem;
+    z-index: 3;
+    border: .125rem solid #fff;
+    border-radius: 1rem;
+    opacity: 0;
+
+    @include animation-level-global(1) {
+      transition: opacity .2s ease;
+    }
+  }
+
+  &[aria-pressed="true"]::before {
+    opacity: 1;
+  }
+
+  @include animation-level-global(2) {
+    transition: scale .15s ease;
+
+    &:active {
+      scale: .94;
+    }
   }
 }
 
@@ -510,26 +619,54 @@
   --stargift-backdrop-offset-y: -30px;
 }
 
+// the model, 82% of the tile's height, a little smaller when chosen
 .giftSticker {
   position: relative;
-  width: 82%;
+  height: 82%;
   aspect-ratio: 1;
   z-index: 1;
+
+  @include animation-level-global(2) {
+    transition: scale .2s ease;
+  }
+
+  .giftTile[aria-pressed="true"] & {
+    scale: .86;
+  }
 }
 
-.giftsPreloader {
-  margin-block: .5rem;
+.giftsLoading {
+  margin-block-start: 1.5rem;
+  text-align: center;
+  font-size: .875rem;
+  color: var(--qr-foreground);
+  opacity: .7;
 }
 
+// "No gifts yet": the dog, the title, a line and, on the own code, the way to the gift store
 .giftsEmpty {
-  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: .5rem;
-  padding: 1rem;
+  padding-inline: 1rem;
   text-align: center;
+  // white on a dark backdrop as on Android, and dark on a light one, as the rest of the screen
+  color: var(--qr-foreground);
+}
+
+.giftsEmptyArt {
+  position: relative;
+  width: 99px;
+  height: 99px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.giftsEmptyDog {
+  position: absolute;
+  inset: 0;
 }
 
 .giftsEmptyIcon {
@@ -538,11 +675,44 @@
 }
 
 .giftsEmptyTitle {
+  margin-block-start: 1.375rem;
   font-weight: var(--font-weight-bold);
-  font-size: var(--font-size-18);
+  font-size: 1rem;
 }
 
 .giftsEmptyInfo {
+  margin-block-start: .4375rem;
+  max-width: 100%;
   white-space: pre-line;
-  opacity: .8;
+  font-size: .875rem;
+  line-height: 1.15625rem;
+  opacity: .75;
+}
+
+// a solid pill in the foreground's colour (white on a dark backdrop); its label in the code's ink on white, and white on
+// the dark pill of a light backdrop, so it reads (Android cuts it out of the pill)
+.giftsBrowse {
+  margin-block-start: 1.25rem;
+  height: 2.25rem;
+  padding-inline: 1.1875rem;
+  border: 0;
+  border-radius: 1.125rem;
+  background-color: var(--qr-foreground);
+  color: var(--qr-on-foreground);
+  font-weight: var(--font-weight-bold);
+  font-size: .875rem;
+  cursor: pointer;
+}
+
+@keyframes pick-badge-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pick-badge-pop {
+  from {
+    opacity: 0;
+    scale: .6;
+  }
 }

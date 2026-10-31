@@ -31,6 +31,7 @@ import showBoostPopup from '@components/popups/boost';
 import showGiftLinkPopup from '@components/popups/giftLink';
 import showStarsPopup, {showGiftStarsPicker} from '@components/popups/stars';
 import showSendGiftPopup from '@components/popups/sendGift';
+import showMyQrCodePopup from '@components/popups/myQrCode';
 import showSendGiftPicker from '@components/popups/sendGiftPicker';
 import type {RequestWebViewOptions} from '@appManagers/appAttachMenuBotsManager';
 import {prefetchStars} from '@stores/stars';
@@ -62,6 +63,7 @@ import searchByTag from '@lib/richTextProcessor/searchByTag';
 import {APP_TABS} from '@lib/appColumns';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import type {AppManagers} from '@lib/managers';
+import {getManagersSession, isSessionLeaving} from '@lib/accounts/getCurrentAccount';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 
 /**
@@ -69,6 +71,9 @@ import wrapPeerTitle from '@components/wrappers/peerTitle';
  * than not opening it is doing nothing about it. tdesktop answers the same way
  * (`Router::showUnsupportedMessage`).
  */
+// what a free-messages link says comes this long after its chat opens (Android's 300 ms)
+const NO_PAID_TOKEN_TOAST_DELAY = 300;
+
 const showUnsupportedLinkToast = () => {
   toastNew({langPackKey: 'Link.NotSupported'});
 };
@@ -341,6 +346,11 @@ export class InternalLinkProcessor {
     }>({
       name: 'im',
       callback: async({pathnameParams, uriParams, element, masked}) => {
+        // t.me/s/<username> is the web page of a chat, and names it as t.me/<username> does (Android reads it so)
+        if(pathnameParams?.[0] === 's' && pathnameParams.length > 1) {
+          pathnameParams = pathnameParams.slice(1) as typeof pathnameParams;
+        }
+
         let link: InternalLink;
         if('voicechat' in uriParams || 'videochat' in uriParams || 'livestream' in uriParams) {
           assumeType<K7>(uriParams);
@@ -674,6 +684,32 @@ export class InternalLinkProcessor {
       }
     });
 
+    // t.me/contact/<token>?free=<code>
+    addAnchorListener<{
+      pathnameParams: ['contact', string],
+      uriParams: {free?: string}
+    }>({
+      name: 'contact',
+      callback: ({pathnameParams, uriParams}) => {
+        return this.processInternalLink({
+          _: INTERNAL_LINK_TYPE.CONTACT_TOKEN,
+          token: pathnameParams[1],
+          free: uriParams.free
+        });
+      }
+    });
+
+    // tg://contact?token=<token>&free=<code>
+    addAnchorListener<{
+      uriParams: {token: string, free?: string}
+    }>({
+      name: 'contact',
+      protocol: 'tg',
+      callback: ({uriParams}) => {
+        return this.processInternalLink(this.makeLink(INTERNAL_LINK_TYPE.CONTACT_TOKEN, uriParams));
+      }
+    });
+
     // tg://message?slug=...
     addAnchorListener<{
       uriParams: {
@@ -921,6 +957,13 @@ export class InternalLinkProcessor {
           case 'send-gift/self':
             return showSendGiftPopup({peerId: rootScope.myId});
 
+          // the own QR code, as tdesktop and Android open it; `/share` points at its Share button (tdesktop), where
+          // Android presses it
+          case 'qr-code':
+            return showMyQrCodePopup();
+          case 'qr-code/share':
+            return showMyQrCodePopup(rootScope.myId, {highlightShare: true});
+
           // destinations outside Settings, which the section table cannot address
           case 'saved-messages':
             return appImManager.setPeer({peerId: appImManager.myId});
@@ -1092,27 +1135,44 @@ export class InternalLinkProcessor {
     } as any as InternalLinkTypeMap[T];
   }
 
-  /** A link's `?free=<code>`, spent on the user it names: their message fee is gone for us, and their chat opens */
-  private async importNoPaidMessagesToken(managers: AppManagers, userId: UserId, token: string) {
+  /**
+   * A link's `?free=<code>`, spent on the user it names, as Android does: their chat opens whatever the answer, and a
+   * moment later says whether their message fee is gone for us. A link of one's own only opens the own chat.
+   */
+  private async importNoPaidMessagesToken(managers: AppManagers, user: User.user, token: string) {
+    const peerId = user.id.toPeerId(false);
+    if(user.pFlags.self) {
+      return appImManager.setInnerPeer({peerId});
+    }
+
+    // the account the link was opened in: once the tab has left it, the link goes no further
+    const session = getManagersSession(managers);
+    let error: ApiError;
     try {
-      await managers.appUsersManager.importNoPaidMessagesToken(userId, token);
+      await managers.appUsersManager.importNoPaidMessagesToken(user.id, token);
     } catch(err) {
-      toastNew({langPackKey: (err as ApiError).type?.startsWith('USER_') ? 'NoPaidMessagesToken.UserInvalid' : 'NoPaidMessagesToken.Invalid'});
+      error = err as ApiError;
+    }
+
+    if(isSessionLeaving(session)) return;
+    await appImManager.setInnerPeer({peerId});
+    // the toast speaks of the chat, so it comes once the chat is there
+    await pause(NO_PAID_TOKEN_TOAST_DELAY);
+    if(isSessionLeaving(session)) return;
+    if(error) {
+      toastNew({langPackKey: error.type?.startsWith('USER_') ? 'NoPaidMessagesToken.UserInvalid' : 'NoPaidMessagesToken.Invalid'});
       return;
     }
 
-    const peerId = userId.toPeerId(false);
     toastNew({
       langPackKey: 'NoPaidMessagesToken.Imported',
-      langPackArguments: [await wrapPeerTitle({peerId})]
+      langPackArguments: [await wrapPeerTitle({peerId, onlyFirstName: true})]
     });
-    await appImManager.setInnerPeer({peerId});
   }
 
   /**
-   * `t.me/<username>?free=<code>`: the code removes the message fee of the user it names.
-   * Resolves with whether the link was spent on that, and nothing is left to do; `false` for a link that does not
-   * name a user, which goes on as a plain username link.
+   * `t.me/<username>?free=<code>`: the code removes the message fee of the user it names; the rest of the link is not
+   * looked at. A name that is not a user's is "no account", as on Android.
    */
   private async useNoPaidMessagesToken(link: InternalLink.InternalLinkMessage) {
     const managers = bindManagersToSession(this.managers);
@@ -1121,21 +1181,21 @@ export class InternalLinkProcessor {
       peer = await managers.appUsersManager.resolveUsername(link.domain);
     } catch(err) {
       this.showUsernameResolveError(err as ApiError);
-      return true;
+      return;
     }
 
     if(peer?._ !== 'user') {
-      return false;
+      toastNew({langPackKey: 'NoUsernameFound'});
+      return;
     }
 
-    await this.importNoPaidMessagesToken(managers, peer.id, link.free);
-    return true;
+    await this.importNoPaidMessagesToken(managers, peer, link.free);
   }
 
   public processMessageLink = async(link: InternalLink.InternalLinkMessage) => {
     const managers = bindManagersToSession(this.managers);
-    if(link.free && await this.useNoPaidMessagesToken(link)) {
-      return;
+    if(link.free) {
+      return this.useNoPaidMessagesToken(link);
     }
 
     if(link.startgroup !== undefined || link.startchannel !== undefined) {
@@ -1363,7 +1423,7 @@ export class InternalLinkProcessor {
     return managers.appUsersManager.resolvePhone(link.phone).then((user): Promise<unknown> => {
       // `t.me/+<phone>?free=<code>`: the code removes the message fee of the user the number names
       if(link.free) {
-        return this.importNoPaidMessagesToken(managers, user.id, link.free);
+        return this.importNoPaidMessagesToken(managers, user as User.user, link.free);
       }
 
       return appImManager.setInnerPeer({
@@ -1374,6 +1434,21 @@ export class InternalLinkProcessor {
       if(err.type === 'PHONE_NOT_OCCUPIED') {
         toastNew({langPackKey: 'Alert.UserDoesntExists'});
       }
+    });
+  };
+
+  // a temporary contact link opens the chat with its user (Saved Messages for one's own); with `?free=<code>` the code is
+  // spent on them first. A link that has run out is "no account", as on Android
+  public processContactTokenLink = (link: InternalLink.InternalLinkContactToken) => {
+    const managers = bindManagersToSession(this.managers);
+    return managers.appUsersManager.importContactToken(link.token).then((user) => {
+      if(link.free) {
+        return this.importNoPaidMessagesToken(managers, user, link.free);
+      }
+
+      return appImManager.setInnerPeer({peerId: user.id.toPeerId(false)});
+    }, (err: ApiError) => {
+      if(err?.type !== 'MIDDLEWARE') toastNew({langPackKey: 'NoUsernameFound'});
     });
   };
 
@@ -1761,7 +1836,8 @@ export class InternalLinkProcessor {
       [INTERNAL_LINK_TYPE.STORY_ALBUM]: this.processStoryAlbumLink,
       [INTERNAL_LINK_TYPE.INSTANT_VIEW]: this.processInstantViewLink,
       [INTERNAL_LINK_TYPE.CONFERENCE_CALL]: this.processConferenceCallLink,
-      [INTERNAL_LINK_TYPE.ADD_AI_STYLE]: this.processAddAiStyleLink
+      [INTERNAL_LINK_TYPE.ADD_AI_STYLE]: this.processAddAiStyleLink,
+      [INTERNAL_LINK_TYPE.CONTACT_TOKEN]: this.processContactTokenLink
     };
 
     const processor = map[link._];

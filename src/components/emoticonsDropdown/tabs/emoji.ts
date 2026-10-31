@@ -237,7 +237,8 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
   private onClick: (emoji: EmojiTabItem) => void;
   private activeEmoji: ReturnType<typeof getEmojiFromElement>;
   private activeElements: EmojiTabItem[];
-  private activeDocIds?: Set<DocId>;
+  // the picks of a picker that holds a few, each with its place among them (from 1): their cells show it, `data-pick`
+  private activeDocIds?: Map<DocId, number>;
   private noPacks: boolean;
   /** The main sets show as soon as they are known, without waiting for the installed packs */
   private packsAfterMainSets?: boolean;
@@ -1200,6 +1201,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
       this.activeEmoji === emoji;
       this.activeElements.push(item);
       element.classList.add('active');
+      if(item.docId && this.activeDocIds?.has(item.docId)) element.dataset.pick = '' + this.activeDocIds.get(item.docId);
     }
 
     category.items[prepend ? 'unshift' : 'push'](item);
@@ -1307,16 +1309,23 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     this.markActive((item) => emoji.docId ? item.docId === emoji.docId : item.emoji === emoji.emoji);
   }
 
-  /** Marks several custom emoji at once, for a picker that holds a few picks; the single `setActive` is left alone */
+  /**
+   * Marks several custom emoji at once, for a picker that holds a few picks, in their order: each cell carries its
+   * place (`data-pick`). The single `setActive` is left alone.
+   */
   public setActiveDocIds(docIds: Iterable<DocId>) {
-    this.activeDocIds = new Set(docIds);
-    this.markActive((item) => !!item.docId && this.activeDocIds.has(item.docId));
+    this.activeDocIds = new Map([...docIds].map((docId, index) => [docId, index + 1]));
+    this.markActive(
+      (item) => !!item.docId && this.activeDocIds.has(item.docId),
+      (item) => item.element.dataset.pick = '' + this.activeDocIds.get(item.docId)
+    );
   }
 
-  /** The items `isActive` picks are marked, and no others */
-  private markActive(isActive: (item: EmojiTabItem) => boolean) {
+  /** The items `isActive` picks are marked, and no others; `mark` adds what else a mark carries */
+  private markActive(isActive: (item: EmojiTabItem) => boolean, mark?: (item: EmojiTabItem) => void) {
     this.activeElements.forEach((item) => {
       item.element.classList.remove('active');
+      delete item.element.dataset.pick;
     });
 
     this.activeElements.length = 0;
@@ -1325,6 +1334,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
       category.items.forEach((item) => {
         if(isActive(item)) {
           item.element.classList.add('active');
+          mark?.(item);
           this.activeElements.push(item);
         }
       });

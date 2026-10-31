@@ -57,13 +57,8 @@ export function createThemeSaver(options: {
   const key = keyOf(account, peerId);
   let pending: ShareThemeToSave | undefined;
 
-  const send = () => {
-    sendLater.clearTimeout();
-    if(!pending) return Promise.resolve();
-
-    const sending = pending;
-    pending = undefined;
-    const local = localThemes.get(key);
+  /** Sends a held choice; what comes of it touches the held one only while nothing newer has taken its place */
+  const sendHeld = (sending: ShareThemeToSave, local: LocalTheme | undefined) => {
     return options.save(sending).then(() => {
       if(local && localThemes.get(key) === local) local.savedAt = Date.now();
     }, (error) => {
@@ -71,6 +66,15 @@ export function createThemeSaver(options: {
       if(localThemes.get(key) === local && !hasPlainEmoji(sending.shown)) localThemes.delete(key);
       options.onError(error);
     });
+  };
+
+  const send = () => {
+    sendLater.clearTimeout();
+    if(!pending) return Promise.resolve();
+
+    const sending = pending;
+    pending = undefined;
+    return sendHeld(sending, localThemes.get(key));
   };
 
   const sendLater = debounce(send, delay, false);
@@ -89,6 +93,28 @@ export function createThemeSaver(options: {
       sendLater.clearTimeout();
       const local = localThemes.get(key);
       if(local && !local.savedAt) localThemes.delete(key);
+    },
+
+    /**
+     * A choice that cannot be sent yet (a built-in colour before the served list): held now, and sent once `ready` hands
+     * what to send - unless a newer choice, on this screen or one opened after it, has taken its place by then
+     */
+    sendWhenReady(shown: ShareTheme, ready: Promise<ShareThemeToSave | undefined>) {
+      pending = undefined;
+      sendLater.clearTimeout();
+      const local: LocalTheme = {shown, savedAt: 0};
+      localThemes.set(key, local);
+      // nothing to send (the list did not come, or still lacks it): the choice is let go, and the server's theme is right
+      const letGo = () => {
+        if(localThemes.get(key) === local) localThemes.delete(key);
+      };
+
+      return ready.then((save) => {
+        if(localThemes.get(key) !== local) return;
+        if(!save) return letGo();
+        local.shown = save.shown;
+        return sendHeld(save, local);
+      }, letGo);
     },
 
     /** The screen goes away: what waits is sent now */

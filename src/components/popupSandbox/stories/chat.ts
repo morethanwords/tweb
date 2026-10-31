@@ -268,6 +268,20 @@ defineStories('Chat & moderation', [
     }
   },
   {
+    // no collectible to style the code with: the gifts sheet says so, and offers the gift store
+    id: 'myQrCodeNoGifts',
+    title: 'My QR code without gifts',
+    managers: {
+      appProfileManager: QR_PROFILE_ANSWERS,
+      ...QR_EMOJI_ANSWERS,
+      appGiftsManager: {getProfileGifts: () => ({next: undefined as string, gifts: [] as any[], count: 0, collections: [] as any[]})}
+    },
+    open: async(ctx) => {
+      const {default: showMyQrCodePopup} = await import('@components/popups/myQrCode');
+      await showMyQrCodePopup(ctx.peer('self'));
+    }
+  },
+  {
     // somebody else's code: their theme, nothing to change
     id: 'myQrCodeOtherUser',
     title: 'QR code of another user',

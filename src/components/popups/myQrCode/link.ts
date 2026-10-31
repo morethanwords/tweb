@@ -12,26 +12,24 @@ export type OwnLinkKind = 'username' | 'phone' | 'contact';
 /** A copy, a share or a save this close to the end of a code is refused: it would be dead on arrival */
 export const EXPIRY_CUTOFF_SECONDS = 3;
 
-const ALLOWING = new Set<PrivacyRule['_']>([
-  'privacyValueAllowAll',
-  'privacyValueAllowContacts',
-  'privacyValueAllowCloseFriends',
-  'privacyValueAllowPremium'
-]);
-
-/** "Nobody" in a privacy setting: no rule lets a group of people through (exceptions by name do not count) */
-export function isNobody(rules: PrivacyRule[] | undefined) {
-  return !rules?.some((rule) => ALLOWING.has(rule._));
-}
-
-export function isEverybody(rules: PrivacyRule[] | undefined) {
-  return !!rules?.some((rule) => rule._ === 'privacyValueAllowAll');
-}
+/** The rules that decide a privacy setting; the first of them in the list does, any other is passed over */
+const DECIDING = new Set<PrivacyRule['_']>(['privacyValueAllowAll', 'privacyValueDisallowAll', 'privacyValueAllowContacts']);
+const decidingRule = (rules: PrivacyRule[]) => rules.find((rule) => DECIDING.has(rule._))?._;
 
 /**
- * The link of the own profile: the username, else the phone when someone who opens `t.me/+phone` can reach us
- * (a hidden number that strangers still cannot find us by is no use), else a temporary contact link.
+ * Whether `t.me/+<phone>` reaches us, as `QrShareServer.isPhonePublic` decides: a number shown to everybody or to
+ * contacts does; a hidden one does while finding us by it is open to everybody (or left unset). Rules that have not
+ * loaded say no.
  */
+export function isPhonePublic(phoneRules: PrivacyRule[] | undefined, addedByPhoneRules: PrivacyRule[] | undefined) {
+  if(!phoneRules) return false;
+  const shown = decidingRule(phoneRules);
+  if(shown === 'privacyValueAllowAll' || shown === 'privacyValueAllowContacts') return true;
+  if(!addedByPhoneRules?.length) return true;
+  return decidingRule(addedByPhoneRules) === 'privacyValueAllowAll';
+}
+
+/** The link of the own profile: the username, else the phone when it reaches us, else a temporary contact link */
 export function chooseOwnLink(options: {
   username?: string,
   phone?: string,
@@ -39,7 +37,7 @@ export function chooseOwnLink(options: {
   addedByPhoneRules?: PrivacyRule[]
 }): OwnLinkKind {
   if(options.username) return 'username';
-  if(options.phone && !(isNobody(options.phoneRules) && !isEverybody(options.addedByPhoneRules))) return 'phone';
+  if(options.phone && isPhonePublic(options.phoneRules, options.addedByPhoneRules)) return 'phone';
   return 'contact';
 }
 

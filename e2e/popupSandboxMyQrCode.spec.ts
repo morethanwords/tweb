@@ -68,6 +68,21 @@ test('The fee menu stands over the QR screen', async({page}) => {
   expect(await isOnTop(page, '.btn-menu.active')).toBe(true);
 });
 
+test('An owner without gifts gets the empty sheet, with the way to the gift store', async({page}) => {
+  await page.setViewportSize({width: 1280, height: 800});
+  await preparePopupSandbox(page, false);
+  expect(await openStory(page, 'myQrCodeNoGifts')).toBeNull();
+  await page.waitForSelector('.popup.active');
+  await page.locator('.popup button[aria-controls="qr-sheet"]').nth(2).click();
+  const browse = page.locator('.popup button:has-text("Browse Gifts")');
+  await expect(browse).toBeVisible();
+  await page.waitForTimeout(600);
+  await shot(page, 'desktop-gifts-empty');
+  // the sheet holds just the empty state (`QrShareView.EMPTY_H`), not the whole height
+  const height = await page.locator('#qr-sheet').evaluate((sheet) => sheet.getBoundingClientRect().height);
+  expect(Math.round(height)).toBe(286);
+});
+
 test('The share picker stands over the QR screen', async({page}) => {
   await page.setViewportSize({width: 1280, height: 800});
   await preparePopupSandbox(page, false);

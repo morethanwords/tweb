@@ -1,4 +1,4 @@
-import {buildPhoneUrl, chooseOwnLink, formatCountdown, freeLink, isExpiring, isNobody, linkCaption, secondsLeft} from '@components/popups/myQrCode/link';
+import {buildPhoneUrl, chooseOwnLink, formatCountdown, freeLink, isExpiring, isPhonePublic, linkCaption, secondsLeft} from '@components/popups/myQrCode/link';
 
 const all = [{_: 'privacyValueAllowAll'}] as any;
 const nobody = [{_: 'privacyValueDisallowAll'}] as any;
@@ -10,7 +10,23 @@ describe('qr own link', () => {
     expect(chooseOwnLink({phone: '1', phoneRules: nobody, addedByPhoneRules: all})).toBe('phone');
     expect(chooseOwnLink({phone: '1', phoneRules: nobody, addedByPhoneRules: nobody})).toBe('contact');
     expect(chooseOwnLink({phoneRules: all})).toBe('contact');
-    expect(isNobody([{_: 'privacyValueAllowUsers'}] as any)).toBe(true);
+    // rules that have not loaded say no
+    expect(chooseOwnLink({phone: '1'})).toBe('contact');
+  });
+
+  test('a number reaches us as Android decides it', () => {
+    const contacts = [{_: 'privacyValueAllowContacts'}] as any;
+    const someone = [{_: 'privacyValueAllowUsers', users: [5]}] as any;
+    expect(isPhonePublic(contacts, nobody)).toBe(true);
+    // the first deciding rule decides, the others are passed over
+    expect(isPhonePublic([...someone, ...nobody, ...all], all)).toBe(true);
+    expect(isPhonePublic([...someone, ...nobody, ...all], nobody)).toBe(false);
+    // hidden, and finding by number left unset or open to everybody
+    expect(isPhonePublic(someone, [])).toBe(true);
+    expect(isPhonePublic(nobody, undefined)).toBe(true);
+    expect(isPhonePublic(nobody, contacts)).toBe(false);
+    expect(isPhonePublic(nobody, someone)).toBe(false);
+    expect(isPhonePublic(undefined, all)).toBe(false);
     expect(buildPhoneUrl('123')).toBe('https://t.me/+123');
     expect(linkCaption('username', 'durov')).toEqual({text: '@DUROV', kind: 'username'});
     expect(linkCaption('phone', '123')).toEqual({text: '+123', kind: 'phone'});

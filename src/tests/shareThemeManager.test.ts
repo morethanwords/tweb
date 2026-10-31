@@ -236,32 +236,62 @@ describe('no paid messages token', () => {
     return {manager, apiManager, saveApiUser, state};
   }
 
-  it('keeps a permanent code and not a temporary one', async() => {
-    const {manager} = makeUsersManager(async(_, params) => params.temporary ?
-      {_: 'exportedNoPaidMessagesToken', token: 'tmp', url: 'https://t.me/u?free=tmp', expires: 100} :
-      {_: 'exportedNoPaidMessagesToken', token: 'perm', url: 'https://t.me/u?free=perm'});
-
-    await manager.exportNoPaidMessagesToken({temporary: true});
-    expect(await manager.getKeptNoPaidMessagesToken()).toBeNull();
-
-    await manager.exportNoPaidMessagesToken();
-    expect(await manager.getKeptNoPaidMessagesToken()).toEqual({token: 'perm', url: 'https://t.me/u?free=perm', permanent: true});
-
-    await manager.clearKeptNoPaidMessagesToken();
-    expect(await manager.getKeptNoPaidMessagesToken()).toBeNull();
-  });
-
-  it('drops the kept code when a temporary one revokes it', async() => {
+  it('keeps the newest permanent code, its mode the screen\'s, and drops it on a revoke', async() => {
     const {manager, state} = makeUsersManager(async(_, params) => params.temporary ?
       {_: 'exportedNoPaidMessagesToken', token: 'tmp', url: 'u', expires: 100} :
       {_: 'exportedNoPaidMessagesToken', token: 'perm', url: 'u'});
 
-    await manager.exportNoPaidMessagesToken();
-    expect(state.noPaidMessagesToken).not.toBeNull();
     await manager.exportNoPaidMessagesToken({temporary: true});
-    // the token is kept, it is just not the mode any more
+    expect(await manager.getKeptNoPaidMessagesToken()).toBeNull();
+    await manager.exportNoPaidMessagesToken();
     expect(state.noPaidMessagesToken).toEqual({token: 'perm', url: 'u', permanent: false});
+    await manager.setKeptNoPaidMessagesTokenPermanent(true);
+    // a code on the timer leaves the kept one as it is
+    await manager.exportNoPaidMessagesToken({temporary: true});
+    expect(state.noPaidMessagesToken).toEqual({token: 'perm', url: 'u', permanent: true});
     await manager.exportNoPaidMessagesToken({temporary: true, revoke: true});
+    expect(state.noPaidMessagesToken).toBeNull();
+  });
+
+  it('keeps a code that comes after the screen has gone in the mode chosen last', async() => {
+    const answers: ((token: any) => void)[] = [];
+    const {manager, state} = makeUsersManager(() => new Promise((resolve) => answers.push(resolve)));
+
+    const permanent = manager.exportNoPaidMessagesToken();
+    await manager.setKeptNoPaidMessagesTokenPermanent(true);
+    answers[0]({_: 'exportedNoPaidMessagesToken', token: 'perm', url: 'u'});
+    await permanent;
+    expect(state.noPaidMessagesToken).toEqual({token: 'perm', url: 'u', permanent: true});
+
+    const again = manager.exportNoPaidMessagesToken();
+    await manager.setKeptNoPaidMessagesTokenPermanent(false);
+    answers[1]({_: 'exportedNoPaidMessagesToken', token: 'perm2', url: 'u'});
+    await again;
+    expect(state.noPaidMessagesToken).toEqual({token: 'perm2', url: 'u', permanent: false});
+  });
+
+  it('lets an older answer that comes later undo nothing', async() => {
+    const answers: ((token: any) => void)[] = [];
+    const {manager, state} = makeUsersManager(() => new Promise((resolve) => answers.push(resolve)));
+
+    const first = manager.exportNoPaidMessagesToken({revoke: true});
+    const second = manager.exportNoPaidMessagesToken({revoke: true});
+    answers[1]({_: 'exportedNoPaidMessagesToken', token: 'new', url: 'u'});
+    await second;
+    answers[0]({_: 'exportedNoPaidMessagesToken', token: 'old', url: 'u'});
+    await first;
+    expect(state.noPaidMessagesToken).toEqual({token: 'new', url: 'u', permanent: false});
+  });
+
+  it('keeps nothing revoked when an older permanent answer and a newer revoke come together', async() => {
+    const answers: ((token: any) => void)[] = [];
+    const {manager, state} = makeUsersManager(() => new Promise((resolve) => answers.push(resolve)));
+
+    const permanent = manager.exportNoPaidMessagesToken();
+    const revoke = manager.exportNoPaidMessagesToken({temporary: true, revoke: true});
+    answers[0]({_: 'exportedNoPaidMessagesToken', token: 'perm', url: 'u'});
+    answers[1]({_: 'exportedNoPaidMessagesToken', token: 'tmp', url: 'u', expires: 100});
+    await Promise.all([permanent, revoke]);
     expect(state.noPaidMessagesToken).toBeNull();
   });
 

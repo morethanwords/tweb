@@ -18,9 +18,15 @@ export default function createLayerStack<T extends HTMLElement = HTMLElement>(
   let current: T | undefined;
   const timers = new Set<number>();
 
-  const retire = (layer: HTMLElement) => {
+  const retire = (layer: HTMLElement, coveredBy?: Animation) => {
     if(!liteMode.isAvailable('animations')) {
       layer.remove();
+      return;
+    }
+
+    // a layer revealed by an animation of its own covers the old one only once it has ended
+    if(coveredBy) {
+      coveredBy.finished.finally(() => layer.remove());
       return;
     }
 
@@ -37,16 +43,24 @@ export default function createLayerStack<T extends HTMLElement = HTMLElement>(
       return current;
     },
 
-    /** Puts the layer on top; `undefined` leaves the stack empty. `instant` shows it without the fade */
-    set(layer: T | undefined, instant?: boolean) {
-      if(current) retire(current);
+    /**
+     * Puts the layer on top; `undefined` leaves the stack empty. `instant` shows it without the fade; `reveal` shows it
+     * by an animation of its own (the colour's wave), the old one staying under it till that has ended.
+     */
+    set(layer: T | undefined, how: {instant?: boolean, reveal?: (layer: T) => Animation | undefined} = {}) {
+      const previous = current;
       current = layer;
-      if(!layer) return;
+      if(!layer) {
+        if(previous) retire(previous);
+        return;
+      }
 
       layer.classList.add(styles.layer);
       if(options.className) layer.classList.add(options.className);
       host.append(layer);
-      if(!instant && liteMode.isAvailable('animations')) {
+      const revealing = previous && liteMode.isAvailable('animations') ? how.reveal?.(layer) : undefined;
+      if(previous) retire(previous, revealing);
+      if(!revealing && !how.instant && liteMode.isAvailable('animations')) {
         requestAnimationFrame(() => layer.classList.add(styles.layerShown));
       } else {
         layer.classList.add(styles.layerShown);

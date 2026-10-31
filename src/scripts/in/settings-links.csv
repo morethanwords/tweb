@@ -118,3 +118,5 @@ tg://settings/stars,Chat List > Hamburger > Settings > My Stars
 tg://settings/stars/gift,Chat List > Hamburger > Settings > My Stars > Gift Stars to Friends
 tg://settings/send-gift,Chat List > Hamburger > Settings > Send a Gift
 tg://settings/send-gift/self,Chat List > Hamburger > Settings > Send a Gift > Buy yourself a gift
+tg://settings/qr-code,Chat List > Hamburger > Settings > QR Code
+tg://settings/qr-code/share,Chat List > Hamburger > Settings > QR Code > Share

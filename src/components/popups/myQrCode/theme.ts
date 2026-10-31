@@ -1,5 +1,6 @@
 import type {InputSavedStarGift, Reaction, ShareTheme, ShareThemeBackdropOption, StarGift, StarGiftAttribute} from '@layer';
 import {BackdropInput, DEFAULT_BACKDROP, DEFAULT_BACKDROP_NAME} from './colors';
+import {BUILT_IN_BACKDROPS, isBuiltInBackdropId} from './backdropTable';
 
 /**
  * What a share theme looks like, apart from how it is drawn. Pure: the screen reads the served `ShareTheme` and the
@@ -65,7 +66,11 @@ export function shareThemeToAppearance(theme: ShareTheme | undefined, backdrops?
   switch(theme?._) {
     case 'shareThemeEmojiBackdrop': {
       const emojis = (theme.emojis || []).map(reactionToThemeEmoji).filter(Boolean).slice(0, MAX_THEME_EMOJI);
-      const backdrop = theme.backdrop_id !== undefined ? backdrops?.find((option) => option.backdrop_id === theme.backdrop_id) : undefined;
+      // a colour of the built-in table, picked before the served list came, stays itself until it is saved by its id
+      const id = theme.backdrop_id;
+      const backdrop = id === undefined ? undefined :
+        backdrops?.find((option) => option.backdrop_id === id) ??
+        (isBuiltInBackdropId(id) ? BUILT_IN_BACKDROPS.find((option) => option.backdrop_id === id) : undefined);
       // the default circle sends no id, and a served id naming the default backdrop reads as that circle
       const isDefault = !backdrop || backdrop.name === DEFAULT_BACKDROP_NAME;
       if(isDefault) {
@@ -106,6 +111,11 @@ export function shareThemeToAppearance(theme: ShareTheme | undefined, backdrops?
 /* Editing: what a pick makes of the theme on show, and what is sent for it */
 
 export const isDefaultBackdrop = (backdrop: BackdropInput) => backdrop.name === DEFAULT_BACKDROP_NAME;
+
+/** A colour of the built-in table has no server id to be sent by: it waits for the served list (`backdropWaitsForIds`) */
+export const waitsForServedId = (appearance: Appearance) => {
+  return appearance.kind !== 'gift' && !isDefaultBackdrop(appearance.backdrop) && isBuiltInBackdropId(appearance.backdropId);
+};
 
 /** A colour picked: `undefined` is the default circle. A gift gives way to it, the emoji stay. */
 export function withBackdrop(appearance: Appearance, backdrops: ShareThemeBackdropOption[] | undefined, option?: ShareThemeBackdropOption): Appearance {

@@ -1,4 +1,4 @@
-import {createEffect, createMemo, createResource, createSignal, For, on, onCleanup, Show} from 'solid-js';
+import {createEffect, createMemo, createResource, createSignal, For, on, onCleanup, Show, untrack} from 'solid-js';
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import Button from '@components/buttonTsx';
 import {toastNew} from '@components/toast';
@@ -13,6 +13,8 @@ import {AppManagers} from '@lib/managers';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {buildTelegramUserQrUrl} from '@helpers/qrCode/paintQrCode';
 import {useObserveResize} from '@hooks/useObserveResize';
+import {getMiddleware} from '@helpers/middleware';
+import {flashControl} from '@lib/settingsSearch/highlight';
 import {createExportActions, ExportCopyButton, ExportShareSaveButtons} from './myQrCode/exportButtons';
 import classNames from '@helpers/string/classNames';
 import liteMode from '@helpers/liteMode';
@@ -29,21 +31,69 @@ import {PatternField} from './myQrCode/field';
 import {ExpiryPill, FeePill} from './myQrCode/feePill';
 import createQrLink from './myQrCode/linkState';
 import createLayerStack from './myQrCode/layerStack';
+import {BUILT_IN_BACKDROPS, usableBackdrops} from './myQrCode/backdropTable';
 import {buildPhoneUrl, linkCaption} from './myQrCode/link';
 import {Rect} from './myQrCode/fieldNodes';
 import {openLayout, PILL_GAP, SHEET_BOTTOM, SHEET_INSET, sheetHeightFor, surfaceGeometry} from './myQrCode/layout';
-import {appearanceToShareTheme, Appearance, giftToInput, isDefaultBackdrop, shareThemeToAppearance, ThemeEmoji, themeEmojiKey, withBackdrop, withEmojiToggled, withGift} from './myQrCode/theme';
+import {appearanceToShareTheme, Appearance, giftToInput, isDefaultBackdrop, shareThemeToAppearance, ThemeEmoji, themeEmojiKey, withBackdrop, waitsForServedId, withEmojiToggled, withGift} from './myQrCode/theme';
 import {createThemeSaver, getHeldTheme} from './myQrCode/themeSaver';
 import {ColorsPanel} from './myQrCode/colorsPanel';
 import {ChosenEmojiStrip, EmojiPanel} from './myQrCode/emojiPanel';
 import {preloadAppliedEmoji} from './myQrCode/emojiPresets';
-import {GiftsPanel, ThemeGift} from './myQrCode/giftsPanel';
+import {GiftsLayout, GiftsPanel, giftsSheetHeight, ThemeGift} from './myQrCode/giftsPanel';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {showPremiumGiftsToast} from './myQrCode/premiumToast';
 import styles from './myQrCode.module.scss';
 
-/** The backdrop: gradient layers one over the other, the newest fading in over the older ones */
-function Backdrop(props: {css: () => string, colorsKey: () => string}) {
+// `QrShareView`'s wave: a new colour spreads from the card over 600 ms, quick at first and gliding long (1 - (1 - t)^2.4)
+const WAVE_MS = 600;
+const WAVE_EASING = 'cubic-bezier(.2, .65, .35, 1)';
+// … past the farthest corner by this much, so its soft edge leaves the screen
+const WAVE_OVERSHOOT = 60;
+
+type WaveOrigin = {x: number, y: number, width: number, height: number};
+
+/**
+ * The backdrop: gradient layers one over the other. A colour the user picks spreads from the card as a growing circle
+ * with a light ring at its front (Android's wave); one that comes otherwise fades in over the old one.
+ */
+function Backdrop(props: {
+  css: () => string,
+  colorsKey: () => string,
+  /** Where the wave starts (the card's middle), in the surface's box */
+  origin: () => WaveOrigin,
+  /** The ring's colour: the new centre, most of the way to white */
+  ringColor: () => string,
+  wave: () => boolean
+}) {
   const host = (<div class={styles.backdrop} />) as HTMLDivElement;
+
+  const reveal = (layer: HTMLElement) => {
+    if(!untrack(props.wave) || !liteMode.isAvailable('motion')) return;
+    const {x, y, width, height} = untrack(props.origin);
+    const radius = Math.hypot(Math.max(x, width - x), Math.max(y, height - y)) + WAVE_OVERSHOOT;
+    const timing: KeyframeAnimationOptions = {duration: WAVE_MS, easing: WAVE_EASING};
+
+    const ring = document.createElement('div');
+    ring.className = styles.waveRing;
+    Object.assign(ring.style, {
+      left: x - radius + 'px',
+      top: y - radius + 'px',
+      width: radius * 2 + 'px',
+      height: radius * 2 + 'px'
+    });
+    ring.style.setProperty('--wave-color', untrack(props.ringColor));
+    host.append(ring);
+    ring.animate([
+      {transform: 'scale(0)', opacity: .38},
+      {opacity: .38, offset: .38},
+      {transform: 'scale(1)', opacity: 0}
+    ], timing).finished.finally(() => ring.remove());
+
+    return layer.animate({
+      clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`]
+    }, timing);
+  };
   const stack = createLayerStack(host, {keepCovered: true});
   onCleanup(() => stack.destroy());
   let shownKey: string;
@@ -62,7 +112,7 @@ function Backdrop(props: {css: () => string, colorsKey: () => string}) {
     const layer = document.createElement('div');
     layer.style.backgroundImage = css;
     // the first one comes with the screen, at once
-    stack.set(layer, !stack.current);
+    stack.set(layer, {instant: !stack.current, reveal});
   });
 
   return host;
@@ -76,8 +126,8 @@ function MyQrCodePopup(props: {
   shareTheme?: ShareTheme,
   /** The own profile, or a public channel the user may change the info of: the theme can be set */
   canEdit?: boolean,
-  /** An explicit link instead of `t.me/<username>`: a private group's invite link */
-  url?: string
+  /** `tg://settings/qr-code/share`: the Share button flashes once the screen is up, the way tdesktop points at it */
+  highlightShare?: boolean
 }) {
   const {managers, peerId, peer} = props;
   const mediaSizes = useMediaSizes();
@@ -88,9 +138,12 @@ function MyQrCodePopup(props: {
   const account = getCurrentAccount();
   const accountManagers = bindManagersToAccount(rootScope.managers, account);
   const [shareTheme, setShareTheme] = createSignal(props.shareTheme);
+  // once the user has chosen here, the server's theme no longer replaces what is shown, for as long as the screen is
+  // open (`QrShareServer.themeChangedByUser`)
+  let changedByUser = false;
   const showServedTheme = async() => {
     const theme = await managers.appProfileManager.getCachedShareTheme(peerId);
-    if(!saver.hasPending && !getHeldTheme(account, peerId)) setShareTheme(theme);
+    if(!changedByUser && !saver.hasPending && !getHeldTheme(account, peerId)) setShareTheme(theme);
   };
 
   subscribeOn(rootScope)('peer_full_update', (updated) => {
@@ -99,15 +152,16 @@ function MyQrCodePopup(props: {
   managers.appProfileManager.getProfileByPeerId(peerId).catch(noop);
 
   const [backdrops] = createResource(() => managers.appProfileManager.getShareThemeBackdrops().catch((): ShareThemeBackdropOption[] => undefined));
-  const appearance = createMemo(() => shareThemeToAppearance(shareTheme(), backdrops()));
+  // the served colours, else Android's built-in table (`backdropTable`)
+  const palette = createMemo(() => usableBackdrops(backdrops()));
+  const appearance = createMemo(() => shareThemeToAppearance(shareTheme(), palette()));
   const colors = createMemo(() => backdropColors(appearance().backdrop));
 
   /* The link and what is written under the code */
   const username = createMemo(() => getPeerActiveUsernames(peer)[0]);
   // the own profile: username, phone or a contact link, and the fee code; anyone else: a plain link
-  const own = createQrLink({managers, peer: peer as User.user, enabled: isSelf && !props.url});
+  const own = createQrLink({managers, peer: peer as User.user, enabled: isSelf});
   const url = createMemo(() => {
-    if(props.url) return props.url;
     if(own.enabled) return own.url();
     if(username()) return buildTelegramUserQrUrl(username());
     if(peerId.isUser()) return buildPhoneUrl(peer.phone ?? '');
@@ -116,8 +170,8 @@ function MyQrCodePopup(props: {
 
   const caption = createMemo<Caption | undefined>(() => {
     if(own.enabled) return own.caption();
-    if(!props.url && username()) return linkCaption('username', username());
-    if(!props.url && peerId.isUser() && peer.phone) return linkCaption('phone', peer.phone);
+    if(username()) return linkCaption('username', username());
+    if(peerId.isUser() && peer.phone) return linkCaption('phone', peer.phone);
     return {text: props.title.toUpperCase(), kind: 'name'};
   });
 
@@ -144,11 +198,8 @@ function MyQrCodePopup(props: {
     account,
     peerId,
     save: ({theme, shown}) => accountManagers.appProfileManager.setShareTheme(peerId, theme, shown),
-    onError: () => {
-      toastNew({langPackKey: 'Error.AnError'});
-      // the manager has put the full peer back; so does the screen, unless this device holds on to the choice
-      showServedTheme();
-    }
+    // the manager has put the full peer back; the screen keeps the choice, as on Android
+    onError: () => toastNew({langPackKey: 'Error.AnError'})
   });
 
   // the colour a gift gives way to: the last one shown
@@ -160,9 +211,24 @@ function MyQrCodePopup(props: {
     }
   });
 
+  // a colour of the built-in table has no server id: it shows at once, and is saved once the served list has come, by
+  // its name (`QrShareServer.backdropWaitsForIds`)
+  let waitsForIds = false;
   const commit = (next: Appearance, giftInput?: InputSavedStarGift) => {
+    changedByUser = true;
+    // a built-in colour remembered from before the served list came (the colour a gift gives way to) is the served one
+    // of its name by now
+    const list = palette();
+    if(waitsForServedId(next) && list !== BUILT_IN_BACKDROPS) {
+      next = withBackdrop(next, list, list.find((option) => option.name === next.backdrop.name));
+    }
+
     const toSave = appearanceToShareTheme(next, giftInput);
-    if(toSave) {
+    waitsForIds = waitsForServedId(next);
+    if(waitsForIds) {
+      setShareTheme(toSave.shown);
+      saver.cancel();
+    } else if(toSave) {
       setShareTheme(toSave.shown);
       saver.schedule(toSave);
     } else if(next.kind === 'gift') {
@@ -172,10 +238,35 @@ function MyQrCodePopup(props: {
     }
   };
 
-  const pickBackdrop = (option?: ShareThemeBackdropOption) => commit(withBackdrop(appearance(), backdrops(), option));
-  const toggleEmoji = (emoji: ThemeEmoji) => commit(withEmojiToggled(appearance(), emoji, lastColor ?? withBackdrop(appearance(), backdrops())));
+  // the served list has come: the colour waiting for it is saved by its id, or, missing from it, becomes the default
+  createEffect(on(palette, (list) => {
+    if(!waitsForIds || list === BUILT_IN_BACKDROPS) return;
+    const current = untrack(appearance);
+    commit(withBackdrop(current, list, list.find((option) => option.name === current.backdrop.name)));
+  }, {defer: true}));
+
+  // the screen goes away with a built-in colour still waiting: it is saved by its name once the served list has come, on
+  // the account it was chosen on
+  const saveWhenServed = () => {
+    if(!waitsForIds) return;
+    const waiting = untrack(appearance);
+    saver.sendWhenReady(untrack(shareTheme), accountManagers.appProfileManager.getShareThemeBackdrops().then((served) => {
+      const list = usableBackdrops(served);
+      if(list === BUILT_IN_BACKDROPS) return;
+      return appearanceToShareTheme(withBackdrop(waiting, list, list.find((option) => option.name === waiting.backdrop.name)));
+    })).catch(noop);
+  };
+
+  const pickBackdrop = (option?: ShareThemeBackdropOption) => commit(withBackdrop(appearance(), palette(), option));
+  const toggleEmoji = (emoji: ThemeEmoji) => commit(withEmojiToggled(appearance(), emoji, lastColor ?? withBackdrop(appearance(), palette())));
   const pickEmoji = (docId: DocId) => toggleEmoji({documentId: docId});
   const pickGift = ({gift, input}: ThemeGift) => {
+    // the gift on show tapped again goes, and the last colour comes back, as on Android
+    if(appearance().kind === 'gift' && appearance().gift?.id === gift.id) {
+      commit(lastColor ?? withBackdrop(appearance(), palette()));
+      return;
+    }
+
     const next = withGift(gift);
     if(next) commit(next, giftToInput(gift, isSelf, input));
   };
@@ -199,8 +290,15 @@ function MyQrCodePopup(props: {
     return shown && I18n.format(shown.title, true);
   };
 
-  const sheetHeight = createMemo(() => sheetHeightFor(size().height, size().width));
-  const sheetSize = createMemo(() => ({width: size().width - 2 * SHEET_INSET, height: sheetHeight()}));
+  const fullSheetHeight = createMemo(() => sheetHeightFor(size().height, size().width));
+  const sheetSize = createMemo(() => ({width: size().width - 2 * SHEET_INSET, height: fullSheetHeight()}));
+  // the gifts shrink the sheet to one row for up to three, and to the empty state for none (`QrShareView.updateSheetH`)
+  const [giftsLayout, setGiftsLayout] = createSignal<GiftsLayout>();
+  const sheetHeight = createMemo(() => {
+    const full = fullSheetHeight();
+    const gifts = panel() === 'gifts' && giftsSheetHeight(giftsLayout(), sheetSize().width);
+    return gifts ? Math.min(full, Math.round(gifts)) : full;
+  });
   const cardLayout = createMemo(() => panel() ? openLayout({...surface(), pillExtra: 0}, sheetHeight()) : undefined);
 
   const navigationItem: NavigationItem = {
@@ -315,6 +413,33 @@ function MyQrCodePopup(props: {
     expiringToast: () => own.fee.isExpiring() ? 'QRCode.NoPaid.Toast.Expiring' : 'QRCode.LinkExpiring'
   });
 
+  // The card answers a pick, as on Android: it bounces as a new colour spreads (`bounce(0.03, 0.005)` over 320 ms) and
+  // dips when the emoji change (3% over 360 ms), only for what the user chose and with the motion on
+  const colorsKey = () => [colors().center, colors().mid, colors().edge, colors().vertical].join();
+  const emojisKey = () => appearance().emojis.map(themeEmojiKey).join();
+  // the card's middle on screen, with a panel's lift and shrink
+  const cardMiddle = () => cardRect().top + (cardLayout()?.shift ?? 0) + surface().card.height * (cardLayout()?.scale ?? 1) / 2;
+  let cardPlace: HTMLDivElement;
+  const animateCard = (keyframes: Keyframe[], duration: number) => {
+    if(!changedByUser || !liteMode.isAvailable('motion')) return;
+    (cardPlace.firstElementChild as HTMLElement)?.animate(keyframes, {duration, easing: 'ease-in-out'});
+  };
+  createEffect(on(colorsKey, () => animateCard([{scale: 1}, {scale: 1.03, offset: .25}, {scale: .995, offset: .6}, {scale: 1}], 320), {defer: true}));
+  createEffect(on(emojisKey, () => animateCard([{scale: 1}, {scale: .975, offset: .45}, {scale: 1}], 360), {defer: true}));
+
+  // the export buttons step back for a panel, and while the free code runs on its minute: such a code is not one to
+  // hand out, as on Android; nor is one of the other kind, still on screen while the code asked for is on its way
+  const exportAway = () => !!panel() || own.fee.mode() === 'temporary' || own.fee.pending();
+
+  let shareButton: HTMLElement;
+  if(props.highlightShare) {
+    const middleware = getMiddleware();
+    onCleanup(() => middleware.destroy());
+    createEffect(on(ready, (isReady) => {
+      if(isReady) flashControl(shareButton, middleware.get());
+    }, {defer: true}));
+  }
+
   const label = () => `${I18n.format('QRCode.Title', true)}: ${props.title}, ${url()}`;
 
   return (
@@ -325,7 +450,10 @@ function MyQrCodePopup(props: {
       containerProps={{'aria-label': I18n.format('QRCode.Title', true)}}
       closable
       show={ready()}
-      onClose={() => saver.flush()}
+      onClose={() => {
+        saver.flush();
+        saveWhenServed();
+      }}
     >
       <div
         ref={surfaceElement}
@@ -334,12 +462,18 @@ function MyQrCodePopup(props: {
         style={{
           '--qr-foreground': colors().foreground,
           '--qr-control': colors().control,
-          '--qr-mid': colors().mid
+          '--qr-mid': colors().mid,
+          '--qr-ink': colors().ink,
+          // what reads on a pill of the foreground's colour: the ink, made for white, or white on the dark foreground
+          '--qr-on-foreground': colors().foreground === '#ffffff' ? colors().ink : '#ffffff'
         }}
       >
         <Backdrop
           css={() => ready() ? backdropToCss(gradient()) : ''}
-          colorsKey={() => [colors().center, colors().mid, colors().edge, colors().vertical].join()}
+          colorsKey={colorsKey}
+          origin={() => ({x: size().width / 2, y: cardMiddle(), width: size().width, height: size().height})}
+          ringColor={() => `color-mix(in oklab, ${colors().center} 45%, #fff)`}
+          wave={() => changedByUser}
         />
         <PatternField
           appearance={appearance}
@@ -350,6 +484,7 @@ function MyQrCodePopup(props: {
           fieldRef={(get) => { getField = get; }}
         />
         <div
+          ref={cardPlace}
           class={styles.cardPlace}
           style={{
             left: cardRect().left + 'px',
@@ -385,7 +520,7 @@ function MyQrCodePopup(props: {
                 <div class={styles.sheetPanel} data-panel={id} hidden={panel() !== id}>
                   {id === 'colors' && (
                     <ColorsPanel
-                      backdrops={backdrops}
+                      backdrops={palette}
                       selectedId={() => appearance().kind === 'gift' ? undefined : appearance().backdropId}
                       onPick={pickBackdrop}
                     />
@@ -403,8 +538,11 @@ function MyQrCodePopup(props: {
                       managers={managers}
                       ownerId={peerId}
                       isSelf={isSelf}
-                      selectedId={() => appearance().gift?.id as string}
+                      selected={() => appearance().kind === 'gift' ? appearance().gift : undefined}
+                      width={() => sheetSize().width}
                       onPick={pickGift}
+                      onBrowse={isSelf ? () => hotReloadGuard.showSendGiftPopup({peerId, category: 'Collectibles'}) : undefined}
+                      onLayout={setGiftsLayout}
                     />
                   )}
                 </div>
@@ -430,9 +568,9 @@ function MyQrCodePopup(props: {
             </For>
           </div>
         </Show>
-        <ExportCopyButton actions={exportActions} class={classNames(styles.control, styles.copy, styles.iconCopy, panel() && styles.controlAway)} />
+        <ExportCopyButton actions={exportActions} class={classNames(styles.control, styles.copy, styles.iconCopy, exportAway() && styles.controlAway)} />
         <div class={styles.bar}>
-          <ExportShareSaveButtons actions={exportActions} class={classNames(styles.control, panel() && styles.controlAway)} shareClass={styles.iconShare} saveClass={styles.iconSave} groupClass={styles.barGroup} />
+          <ExportShareSaveButtons actions={exportActions} class={classNames(styles.control, exportAway() && styles.controlAway)} shareClass={styles.iconShare} saveClass={styles.iconSave} groupClass={styles.barGroup} shareRef={(element) => shareButton = element} />
         </div>
       </div>
     </PopupElement>
@@ -441,10 +579,9 @@ function MyQrCodePopup(props: {
 
 /**
  * Opens the QR-code popup. Defaults to the current user (the Settings entry); pass a `peerId` to show another peer's
- * QR (the PeerProfile username/link rows), and `options.url` to encode an explicit link instead of `t.me/<username>`
- * (a private group's invite link, which PeerProfile.Link already resolved).
+ * QR (the PeerProfile username and public link rows).
  */
-export default async function showMyQrCodePopup(peerId: PeerId = rootScope.myId, options?: {url?: string}) {
+export default async function showMyQrCodePopup(peerId: PeerId = rootScope.myId, options?: {highlightShare?: boolean}) {
   const managers = bindManagersToSession(rootScope.managers);
   const [peer, cachedTheme, title, canEdit] = await Promise.all([
     peerId === rootScope.myId ? managers.appUsersManager.getSelf() : managers.appPeersManager.getPeer(peerId),
@@ -461,8 +598,8 @@ export default async function showMyQrCodePopup(peerId: PeerId = rootScope.myId,
       peer={peer as User.user}
       title={title}
       shareTheme={getHeldTheme(getCurrentAccount(), peerId) ?? cachedTheme}
-      canEdit={canEdit && !options?.url}
-      url={options?.url}
+      canEdit={canEdit}
+      highlightShare={options?.highlightShare}
     />
   ));
 }

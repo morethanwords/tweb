@@ -8,7 +8,8 @@ import {createCountdown} from './countdown';
 import createFeeCode from './feeCode';
 import {buildPhoneUrl, chooseOwnLink, linkCaption, OwnLinkKind} from './link';
 
-const RETRY_MS = 3000;
+// `QrShareServer.CONTACT_TOKEN_RETRY`
+const RETRY_MS = 5000;
 
 /**
  * What the code carries and what stands under it: the username, else the phone, else a temporary contact link that
@@ -47,7 +48,8 @@ export default function createQrLink(options: {
 
   if(enabled && !username) {
     (async() => {
-      let chosen: OwnLinkKind = peer.phone ? 'phone' : 'contact';
+      // rules that cannot be read leave the phone out, as on Android
+      let chosen: OwnLinkKind = 'contact';
       try {
         const [phoneRules, addedByPhoneRules] = await Promise.all([
           managers.appPrivacyManager.getPrivacy('inputPrivacyKeyPhoneNumber'),

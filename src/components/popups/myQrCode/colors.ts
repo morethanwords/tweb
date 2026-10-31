@@ -23,7 +23,7 @@ export const DEFAULT_BACKDROP_NAME = 'Black';
 export const DEFAULT_BACKDROP = {
   center_color: 0x363738,
   edge_color: 0x0E0F0F,
-  pattern_color: 0x000000,
+  pattern_color: 0x6C6868,
   text_color: 0x8C8F91
 };
 

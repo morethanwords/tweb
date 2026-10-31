@@ -4311,6 +4311,8 @@ const lang = {
   'QRCode.NoGiftsTitle': 'No gifts yet',
   'QRCode.NoGiftsInfo': 'Use any collectible gift you own\nto style your QR code.',
   'QRCode.ChatNoCollectibles': 'There are no collectible gifts here yet.',
+  'QRCode.BrowseGifts': 'Browse Gifts',
+  'QRCode.LoadingGifts': 'Loading gifts…',
   'QRCode.CreatingLink': 'Creating link…',
   'QRCode.Saved': 'QR code saved',
   'QRCode.Share': 'Share QR Code',

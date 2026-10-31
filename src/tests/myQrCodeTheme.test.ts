@@ -146,3 +146,29 @@ describe('myQrCode field', () => {
     }
   });
 });
+
+describe('the built-in colours (Android\'s table)', () => {
+  it('stand in for a served list that has not come or lacks the default', async() => {
+    const {BUILT_IN_BACKDROPS, usableBackdrops} = await import('@components/popups/myQrCode/backdropTable');
+    expect(BUILT_IN_BACKDROPS).toHaveLength(80);
+    expect(BUILT_IN_BACKDROPS[0].name).toBe('Black');
+    expect(BUILT_IN_BACKDROPS.every((option) => option.backdrop_id < 0)).toBe(true);
+    expect(usableBackdrops(undefined)).toBe(BUILT_IN_BACKDROPS);
+    const served = [{_: 'shareThemeBackdropOption' as const, backdrop_id: 7, name: 'Emerald', center_color: 1, edge_color: 2, pattern_color: 3, text_color: 4}];
+    expect(usableBackdrops(served)).toBe(BUILT_IN_BACKDROPS);
+    const withDefault = [...served, {...served[0], backdrop_id: 8, name: 'Black'}];
+    expect(usableBackdrops(withDefault)).toBe(withDefault);
+  });
+
+  it('a built-in colour stays itself against the served list until it is saved, and is never sent', async() => {
+    const {BUILT_IN_BACKDROPS} = await import('@components/popups/myQrCode/backdropTable');
+    const {shareThemeToAppearance, waitsForServedId} = await import('@components/popups/myQrCode/theme');
+    const emerald = BUILT_IN_BACKDROPS.find((option) => option.name === 'Emerald');
+    const served = [{_: 'shareThemeBackdropOption' as const, backdrop_id: 8, name: 'Black', center_color: 1, edge_color: 2, pattern_color: 3, text_color: 4}];
+    const appearance = shareThemeToAppearance({_: 'shareThemeEmojiBackdrop', backdrop_id: emerald.backdrop_id}, served);
+    expect(appearance.backdrop.name).toBe('Emerald');
+    expect(appearance.backdropId).toBe(emerald.backdrop_id);
+    expect(waitsForServedId(appearance)).toBe(true);
+    expect(waitsForServedId(shareThemeToAppearance(undefined, BUILT_IN_BACKDROPS))).toBe(false);
+  });
+});

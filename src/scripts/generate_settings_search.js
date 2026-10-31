@@ -73,7 +73,7 @@ const SECTION_ICONS = {
  */
 const PROCESSOR_PATHS = new Set([
   '', 'edit/birthday', 'edit/add-account', 'emoji-status', 'saved-messages', 'ton',
-  'my-profile/posts/all-stories', 'my-profile/archived-posts'
+  'my-profile/posts/all-stories', 'my-profile/archived-posts', 'qr-code', 'qr-code/share'
 ]);
 
 // Paths whose Web K column names the row but not the tab behind it (the text is

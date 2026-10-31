@@ -1,9 +1,10 @@
-import {createEffect, Match, Show, Switch} from 'solid-js';
+import {createEffect, createSignal, Match, onCleanup, onMount, Show, Switch} from 'solid-js';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {i18n} from '@lib/langPack';
 import classNames from '@helpers/string/classNames';
-import createFeeCode from './feeCode';
+import liteMode from '@helpers/liteMode';
+import createFeeCode, {FREE_SECONDS} from './feeCode';
 import {formatCountdown} from './link';
 import styles from './feePill.module.scss';
 
@@ -38,6 +39,56 @@ function menuRow(title: () => ReturnType<typeof i18n>, info: () => ReturnType<ty
     element.replaceChildren(title(), subtitle);
   });
   return element;
+}
+
+/** What the free pill says: the time left on the timer, or that there is none */
+function freeLabel(fee: FeeCode) {
+  return (
+    <span class={styles.label}>
+      <Switch>
+        <Match when={fee.mode() === 'temporary'}>
+          {i18n('QRCode.NoPaid.Free')} · {i18n('QRCode.NoPaid.ExpiresIn', [time(fee.left)])}
+        </Match>
+        <Match when={true}>
+          {i18n('QRCode.NoPaid.Free')} · {i18n('QRCode.NoPaid.NoTimeLimit')}
+        </Match>
+      </Switch>
+    </span>
+  );
+}
+
+// `QrShareView`: the white fill sweeps in over 340 ms, then burns down with the minute
+const FILL_SWEEP_MS = 340;
+
+/**
+ * The pill of a free code, as on Android: a white fill under the words in the code's ink sweeps in from the inline
+ * start, and on the timer burns back toward it as the minute runs out; what it has left is glass again.
+ */
+function FreePill(props: {fee: FeeCode, ref: (button: HTMLButtonElement) => void}) {
+  const {fee} = props;
+  const [swept, setSwept] = createSignal(!liteMode.isAvailable('animations'));
+  const [burning, setBurning] = createSignal(swept());
+  onMount(() => {
+    if(swept()) return;
+    const frame = requestAnimationFrame(() => setSwept(true));
+    const timer = window.setTimeout(() => setBurning(true), FILL_SWEEP_MS);
+    onCleanup(() => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+    });
+  });
+
+  const fraction = () => !swept() ? 0 : fee.mode() === 'temporary' ? (fee.left() ?? FREE_SECONDS) / FREE_SECONDS : 1;
+
+  return (
+    // the toggle's class is in the markup: the menu opens only from a trigger that has it, and Solid sets the class after the ref
+    <button ref={props.ref} class={classNames(styles.pill, styles.freePill, 'btn-menu-toggle')} type="button">
+      {freeLabel(fee)}
+      <span class={classNames(styles.fill, burning() && styles.fillBurning)} style={{'--fill': fraction()}} aria-hidden="true">
+        {freeLabel(fee)}
+      </span>
+    </button>
+  );
 }
 
 /**
@@ -84,25 +135,13 @@ export function FeePill(props: {fee: FeeCode, top: number, /** A panel stands wh
           <button
             class={styles.pill}
             type="button"
-            disabled={fee.busy()}
             onClick={() => fee.removeFee()}
           >
             {i18n('QRCode.NoPaid.RemoveStarsFee', [fee.fee()])}
           </button>
         }
       >
-        {/* the toggle's class is in the markup: the menu opens only from a trigger that has it, and Solid sets the class after the ref */}
-        {/* oxlint-disable-next-line jsx-a11y/control-has-associated-label -- the label is the Switch below, text in both states */}
-        <button ref={attachMenu} class={classNames(styles.pill, 'btn-menu-toggle')} type="button">
-          <Switch>
-            <Match when={fee.mode() === 'temporary'}>
-              {i18n('QRCode.NoPaid.Free')} · {i18n('QRCode.NoPaid.ExpiresIn', [time(fee.left)])}
-            </Match>
-            <Match when={true}>
-              {i18n('QRCode.NoPaid.Free')} · {i18n('QRCode.NoPaid.NoTimeLimit')}
-            </Match>
-          </Switch>
-        </button>
+        <FreePill fee={fee} ref={attachMenu} />
       </Show>
     </div>
   );

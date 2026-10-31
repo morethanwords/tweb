@@ -58,7 +58,8 @@ export function createExportActions(options: ExportActionsOptions) {
   };
 
   const copy = async() => {
-    if(refuse()) return;
+    // no code yet (a contact link on its way): nothing to copy, as Android shares nothing then
+    if(!options.url() || refuse()) return;
     const outcome = await copyQrCode({blob: options.makeImage(), url: options.url()});
     toastNew({langPackKey: outcome === 'image' ? 'QRCode.Copied' : outcome === 'link' ? 'QRCode.CopiedLink' : 'Error.AnError'});
   };
@@ -134,10 +135,18 @@ export function ExportCopyButton(props: {actions: ExportActions, class?: string}
   );
 }
 
-export function ExportShareSaveButtons(props: {actions: ExportActions, class?: string, shareClass?: string, saveClass?: string, groupClass?: string}) {
+export function ExportShareSaveButtons(props: {
+  actions: ExportActions,
+  class?: string,
+  shareClass?: string,
+  saveClass?: string,
+  groupClass?: string,
+  shareRef?: (element: HTMLElement) => void
+}) {
   return (
     <div class={props.groupClass}>
       <Button.Icon
+        ref={props.shareRef}
         class={classNames('btn-icon', props.class, props.shareClass)}
         icon="forward"
         aria-label={I18n.format('QRCode.Share', true)}

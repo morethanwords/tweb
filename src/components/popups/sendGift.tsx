@@ -101,6 +101,8 @@ function isBirthdayNearby(birthday?: Birthday) {
   });
 }
 
+type GiftCategory = 'All' | 'Owned' | 'Collectibles';
+
 function GiftOptionsPage(props: {
   peer: User.user | Chat.channel
   peerId: PeerId
@@ -112,12 +114,12 @@ function GiftOptionsPage(props: {
 
   profileStore: StarGiftsProfileStore
   profileStoreActions: StarGiftsProfileActions
+  initialCategory?: GiftCategory
 }) {
   const [isPinned, setIsPinned] = createSignal(false);
   const isToSelf = props.peerId === rootScope.myId;
 
-  type CategoryName = 'All' | 'Owned' | 'Collectibles';
-  const [category, setCategory] = createSignal<CategoryName>('All');
+  const [category, setCategory] = createSignal<GiftCategory>(props.initialCategory ?? 'All');
 
   let categoriesContainer!: HTMLDivElement;
   let container!: HTMLDivElement;
@@ -182,7 +184,7 @@ function GiftOptionsPage(props: {
 
   const handleCategoryChanged = (it: string) => {
     const wasPinned = isPinned()
-    setCategory(it as CategoryName);
+    setCategory(it as GiftCategory);
 
     fastRaf(() => {
       container.scrollTo({top: categoriesContainer.offsetTop - 56, behavior: wasPinned ? 'instant' : smoothScrollBehavior()});
@@ -1103,6 +1105,8 @@ function ChosenGiftPage(props: {
 export default async function showSendGiftPopup(options: {
   peerId: PeerId;
   birthday?: boolean;
+  /** The tab it opens on: the QR screen's "Browse Gifts" opens the store for oneself on the collectibles */
+  category?: GiftCategory;
   resaleParams?: {
     giftId: Long;
     filter?: StarGiftAttribute;
@@ -1211,6 +1215,7 @@ export default async function showSendGiftPopup(options: {
           onClose={() => setShow(false)}
           profileStore={profileStore}
           profileStoreActions={profileStoreActions}
+          initialCategory={options.category}
         />
         <Show when={chosenGift() !== undefined && !(chosenGift() as MyStarGift).isResale}>
           <ChosenGiftPage

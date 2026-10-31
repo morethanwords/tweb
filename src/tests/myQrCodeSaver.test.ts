@@ -79,6 +79,33 @@ describe('myQrCode theme saver', () => {
     expect(getHeldTheme(1, 5 as PeerId)).toBeUndefined();
   });
 
+  it('holds a choice that waits for what to send, and sends it unless a newer one, even on a later screen, came first', async() => {
+    const save = vi.fn().mockResolvedValue(true);
+    const waiting = {_: 'shareThemeEmojiBackdrop' as const, backdrop_id: -5};
+    let ready: (save: ReturnType<typeof theme>) => void;
+    const first = createThemeSaver({account: 1, peerId: 5 as PeerId, save, onError: vi.fn()});
+    const sent = first.sendWhenReady(waiting, new Promise((resolve) => ready = resolve));
+    expect(getHeldTheme(1, 5 as PeerId)).toBe(waiting);
+    ready(theme(6));
+    await sent;
+    expect(save).toHaveBeenCalledWith(theme(6));
+    expect(getHeldTheme(1, 5 as PeerId)).toEqual(theme(6).shown);
+
+    const later = createThemeSaver({account: 1, peerId: 5 as PeerId, save, onError: vi.fn()});
+    const outdated = first.sendWhenReady(waiting, new Promise((resolve) => ready = resolve));
+    later.schedule(theme(7));
+    ready(theme(8));
+    await outdated;
+    expect(save).not.toHaveBeenCalledWith(theme(8));
+    expect(getHeldTheme(1, 5 as PeerId)).toEqual(theme(7).shown);
+  });
+
+  it('lets go of a waiting choice when there is nothing to send for it', async() => {
+    const saver = createThemeSaver({account: 1, peerId: 5 as PeerId, save: vi.fn(), onError: vi.fn()});
+    await saver.sendWhenReady({_: 'shareThemeEmojiBackdrop', backdrop_id: -5}, Promise.reject(new Error('no list')));
+    expect(getHeldTheme(1, 5 as PeerId)).toBeUndefined();
+  });
+
   it('lets go of the held theme on a failure', async() => {
     const onError = vi.fn();
     const saver = createThemeSaver({account: 1, peerId: 5 as PeerId, save: () => Promise.reject(new Error('x')), onError});

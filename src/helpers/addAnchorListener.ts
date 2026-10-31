@@ -36,6 +36,7 @@ type InternalLinkAnchorType =
   | 'contacts'
   | 'chats'
   | 'addstyle'
+  | 'contact'
 ;
 
 export const UNSAFE_ANCHOR_LINK_TYPES: Set<InternalLinkAnchorType> = new Set([
