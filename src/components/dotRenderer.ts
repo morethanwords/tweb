@@ -35,7 +35,6 @@ const WORKER_INIT_TIMEOUT = 8000;
 const MEDIA_DUST_SLOWDOWN = 1.9;
 const MEDIA_DUST_MIN_DURATION = 1800;
 const MEDIA_IMAGE_WAIT = 80;
-const MEDIA_THUMBNAIL_HIDE_DELAY = 120;
 
 const getImageSpoilerConfig = (dpr: number): Partial<DotRendererConfig> => Modes.spoiler2 ? {
   particlesCount: 3.5 * getDefaultParticlesCount(IMAGE_SPOILER_SIZE, IMAGE_SPOILER_SIZE),
@@ -588,7 +587,7 @@ export default class DotRenderer implements AnimationItemWrapper {
             maxDist,
             duration: dustDuration
           });
-          setTimeout(() => underLyingCanvas.style.visibility = 'hidden', MEDIA_THUMBNAIL_HIDE_DELAY);
+          underLyingCanvas.style.visibility = 'hidden';
           setTimeout(() => deferred.resolve(), dustDuration);
         });
 
