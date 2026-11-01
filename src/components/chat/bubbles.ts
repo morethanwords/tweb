@@ -30,6 +30,8 @@ import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTA
 import {FocusDirection, ScrollStartCallbackDimensions} from '@helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '@hooks/useHeavyAnimationCheck';
 import {doubleRaf, fastRaf, fastRafPromise} from '@helpers/schedulers';
+import sequentialDom from '@helpers/sequentialDom';
+import throttleWith from '@helpers/schedulers/throttleWith';
 import withTimeout from '@helpers/schedulers/withTimeout';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import memoizeAsyncWithTTL from '@helpers/memoizeAsyncWithTTL';
@@ -224,7 +226,7 @@ import {
 import isSuspiciousPeer from '@appManagers/utils/peers/isSuspiciousPeer';
 import ejectBubble from '@components/chat/bubbles/ejectBubble';
 import {generateGradient, generateTail, getGuestChatViaFromId, getMid, isGuestChatMessage, isMessage, isMessageForVerificationBot, isVerificationBot} from '@components/chat/utils';
-import {advanceOutgoingMessageGradient, holdOutgoingMessageGradient} from '@helpers/outgoingMessageGradient';
+import {advanceOutgoingMessageGradient, holdOutgoingMessageGradient, measureOutgoingMessageGradientHold} from '@helpers/outgoingMessageGradient';
 import OutgoingGradientUnion from '@components/chat/outgoingGradientUnion';
 import {ChecklistBubble} from '@components/chat/bubbles/checklist';
 import {getRestrictionReason} from '@helpers/restrictions';
@@ -13498,10 +13500,20 @@ export default class ChatBubbles {
       await this.onAnimateLadder();
     }
 
+    // * a scroll while they zoom moves them under the frame: the pieces of the gradient they hold are placed where the
+    // * frame is again, once a frame, read before written
+    let hold: VoidFunction;
+    const onScroll = throttleWith((measure: VoidFunction) => {
+      sequentialDom.measure(measure);
+      sequentialDom.mutate(() => hold?.());
+    }, () => hold = measureOutgoingMessageGradientHold(setBubbles));
+    const {container: scrollContainer} = this.scrollable;
+
     fastRaf(() => {
       // * the list is in place by now, even one that was laid out before it was mounted: the zoom takes the pieces of
       // * the bubbles' gradient in
       holdOutgoingMessageGradient(setBubbles);
+      if(setBubbles.length) scrollContainer.addEventListener('scroll', onScroll, {passive: true});
       this.setStickyDateManually(); // ! maybe it's not efficient
 
       setBubbles.forEach((element) => {
@@ -13518,6 +13530,7 @@ export default class ChatBubbles {
       dispatchHeavyAnimationEvent(promise, timeout)
       .then(() => {
         fastRaf(() => {
+          scrollContainer.removeEventListener('scroll', onScroll);
           setBubbles.forEach((element) => {
             element.style.transitionDelay = '';
             element.classList.remove('can-zoom-fade');
@@ -14747,12 +14760,18 @@ export default class ChatBubbles {
 
         this.messagesQueueOnRenderAdditional = undefined;
 
-        const promise = this.animateAsLadder(additionalFullMid, additionalFullMids, isAdditionRender, backLimit, maxId);
-        promise.then(() => {
-          setTimeout(() => { // preload messages
-            this.loadMoreHistory(reverse, true);
-          }, 0);
-        });
+        const preload = () => setTimeout(() => this.loadMoreHistory(reverse, true), 0);
+        // * a page that comes to a list its cached part already fills the screen of (its oldest message reaches past the
+        // * top, before the page goes in; not a date, which sticks to the top) comes in as a page scrolled to does: the
+        // * ladder is the chat's opening, never something added to a chat on screen, maybe being scrolled
+        const oldest = isAdditionRender && this.chatInner.isConnected && this.chatInner.querySelector('.bubble:not(.is-date)');
+        if(oldest && oldest.getBoundingClientRect().top < this.scrollable.container.getBoundingClientRect().top) {
+          appearance.resolve();
+          preload();
+          return;
+        }
+
+        this.animateAsLadder(additionalFullMid, additionalFullMids, isAdditionRender, backLimit, maxId).then(preload);
       };
 
       // * the renders of this load are through without running it: it does not come

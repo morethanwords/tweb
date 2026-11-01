@@ -431,7 +431,8 @@ export function readOutgoingMessageGradient(content: Element): OutgoingMessageGr
  * states read). The reads are made now; what is returned writes
  */
 export function measureOutgoingMessageGradientHold(elements: HTMLElement[]): VoidFunction | undefined {
-  const held = elements.filter((element) => element.closest('.bubble.is-out'));
+  // * one laid out: a bubble deleted while it moves is not
+  const held = elements.filter((element) => element.offsetParent && element.closest('.bubble.is-out'));
   const frame = held[0]?.closest('.bubbles');
   if(!frame || !hasOutgoingMessageGradient(frame)) {
     return;

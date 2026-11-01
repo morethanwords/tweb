@@ -19,7 +19,7 @@ beforeAll(async() => {
   ChatBubbles = (await loadChatBubbles()).bubbles.default;
 }, LOAD_CHAT_BUBBLES_TIMEOUT);
 
-function makeHarness() {
+function makeHarness(chatInner = document.createElement('div')) {
   const firstScreen = deferredPromise<void>();
   const freshPage = deferredPromise<any>();
   // * the peer change, still waiting for the chat's dialog after its list is mounted
@@ -37,6 +37,9 @@ function makeHarness() {
       }})
     },
     isFirstLoad: true,
+    // * not mounted yet, unless a test mounts one
+    chatInner,
+    scrollable: {container: document.createElement('div')},
     requestHistory: async() => ({cached: false, result: freshPage}),
     getRenderedHistory: (): any[] => [],
     renderFirstScreen: () => ({promise: firstScreen}),
@@ -92,4 +95,34 @@ test('the zoom of a render before the list is mounted waits for it', async() => 
 
   expect(harness.resolveLadderAnimation).toBeUndefined();
   expect(settled).toBe(true);
+});
+
+test('the fresh page that comes to a list its cached part already fills comes in without the zoom', async() => {
+  // * the cached part on screen, its oldest message past the top of it, and a date at the top that sticks there
+  const chatInner = document.createElement('div');
+  const date = document.createElement('div');
+  date.className = 'bubble is-date';
+  const oldest = document.createElement('div');
+  oldest.className = 'bubble';
+  oldest.getBoundingClientRect = () => ({top: -100} as DOMRect);
+  chatInner.append(date, oldest);
+  document.body.append(chatInner);
+  const {harness, firstScreen, freshPage} = makeHarness(chatInner);
+  const animateAsLadder = harness.animateAsLadder = vi.fn(async() => {});
+  const result = await harness.getHistory(undefined, true, false, '10_10');
+  const appearance = harness.ladderAppearance;
+  harness.messagesQueueOnRenderAdditional();
+  firstScreen.resolve();
+  await result.promise;
+  harness.startHeldLadder();
+
+  freshPage.resolve({history: [9]});
+  await result.waitPromise;
+  await new Promise((resolve) => setTimeout(resolve));
+
+  expect(animateAsLadder).not.toHaveBeenCalled();
+  expect(appearance.isFulfilled).toBe(true);
+  // * what comes after it is still preloaded
+  expect(harness.loadMoreHistory).toHaveBeenCalledWith(true, true);
+  chatInner.remove();
 });
