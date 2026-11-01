@@ -17,7 +17,8 @@ const makeTheme = (wallpaper?: Theme['settings'][number]['wallpaper']) => ({
 } as Theme);
 
 describe('the plain white the server gives the Day base of a cloud theme', () => {
-  const white = {_: 'wallPaperNoFile', id: 1, pFlags: {}, settings: {_: 'wallPaperSettings', pFlags: {}, background_color: 0xffffff}} as const;
+  // as the server sends it: a 0 in a later stop is no colour
+  const white = {_: 'wallPaperNoFile', id: 1, pFlags: {}, settings: {_: 'wallPaperSettings', pFlags: {}, background_color: 0xffffff, second_background_color: 0}} as const;
   const classic = {...factoryWallpaper, slug: 'classic'};
   const make = (base: 'baseThemeDay' | 'baseThemeNight', wallpaper: any) => {
     const entry = {_: 'themeSettings', pFlags: {}, base_theme: {_: base}, accent_color: 0, wallpaper} as any;
@@ -29,10 +30,13 @@ describe('the plain white the server gives the Day base of a cloud theme', () =>
     expect(getCloudThemeWallpaper(theme, theme.settings[0])).toBe(classic);
   });
 
-  test('another colour, or another base, stays', () => {
+  test('another colour, a gradient from white, or another base, stays', () => {
     const colored = {...white, settings: {...white.settings, background_color: 0xff0000}};
     const day = make('baseThemeDay', colored);
     expect(getCloudThemeWallpaper(day, day.settings[0])).toBe(colored);
+    const gradient = {...white, settings: {...white.settings, second_background_color: 0x2d7ed5}};
+    const gradientDay = make('baseThemeDay', gradient);
+    expect(getCloudThemeWallpaper(gradientDay, gradientDay.settings[0])).toBe(gradient);
     const night = make('baseThemeNight', white);
     expect(getCloudThemeWallpaper(night, night.settings[0])).toBe(white);
   });

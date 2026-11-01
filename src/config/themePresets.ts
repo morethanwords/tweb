@@ -11,7 +11,7 @@
  */
 
 import type {BaseTheme, Theme, ThemeSettings, WallPaper} from '@layer';
-import {hsvToRgb, rgbToHsv} from '@helpers/color';
+import {getColorsFromWallPaper, hsvToRgb, rgbToHsv} from '@helpers/color';
 
 export type AccentPresetWallpaper = {
   intensity: number,            // 1..100; sign is derived from `dark`
@@ -146,12 +146,13 @@ export function tintedBaseWallpaperFor(baseColor: BaseColorName): AccentPresetWa
 
 // The server gives the Day base of its cloud themes a plain white instead of a wallpaper; the theme's
 // own wallpaper is on its Classic base, which is a light one too. A white picked by the user is
-// kept on the AppTheme and never comes through here.
+// kept on the AppTheme and never comes through here. Only a white alone gives way (its trailing 0
+// stop is no colour, see getWallPaperColors): a gradient that starts at white is a wallpaper.
 export function getCloudThemeWallpaper(theme: Theme, themeSettings: ThemeSettings): WallPaper {
   const wallPaper = themeSettings.wallpaper;
   const isPlainDay = themeSettings.base_theme._ === 'baseThemeDay' &&
     wallPaper?._ === 'wallPaperNoFile' &&
-    wallPaper.settings?.background_color === 0xffffff;
+    getColorsFromWallPaper(wallPaper) === '#ffffff';
   return isPlainDay ? theme.settings.find((s) => s.base_theme._ === 'baseThemeClassic')?.wallpaper ?? wallPaper : wallPaper;
 }
 
