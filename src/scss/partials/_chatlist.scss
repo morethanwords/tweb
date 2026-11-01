@@ -590,6 +590,8 @@ ul.chatlist {
     margin: 0 .5rem .5rem;
     // border: 1px solid var(--border-color);
     background-color: var(--light-filled-secondary-text-color);
+    // a plate with margins on every width: .row-clickable rounds only above handhelds
+    border-radius: $border-radius-medium;
 
     &-container {
       height: 0;

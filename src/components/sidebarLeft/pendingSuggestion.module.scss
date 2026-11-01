@@ -2,6 +2,9 @@
 @use "../../scss/variables" as *;
 
 .suggestion {
+  // a plate with margins on every width: .row-clickable rounds only above handhelds
+  border-radius: $border-radius-medium;
+
   &Subtitle {
     font-size: var(--font-size-16);
     line-height: var(--line-height-16);
