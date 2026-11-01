@@ -1,9 +1,11 @@
 /*
  * The service worker streams every file through a port of its own to the MTProto worker, handed over
  * by the first tab it counts as connected. A tab it does not count - one that answered the startup check
- * late, one it took for gone - must still get that port, or every video hangs until the worker restarts.
+ * late, one it took for gone - must still get that port, or every video hangs until the worker restarts;
+ * and a window with no app in it to answer, the Document PiP window, must never get it.
  */
 import {afterEach, beforeEach, describe, expect, test, vi} from 'vitest';
+import deferred from '@/tests/helpers/deferred';
 
 const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
@@ -59,15 +61,25 @@ vi.mock('@lib/passcode/deferredIsUsingPasscode', () => ({default: {
 }}));
 
 const tab = {id: 'tab-1', type: 'window', frameType: 'top-level'};
+// * the Document PiP window the app moves into: a window of the origin, with no app of its own to answer
+const pip = {id: 'pip-1', type: 'window', frameType: 'auxiliary'};
 
-const startWorker = () => import('@lib/serviceWorker/index.service');
+const startWorker = async() => {
+  await import('@lib/serviceWorker/index.service');
+  await vi.advanceTimersByTimeAsync(0);
+};
 
-const fetchFromTab = (clientId: string) => (self as any).onfetch({
+const fetchFrom = (client: {id: string}) => (self as any).onfetch({
   request: {url: 'https://web.telegram.org/k/stream/%7B%7D', mode: 'cors', headers: new Headers()},
-  clientId,
+  clientId: client.id,
   respondWith: () => {}
 });
 
+const answerHelloFrom = (...windows: any[]) => mocks.invoke.mockImplementation((type: string, payload: any, withAck: any, target: any) => {
+  return type === 'hello' && windows.includes(target) ? Promise.resolve() : new Promise(() => {});
+});
+
+const hellosSentTo = (target: any) => mocks.invoke.mock.calls.filter(([type, , , source]) => type === 'hello' && source === target);
 const portsSentTo = (target: any) => mocks.invokeVoid.mock.calls.filter(([type, , source]) => type === 'port' && source === target);
 
 describe('the service worker\'s MTProto port', () => {
@@ -77,30 +89,25 @@ describe('the service worker\'s MTProto port', () => {
     mocks.invoke.mockReset().mockReturnValue(new Promise(() => {}));
     mocks.invokeVoid.mockReset();
     mocks.getWindowClients.mockReset().mockResolvedValue([]);
-    (self as any).clients = {get: vi.fn(async(id: string) => id === tab.id ? tab : undefined)};
   });
 
   afterEach(() => {
     vi.useRealTimers();
-    delete (self as any).clients;
     delete (self as any).onfetch;
   });
 
   test('goes to a tab that answers the startup check late', async() => {
-    let answer: () => void;
-    mocks.invoke.mockImplementation((type: string) => type === 'hello' ?
-      new Promise<void>((resolve) => answer = resolve) :
-      new Promise(() => {}));
+    const answer = deferred();
+    mocks.invoke.mockImplementation((type: string) => type === 'hello' ? answer.promise : new Promise(() => {}));
     mocks.getWindowClients.mockResolvedValue([tab]);
 
     await startWorker();
-    await vi.advanceTimersByTimeAsync(0);
-    expect(mocks.invoke).toHaveBeenCalledWith('hello', undefined, undefined, tab);
+    expect(hellosSentTo(tab)).toHaveLength(1);
 
     // * the tab is busy or frozen while the worker starts, and answers well after it
     await vi.advanceTimersByTimeAsync(30e3);
     expect(portsSentTo(tab)).toHaveLength(0);
-    answer();
+    answer.resolve();
     await vi.advanceTimersByTimeAsync(0);
 
     expect(portsSentTo(tab), 'the late answer was dropped').toHaveLength(1);
@@ -108,9 +115,10 @@ describe('the service worker\'s MTProto port', () => {
 
   test('goes to a tab the worker does not count with its next request', async() => {
     await startWorker();
-    await vi.advanceTimersByTimeAsync(0);
+    answerHelloFrom(tab);
+    mocks.getWindowClients.mockResolvedValue([tab]);
 
-    fetchFromTab(tab.id);
+    fetchFrom(tab);
     await vi.advanceTimersByTimeAsync(0);
 
     expect(portsSentTo(tab), 'the request hangs with no port').toHaveLength(1);
@@ -119,30 +127,43 @@ describe('the service worker\'s MTProto port', () => {
 
   test('costs a connected tab\'s requests nothing and is not sent twice', async() => {
     await startWorker();
+    answerHelloFrom(tab);
+    mocks.getWindowClients.mockResolvedValue([tab]);
+    fetchFrom(tab);
     await vi.advanceTimersByTimeAsync(0);
-    fetchFromTab(tab.id);
-    await vi.advanceTimersByTimeAsync(0);
-    const getClient = (self as any).clients.get;
-    getClient.mockClear();
+    mocks.getWindowClients.mockClear();
 
-    fetchFromTab(tab.id);
-    fetchFromTab(tab.id);
+    fetchFrom(tab);
+    fetchFrom(tab);
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(getClient).not.toHaveBeenCalled();
+    expect(mocks.getWindowClients).not.toHaveBeenCalled();
     expect(portsSentTo(tab)).toHaveLength(1);
   });
 
-  test('is not handed to anything but a window', async() => {
-    const worker = {id: 'worker-1', type: 'sharedworker'};
-    (self as any).clients.get = vi.fn(async() => worker);
+  test('goes to the tab whose app answers, not to the PiP window the request comes from', async() => {
     await startWorker();
+    answerHelloFrom(tab);
+    mocks.getWindowClients.mockResolvedValue([pip, tab]);
+
+    fetchFrom(pip);
     await vi.advanceTimersByTimeAsync(0);
 
-    fetchFromTab(worker.id);
-    fetchFromTab('');
+    expect(portsSentTo(pip), 'nobody reads the port there').toHaveLength(0);
+    expect(portsSentTo(tab)).toHaveLength(1);
+  });
+
+  test('asks a window once while its answer is awaited', async() => {
+    await startWorker();
+    mocks.getWindowClients.mockResolvedValue([pip]);
+
+    fetchFrom(pip);
+    await vi.advanceTimersByTimeAsync(0);
+    fetchFrom(pip);
+    fetchFrom(pip);
     await vi.advanceTimersByTimeAsync(0);
 
+    expect(hellosSentTo(pip)).toHaveLength(1);
     expect(mocks.invokeVoid.mock.calls.filter(([type]) => type === 'port')).toHaveLength(0);
   });
 });

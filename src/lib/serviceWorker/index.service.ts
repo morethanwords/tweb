@@ -188,37 +188,44 @@ const {
   onClosedWindows: onDownloadClosedWindows
 } = handleDownload(serviceMessagePort);
 
+const helloAwaiting: Set<string> = new Set();
+let checkingWindows: Promise<void>;
+
 // * service worker can be killed, so won't get 'hello' event
-async function startupCheck() {
+// * a window is connected once it answers: only the app's tabs do, never a window with no app in it (the
+// * Document PiP window the app moves into), which would take the MTProto port with nobody to read it
+async function helloWindows(from: string) {
   const windowClients = await getWindowClients();
   const length = windowClients.length;
-  log(`got ${length} windows from the start`);
+  log(`got ${length} windows from`, from);
   windowClients.forEach((windowClient) => {
     if(windowClient.frameType === 'none') {
       log.warn('skipping bugged Safari starting window', windowClient.id);
       return;
     }
 
-    log('checking window', windowClient.id);
-    try {
-      const promise = serviceMessagePort.invoke(
-        'hello',
-        undefined,
-        undefined,
-        windowClient
-      );
-
-      // * a busy or frozen tab answers long after the worker has started, and is no less alive for it:
-      // * nothing asks it again, so dropping a late answer left the worker with no MTProto port
-      promise.finally(() => {
-        onWindowConnected(windowClient, 'startup check');
-      });
-    } catch(err) {
-      log.error('failed to send hello to window', windowClient.id, err);
+    if(helloAwaiting.has(windowClient.id)) {
+      return;
     }
+
+    log('checking window', windowClient.id);
+    helloAwaiting.add(windowClient.id);
+    // * a busy or frozen tab answers long after it is asked, and is no less alive for it:
+    // * dropping a late answer left the worker with no MTProto port
+    serviceMessagePort.invoke('hello', undefined, undefined, windowClient).then(() => {
+      onWindowConnected(windowClient, from);
+    }, (err) => {
+      log.error('failed to send hello to window', windowClient.id, err);
+    }).finally(() => {
+      helloAwaiting.delete(windowClient.id);
+    });
   });
 }
-startupCheck();
+
+const checkWindows = (from: string) => checkingWindows ??= helloWindows(from).finally(() => {
+  checkingWindows = undefined;
+});
+checkWindows('startup check');
 
 const connectedWindows: Map<string, WindowClient> = new Map();
 (self as any).connectedWindows = connectedWindows;
@@ -271,22 +278,6 @@ watchCacheStoragesLifetime({
 
 watchMtprotoOnDev({connectedWindows, onWindowConnected});
 
-/**
- * A tab the worker does not count as connected - its startup answer was lost, or it was taken for gone -
- * still asks for files, and with no MTProto port they hang until the worker restarts. Asking says it is
- * alive, so take it back. Costs nothing while the port is there.
- */
-const reconnectWindowIfNeeded = async(clientId: string) => {
-  if(_mtprotoMessagePort || !clientId) {
-    return;
-  }
-
-  const client = await ctx.clients.get(clientId);
-  if(client?.type === 'window' && !_mtprotoMessagePort) {
-    onWindowConnected(client as WindowClient, 'fetch');
-  }
-};
-
 const onFetch = (event: FetchEvent): void => {
   // Web manifests must reach the network so installed PWA metadata can update.
   if(
@@ -302,7 +293,12 @@ const onFetch = (event: FetchEvent): void => {
     return;
   }
 
-  reconnectWindowIfNeeded(event.clientId);
+  // * a tab the worker does not count as connected - its startup answer was lost, or it was taken for gone -
+  // * still asks for files, and with no MTProto port they hang until the worker restarts. The request may come
+  // * from the PiP window rather than the tab its app runs in, so every window is asked again
+  if(!_mtprotoMessagePort) {
+    checkWindows('fetch');
+  }
 
   try {
     // const [, url, scope, params] = /http[:s]+\/\/.*?(\/(.*?)(?:$|\/(.*)$))/.exec(event.request.url) || [];
