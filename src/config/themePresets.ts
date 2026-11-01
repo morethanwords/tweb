@@ -10,7 +10,7 @@
  * separate "no preset" choice.
  */
 
-import type {BaseTheme, ThemeSettings, WallPaper} from '@layer';
+import type {BaseTheme, Theme, ThemeSettings, WallPaper} from '@layer';
 import {hsvToRgb, rgbToHsv} from '@helpers/color';
 
 export type AccentPresetWallpaper = {
@@ -142,6 +142,17 @@ export function nearestTintedBaseColor(accentRgb: number): BaseColorName {
 
 export function tintedBaseWallpaperFor(baseColor: BaseColorName): AccentPresetWallpaper | undefined {
   return TINTED_BASE_WALLPAPERS[baseColor];
+}
+
+// The server gives the Day base of its cloud themes a plain white instead of a wallpaper; the theme's
+// own wallpaper is on its Classic base, which is a light one too. A white picked by the user is
+// kept on the AppTheme and never comes through here.
+export function getCloudThemeWallpaper(theme: Theme, themeSettings: ThemeSettings): WallPaper {
+  const wallPaper = themeSettings.wallpaper;
+  const isPlainDay = themeSettings.base_theme._ === 'baseThemeDay' &&
+    wallPaper?._ === 'wallPaperNoFile' &&
+    wallPaper.settings?.background_color === 0xffffff;
+  return isPlainDay ? theme.settings.find((s) => s.base_theme._ === 'baseThemeClassic')?.wallpaper ?? wallPaper : wallPaper;
 }
 
 // Blend an arbitrary wallpaper toward the iOS Dark Blue palette so it reads navy-dominant on

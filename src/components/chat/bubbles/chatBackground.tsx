@@ -170,7 +170,7 @@ function resolveBackgroundSync(
   return untrack(() => {
     const globalTheme = themeController.getTheme();
     const theme = options.theme ?? globalTheme;
-    const wallPaper = options.wallPaper ?? themeController.getThemeSettings(theme).wallpaper;
+    const wallPaper = options.wallPaper ?? themeController.getThemeWallpaper(theme);
     return {theme, wallPaper};
   });
 }

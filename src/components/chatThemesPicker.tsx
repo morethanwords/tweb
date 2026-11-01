@@ -8,7 +8,7 @@ import ListenerSetter from '@helpers/listenerSetter';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {IS_SAFARI} from '@environment/userAgent';
 import {DEFAULT_THEME} from '@config/state';
-import {blendWallpaperForTinted} from '@config/themePresets';
+import {blendWallpaperForTinted, getCloudThemeWallpaper} from '@config/themePresets';
 import {BaseTheme, Theme} from '@layer';
 import rootScope from '@lib/rootScope';
 import I18n from '@lib/langPack';
@@ -195,7 +195,7 @@ export default function ChatThemesPicker(props: ChatThemesPickerProps) {
       .filter((themeSettings) => AVAILABLE_BASE_THEMES.has(themeSettings.base_theme._))
       .map((themeSettings) => {
         const shouldBlend = themeSettings.base_theme._ === 'baseThemeTinted' && !isCurated && themeSettings.wallpaper;
-        const wp = shouldBlend ? blendWallpaperForTinted(themeSettings.wallpaper, themeSettings.accent_color) : themeSettings.wallpaper;
+        const wp = shouldBlend ? blendWallpaperForTinted(themeSettings.wallpaper, themeSettings.accent_color) : getCloudThemeWallpaper(theme, themeSettings);
         const result = AppBackgroundTab.addWallPaper(wp, undefined, themeSettings.base_theme._);
         // addWallPaper returns undefined for a pattern wallpaper with no colors —
         // skip rather than deref (matches the tinted-fallback guard below).
