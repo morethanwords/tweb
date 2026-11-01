@@ -119,6 +119,7 @@ export class AppBackgroundTab {
           theme={theme}
           wallPaper={wallPaper}
           transition="instant"
+          colorsFirst
           width={size.width}
           height={size.height}
           onReady={() => deferred.resolve()}
@@ -140,7 +141,6 @@ export class AppBackgroundTab {
     return {
       container,
       media,
-      loadPromise: deferred as Promise<void>,
       dispose
     };
   }

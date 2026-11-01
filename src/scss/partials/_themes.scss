@@ -1,4 +1,13 @@
+@use "sass:math";
 @use "../shared" as *;
+
+// * a theme's tile (the strip's height less its gaps) and the bubbles of the chat in miniature on it
+$theme-tile-width: 4.5rem;
+$theme-tile-height: 6rem;
+$theme-bubble-width: 2.5rem;
+$theme-bubble-height: 1.25rem;
+$theme-bubble-out-top: .5rem;
+$theme-bubble-out-end: .375rem;
 
 // Section-edge extension: pulls -.5rem on each side so the element flushes to the section's
 // background edge instead of inheriting the section's .5rem horizontal gutter.
@@ -39,7 +48,7 @@
 .themes {
   &-container {
     @extend %horizontal-section-strip;
-    height: 6.5rem;
+    height: $theme-tile-height + .5rem;
   }
 }
 
@@ -48,7 +57,7 @@
     height: calc(100% - .5rem);
     margin: 0 .25rem;
     border-radius: $border-radius-medium;
-    width: 4.5rem;
+    width: $theme-tile-width;
     flex: 0 0 auto;
     position: relative;
     display: flex;
@@ -141,8 +150,8 @@
   }
 
   &-bubble {
-    width: 2.5rem;
-    height: 1.25rem;
+    width: $theme-bubble-width;
+    height: $theme-bubble-height;
     border-radius: 1.75rem;
     background-color: #fff;
     position: absolute;
@@ -150,11 +159,22 @@
 
     // * a chat in miniature: the outgoing bubble at the inline end, as in the chat itself
     &.is-out {
-      top: .5rem;
-      inset-inline-end: .375rem;
+      top: $theme-bubble-out-top;
+      inset-inline-end: $theme-bubble-out-end;
       background-color: var(--light-filled-message-out-primary-color);
-      // * the theme's gradient of the outgoing bubbles, whole (`message-out-gradient`)
+      // * the theme's gradient of the outgoing bubbles (`message-out-gradient`) over the tile, as over a chat: the
+      // * bubble shows the part of it it stands on, as a bubble of the chat does - the whole of it in a bubble this
+      // * small would be every colour of it in a stripe. In fractions of the tile, which a host scaling the tile
+      // * keeps (`chatTips`)
       background-image: var(--message-out-gradient);
+      background-size: math.percentage(math.div($theme-tile-width, $theme-bubble-width)) math.percentage(math.div($theme-tile-height, $theme-bubble-height));
+      background-position:
+        math.percentage(math.div($theme-tile-width - $theme-bubble-out-end - $theme-bubble-width, $theme-tile-width - $theme-bubble-width))
+        math.percentage(math.div($theme-bubble-out-top, $theme-tile-height - $theme-bubble-height));
+
+      .is-rtl & {
+        background-position-x: math.percentage(math.div($theme-bubble-out-end, $theme-tile-width - $theme-bubble-width));
+      }
     }
 
     &.is-in {

@@ -187,11 +187,6 @@ export default class ChatRecording {
     attachClickEvent(this.input.btnCancelRecord, this.onCancelRecordClick, {listenerSetter: this.input.listenerSetter});
 
     this.recorder.onstop = () => {
-      // the send button's circle flies into the voice message's play button
-      if(this.isStoppedToSend()) {
-        this.input.chat.bubbles?.sendFlights?.captureVoice({button: this.input.btnSend});
-      }
-
       this.setRecording(false);
       this.input.chatInput.classList.remove('is-locked');
 

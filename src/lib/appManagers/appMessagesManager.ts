@@ -11331,25 +11331,19 @@ export class AppMessagesManager extends AppManager {
     const isUnread = !recentReactions && reactions?.pFlags.min && reactions.results.length ?
       wasUnread :
       !!recentReactions?.some((reaction) => reaction.pFlags.unread);
-    if(recentReactions?.length && message.pFlags.out) { // * if user added a reaction to our message
-      const recentReaction = recentReactions[recentReactions.length - 1];
-      if(
-        this.appPeersManager.getPeerId(recentReaction.peer_id) !== this.appPeersManager.peerId && (
-          !previousRecentReactions ||
-          previousRecentReactions.length <= recentReactions.length
-        ) && (
-          !previousRecentReactions ||
-          !deepEqual(recentReaction, previousRecentReactions[previousRecentReactions.length - 1])
-        ) && isUnread !== wasUnread
-      ) {
-        this.getNotifyPeerSettings(peerId).then((notifySettings) => {
-          if(/* notifySettings.muted ||  */!notifySettings.peerTypeNotifySettings.show_previews) return;
-          this.notifyAboutMessage(message, {
-            peerReaction: recentReaction,
-            notifySettings
-          });
+    // * someone's reaction to our message that has come unread, the newest first: not one read in another session, which
+    // * comes back changed too, read (as tdesktop's CheckReactionNotificationSchedule)
+    const recentReaction = message.pFlags.out && !wasUnread && recentReactions?.find((reaction) => {
+      return reaction.pFlags.unread && this.appPeersManager.getPeerId(reaction.peer_id) !== this.appPeersManager.peerId;
+    });
+    if(recentReaction) {
+      this.getNotifyPeerSettings(peerId).then((notifySettings) => {
+        if(/* notifySettings.muted ||  */!notifySettings.peerTypeNotifySettings.show_previews) return;
+        this.notifyAboutMessage(message, {
+          peerReaction: recentReaction,
+          notifySettings
         });
-      }
+      });
     }
 
     if(message.pFlags.out && isUnread !== wasUnread) {

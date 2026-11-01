@@ -1,9 +1,11 @@
-import type {Document, DocumentAttribute, Message, MessageEntity, Photo} from '@layer';
+import type {Document, DocumentAttribute, Message, MessageEntity, PageBlock, PageListItem, PageListOrderedItem, Photo, RichText} from '@layer';
+import type {LocalTextWithOptionalEntities} from '@types';
 import calcImageInBox from '@helpers/calcImageInBox';
 import mediaSizes from '@helpers/mediaSizes';
 import canSeeMessageMedia from '@lib/appManagers/utils/messages/canSeeMessageMedia';
 import getGroupedText from '@appManagers/utils/messages/getGroupedText';
 import getMainGroupedMessage from '@appManagers/utils/messages/getMainGroupedMessage';
+import {richMessageToPlainMessage} from '@lib/richMessage';
 
 type HistoryMessage = Message.message | Message.messageService;
 
@@ -29,20 +31,108 @@ type TextPart = {
   collapsedQuotes: number
 };
 
+const richTexts = new WeakMap<object, LocalTextWithOptionalEntities>();
+
+// * a text with its formulas left out: one is laid out as a formula, not as its source is written
+function withoutMath(text: RichText): RichText {
+  if(text?._ === 'textMath') {
+    return {_: 'textEmpty'};
+  } else if(text?._ === 'textConcat') {
+    return {...text, texts: text.texts.map(withoutMath)};
+  } else if(text && 'text' in text && typeof(text.text) === 'object') {
+    return {...text, text: withoutMath(text.text)} as RichText;
+  }
+
+  return text;
+}
+
+// * a block's own texts (not a media's caption, which is no text of a block counted) without their formulas
+function withoutBlockMath<T extends PageBlock | PageListItem | PageListOrderedItem>(block: T): T {
+  const texts: {[key: string]: RichText} = {};
+  for(const key of ['text', 'caption', 'title', 'author']) {
+    const text = (block as any)[key] as RichText;
+    if(text?._?.startsWith('text')) texts[key] = withoutMath(text);
+  }
+
+  return {...block, ...texts};
+}
+
+/**
+ * The blocks of a rich message its height is counted by, for a lower bound: those that show their text as it is written
+ * out - paragraphs, headings, lists, quotes but a collapsed one, code, a closed section's summary and an open one's
+ * blocks, all without their formulas. Any other (a table, whose cells stand side by side or scroll; media and their
+ * captions; a cover; a divider; a formula; a block of a later layer) counts for nothing
+ */
+function getCountedBlocks(blocks: PageBlock[]): PageBlock[] {
+  return blocks.flatMap((block): PageBlock[] => {
+    switch(block._) {
+      case 'pageBlockParagraph':
+      case 'pageBlockTitle':
+      case 'pageBlockSubtitle':
+      case 'pageBlockHeader':
+      case 'pageBlockSubheader':
+      case 'pageBlockHeading1':
+      case 'pageBlockHeading2':
+      case 'pageBlockHeading3':
+      case 'pageBlockHeading4':
+      case 'pageBlockHeading5':
+      case 'pageBlockHeading6':
+      case 'pageBlockKicker':
+      case 'pageBlockFooter':
+      case 'pageBlockThinking':
+      case 'pageBlockPullquote':
+      case 'pageBlockAuthorDate':
+        return [withoutBlockMath(block)];
+      case 'pageBlockPreformatted': // * a display formula's is its source
+        return block.language === 'math' ? [] : [block];
+      case 'pageBlockBlockquote':
+        return block.pFlags?.collapsed ? [] : [withoutBlockMath(block)];
+      case 'pageBlockBlockquoteBlocks':
+        return [{...withoutBlockMath(block), blocks: getCountedBlocks(block.blocks)}];
+      case 'pageBlockDetails':
+        return [{...withoutBlockMath(block), blocks: block.pFlags?.open ? getCountedBlocks(block.blocks) : []}];
+      case 'pageBlockList':
+        return [{...block, items: block.items.map((item) => item._ === 'pageListItemBlocks' ? {...item, blocks: getCountedBlocks(item.blocks)} : withoutBlockMath(item))}];
+      case 'pageBlockOrderedList':
+        return [{...block, items: block.items.map((item) => item._ === 'pageListOrderedItemBlocks' ? {...item, blocks: getCountedBlocks(item.blocks)} : withoutBlockMath(item))}];
+      default:
+        return [];
+    }
+  });
+}
+
+/**
+ * The text of a message: of a rich one (whose own text is empty) the blocks it is counted by (`getCountedBlocks`) as a
+ * plain message writes them out, a block a paragraph at least - its headings and lists lay out taller still
+ */
+function getText(message: Message.message): LocalTextWithOptionalEntities {
+  const richMessage = message.rich_message;
+  if(!richMessage) {
+    return {text: message.message, entities: message.entities};
+  }
+
+  let text = richTexts.get(richMessage);
+  if(!text) {
+    text = richMessageToPlainMessage({...richMessage, blocks: getCountedBlocks(richMessage.blocks || [])});
+    richTexts.set(richMessage, text);
+  }
+
+  return text;
+}
+
 /**
  * The text of a message by how it is laid out. A quote and a code block are blocks: the line breaks around one are
  * its edges, not empty lines; inline code is left out, it may not wrap
  */
-function splitText(message: Message.message): TextPart {
+function splitText({text, entities}: LocalTextWithOptionalEntities): TextPart {
   const part: TextPart = {paragraphs: [], quoteParagraphs: [], codeLines: 0, collapsedQuotes: 0};
-  const text = message.message;
   if(!text) {
     return part;
   }
 
   const blocks: {from: number, to: number, entity: MessageEntity}[] = [];
   let plain = '';
-  for(const entity of message.entities || []) {
+  for(const entity of entities || []) {
     if(entity._ === 'messageEntityPre' || entity._ === 'messageEntityBlockquote' || entity._ === 'messageEntityCode') {
       blocks.push({from: entity.offset, to: entity.offset + entity.length, entity});
     }
@@ -124,8 +214,9 @@ export function getBubbleHeightAtLeast(message: HistoryMessage, inAlbum?: boolea
   }
 
   let height = 0;
-  if(message.message) {
-    const {paragraphs, quoteParagraphs, codeLines, collapsedQuotes} = splitText(message);
+  const text = getText(message);
+  if(text.text) {
+    const {paragraphs, quoteParagraphs, codeLines, collapsedQuotes} = splitText(text);
     const countLines = (paragraphs: string[]) => Math.max(paragraphs.length, Math.ceil(paragraphs.reduce((length, paragraph) => length + paragraph.length, 0) / LINE_CHARS));
     height += LINE * countLines(paragraphs) + SMALL_LINE * (countLines(quoteParagraphs) + codeLines + collapsedQuotes);
   }
@@ -163,8 +254,9 @@ export function estimateBubbleHeight(message: HistoryMessage, metrics: MessageTe
   }
 
   let height = 0;
-  if(message.message) {
-    const {paragraphs, quoteParagraphs, codeLines, collapsedQuotes} = splitText(message);
+  const text = getText(message);
+  if(text.text) {
+    const {paragraphs, quoteParagraphs, codeLines, collapsedQuotes} = splitText(text);
     const countLines = (paragraphs: string[], scale: number) => paragraphs.reduce((lines, paragraph) => {
       return lines + (paragraph ? Math.max(1, Math.ceil(measureTextWidth(paragraph, metrics.font) * scale / metrics.lineWidth)) : 1);
     }, 0);

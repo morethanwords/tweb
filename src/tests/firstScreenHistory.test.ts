@@ -1,4 +1,4 @@
-import {Message, MessageEntity, MessageMedia} from '@layer';
+import {Message, MessageEntity, MessageMedia, PageBlock, PageTableCell, RichText} from '@layer';
 import {countFirstScreen, estimateBubbleHeight, getBubbleHeightAtLeast, joinHistories, keepFrom, keepRange} from '@components/chat/firstScreenHistory';
 
 let nextId = 1;
@@ -92,6 +92,54 @@ describe('getBubbleHeightAtLeast', () => {
 
   it('does not count a self-destructing photo, shown as a line of notice', () => {
     expect(getBubbleHeightAtLeast(message({media: {...photo(720, 1280), ttl_seconds: 10}}))).toBe(0);
+  });
+
+  it('counts the text the blocks of a rich message show, whose own text is empty, and nothing they hide or show otherwise', () => {
+    const text = (text: string): RichText => ({_: 'textPlain', text});
+    const paragraph = (value: string): PageBlock => ({_: 'pageBlockParagraph', text: text(value)});
+    const rich = (...blocks: PageBlock[]): Message.message => ({
+      ...message(),
+      rich_message: {_: 'richMessage', pFlags: {}, blocks, photos: [], documents: []}
+    });
+    expect(getBubbleHeightAtLeast(rich(paragraph('one'), paragraph('two'), paragraph('three')))).toBe(3 * 16);
+    const details = (open: boolean): PageBlock => ({
+      _: 'pageBlockDetails',
+      pFlags: open ? {open} : {},
+      title: text('summary'),
+      blocks: Array.from({length: 10}, (_, index) => paragraph('hidden ' + index))
+    });
+    expect(getBubbleHeightAtLeast(rich(paragraph('one'), {_: 'pageBlockDivider'}, details(false)))).toBe(2 * 16);
+    expect(getBubbleHeightAtLeast(rich(details(true)))).toBe(11 * 16);
+    // * one in a list's item, and a collapsed quote
+    expect(getBubbleHeightAtLeast(rich({
+      _: 'pageBlockList',
+      items: [{_: 'pageListItemBlocks', pFlags: {}, blocks: [paragraph('item'), details(false)]}]
+    }))).toBe(2 * 16);
+    expect(getBubbleHeightAtLeast(rich(paragraph('one'), {
+      _: 'pageBlockBlockquote',
+      pFlags: {collapsed: true},
+      text: text(Array.from({length: 10}, (_, index) => 'line ' + index).join('\n')),
+      caption: {_: 'textEmpty'}
+    }))).toBe(16);
+    // * a formula is laid out as one, not as its source is written
+    const source = Array.from({length: 30}, (_, index) => 'x_' + index).join('\n');
+    expect(getBubbleHeightAtLeast(rich({
+      _: 'pageBlockParagraph',
+      text: {_: 'textConcat', texts: [text('one '), {_: 'textBold', text: {_: 'textMath', source}}]}
+    }, {_: 'pageBlockPreformatted', text: text(source), language: 'math'}))).toBe(16);
+    // * what is not counted: a table (its cells side by side), a cover, media and their captions
+    const cell = (lines: number): PageTableCell => ({_: 'pageTableCell', pFlags: {}, text: text(Array.from({length: lines}, () => 'cell').join('\n')), rowspan: 2});
+    expect(getBubbleHeightAtLeast(rich(paragraph('one'), {
+      _: 'pageBlockTable',
+      pFlags: {},
+      title: {_: 'textEmpty'},
+      rows: [{_: 'pageTableRow', cells: [cell(25), cell(25)]}, {_: 'pageTableRow', cells: []}]
+    }, {_: 'pageBlockCover', cover: details(true)}, {
+      _: 'pageBlockPhoto',
+      pFlags: {},
+      photo_id: '1',
+      caption: {_: 'pageCaption', text: text('a caption'), credit: {_: 'textEmpty'}}
+    }))).toBe(16);
   });
 
   it('does not count a sticker or a service message', () => {

@@ -84,6 +84,11 @@ export type ChatBackgroundProps = {
   onCachedStatus?: (cached: boolean) => void;
   onReady?: () => void;
   /**
+   * A pattern that has to be downloaded shows its colours meanwhile, and fades in over them once it is drawn (a tile
+   * of a list, which is not held back by its pattern). `onReady` still waits for the pattern
+   */
+  colorsFirst?: boolean;
+  /**
    * Hand off the staging-slot reveal to the caller. When set, the effect builds and stages the
    * new bg offstage as usual, then calls `deferReveal(reveal)` — the caller is responsible for
    * invoking `reveal()` synchronously at the right moment (typically alongside bubble mount, so
@@ -111,6 +116,8 @@ type Slot = {
   gradientCanvas?: HTMLCanvasElement;
   patternCanvas?: HTMLCanvasElement;
   image?: HTMLImageElement;
+  /** a pattern's colours alone, which its pattern is still to come over (`colorsFirst`) */
+  colorsOnly?: boolean;
 };
 
 /**
@@ -337,6 +344,7 @@ function clearSlot(slot: Slot) {
   slot.gradientCanvas = undefined;
   slot.patternCanvas = undefined;
   slot.image = undefined;
+  slot.colorsOnly = undefined;
 }
 
 function transitionClassFor(transition: ChatBackgroundTransition): string | undefined {
@@ -463,7 +471,7 @@ export const ChatBackground: Component<ChatBackgroundProps> = (props) => {
 
       const resolved = resolveBackgroundSync({theme, wallPaper}, ctl);
 
-      if(visibleSlot.appliedTheme === resolved.theme && visibleSlot.appliedWallPaper === resolved.wallPaper) {
+      if(visibleSlot.appliedTheme === resolved.theme && visibleSlot.appliedWallPaper === resolved.wallPaper && !visibleSlot.colorsOnly) {
         log('same background, skipping');
         props.onCachedStatus?.(true);
         // No DOM change to reveal — the caller will still try to invoke reveal in sync with
@@ -480,6 +488,19 @@ export const ChatBackground: Component<ChatBackgroundProps> = (props) => {
       if(urlOrPromise !== undefined) {
         cached = !(urlOrPromise instanceof Promise);
         props.onCachedStatus?.(cached);
+        if(
+          !cached &&
+          props.colorsFirst &&
+          (resolved.wallPaper as WallPaper.wallPaper)?.pFlags?.pattern &&
+          getColorsFromWallPaper(resolved.wallPaper)
+        ) {
+          // its colours alone (a pattern built with no picture of it), till the pattern comes over them
+          clearSlot(stagingSlot);
+          attachBuiltToSlot(stagingSlot, buildContent(layer, resolved, undefined, 0, 0));
+          stagingSlot.colorsOnly = true;
+          presentStagingSlot('instant');
+        }
+
         try {
           url = await urlOrPromise;
         } catch(err) {
@@ -507,7 +528,7 @@ export const ChatBackground: Component<ChatBackgroundProps> = (props) => {
       }
 
       const hadPrevious = !!visibleSlot.appliedWallPaper;
-      const transition = resolveTransition(props.transition, cached, hadPrevious);
+      const transition = visibleSlot.colorsOnly ? 'fade' : resolveTransition(props.transition, cached, hadPrevious);
 
       clearSlot(stagingSlot);
       attachBuiltToSlot(stagingSlot, built);

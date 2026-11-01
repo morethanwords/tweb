@@ -537,15 +537,13 @@ export default class ReactionsElement extends HTMLElement {
       element.fireAroundAnimation(element.flight.hit, element.flight.landed);
     });
 
-    // the reactions stand where they end first (the bubble is shown changing till then): an effect takes its place
-    // from its reaction as it loads, before it plays
-    await waitPromise;
+    // the others play as they are chosen, loading meanwhile, and keep to their reaction while the bubble is shown
+    // changing around it (`waitPromise`); one read plays a moment after it stands where it ends
     if(!isShown()) return;
-    waitPromise = withDelay ? pause(150) : undefined;
-
+    const playPromise = withDelay ? Promise.resolve(waitPromise).then(() => pause(150)) : undefined;
     changedResults.forEach((reactionCount) => {
       if(!flown.includes(reactionCount)) {
-        getElement(reactionCount)?.fireAroundAnimation(waitPromise);
+        getElement(reactionCount)?.fireAroundAnimation(playPromise, undefined, waitPromise);
       }
     });
   }

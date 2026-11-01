@@ -569,8 +569,9 @@
  *   - the P2P call popup video containers,
  *   - cloned group-call participant tiles (cloneNode preserves classList),
  *   - the Speakers-and-Camera self preview in app settings.
- * Class is applied at element-creation time by callInstance.getVideoElement,
- * callInstanceBase.tryAddTrack, and the settings tab JSX. */
+ * Class is applied by callInstance.getVideoElement (for the stream the element
+ * shows now: the camera, not the screen), at element-creation time by
+ * callInstanceBase.tryAddTrack, and by the settings tab JSX. */
 .call-video-mirror {
   transform: scaleX(-1);
 }

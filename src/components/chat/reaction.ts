@@ -11,6 +11,7 @@ import wrapSticker from '@components/wrappers/sticker';
 import wrapStickerAnimation from '@components/wrappers/stickerAnimation';
 import LottiePlayer from '@lib/lottie/lottiePlayer';
 import {fastRaf} from '@helpers/schedulers';
+import sequentialDom from '@helpers/sequentialDom';
 import {getMiddleware, Middleware} from '@helpers/middleware';
 import liteMode from '@helpers/liteMode';
 import apiManagerProxy from '@lib/apiManagerProxy';
@@ -1107,8 +1108,11 @@ export default class ReactionElement extends HTMLElement {
     }
   }
 
-  /** `landingPromise`: when the reaction itself plays in its place, the effect around it playing from `waitPromise` */
-  public fireAroundAnimation(waitPromise?: Promise<any>, landingPromise?: Promise<any>) {
+  /**
+   * `landingPromise`: when the reaction itself plays in its place, the effect around it playing from `waitPromise`;
+   * `followUntil`: till when the reaction may move (its message shown changing), which the effect around keeps to
+   */
+  public fireAroundAnimation(waitPromise?: Promise<any>, landingPromise?: Promise<any>, followUntil?: Promise<any>) {
     let add = 0;
     if(this.type === ReactionLayoutType.Inline) {
       add = 14;
@@ -1119,6 +1123,7 @@ export default class ReactionElement extends HTMLElement {
     return ReactionElement?.fireAroundAnimation({
       waitPromise,
       landingPromise,
+      followUntil,
       cache: this,
       middleware: this.middleware,
       reaction: this.reactionCount?.reaction,
@@ -1138,6 +1143,8 @@ export default class ReactionElement extends HTMLElement {
     waitPromise?: Promise<any>,
     // when the reaction's own animation takes its place, if later: a picture of it flown to it lands there then
     landingPromise?: Promise<any>,
+    // till when the reaction may move: the effect around it, which is not inside it, keeps to it till then
+    followUntil?: Promise<any>,
     cache?: {
       hasAroundAnimation: ReactionElement['hasAroundAnimation'],
       wrapStickerPromise?: ReactionElement['wrapStickerPromise']
@@ -1492,6 +1499,25 @@ export default class ReactionElement extends HTMLElement {
           // where the reaction stands as it starts: it may have loaded as the message was still changing
           aroundWrap?.setPosition();
           genericResult?.setPosition();
+          // and it may still be changing: followed every frame till it stands, by one read of it for both effects, made
+          // with the reads of the other effects that follow theirs, before their writes, which only move them
+          if(options.followUntil) {
+            let following = true;
+            options.followUntil.then(() => following = false, () => following = false);
+            const follow = () => {
+              let rect: DOMRect;
+              sequentialDom.measure(() => {
+                if(!removed) rect = options.stickerContainer.getBoundingClientRect();
+              });
+              sequentialDom.mutate(() => {
+                if(removed) return;
+                aroundWrap?.follow(rect);
+                genericResult?.follow(rect);
+                if(following) follow();
+              });
+            };
+            follow();
+          }
 
           // the effect around starts as a reaction flown to it comes near, the reaction itself plays as it lands
           if(div && !onlyAround && options.landingPromise) {

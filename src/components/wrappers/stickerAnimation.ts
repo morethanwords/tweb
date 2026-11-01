@@ -150,13 +150,18 @@ export default function wrapStickerAnimation({
 
   const randomOffsetX = withRandomOffset ? generateRandomSigned(16) : 0;
   const randomOffsetY = withRandomOffset ? generateRandomSigned(4) : 0;
-  const setPosition = () => {
+  // * the target's box it was last placed by
+  let placedBy: DOMRect;
+  // * `rect`: the target's, read already (two effects around one target are placed by one read)
+  const setPosition = (rect?: DOMRect) => {
     if(!isInDOM(target)) {
       unmountAnimation();
       return;
     }
 
-    const rect = target.getBoundingClientRect();
+    rect ??= target.getBoundingClientRect();
+    placedBy = rect;
+    animationDiv.style.translate = '';
 
     const factor = rect.width / 200;
     const stableOffsetX = side === 'center' ? 0 : 16 * (side === 'right' ? 1 : -1) * factor;
@@ -188,7 +193,7 @@ export default function wrapStickerAnimation({
 
   let onScroll: () => void;
   if(scrollable) {
-    onScroll = throttleWithRaf(setPosition);
+    onScroll = throttleWithRaf(() => setPosition());
     scrollable.container.addEventListener('scroll', onScroll);
   }
 
@@ -201,7 +206,20 @@ export default function wrapStickerAnimation({
     emojiAnimationContainer.append(animationDiv);
   }
 
+  // * `follow`: moves it after its target from where it was placed, on the compositor - its own `translate`, which a
+  // * flip in its `transform` keeps - for a target moving every frame
+  const follow = (rect: DOMRect) => {
+    if(!placedBy) {
+      setPosition(rect);
+      return;
+    }
+
+    const x = rect.left + rect.width / 2 - (placedBy.left + placedBy.width / 2);
+    const y = rect.top + rect.height / 2 - (placedBy.top + placedBy.height / 2);
+    animationDiv.style.translate = `${x}px ${y}px`;
+  };
+
   // * `setPosition`: places it at its target again (it is placed as its first frame is drawn, which may be before its
   // * target stands where it ends)
-  return {animationDiv, stickerPromise, setPosition};
+  return {animationDiv, stickerPromise, setPosition, follow};
 }

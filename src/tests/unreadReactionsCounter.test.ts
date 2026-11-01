@@ -121,10 +121,30 @@ describe('unread reactions counter', () => {
     expect(dialog.unread_reactions_count).toBe(0);
   });
 
-  test('a reaction read the usual way still comes off the badge', () => {
+  test('a reaction read the usual way, or in another session, comes off the badge and notifies of nothing', () => {
     const {manager, dialog, update} = makeHarness(1);
+    const getNotifyPeerSettings = manager.getNotifyPeerSettings = vi.fn(manager.getNotifyPeerSettings);
     manager.onUpdateMessageReactions(update(makeReactions(false)));
     expect(dialog.unread_reactions_count).toBe(0);
+    expect(getNotifyPeerSettings).not.toHaveBeenCalled();
+  });
+
+  test('a new reaction notifies of it', () => {
+    const {manager, message, update} = makeHarness(0);
+    message.reactions = undefined;
+    const getNotifyPeerSettings = manager.getNotifyPeerSettings = vi.fn(manager.getNotifyPeerSettings);
+    manager.onUpdateMessageReactions(update(makeReactions(true)));
+    expect(getNotifyPeerSettings).toHaveBeenCalledTimes(1);
+  });
+
+  test('a new reaction put before read ones, the newest first, notifies of it', () => {
+    const {manager, message, update} = makeHarness(0);
+    const read = makeReactions(false).recent_reactions[0];
+    message.reactions = {...makeReactions(false), recent_reactions: [read, read, read]};
+    const getNotifyPeerSettings = manager.getNotifyPeerSettings = vi.fn(manager.getNotifyPeerSettings);
+    const unread = makeReactions(true).recent_reactions[0];
+    manager.onUpdateMessageReactions(update({...makeReactions(true), recent_reactions: [unread, read, read]}));
+    expect(getNotifyPeerSettings).toHaveBeenCalledTimes(1);
   });
 
   test('reading all reactions clears the badge and the cached list at once', async() => {
