@@ -1,7 +1,7 @@
 {
-  "largestCycle": 35,
-  "largestStaticCycle": 21,
-  "reloadPage": 414,
+  "largestCycle": 27,
+  "largestStaticCycle": 19,
+  "reloadPage": 417,
   "dirtyPage": 0,
   "hotInWorkers": 0
 }
