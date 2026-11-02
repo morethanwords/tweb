@@ -5747,13 +5747,12 @@ export default class ChatBubbles {
         /* const add = clientHeight - scrollHeight;
         this.chatInner.style.paddingTop = add + 'px';
         this.scrollable.scrollTop += add; */
+        // * on top of the list's least height (`.bubbles-inner` is `content-box`): what fills the list, the
+        // * unknown user's card, keeps its height
         setPaddingTo = this.chatInner;
         setPaddingTo.style.paddingTop = clientHeight + 'px';
         this.scrollable.setScrollPositionSilently(scrollHeight);
         this.isTopPaddingSet = true;
-        if(shouldShowUnknownUserPlaceholder(this.peerSettings)) {
-          setPaddingTo.style.minHeight = clientHeight + 'px';
-        }
       }
     }
 
@@ -5765,7 +5764,6 @@ export default class ChatBubbles {
         }
 
         setPaddingTo.style.paddingTop = '';
-        setPaddingTo.style.minHeight = '';
         this.isTopPaddingSet = false;
       } : undefined
     };
@@ -5850,7 +5848,8 @@ export default class ChatBubbles {
       this.cleanupPlaceholders(placeholder);
     }
 
-    const {isPaddingNeeded, unsetPadding} = isSponsored ? {} : this.setTopPadding(middleware);
+    // * the room for the list to go up to the message in: only the scroll there takes it back
+    const {isPaddingNeeded, unsetPadding} = scrolledDown ? this.setTopPadding(middleware) : {};
 
     if(scrolledDown) {
       // A forward/reply send collapses the input helper, kicking off

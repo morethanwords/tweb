@@ -647,6 +647,13 @@
   initial-value: 0px;
 }
 
+// * the room above and under the history together (`.bubbles-padding`, Chat.recomputePaddings), given the same way
+@property --bubbles-padding-height {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
 .chat {
   --chat-topbar-height: 3rem;
   --pinned-floating-height: 0px;
@@ -1527,7 +1534,9 @@ $bubbles-keyboard-fade: string.unquote("(var(--bubbles-scrollable-fade-bottom) -
 	display: flex;
 	flex-direction: column;
 	margin: 0 auto;
-	min-height: calc(100% - var(--chat-padding-top) - var(--chat-padding-bottom) - var(--chat-input-height-surplus, 0px) - var(--chat-input-keyboard-height, 0px));
+	// * a short history fills what the room above and under it leaves, to the pixel: with that worked out of other
+	// * numbers it stood off the input (a call's or a player's bar over the topbar) or under it
+	min-height: calc(100% - var(--bubbles-padding-height));
 	justify-content: flex-end;
 	max-width: calc(var(--chat-width) - var(--chat-bubbles-padding) * 2);
   box-sizing: content-box;

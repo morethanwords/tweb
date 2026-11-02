@@ -395,10 +395,10 @@ export default class Chat extends EventListenerBase<{
     this.chatInputKeyboardFinish = finish;
   }
 
-  // * `--chat-input-height-surplus` and `--chat-input-keyboard-height` are not inherited (_chat.scss): a
-  // * rule of the chat's own gives them to the few boxes that read them. Set on the chat, a custom
-  // * property of its is worked out anew for every element in it - a thousand in a short chat, on each
-  // * line the input grows or a reply shown
+  // * `--chat-input-height-surplus`, `--chat-input-keyboard-height` and `--bubbles-padding-height` are not
+  // * inherited (_chat.scss): a rule of the chat's own gives them to the few boxes that read them. Set on
+  // * the chat, a custom property of its is worked out anew for every element in it - a thousand in a short
+  // * chat, on each line the input grows or a reply shown
   private chatInputRule: ReturnType<typeof createStyleRule>;
   private setChatInputRuleProperty(property: string, px: number) {
     if(!this.container) {
@@ -511,6 +511,8 @@ export default class Chat extends EventListenerBase<{
     const bottom = Math.round(bottomBase * rem + this.chatInputSurplusPx + this.chatInputKeyboardPx);
     this.chatPaddingTop[1](top);
     this.chatPaddingBottom[1](bottom);
+    // * what a short history is to fill: what these two leave of the screen (`.bubbles-inner`)
+    this.setChatInputRuleProperty('--bubbles-padding-height', top + bottom);
     if(this.bubbles?.paddingTop) this.bubbles.paddingTop.style.height = top + 'px';
     const paddingBottom = this.bubbles?.paddingBottom;
     if(paddingBottom) {
