@@ -684,6 +684,8 @@ export class AppMessagesManager extends AppManager {
   private messagesStorageByPeerId: {[peerId: string]: MessagesStorage};
   private groupedMessagesStorage: {[groupId: string]: MessagesStorage}; // will be used for albums
   private scheduledMessagesStorage: {[peerId: PeerId]: MessagesStorage};
+  /** the scheduled storages the server's whole list came into: one a send filled first holds only that message */
+  private scheduledMessagesLoaded = new WeakSet<MessagesStorage>();
   private welcomeMessagesStorage: {[peerId: PeerId]: MessagesStorage};
   private welcomeMessagesHashes: Map<PeerId, Long>;
   private logsMessagesStorage: {[peerId: PeerId]: MessagesStorage}; // messages extracted from admin logs
@@ -12748,14 +12750,18 @@ export class AppMessagesManager extends AppManager {
     this.saveMessages([message], {storage, isScheduled: true});
     const newMessage = this.getMessageFromStorage(storage, mid);
 
+    // * a send's own message is here before its update when the chat's list came meanwhile: it is still the send's
+    // * to finish, as a new message of the history is (onUpdateNewMessage asks checkPendingMessage either way)
+    const pendingMessage = this.checkPendingMessage(message);
+    if(pendingMessage) {
+      return;
+    }
+
     if(oldMessage) {
       this.handleEditedMessage(oldMessage, newMessage, storage, richMessageChanged);
       this.rootScope.dispatchEvent('message_edit', {storageKey: storage.key, peerId, mid: message.mid, message});
     } else {
-      const pendingMessage = this.checkPendingMessage(message);
-      if(!pendingMessage) {
-        this.rootScope.dispatchEvent('scheduled_new', message as Message.message);
-      }
+      this.rootScope.dispatchEvent('scheduled_new', message as Message.message);
     }
   };
 
@@ -13368,7 +13374,7 @@ export class AppMessagesManager extends AppManager {
     if(this.appPeersManager.isMonoforum(peerId)) return;
 
     const storage = this.getScheduledMessagesStorage(peerId);
-    if(storage.size) {
+    if(storage.size && this.scheduledMessagesLoaded.has(storage)) {
       return [...storage.keys()];
     }
 
@@ -13382,6 +13388,7 @@ export class AppMessagesManager extends AppManager {
 
         const storage = this.getScheduledMessagesStorage(peerId);
         this.saveMessages(historyResult.messages, {storage, isScheduled: true});
+        this.scheduledMessagesLoaded.add(storage);
         return [...storage.keys()];
       }
 
