@@ -691,9 +691,11 @@ export class ApiManager extends ApiManagerMethods {
 
     let {afterMessageId, prepareTempMessageId} = options;
     if(prepareTempMessageId) {
-      deferred.then(() => {
+      // * whichever way it went: one that failed is waited for no more (MSG_WAIT_FAILED below)
+      const forget = () => {
         delete this.afterMessageTempIds[prepareTempMessageId];
-      });
+      };
+      deferred.then(forget, forget);
     }
 
     if(MOUNT_CLASS_TO) {
@@ -863,7 +865,9 @@ export class ApiManager extends ApiManagerMethods {
           afterMessageId = undefined;
           delete options.afterMessageId;
 
-          if(after) return after.promise.then(() => performRequest());
+          // * sent on its own once the one it waited for is over, whichever way it went, as tdesktop resends it: taken
+          // * down with the one before, a text sent right after a sticker the chat refuses failed with its error
+          if(after) return after.promise.then(() => performRequest(), () => performRequest());
           else return performRequest();
         } else if(!options.rawError && error.code === 500) {
           if(options.noRetry) {
