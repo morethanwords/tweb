@@ -789,6 +789,7 @@ export class AppMessagesManager extends AppManager {
   private mediaTempMap: {[tempId: number]: number} = {};
 
   private typings: {[key: string]: {action: SendMessageAction, timeout?: number}} = {};
+  private uploadActionsSentAt: Map<string, number> = new Map();
 
   private middleware: ReturnType<typeof getMiddleware>;
 
@@ -3723,7 +3724,7 @@ export class AppMessagesManager extends AppManager {
               const percents = Math.max(1, Math.floor(100 * progress.done / progress.total));
               // an ephemeral send is nobody else's business: the chat is not told of the upload
               if(actionName && !activeEphemeralContext) {
-                this.setTyping(peerId, {_: actionName, progress: percents | 0}, undefined, options.threadId);
+                this.sendUploadAction(peerId, options.threadId, {_: actionName, progress: percents | 0});
               }
               sentDeferred.notifyAll(progress);
             });
@@ -14933,15 +14934,35 @@ export class AppMessagesManager extends AppManager {
     return threadId ? `${peerId}_${threadId}` : peerId;
   }
 
+  // * a thread's action goes to the chat itself unless the chat has topics
+  private getTypingThreadId(peerId: PeerId, threadId?: number) {
+    return threadId && (this.appPeersManager.isForum(peerId) || this.appPeersManager.isBotforum(peerId)) ?
+      threadId :
+      undefined;
+  }
+
+  // * an upload action goes to a chat at most once in 5 s for each kind of file, as tdesktop's SendProgressManager
+  // * does (every part of every file uploading there reports, and an album's photos and videos interleave), and then
+  // * it goes for sure: the other side shows it for 6 s, past setTyping's own wait for a repeat
+  private sendUploadAction(peerId: PeerId, threadId: number, action: SendMessageAction) {
+    threadId = this.getTypingThreadId(peerId, threadId);
+    const key = this.getTypingKey(peerId, threadId) + '_' + action._;
+    const now = Date.now();
+    if(now - (this.uploadActionsSentAt.get(key) ?? -Infinity) < 5000) {
+      return;
+    }
+
+    this.uploadActionsSentAt.set(key, now);
+    this.setTyping(peerId, action, true, threadId).catch(noop);
+  }
+
   public async setTyping(
     peerId: PeerId,
     action: SendMessageAction,
     force?: boolean,
     threadId?: number
   ): Promise<boolean> {
-    if(threadId && !this.appPeersManager.isForum(peerId) && !this.appPeersManager.isBotforum(peerId)) {
-      threadId = undefined;
-    }
+    threadId = this.getTypingThreadId(peerId, threadId);
 
     const key = this.getTypingKey(peerId, threadId);
     let typing = this.typings[key];

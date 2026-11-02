@@ -1191,6 +1191,7 @@ export class ApiFileManager extends AppManager {
     };
 
     deferred.notify = (progress: Progress) => {
+      deferred.notifyAll(progress); // * the message it is sent with tells the chat that a file is being sent
       this.rootScope.dispatchEvent('download_progress', progress);
     };
 
