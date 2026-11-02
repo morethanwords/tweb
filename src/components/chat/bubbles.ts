@@ -5486,6 +5486,39 @@ export default class ChatBubbles {
     }
   }
 
+  /**
+   * The observers let go of a bubble taken out of the list - deleted, or replaced by one rendered anew (that one
+   * registers its own as it renders). The observer holds what it watches: a bubble ejected still watched stayed in
+   * memory, with its DOM, until the chat was left. What is watched to be read may be the bubble's time (a post's)
+   */
+  private unobserveBubble(bubble: HTMLElement) {
+    const {observer} = this;
+    if(!observer) {
+      return;
+    }
+
+    for(const target of [bubble, bubble.timeSpan]) {
+      if(!target) continue;
+      observer.unobserve(target, this.unreadedObserverCallback);
+      this.unreaded.delete(target);
+      observer.unobserve(target, this.unreadedContentObserverCallback);
+      this.unreadedContent.delete(target);
+    }
+
+    observer.unobserve(bubble, this.viewsObserverCallback);
+    observer.unobserve(bubble, this.readMetricsObserverCallback);
+    this.readMetricsBubbles.delete(bubble);
+    observer.unobserve(bubble, this.stickerEffectObserverCallback);
+    observer.unobserve(bubble, this.messageEffectObserverCallback);
+    observer.unobserve(bubble, this.guestChatHintObserverCallback);
+  }
+
+  /** Takes a bubble out for good (`ejectBubble`), its observers letting it go first */
+  private ejectWatchedBubble(bubble: HTMLElement) {
+    this.unobserveBubble(bubble);
+    ejectBubble(bubble);
+  }
+
   public destroyBubble(
     bubble: HTMLElement,
     animate?: boolean,
@@ -5501,7 +5534,7 @@ export default class ChatBubbles {
       this.skippedMids.delete(transaction.fullMid);
       this.bubbleGroups.changeBubbleByBubble(candidate, transaction.source);
       this.hiddenLinksPendingBubbles.delete(candidate);
-      ejectBubble(candidate);
+      this.ejectWatchedBubble(candidate);
       bubble = transaction.source;
       fullMid = getBubbleFullMid(bubble) || fullMid;
     }
@@ -5560,21 +5593,8 @@ export default class ChatBubbles {
 
     this.bubbleGroups.removeAndUnmountBubble(bubble);
     if(this.observer) {
-      this.observer.unobserve(bubble, this.unreadedObserverCallback);
-      this.unreaded.delete(bubble);
-
-      this.observer.unobserve(bubble, this.unreadedContentObserverCallback);
-      this.unreadedContent.delete(bubble);
-
-      this.observer.unobserve(bubble, this.viewsObserverCallback);
+      this.unobserveBubble(bubble);
       this.viewsMids.delete(fullMid);
-
-      this.observer.unobserve(bubble, this.readMetricsObserverCallback);
-      this.readMetricsBubbles.delete(bubble);
-
-      this.observer.unobserve(bubble, this.stickerEffectObserverCallback);
-      this.observer.unobserve(bubble, this.messageEffectObserverCallback);
-      this.observer.unobserve(bubble, this.guestChatHintObserverCallback);
     }
 
     bubble.timeAppenders = bubble.timeSpan = undefined;
@@ -7736,7 +7756,7 @@ export default class ChatBubbles {
         this.bubblesToReplace.delete(bubble);
         this.bubbleGroups.changeBubbleByBubble(bubble, transaction.source);
         this.hiddenLinksPendingBubbles.delete(bubble);
-        ejectBubble(bubble);
+        this.ejectWatchedBubble(bubble);
         continue;
       }
 
@@ -7746,10 +7766,11 @@ export default class ChatBubbles {
 
       this.hiddenLinksPendingBubbles.delete(transaction.source);
       if(keptSources) {
+        this.unobserveBubble(transaction.source);
         transaction.source.remove();
         keptSources.push(transaction.source);
       } else {
-        ejectBubble(transaction.source);
+        this.ejectWatchedBubble(transaction.source);
       }
 
       const regroupMessage = transaction.regroupMessage;
@@ -7828,7 +7849,7 @@ export default class ChatBubbles {
     setBubbleHiddenLinksPending(transaction.source, false);
     setBubbleHiddenLinksFallback(transaction.source, false);
     delete transaction.source.dataset.hiddenLinks;
-    ejectBubble(candidate);
+    this.ejectWatchedBubble(candidate);
     return {bubble: transaction.source, cancelled: true};
   }
 
@@ -8275,6 +8296,8 @@ export default class ChatBubbles {
         newBubble.isConnected &&
         chatInner.contains(newBubble);
       if(!keepVisibleUntilGenerationDetach) {
+        // * what its render registered with the observers (an unread one, a post's views) goes with it
+        this.unobserveBubble(newBubble);
         newBubble.remove();
         middlewareHelper.destroy();
       }
@@ -8356,7 +8379,7 @@ export default class ChatBubbles {
         };
         this.bubblesToReplace.set(newBubble, replacementTransaction);
         this.bubbleGroups.changeBubbleByBubble(bubble, newBubble);
-        if(previousTransaction) ejectBubble(bubble);
+        if(previousTransaction) this.ejectWatchedBubble(bubble);
       }
 
       bubble = this.bubbles[fullMid] = newBubble;
