@@ -1,26 +1,19 @@
 import '@helpers/peerIdPolyfill';
 import {AppDraftsManager} from '@appManagers/appDraftsManager';
-import type {DraftMessage, InputRichMessage, Update} from '@layer';
+import type {DraftMessage, InputRichMessage} from '@layer';
+import {captureDraftUpdates} from '@/tests/helpers/draftUpdates';
 
 const PEER_ID = (42 as UserId).toPeerId(false);
 const GRACE = 2000;
 
-type DraftUpdateListener = (update: Update.updateDraftMessage) => void;
-
 function setup() {
   const manager = new AppDraftsManager();
   const invokeApi = vi.fn(async(_method: string, _params?: unknown): Promise<unknown> => true);
-  let onUpdateDraftMessage: DraftUpdateListener;
+  const updates = captureDraftUpdates();
 
   Object.assign(manager, {
     apiManager: {invokeApi},
-    apiUpdatesManager: {
-      addMultipleEventsListeners: (listeners: {updateDraftMessage: DraftUpdateListener}) => {
-        onUpdateDraftMessage = listeners.updateDraftMessage;
-      },
-      processUpdateMessage: vi.fn(),
-      updatesState: {}
-    },
+    apiUpdatesManager: updates.apiUpdatesManager,
     appMessagesManager: {
       assertRichMessage: async() => {},
       invokeWithRichMessageReferenceRetry: (_input: unknown, invoke: () => Promise<unknown>) => invoke(),
@@ -46,11 +39,10 @@ function setup() {
     localDraft: {_: 'draftMessage', pFlags: {}, date: 0, message}
   });
 
-  const receive = (message: string) => onUpdateDraftMessage({
-    _: 'updateDraftMessage',
+  const receive = (message: string) => updates.receive({
     peer: {_: 'peerUser', user_id: 42},
     draft: {_: 'draftMessage', pFlags: {}, date: 0, message}
-  } as Update.updateDraftMessage);
+  });
 
   const rereads = () => invokeApi.mock.calls.filter(([method]) => method === 'messages.getAllDrafts').length;
 

@@ -128,7 +128,8 @@ export class AppDraftsManager extends AppManager {
   /** Whose draft an update carries: a peer's, a topic's or a monoforum thread's */
   private getUpdateDraftTarget(update: Update.updateDraftMessage) {
     const peerId = this.appPeersManager.getPeerId(update.peer);
-    const monoforumThreadId = peerId !== this.rootScope.myId && update.saved_peer_id && update.draft._ === 'draftMessage' ?
+    // * an empty draft is the thread's too: one cleared elsewhere, or by a message sent there from another device
+    const monoforumThreadId = peerId !== this.rootScope.myId && update.saved_peer_id ?
       this.appPeersManager.getPeerId(update.saved_peer_id) :
       undefined;
     return {peerId, threadId: update.threadId || update.top_msg_id, monoforumThreadId};
