@@ -628,9 +628,10 @@ export default class WebApp {
     clearTimeout(this.reloadTimeout);
     clearTimeout(this._deviceMotionTimeoutId);
     clearTimeout(this._deviceOrientationTimeoutId);
-    window.removeEventListener('devicemotion', this.handleDeviceMotion);
-    window.removeEventListener('deviceorientation', this.handleDeviceOrientation);
-    window.removeEventListener('deviceorientationabsolute', this.handleDeviceOrientation);
+    // * removed as they were added, in the capture phase: a listener removed without it stays
+    window.removeEventListener('devicemotion', this.handleDeviceMotion, true);
+    window.removeEventListener('deviceorientation', this.handleDeviceOrientation, true);
+    window.removeEventListener('deviceorientationabsolute', this.handleDeviceOrientation, true);
     this.footerCleanup?.();
   }
 
@@ -730,6 +731,7 @@ export default class WebApp {
             pattern = [65, 60, 40];
             break;
         }
+        break;
       case 'selection_change':
         pattern = [30];
         break;
@@ -968,7 +970,7 @@ export default class WebApp {
   }
 
   protected setupDeviceMotion() {
-    window.removeEventListener('devicemotion', this.handleDeviceMotion);
+    window.removeEventListener('devicemotion', this.handleDeviceMotion, true);
     clearTimeout(this._deviceMotionTimeoutId);
 
     if(this._gyroscopeFreqMs !== -1 || this._accelerometerFreqMs !== -1) {
@@ -992,6 +994,11 @@ export default class WebApp {
 
     const {telegramWebView, webViewOptions} = this;
     const managers = bindManagersToSession(this.managers);
+    // * a refused request lets the next one through: left pending, every later one would go unanswered
+    const cancel = () => {
+      this._fileDownloadPending = false;
+      telegramWebView.dispatchWebViewEvent('file_download_requested', {status: 'cancelled'});
+    };
 
     try {
       const allow = await managers.appBotsManager.checkDownloadFileParams(
@@ -1001,11 +1008,11 @@ export default class WebApp {
       );
 
       if(!allow) {
-        telegramWebView.dispatchWebViewEvent('file_download_requested', {status: 'cancelled'});
+        cancel();
         return;
       }
     } catch(e) {
-      telegramWebView.dispatchWebViewEvent('file_download_requested', {status: 'cancelled'});
+      cancel();
       return;
     }
 
@@ -1051,8 +1058,7 @@ export default class WebApp {
       ],
       onClose: () => {
         if(this._fileDownloadPending) {
-          this._fileDownloadPending = false;
-          telegramWebView.dispatchWebViewEvent('file_download_requested', {status: 'cancelled'});
+          cancel();
         }
       }
     });
@@ -1258,7 +1264,7 @@ export default class WebApp {
       web_app_stop_device_orientation: () => {
         this._deviceOrientationFreqMs = -1;
         const eventName = this._deviceOrientationAbsolute ? 'deviceorientationabsolute' : 'deviceorientation';
-        window.removeEventListener(eventName, this.handleDeviceOrientation);
+        window.removeEventListener(eventName, this.handleDeviceOrientation, true);
         this.telegramWebView.dispatchWebViewEvent('device_orientation_stopped', undefined);
         clearTimeout(this._deviceOrientationTimeoutId);
       },
