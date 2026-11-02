@@ -572,7 +572,8 @@ type SendFileArgs = MessageSendingParams & SendFileDetails & Partial<{
 
   stars: number,
   groupedMessage: Message.message,
-  useTempMediaId: boolean,
+  // * the id a paid album's file keeps its media under until it is sent: the album's ids follow each other
+  mediaTempId: number,
 
   // ! only for internal use
   processAfter?: typeof processAfter
@@ -582,7 +583,6 @@ type MakeDocumentAndMetaForSendingFileArgs = Pick<SendFileArgs,
   | 'file'
   | 'strippedBytes'
   | 'entities'
-  | 'useTempMediaId'
   | 'isVoiceMessage'
   | 'width'
   | 'height'
@@ -3557,7 +3557,7 @@ export class AppMessagesManager extends AppManager {
       [caption, entities] = parseMarkdown(caption, entities);
     }
 
-    const mediaTempId = options.useTempMediaId ? this.mediaTempId++ : message.id;
+    const mediaTempId = options.mediaTempId ?? message.id;
 
     const documentAndMeta = this.makeDocumentAndMetaForSendingFile({
       mediaTempId,
@@ -3566,7 +3566,6 @@ export class AppMessagesManager extends AppManager {
       entities,
       ...pickKeys(options, [
         'strippedBytes',
-        'useTempMediaId',
         'isVoiceMessage',
         'width',
         'height',
@@ -4289,10 +4288,18 @@ export class AppMessagesManager extends AppManager {
       callbacks.push(cb);
     };
 
-    let firstMessage: Message.message;
+    let firstResult: ReturnType<AppMessagesManager['sendFile']>;
     const isSingleMessageForAlbum = !!options.stars;
     const preserveMediaTempId = this.mediaTempId;
+    if(isSingleMessageForAlbum) {
+      // * the files reserve their ids at once: finalizing the album reads them as following each other
+      this.mediaTempId += options.sendFileDetails.length;
+    }
+
     const _results = options.sendFileDetails.map(async(details, idx) => {
+      // * a paid album is one message, made by the first file: the others are its media and go into it,
+      // * so they wait for it (sendFile awaits before it makes a message)
+      const groupedMessage = isSingleMessageForAlbum && idx ? (await firstResult).message : undefined;
       const o: Parameters<AppMessagesManager['sendFile']>[0] = {
         peerId,
         isGroupedItem: true,
@@ -4305,8 +4312,8 @@ export class AppMessagesManager extends AppManager {
         replyToQuote: options.replyToQuote,
         threadId: options.threadId,
         sendAsPeerId: options.sendAsPeerId,
-        useTempMediaId: isSingleMessageForAlbum,
-        groupedMessage: isSingleMessageForAlbum && firstMessage,
+        mediaTempId: isSingleMessageForAlbum ? preserveMediaTempId + idx : undefined,
+        groupedMessage,
         groupId,
         stars: options.stars,
         processAfter,
@@ -4319,11 +4326,14 @@ export class AppMessagesManager extends AppManager {
         o.effect = options.effect;
       }
 
-      const result = await this.sendFile(o);
-
+      const promise = this.sendFile(o);
       if(idx === 0) {
-        firstMessage = result.message;
-        firstMessage.paid_message_stars = options.confirmedPaymentResult?.starsAmount;
+        firstResult = promise;
+      }
+
+      const result = await promise;
+      if(idx === 0) {
+        result.message.paid_message_stars = options.confirmedPaymentResult?.starsAmount;
       }
 
       return result;
