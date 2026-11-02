@@ -1,6 +1,7 @@
 import '@helpers/peerIdPolyfill';
 import {AppMessagesManager, RichMessagePayload} from '@appManagers/appMessagesManager';
 import {Message, PageBlock, RichMessage} from '@layer';
+import {stubModifyMessage} from '@/tests/helpers/modifyMessageStub';
 
 const peerId = (42 as UserId).toPeerId(false);
 const mid = 7;
@@ -57,9 +58,7 @@ function setup() {
   vi.spyOn(manager, 'getMessageFromStorage').mockImplementation(
     (target: any, id: number) => target.get(id)
   );
-  vi.spyOn(manager, 'modifyMessage').mockImplementation((target: any, callback: any) => {
-    return callback(target) || target;
-  });
+  stubModifyMessage(manager);
   vi.spyOn(manager, 'canEditMessage').mockResolvedValue(true);
   const editMessage = vi.spyOn(manager, 'editMessage').mockResolvedValue();
 

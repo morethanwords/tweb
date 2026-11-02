@@ -12703,6 +12703,11 @@ export class AppMessagesManager extends AppManager {
 
       for(const mid of mids) {
         const message = storage.get(mid) as Message.message;
+        // * one the server has not given: deleted since, or before the history this member sees
+        if(!message) {
+          continue;
+        }
+
         this.modifyMessage(message, (message) => {
           processMessage(message);
         }, storage);
