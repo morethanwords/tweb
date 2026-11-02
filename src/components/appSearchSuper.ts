@@ -50,7 +50,8 @@ import wrapPlainText from '@richTextProcessor/wrapPlainText';
 import wrapRichText from '@richTextProcessor/wrapRichText';
 import wrapSenderToPeer from '@components/wrappers/senderToPeer';
 import wrapSentTime from '@components/wrappers/sentTime';
-import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
+import getMediaFromMessage, {getMediaFromMessageOrRich} from '@appManagers/utils/messages/getMediaFromMessage';
+import {getMessageMediaOrRich, getMessageWithRichMedia} from '@appManagers/utils/richMessage/getRichMessageMedia';
 import filterMessagesByInputFilter from '@appManagers/utils/messages/filterMessagesByInputFilter';
 import getChatMembersString from '@components/wrappers/getChatMembersString';
 import getUserStatusString from '@components/wrappers/getUserStatusString';
@@ -205,6 +206,8 @@ class SearchContextMenu {
   private managers: ReadingManagers;
   private noForwards: boolean;
   private message: MyMessage;
+  // * what the copy and download read: a rich message's tile is the photo or video it stands for
+  private mediaMessage: MyMessage;
   private selectedMessages: MyMessage[];
   private copyMediaButton: ButtonMenuItemOptions & {
     verify?: () => boolean | Promise<boolean>
@@ -248,10 +251,13 @@ class SearchContextMenu {
         this.mid = +item.dataset.mid;
         this.isSelected = searchSuper.selection.isMidSelected(this.peerId, this.mid);
         this.message = await managers.appMessagesManager.getMessageByPeer(this.peerId, this.mid);
+        this.mediaMessage = getMessageWithRichMedia(this.message);
         this.noForwards = searchSuper.selection.isSelecting ?
           this.searchSuper.selection.selectionForwardBtn.classList.contains('hide') :
           !(await managers.appMessagesManager.canForward(this.message));
-        this.selectedMessages = searchSuper.selection.isSelecting ? await searchSuper.selection.getSelectedMessages() : undefined;
+        this.selectedMessages = searchSuper.selection.isSelecting ?
+          (await searchSuper.selection.getSelectedMessages()).map((message) => getMessageWithRichMedia(message)) :
+          undefined;
         // this.isSavedDialog = !!(searchSuper.searchContext.peerId === rootScope.myId && searchSuper.searchContext.threadId);
 
         const f = await Promise.all(this.buttons.map(async(button) => {
@@ -306,13 +312,13 @@ class SearchContextMenu {
       text: 'MediaViewer.Context.Copy',
       onClick: this.onCopyMediaClick,
       verify: () => !this.searchSuper.selection.isSelecting &&
-        ChatContextMenu.canCopyMedia(this.message, undefined, this.noForwards, this.attachTo),
+        ChatContextMenu.canCopyMedia(this.mediaMessage, undefined, this.noForwards, this.attachTo),
       keepOpen: true
     }, {
       icon: 'download',
       text: 'MediaViewer.Context.Download',
-      onClick: () => ChatContextMenu.onDownloadClick(this.message, this.noForwards, this.attachTo),
-      verify: () => !this.searchSuper.selection.isSelecting && ChatContextMenu.canDownload(this.message, undefined, this.noForwards, this.attachTo)
+      onClick: () => ChatContextMenu.onDownloadClick(this.mediaMessage, this.noForwards, this.attachTo),
+      verify: () => !this.searchSuper.selection.isSelecting && ChatContextMenu.canDownload(this.mediaMessage, undefined, this.noForwards, this.attachTo)
     }, {
       icon: 'download',
       text: 'Message.Context.Selection.Download',
@@ -366,7 +372,7 @@ class SearchContextMenu {
 
   private onCopyMediaClick = () => {
     copyMessageMediaWithFeedback({
-      message: this.message,
+      message: this.mediaMessage,
       button: this.copyMediaButton
     });
   };
@@ -1065,7 +1071,7 @@ export default class AppSearchSuper {
           const element = findUpClassName(target, 'grid-item');
           return element && !hasMediaSpoiler(element) ? element : undefined;
         },
-        getSource: async(element) => getMessageMediaPeekSource(await this.getItemMessage(element))
+        getSource: async(element) => getMessageMediaPeekSource(await this.getItemMessage(element), undefined, true)
       });
     });
 
@@ -1467,11 +1473,11 @@ export default class AppSearchSuper {
   private async processPhotoVideoFilter({message, promises, middleware}: ProcessSearchSuperResult) {
     const sensitive = this.isMessageSensitive(message);
     const element = await this.wrapGridMedia({
-      media: getMediaFromMessage(message, true),
+      media: getMediaFromMessageOrRich(message),
       message,
       middleware,
       promises,
-      spoiler: !!(message.media as MessageMedia.messageMediaPhoto).pFlags.spoiler,
+      spoiler: !!(getMessageMediaOrRich(message) as MessageMedia.messageMediaPhoto).pFlags.spoiler,
       sensitive
     });
 

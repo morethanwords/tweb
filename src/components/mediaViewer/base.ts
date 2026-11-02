@@ -38,6 +38,7 @@ import ListLoader from '@helpers/listLoader';
 import EventListenerBase from '@helpers/eventListenerBase';
 import {MyMessage} from '@appManagers/appMessagesManager';
 import {NULL_PEER_ID} from '@appManagers/constants';
+import {getMessageWithRichMedia} from '@appManagers/utils/richMessage/getRichMessageMedia';
 import {isFullScreen} from '@helpers/dom/fullScreen';
 import {attachClickEvent, hasMouseMovedSinceDown} from '@helpers/dom/clickEvent';
 import SearchListLoader from '@helpers/searchListLoader';
@@ -2641,9 +2642,15 @@ export default class AppMediaViewerBase<
           if(isLiveStream) {
             // this.releaseSingleMedia = appMediaPlaybackController.setSingleMedia();
           } else {
+            // * the controller tells a video from a song by the message's media: a rich message has none
+            // * of its own, the video shown is the one it stands for (`getMediaFromMessageOrRich`)
             this.releaseSingleMedia = appMediaPlaybackController.setSingleMedia({
               media: video,
-              message: message as Message.message
+              message: getMessageWithRichMedia(message as Message.message, {
+                _: 'messageMediaDocument',
+                pFlags: {},
+                document: media as MyDocument
+              })
             });
           }
         };

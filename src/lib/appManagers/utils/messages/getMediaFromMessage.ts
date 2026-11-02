@@ -1,6 +1,7 @@
 import toArray from '@helpers/array/toArray';
 import {Document, Game, Message, MessageAction, MessageExtendedMedia, MessageMedia, Photo, StoryItem, WebPage} from '@layer';
 import generatePhotoForExtendedMediaPreview from '@appManagers/utils/photos/generatePhotoForExtendedMediaPreview';
+import getRichMessageMedia from '@appManagers/utils/richMessage/getRichMessageMedia';
 
 export default function getMediaFromMessage(message: Message | StoryItem.storyItem, onlyInner: true, index?: number): Photo.photo | Document.document;
 export default function getMediaFromMessage(message: Message | StoryItem.storyItem, onlyInner?: false, index?: number): Photo.photo | Document.document | Game.game | WebPage.webPage;
@@ -24,10 +25,29 @@ export default function getMediaFromMessage(message: Message | StoryItem.storyIt
     }
 
     media = /* (messageMedia as MessageMedia.messageMediaDocument).alt_document || */
-      (messageMedia as MessageMedia.messageMediaDocument).document ||
-      (messageMedia as MessageMedia.messageMediaPhoto).photo ||
+      getPhotoOrDocument(messageMedia) ||
       (onlyInner ? undefined : (messageMedia as MessageMedia.messageMediaGame).game || messageMedia);
   }
 
   return media as any;
+}
+
+/**
+ * The photo or video the shared media shows for a message, and the viewer opened from there: its own,
+ * or the one a rich message stands for (`getRichMessageMedia`), which the server finds it by
+ */
+export function getMediaFromMessageOrRich(message: Message | StoryItem.storyItem, index?: number): Photo.photo | Document.document {
+  const media = getMediaFromMessage(message, true, index);
+  const richMessage = !media && (message as Message.message)?.rich_message;
+  if(!richMessage) {
+    return media;
+  }
+
+  const richMedia = getRichMessageMedia(richMessage);
+  return richMedia && getPhotoOrDocument(richMedia);
+}
+
+function getPhotoOrDocument(messageMedia: MessageMedia) {
+  return (messageMedia as MessageMedia.messageMediaDocument).document as Document.document ||
+    (messageMedia as MessageMedia.messageMediaPhoto).photo as Photo.photo;
 }

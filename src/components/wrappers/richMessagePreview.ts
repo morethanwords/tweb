@@ -1,6 +1,7 @@
 import type {MyDocument} from '@appManagers/appDocsManager';
 import type {MessageEntity, MessageMedia, PageBlock, PageListItem, PageListOrderedItem, RichMessage, RichText, TextWithEntities} from '@layer';
 import getAudioAttribute from '@appManagers/utils/docs/getAudioAttribute';
+import getRichMessageMedia, {findRichMessageDocument} from '@appManagers/utils/richMessage/getRichMessageMedia';
 import I18n, {LangPackKey} from '@lib/langPack';
 import {getOrderedListItemNumber, wrapSummaryRichText} from '@lib/richMessage';
 import sortEntities from '@lib/richTextProcessor/sortEntities';
@@ -26,31 +27,10 @@ export default function getRichMessagePreview(richMessage: RichMessage, maxLengt
   return preview;
 }
 
-/**
- * The photo or video a reply to a rich message shows, as Android picks it (`MessageObject.findVideo`,
- * `findPhoto`): the first video, or the first photo when there is none, among the top blocks and the
- * items of the first collage or slideshow. A video without a thumbnail shows nothing.
- */
+/** The photo or video a reply to a rich message shows (`getRichMessageMedia`); a video without a thumbnail shows nothing */
 export function getRichMessagePreviewMedia(richMessage: RichMessage): MessageMedia.messageMediaPhoto | MessageMedia.messageMediaDocument {
-  const video = findRichMedia(richMessage?.blocks, 'pageBlockVideo');
-  if(video) {
-    const document = findDocument(richMessage, video.video_id);
-    return document?.thumbs?.length ? {_: 'messageMediaDocument', pFlags: {spoiler: video.pFlags.spoiler}, document} : undefined;
-  }
-
-  const photo = findRichMedia(richMessage?.blocks, 'pageBlockPhoto');
-  const found = photo && richMessage.photos?.find((item) => item.id === photo.photo_id);
-  return found && {_: 'messageMediaPhoto', pFlags: {spoiler: photo.pFlags.spoiler}, photo: found};
-}
-
-function findRichMedia<T extends 'pageBlockPhoto' | 'pageBlockVideo'>(blocks: PageBlock[], type: T): Extract<PageBlock, {_: T}> {
-  for(const block of blocks || []) {
-    if(block._ === type) {
-      return block as Extract<PageBlock, {_: T}>;
-    } else if(block._ === 'pageBlockCollage' || block._ === 'pageBlockSlideshow') {
-      return findRichMedia(block.items, type);
-    }
-  }
+  const media = getRichMessageMedia(richMessage);
+  return media?._ === 'messageMediaDocument' && !(media.document as MyDocument).thumbs?.length ? undefined : media;
 }
 
 function appendBlock(preview: Preview, richMessage: RichMessage, block: PageBlock) {
@@ -117,7 +97,7 @@ function appendBlock(preview: Preview, richMessage: RichMessage, block: PageBloc
       else appendText(preview, label('AccDescrIVTable'));
       break;
     case 'pageBlockAudio': {
-      const document = findDocument(richMessage, block.audio_id);
+      const document = findRichMessageDocument(richMessage, block.audio_id);
       const attribute = getAudioAttribute(document);
       const name = (attribute?.performer && attribute.title ? `${attribute.performer} – ${attribute.title}` : attribute?.title) ||
         document?.file_name;
@@ -128,7 +108,7 @@ function appendBlock(preview: Preview, richMessage: RichMessage, block: PageBloc
       break;
     }
     case 'pageBlockDocument': {
-      const document = findDocument(richMessage, block.document_id);
+      const document = findRichMessageDocument(richMessage, block.document_id);
       if(document) {
         appendIcon(preview, 'document', '📎');
         appendText(preview, ' ' + (document.file_name || label('AttachDocument')));
@@ -245,10 +225,6 @@ function truncate(preview: Preview, maxLength: number) {
 
 function hasText(richText: RichText) {
   return !!richText && !!wrapSummaryRichText(richText).text.trim();
-}
-
-function findDocument(richMessage: RichMessage, id: string | number) {
-  return richMessage.documents?.find((document) => document.id === id) as MyDocument;
 }
 
 function label(key: LangPackKey) {

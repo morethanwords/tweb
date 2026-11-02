@@ -3,6 +3,7 @@ import type {MyInputMessagesFilter, MyMessage} from '@appManagers/appMessagesMan
 import {Message, MessageMedia, MessageEntity, MessageAction, Reaction} from '@layer';
 import matchUrl from '@lib/richTextProcessor/matchUrl';
 import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
+import {getMessageMediaOrRich} from '@appManagers/utils/richMessage/getRichMessageMedia';
 
 export default function filterMessagesByInputFilter({
   inputFilter,
@@ -122,8 +123,10 @@ export default function filterMessagesByInputFilter({
     if(neededFlags?.some((flag) => (message as any as Message.message).pFlags[flag])) {
       found = true;
     } else if(message._ === 'message') {
-      if(message.media && neededContents[message.media._] && !(message.media as MessageMedia.messageMediaPhoto).ttl_seconds/*  && !message.fwd_from */) {
-        const doc = (message.media as MessageMedia.messageMediaDocument).document as MyDocument;
+      // * a rich message is found by the photo or video it stands for, as the server finds it
+      const media = getMessageMediaOrRich(message);
+      if(media && neededContents[media._] && !(media as MessageMedia.messageMediaPhoto).ttl_seconds/*  && !message.fwd_from */) {
+        const doc = (media as MessageMedia.messageMediaDocument).document as MyDocument;
         if(doc &&
           (
             (neededDocTypes.length && !neededDocTypes.includes(doc.type))/*  ||
