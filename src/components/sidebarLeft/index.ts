@@ -1813,7 +1813,14 @@ export class AppSidebarLeft extends SidebarSlider {
         return !!focused && focused !== document.body && focused !== this.backBtn &&
           !this.inputSearch.container.contains(focused) && !searchContainer.contains(focused);
       };
-      if(Modes.a11y && enteredWithKeyboard && !claimed()) focusWhenSettled(this.toolsBtn, () => !claimed());
+      if(Modes.a11y && enteredWithKeyboard && !claimed()) {
+        focusWhenSettled(this.toolsBtn, () => !claimed());
+      } else if(Modes.a11y && claimed()) {
+        // * the focus the search was left for, outside it (Tab went on into the center column), stays
+        // * there: Escape closes the search through the navigation, whose pop blurs whatever holds the focus
+        const keeper = document.activeElement as HTMLElement;
+        focusWhenSettled(keeper, () => !document.activeElement || document.activeElement === document.body);
+      }
 
       chatTypeMenu.props.selected = 'all';
     }, {listenerSetter: searchListenerSetter});
