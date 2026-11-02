@@ -913,7 +913,7 @@ export class ApiFileManager extends AppManager {
       let _writePromise: CancellablePromise<void> = Promise.resolve(),
         _offset = 0;
       const superpuper = async() => {
-        if(_offset && _offset > size) {
+        if(_offset && _offset >= size) { // * a file of a whole number of parts has nothing past its last one
           return;
         }
 
@@ -957,12 +957,15 @@ export class ApiFileManager extends AppManager {
               superpuper();
               throttledDispatchProgress();
             }
+          }
 
-            const writeQueuePerf = performance.now();
-            await writePromise;
-            checkCancel();
-            const writeQueueTime = performance.now() - writeQueuePerf;
+          // * an empty part past the end finishes the file too, so it waits for every part before it as well
+          const writeQueuePerf = performance.now();
+          await writePromise;
+          checkCancel();
+          const writeQueueTime = performance.now() - writeQueuePerf;
 
+          if(byteLength) {
             const perf = performance.now();
             await Promise.all(prepared.map(({writer}) => writer?.write(bytes, offset)));
             checkCancel();
