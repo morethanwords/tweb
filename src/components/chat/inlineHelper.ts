@@ -24,7 +24,7 @@ import appDownloadManager from '@lib/appDownloadManager';
 import {AnimationItemGroup} from '@components/animationIntersector';
 import wrapPhoto from '@components/wrappers/photo';
 import {i18n} from '@lib/langPack';
-import {POSTING_NOT_ALLOWED_MAP} from '@components/chat/input';
+import {POSTING_NOT_ALLOWED_MAP} from '@components/chat/postingNotAllowedMap';
 import liteMode from '@helpers/liteMode';
 
 const ANIMATION_GROUP: AnimationItemGroup = 'INLINE-HELPER';

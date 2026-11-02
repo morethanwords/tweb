@@ -9,7 +9,7 @@
 
 import type ChatInput from '../input';
 import {getAppWindow, getOverlayRoot} from '@helpers/appWindow';
-import {POSTING_NOT_ALLOWED_MAP} from '../input';
+import {POSTING_NOT_ALLOWED_MAP} from '@components/chat/postingNotAllowedMap';
 import {ChatType} from '../chatType';
 import opusDecodeController from '@lib/opusDecodeController';
 import VoiceWaveformAnalyser from '@helpers/voiceWaveformAnalyser';

@@ -134,6 +134,7 @@ import {
 import IMAGE_MIME_TYPES_SUPPORTED from '@environment/imageMimeTypesSupport';
 import VIDEO_MIME_TYPES_SUPPORTED from '@environment/videoMimeTypesSupport';
 import {ChatRights} from '@appManagers/appChatsManager';
+import {POSTING_NOT_ALLOWED_MAP} from '@components/chat/postingNotAllowedMap';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import getChatMembershipAction from '@appManagers/utils/chats/getChatMembershipAction';
 import replaceContent from '@helpers/dom/replaceContent';
@@ -246,20 +247,6 @@ if(import.meta.hot) {
 }
 
 const REPLY_IN_TOPIC = false;
-
-export const POSTING_NOT_ALLOWED_MAP: {[action in ChatRights]?: LangPackKey} = {
-  send_audios: 'GlobalAttachAudioRestricted',
-  send_docs: 'GlobalAttachDocumentsRestricted',
-  send_photos: 'GlobalAttachPhotoRestricted',
-  send_videos: 'GlobalAttachVideoRestricted',
-  send_voices: 'GlobalAttachVoiceRestricted',
-  send_stickers: 'GlobalAttachStickersRestricted',
-  send_gifs: 'GlobalAttachGifRestricted',
-  send_media: 'GlobalAttachMediaRestricted',
-  send_plain: 'GlobalSendMessageRestricted',
-  send_polls: 'ErrorSendRestrictedPollsAll',
-  send_inline: 'GlobalAttachInlineRestricted'
-};
 
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply' | 'suggested';
 
