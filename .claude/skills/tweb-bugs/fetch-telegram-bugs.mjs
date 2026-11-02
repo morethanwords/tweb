@@ -4,11 +4,19 @@
  * Scraper for bugs.telegram.org (WebK issues, tag_ids=40).
  *
  * Usage:
- *   node fetch-telegram-bugs.mjs [--cache-dir DIR] [--detailed] [--status STATUS]
+ *   node fetch-telegram-bugs.mjs [--cache-dir DIR] [--detailed] [--since YYYY-MM-DD] [--status STATUS]
  *
  * --cache-dir   Where to write output (default: CWD/.claude/bugs-cache/telegram)
- * --detailed    Fetch each individual issue page for full body, votes, device info
- * --status      Filter by status: open | fixed | closed | fix_coming | all (default: all)
+ * --detailed    Fetch each individual issue page for full body, votes, device info, comments and the REAL status
+ * --since       With --detailed: fetch the pages of issues created on or after this date only (the rest keep
+ *               what the list gives); a full detailed run over ~1600 issues takes the better part of an hour
+ * --status      Filter by status: open | fixed | closed | fix_coming | all (default: all). Implies --detailed:
+ *               the list page shows "Fixed" on every card whatever the issue's state (seen 2026-11), only an
+ *               issue's own page tells it (`.bt-status`)
+ *
+ * Node's fetch ignores the proxy env unless NODE_USE_ENV_PROXY=1 (the sandbox's network goes through one).
+ * The site answers "Sorry, too many attempts" to fast clients: requests go one at a time, DELAY_MS apart,
+ * and a refused one is retried after a growing pause.
  *
  * Output: issues-raw.json  — array of unified-format bug objects
  *         last-fetch.txt   — ISO timestamp
@@ -17,8 +25,9 @@
 const TAG_ID = 40; // WebK
 const BASE = 'https://bugs.telegram.org';
 const PAGE_SIZE = 50; // server returns 50 per batch
-const CONCURRENT_DETAIL = 5; // parallel detail fetches
-const DELAY_MS = 300; // polite delay between batches
+const DELAY_MS = 1500; // between requests: 300 ms ran into "too many attempts" after ~16 list pages
+const RETRY_DELAY_MS = 30000; // first pause after a refusal, growing with each retry
+const RETRIES = 5;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -26,13 +35,53 @@ const DELAY_MS = 300; // polite delay between batches
 
 function parseArgs() {
   const args = process.argv.slice(2);
-  const opts = {cacheDir: null, detailed: false, status: 'all'};
+  const opts = {cacheDir: null, detailed: false, status: 'all', since: ''};
   for(let i = 0; i < args.length; i++) {
     if(args[i] === '--cache-dir' && args[i + 1]) opts.cacheDir = args[++i];
     else if(args[i] === '--detailed') opts.detailed = true;
     else if(args[i] === '--status' && args[i + 1]) opts.status = args[++i];
+    else if(args[i] === '--since' && args[i + 1]) opts.since = args[++i];
   }
+  if(opts.status !== 'all') opts.detailed = true;
   return opts;
+}
+
+const REFUSAL = 'too many attempts';
+
+// * by where the site puts it, not by the words anywhere: an issue's own text may quote them
+/** The API answers a refusal as its `error` */
+const isApiRefusal = (text) => {
+  try {
+    return !!JSON.parse(text).error?.includes(REFUSAL);
+  } catch{
+    return false;
+  }
+};
+
+/** A refused page is the refusal alone, with no issue in it */
+const isPageRefusal = (text) => text.includes(REFUSAL) && !text.includes('bt-issue-text');
+
+/**
+ * Fetches text, waiting out the site's rate limit (its refusal, 429, a 5xx); resolves undefined when it keeps
+ * refusing, and at once on any other error (a 404 is not worth minutes of waiting)
+ */
+async function fetchText(url, init, isRefusal) {
+  for(let attempt = 0; attempt < RETRIES; attempt++) {
+    const resp = await fetch(url, init);
+    const text = await resp.text();
+    if(resp.ok && !isRefusal(text)) {
+      return text;
+    }
+
+    const retryable = resp.ok || resp.status === 429 || resp.status >= 500;
+    if(!retryable || attempt === RETRIES - 1) {
+      console.error(`[telegram-bugs] ${url}: gave up (${resp.status})`);
+      return;
+    }
+
+    console.error(`[telegram-bugs] refused (${resp.status}), waiting before retry ${attempt + 1}/${RETRIES - 1}...`);
+    await sleep(RETRY_DELAY_MS * (attempt + 1));
+  }
 }
 
 function sleep(ms) {
@@ -44,8 +93,8 @@ function parseCard(cardHtml) {
   const id = cardHtml.match(/data-card-id="(\d+)"/)?.[1];
   if(!id) return null;
 
-  const statusMatch = cardHtml.match(/bt-card-thumb-status[^>]*>([^<]+)</);
-  const status = normalizeStatus(statusMatch?.[1]?.trim() || 'Open');
+  // * the list shows "Fixed" on every card, whatever the issue's state: only its page tells (fetchIssueDetail)
+  const status = 'unknown';
 
   const titleMatch = cardHtml.match(/bt-card-title[^>]*>\s*([\s\S]*?)\s*<\/div>/);
   const title = decodeHtmlEntities(titleMatch?.[1]?.trim() || '');
@@ -117,11 +166,25 @@ function extractCards(html) {
 
 /** Fetch full details from an individual issue page */
 async function fetchIssueDetail(issueId, cookieStr) {
-  const resp = await fetch(`${BASE}/c/${issueId}`, {
+  const html = await fetchText(`${BASE}/c/${issueId}`, {
     headers: {Cookie: cookieStr}
-  });
-  if(!resp.ok) return null;
-  const html = await resp.text();
+  }, isPageRefusal);
+  if(!html?.includes('bt-issue-text')) return null;
+
+  const statusMatch = html.match(/class="bt-status[^"]*">([^<]+)</);
+  const status = normalizeStatus(statusMatch?.[1] || 'unknown');
+
+  // the replies: the team's ("fixed", "can you send a log") and other users' confirmations
+  const comments = [];
+  const commentRe = /bt-comment-author-name"><span dir="auto">([^<]*)<\/span>[\s\S]*?datetime="([^"]+)"[\s\S]*?bt-comment-text">([\s\S]*?)<\/div>/g;
+  let commentMatch;
+  while((commentMatch = commentRe.exec(html)) !== null) {
+    comments.push({
+      author: decodeHtmlEntities(commentMatch[1]),
+      date: commentMatch[2],
+      text: decodeHtmlEntities(stripHtml(commentMatch[3]))
+    });
+  }
 
   // Body text (full description with steps & device info)
   const bodyMatch = html.match(/bt-issue-text bt-markdown[^>]*>([\s\S]*?)<\/div>\s*<div class="bt-issue-files/);
@@ -150,7 +213,7 @@ async function fetchIssueDetail(issueId, cookieStr) {
   const authorMatch = html.match(/bt-issue-author[^>]*>\s*<span[^>]*dir="auto"[^>]*>([^<]+)/s);
   const author = authorMatch?.[1]?.trim() || '';
 
-  return {body, votes: {up, down, total: up + down}, comments_count, device_info, steps_to_reproduce: steps, author};
+  return {status, body, votes: {up, down, total: up + down}, comments_count, comments, device_info, steps_to_reproduce: steps, author};
 }
 
 function stripHtml(html) {
@@ -213,7 +276,7 @@ async function main() {
     params.append('type', 'issues');
     params.append('offset', offset);
 
-    const resp = await fetch(apiUrl, {
+    const text = await fetchText(apiUrl, {
       method: 'POST',
       body: params,
       headers: {
@@ -223,14 +286,14 @@ async function main() {
         'Referer': `${BASE}/?tag_ids=${TAG_ID}&sort=time&type=issues`,
         'X-Requested-With': 'XMLHttpRequest'
       }
-    });
+    }, isApiRefusal);
 
-    if(!resp.ok) {
-      console.error(`[telegram-bugs] API error: ${resp.status}`);
+    if(!text) {
+      console.error('[telegram-bugs] API kept refusing, the list ends here');
       break;
     }
 
-    const data = await resp.json();
+    const data = JSON.parse(text);
     if(data.error) {
       console.error(`[telegram-bugs] API error: ${data.error}`);
       break;
@@ -253,38 +316,40 @@ async function main() {
 
   console.error(`[telegram-bugs] Fetched ${allCards.length} total cards from list`);
 
-  // Step 4: Filter by status if requested
-  if(opts.status !== 'all') {
-    allCards = allCards.filter(c => c.status === opts.status);
-    console.error(`[telegram-bugs] After status filter (${opts.status}): ${allCards.length}`);
+  // Step 4: Optionally fetch detailed info (and the real status) for each card, one request at a time
+  const failed = [];
+  if(opts.detailed) {
+    // * the older ones keep what the list gave
+    const detailCards = opts.since ? allCards.filter(c => c.created_at >= opts.since) : allCards;
+
+    console.error(`[telegram-bugs] Fetching details for ${detailCards.length} issues...`);
+    for(const [i, card] of detailCards.entries()) {
+      const detail = await fetchIssueDetail(card.number, cookieStr).catch(() => null);
+      if(!detail) {
+        card.detail_failed = true;
+        failed.push(card.number);
+      } else {
+        card.status = detail.status;
+        card.body = detail.body || card.body;
+        card.votes = detail.votes;
+        card.comments_count = detail.comments_count || card.comments_count;
+        card.comments = detail.comments;
+        card.device_info = detail.device_info;
+        card.steps_to_reproduce = detail.steps_to_reproduce;
+        card.author = detail.author || card.author;
+      }
+      if((i + 1) % 10 === 0 || i === detailCards.length - 1) {
+        console.error(`[telegram-bugs] Details: ${i + 1}/${detailCards.length}`);
+      }
+      await sleep(DELAY_MS);
+    }
   }
 
-  // Step 5: Optionally fetch detailed info for each card
-  if(opts.detailed) {
-    console.error(`[telegram-bugs] Fetching details for ${allCards.length} issues...`);
-    const chunks = [];
-    for(let i = 0; i < allCards.length; i += CONCURRENT_DETAIL) {
-      chunks.push(allCards.slice(i, i + CONCURRENT_DETAIL));
-    }
-
-    for(const [ci, chunk] of chunks.entries()) {
-      const results = await Promise.all(
-        chunk.map(card => fetchIssueDetail(card.number, cookieStr).catch(() => null))
-      );
-      for(let j = 0; j < chunk.length; j++) {
-        const detail = results[j];
-        if(detail) {
-          chunk[j].body = detail.body || chunk[j].body;
-          chunk[j].votes = detail.votes;
-          chunk[j].comments_count = detail.comments_count || chunk[j].comments_count;
-          chunk[j].device_info = detail.device_info;
-          chunk[j].steps_to_reproduce = detail.steps_to_reproduce;
-          chunk[j].author = detail.author || chunk[j].author;
-        }
-      }
-      console.error(`[telegram-bugs] Details: ${Math.min((ci + 1) * CONCURRENT_DETAIL, allCards.length)}/${allCards.length}`);
-      if(ci < chunks.length - 1) await sleep(DELAY_MS);
-    }
+  // Step 5: Filter by status if requested (known from the pages only)
+  if(opts.status !== 'all') {
+    // * an issue whose page failed is kept, its status unknown, rather than silently dropped
+    allCards = allCards.filter(c => c.status === opts.status || c.detail_failed);
+    console.error(`[telegram-bugs] After status filter (${opts.status}): ${allCards.length}`);
   }
 
   // Step 6: Deduplicate by ID
@@ -300,10 +365,17 @@ async function main() {
   // Step 7: Save
   const outPath = path.join(cacheDir, 'issues-raw.json');
   fs.writeFileSync(outPath, JSON.stringify(unique, null, 2));
-  fs.writeFileSync(path.join(cacheDir, 'last-fetch.txt'), new Date().toISOString());
+  // * an incomplete run is not cached as fresh: the next one fetches again
+  if(!failed.length) {
+    fs.writeFileSync(path.join(cacheDir, 'last-fetch.txt'), new Date().toISOString());
+  }
 
   console.error(`[telegram-bugs] Saved ${unique.length} issues to ${outPath}`);
-  console.log(JSON.stringify({count: unique.length, path: outPath}));
+  console.log(JSON.stringify({count: unique.length, path: outPath, failed}));
+  if(failed.length) {
+    console.error(`[telegram-bugs] INCOMPLETE: ${failed.length} issue pages failed (detail_failed: true): ${failed.join(', ')}`);
+    process.exitCode = 2;
+  }
 }
 
 main().catch(e => {

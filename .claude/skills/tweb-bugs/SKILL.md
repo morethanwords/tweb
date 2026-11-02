@@ -152,16 +152,29 @@ Save normalized array to `github/issues-raw.json`. Update `github/last-fetch.txt
 Use the scraper script:
 
 ```bash
-node "$SKILL_DIR/fetch-telegram-bugs.mjs" --cache-dir "$CACHE_DIR/telegram" [--detailed] [--status STATUS]
+NODE_USE_ENV_PROXY=1 node "$SKILL_DIR/fetch-telegram-bugs.mjs" --cache-dir "$CACHE_DIR/telegram" \
+  [--detailed] [--since YYYY-MM-DD] [--status STATUS]
 ```
+
+`NODE_USE_ENV_PROXY=1`: Node's fetch ignores the proxy the sandbox's network goes through without it (the host
+fails with `EAI_AGAIN`); in auto mode give the command `allowed_domains: ["bugs.telegram.org"]`.
 
 The script (`fetch-telegram-bugs.mjs` in the skill directory):
 1. Fetches `https://bugs.telegram.org/?tag_ids=40&sort=time&type=issues` to get session hash + cookies
 2. Parses all cards from initial HTML (50 items)
 3. Paginates via POST to `/api?hash=...` with `method=searchIssues`, `offset=N`
-4. Extracts: id, title, status, date, preview, reply count from card HTML
-5. With `--detailed`: fetches each `/c/{id}` page for full body, votes, device info, author
+4. Extracts: id, title, date, preview, reply count from card HTML. **Not the status**: the list shows "Fixed" on
+   every card whatever the issue's state (seen 2026-11: all 1626 WebK cards), so a list-only run says `unknown`
+5. With `--detailed`: fetches each `/c/{id}` page for the real status (`.bt-status`: Open / Fixed / Fix coming /
+   Closed), full body, votes, device info, author and the comments (the team's replies, other users'
+   confirmations). `--since` limits that to issues created on or after a date; `--status` implies `--detailed`
 6. Saves unified-format array to `telegram/issues-raw.json`
+
+The site answers "Sorry, too many attempts" to a fast client: requests go one at a time 1.5 s apart, and a refused
+one is retried after 30 s, 60 s, … A list run takes ~1 min for ~1600 cards; pages take ~2 s each, so fetch them
+for a recent window (`--since`) rather than for everything. An issue whose page could not be read keeps
+`detail_failed: true` (and passes the status filter, its status unknown); such a run writes no `last-fetch.txt`,
+lists the failures and exits with 2 — run it again rather than trusting the cache.
 
 The `SKILL_DIR` is `.claude/skills/tweb-bugs` (relative to the repo root).
 
@@ -504,9 +517,10 @@ bugs-cache/
 
 - Issues labeled `enhancement` or `feature` are NOT bugs — exclude them unless they describe broken behavior
 - Pull requests appear in the GitHub issues API — filter them out (`pull_request` field is null for real issues)
-- On bugs.telegram.org, many issues are marked "Fixed" — filter by `--status open` to focus on unfixed bugs
+- On bugs.telegram.org the list's "Fixed" means nothing (every card has it); the status is on the issue's page —
+  `--detailed --since <date> --status open` for the open ones of a period
 - Use the issue body + title + labels to infer severity; many issues won't have explicit labels
 - When in doubt about a score, be conservative (score lower)
 - The LLM analysis step should process issues in batches to stay within context limits
-- The Telegram scraper respects rate limits (300ms between requests) — a full scrape with `--detailed` takes several minutes for large datasets
+- The Telegram scraper respects rate limits (1.5 s between requests, retries after a refusal) — `--detailed` costs ~2 s per issue
 - The `--detailed` flag is recommended for accurate scoring since list-page previews are truncated
