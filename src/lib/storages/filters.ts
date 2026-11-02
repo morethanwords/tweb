@@ -197,6 +197,13 @@ export default class FiltersStorage extends AppManager {
   private onUpdateDialogFilterOrder = (update: Update.updateDialogFilterOrder) => {
     // console.log('updateDialogFilterOrder', update);
 
+    // * an order naming a folder this client does not have (an updateDialogFilter missed - it has no pts) is
+    // * not this client's list any more: the folders are asked for again, as tdesktop does (applyOrder -> load)
+    if(update.order.some((filterId) => !this.filters[filterId])) {
+      this.onUpdateDialogFilters({_: 'updateDialogFilters'});
+      return;
+    }
+
     const order = update.order.slice();
     if(!order.includes(FOLDER_ID_ARCHIVE)) {
       order.splice(order[0] === FOLDER_ID_ALL ? 1 : 0, 0, FOLDER_ID_ARCHIVE);

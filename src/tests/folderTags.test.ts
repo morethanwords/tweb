@@ -4,6 +4,7 @@ import makeDialogFilter from '@/tests/helpers/dialogFilter';
 import {fitFolderTags} from '@components/folderTags/layout';
 import {getDialogFolderTags, getFolderTagColor} from '@stores/folderTags';
 import {getSortableDragStep} from '@helpers/dom/sortable';
+import pause from '@helpers/schedulers/pause';
 
 const folder = (id: number, localId: number, color?: number) => makeDialogFilter(id, localId, color === undefined ? undefined : {color});
 
@@ -90,7 +91,7 @@ describe('getSortableDragStep', () => {
 
 describe('FiltersStorage folder tags', () => {
   // * the server: the folders it sends, and the switch it keeps
-  const makeStorage = (serverTagsEnabled = false) => {
+  const makeStorage = (serverTagsEnabled = false, serverFilters: any[] = []) => {
     const storage: any = new FiltersStorage();
     storage.dialogsStorage = {getPinnedOrders: (): PeerId[] => []};
     storage.clear(true);
@@ -101,7 +102,7 @@ describe('FiltersStorage folder tags', () => {
       invokeApiSingle: vi.fn(() => Promise.resolve({
         _: 'messages.dialogFilters',
         pFlags: serverTagsEnabled ? {tags_enabled: true} : {},
-        filters: [{_: 'dialogFilterDefault'}]
+        filters: [{_: 'dialogFilterDefault'}, ...serverFilters]
       })),
       invokeApi: vi.fn((method: string, params: {enabled: boolean}) => {
         serverTagsEnabled = params.enabled;
@@ -184,5 +185,18 @@ describe('FiltersStorage folder tags', () => {
 
     expect(storage.getFilter(5).color).toBeUndefined();
     expect('emoticon' in storage.getFilter(5)).toBe(false);
+  });
+
+  it('asks for the folders again when an order names one it does not have, instead of throwing', async() => {
+    // * folder 4 was made elsewhere and its updateDialogFilter missed; the server has it
+    const storage = makeStorage(false, [folder(4, undefined), folder(2, undefined)]);
+    (storage as any).prependFilters([folder(2, undefined)]).forEach((filter: any) => storage.saveDialogFilter(filter, false, true));
+
+    expect(() => (storage as any).onUpdateDialogFilterOrder({_: 'updateDialogFilterOrder', order: [0, 4, 2]})).not.toThrow();
+    await pause(0);
+
+    expect(storage.apiManager.invokeApiSingle).toHaveBeenCalledWith('messages.getDialogFilters');
+    expect(storage.getFilter(4)).toBeDefined();
+    expect((storage as any).rootScope.dispatchEvent).toHaveBeenCalledWith('filter_order', [0, 1, 4, 2]);
   });
 });
