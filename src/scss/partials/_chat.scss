@@ -685,6 +685,12 @@
     }
   }
 
+  // * left under the chat opened over it, once it has faded out (appImManager.coverChatWhenFaded): its layout
+  // * is kept, for its scroll to be where it was when it is gone back to, but it is neither styled nor drawn
+  &.is-covered {
+    content-visibility: hidden;
+  }
+
   .drops-container {
     --padding: 20px;
     --pinned-floating-height: 0px;

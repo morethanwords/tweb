@@ -1,5 +1,5 @@
 import {expect, Page, test} from '@playwright/test';
-import {openChatList} from './chatList.helpers';
+import {openChat, openChatList} from './chatList.helpers';
 
 /*
  * The links of a sender the client does not know (the settings bar offers to report spam) are not
@@ -56,15 +56,6 @@ async function findChats(page: Page): Promise<Chats> {
 
     return target && other ? {target, other, mid} : undefined;
   });
-}
-
-/** opens the chat and waits for it to be on screen */
-async function openChat(page: Page, peerId: number) {
-  await page.evaluate((peerId) => (window as any).appImManager.setInnerPeer({peerId}), peerId);
-  await page.waitForFunction((peerId) => {
-    const chat = (window as any).appImManager.chat;
-    return chat?.peerId === peerId && chat.bubbles.chatInner.isConnected && !chat.setPeerPromise;
-  }, peerId);
 }
 
 /** what draws a link of the message, and its preview */

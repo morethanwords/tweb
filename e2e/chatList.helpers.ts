@@ -14,3 +14,12 @@ export async function openChatList(page: Page, {query = '', minRows = 1}: {query
   // * the list renders its rows in batches
   await page.waitForTimeout(3000);
 }
+
+/** opens the chat and waits for it to be on screen */
+export async function openChat(page: Page, peerId: number) {
+  await page.evaluate((peerId) => (window as any).appImManager.setInnerPeer({peerId}), peerId);
+  await page.waitForFunction((peerId) => {
+    const chat = (window as any).appImManager.chat;
+    return chat?.peerId === peerId && chat.bubbles.chatInner.isConnected && !chat.setPeerPromise;
+  }, peerId);
+}

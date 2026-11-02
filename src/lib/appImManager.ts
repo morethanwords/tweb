@@ -324,6 +324,8 @@ export class AppImManager extends EventListenerBase<{
 
   public chats: Chat[] = [];
   private prevTab: HTMLElement;
+  // * what covers a chat left under another one once it has faded out: only its latest counts
+  private chatsCovering = new WeakMap<HTMLElement, () => boolean>();
   private chatsSelectTabDebounced: () => void;
 
   private joinChatFlowsByQueryId = new Map<string, JoinChatFlow>();
@@ -2915,13 +2917,15 @@ export class AppImManager extends EventListenerBase<{
       disableTransition([tab, this.prevTab].filter(Boolean));
     }
 
+    this.uncoverChat(tab);
     if(this.prevTab) {
       this.prevTab.classList.remove('active');
       this.chatsSelectTabDebounced();
 
       // * for as long as the chats cross: that is over well before the time a fixed pause held, and what waits for it -
       // * the first page of a chat opened from the server among it - waits no longer. That time stays the most it holds
-      if(liteMode.isAvailable('animations') && animate !== false) {
+      const animated = liteMode.isAvailable('animations') && animate !== false;
+      if(animated) {
         let onEnd: (e: TransitionEvent) => void;
         const crossed = new Promise<void>((resolve) => {
           onEnd = (e) => e.target === tab && e.propertyName === 'opacity' && resolve();
@@ -2934,6 +2938,8 @@ export class AppImManager extends EventListenerBase<{
           tab.removeEventListener('transitioncancel', onEnd);
         }));
       }
+
+      this.coverChatWhenFaded(this.prevTab, animated);
 
       const prevIdx = whichChild(this.prevTab);
       const idx = whichChild(tab);
@@ -2955,6 +2961,63 @@ export class AppImManager extends EventListenerBase<{
 
     tab.classList.add('active');
     this.prevTab = tab;
+  }
+
+  /**
+   * The chat left under the one opened over it keeps its layout, for its scroll to be where it was when it is gone
+   * back to, but once it has faded out nothing of it is styled or drawn any more (`.chat.is-covered`): its CSS
+   * animations - a channel's paid-reaction sparkles - were restyled in every frame the page made.
+   * Its own fade has to be over, not the crossing: one turned back midway is cancelled and runs anew
+   */
+  private coverChatWhenFaded(tab: HTMLElement, animated: boolean) {
+    // * true once there is nothing more to wait for
+    const cover = (): boolean => {
+      if(this.chatsCovering.get(tab) !== cover) {
+        return true;
+      }
+
+      // * a one-off read, once per chat left
+      if(animated && getComputedStyle(tab).opacity !== '0') {
+        return false;
+      }
+
+      this.chatsCovering.delete(tab);
+      tab.classList.add('is-covered');
+      return true;
+    };
+
+    this.chatsCovering.set(tab, cover);
+    if(!animated) {
+      cover();
+      return;
+    }
+
+    const onEnd = (e: TransitionEvent) => {
+      if(e.target === tab && e.propertyName === 'opacity' && cover()) {
+        off();
+      }
+    };
+
+    // * for a fade that ends with no event of it (no transition ran at all): one still running is waited for
+    const timeout = window.setTimeout(() => {
+      if(cover()) {
+        off();
+      }
+    }, 1000);
+
+    const off = () => {
+      clearTimeout(timeout);
+      tab.removeEventListener('transitionend', onEnd);
+      tab.removeEventListener('transitioncancel', onEnd);
+    };
+
+    tab.addEventListener('transitionend', onEnd);
+    tab.addEventListener('transitioncancel', onEnd);
+  }
+
+  private uncoverChat(tab: HTMLElement) {
+    this.chatsCovering.delete(tab);
+    tab.classList.remove('is-covered');
   }
 
   private init() {
