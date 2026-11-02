@@ -10,6 +10,7 @@ import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 import StaticUtilityClass from '@lib/staticUtilityClass';
 
 import {AccountSessionData, ActiveAccountNumber, SessionUserFields, StoredAccountSessionData} from '@lib/accounts/types';
+import getAuthKeyFingerprint from '@lib/accounts/authKeyFingerprint';
 import {MAX_ACCOUNTS} from '@lib/accounts/constants';
 import bytesToHex from '@helpers/bytes/bytesToHex';
 import randomize from '@helpers/array/randomize';
@@ -144,7 +145,7 @@ export class AccountController extends StaticUtilityClass {
         return false;
       }
 
-      data.auth_key_fingerprint = authKey ? authKey.slice(0, 8) : undefined;
+      data.auth_key_fingerprint = authKey ? getAuthKeyFingerprint(authKey) : undefined;
       return true;
     }
 

@@ -12,6 +12,7 @@ import {LogTypes, logger} from '@lib/logger';
 import {AccountSessionData, ActiveAccountNumber} from '@lib/accounts/types';
 import StateStorage from '@lib/stateStorage';
 import AccountController from '@lib/accounts/accountController';
+import getAuthKeyFingerprint from '@lib/accounts/authKeyFingerprint';
 import commonStateStorage from '@lib/commonStateStorage';
 import {TrueDcId} from '@types';
 import {getOldDatabaseState} from '@config/databases/state';
@@ -249,7 +250,7 @@ const STATE_STEPS = {
       return;
     }
 
-    const _authKeyFingerprint = baseDcAuthKey.slice(0, 8);
+    const _authKeyFingerprint = getAuthKeyFingerprint(baseDcAuthKey);
     if(!authKeyFingerprint) { // * migration, preserve settings
       writer.reset(/* {preserveCommonKeys: ['settings']} */);
     } else if(authKeyFingerprint !== _authKeyFingerprint) {

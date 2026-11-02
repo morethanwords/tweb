@@ -20,6 +20,7 @@ import {execFileSync, spawn, ChildProcess} from 'child_process';
 import {connect} from 'net';
 import express from 'express';
 import baseConfig from './vite.config';
+import getAuthKeyFingerprint, {BASE_DC_ID} from './src/lib/accounts/authKeyFingerprint';
 
 const seedPath = process.env.PREVIEW_SEED ?
   resolve(process.env.PREVIEW_SEED) :
@@ -116,6 +117,15 @@ function pruneSupersededBuilds() {
   }
 }
 
+// The client keeps an account's state under the fingerprint of its key on the
+// base DC (see AccountController.fillFingerprint and the state's CHANGED_AUTH
+// step), and takes any other fingerprint for a new authorization: seeded with
+// the key of the account's own DC, a preview dropped its whole state on every start.
+const getStateFingerprint = (s: typeof seed): string | undefined => {
+  const authKey: string = s.authKeys[BASE_DC_ID]?.key;
+  return authKey && getAuthKeyFingerprint(authKey);
+};
+
 // Mirrors seedLocalStorage() from src/tests/api/harness.ts, but for the browser:
 // every value is JSON.stringify'd, exactly as LocalStorageController writes it.
 const seedScript = `(function(){
@@ -123,13 +133,25 @@ const seedScript = `(function(){
     var s = ${JSON.stringify(seed)};
     var dc = s.dcId;
     var fingerprint = s.authKeys[dc].key.slice(0, 8);
+    var stateFingerprint = ${JSON.stringify(getStateFingerprint(seed))};
     // the test-DC session is kept under keys of its own (LocalStorage's prefix in Modes.test)
     var p = s.isTest ? 't_' : '';
     var localStorage = {
       getItem: function(key) { return window.localStorage.getItem(p + key); },
       setItem: function(key, value) { window.localStorage.setItem(p + key, value); }
     };
-    if(localStorage.getItem('account1')) {
+    var stored = localStorage.getItem('account1');
+    if(stored) {
+      // a tab this script seeded before took its fingerprint from the account's DC (see BASE_DC_ID)
+      var storedAccount = JSON.parse(stored);
+      if(stateFingerprint && fingerprint !== stateFingerprint && storedAccount.auth_key_fingerprint === fingerprint) {
+        storedAccount.auth_key_fingerprint = stateFingerprint;
+        localStorage.setItem('account1', JSON.stringify(storedAccount));
+        if(localStorage.getItem('auth_key_fingerprint') === JSON.stringify(fingerprint)) {
+          localStorage.setItem('auth_key_fingerprint', JSON.stringify(stateFingerprint));
+        }
+        console.log('[preview-auth] account1 fingerprint moved to the base DC key');
+      }
       console.log('[preview-auth] account1 already present — keeping existing session');
       return;
     }
@@ -152,11 +174,13 @@ const seedScript = `(function(){
       localStorage.setItem('dc' + id + '_auth_key', JSON.stringify(e.key));
       localStorage.setItem('dc' + id + '_server_salt', JSON.stringify(e.salt));
     });
-    account.auth_key_fingerprint = fingerprint;
+    if(stateFingerprint) {
+      account.auth_key_fingerprint = stateFingerprint;
+      localStorage.setItem('auth_key_fingerprint', JSON.stringify(stateFingerprint));
+    }
     localStorage.setItem('account1', JSON.stringify(account));
     localStorage.setItem('dc', JSON.stringify(dc));
     localStorage.setItem('user_auth', JSON.stringify({date: Math.floor(Date.now() / 1000), id: s.userId, dcID: dc}));
-    localStorage.setItem('auth_key_fingerprint', JSON.stringify(fingerprint));
     localStorage.setItem('server_time_offset', JSON.stringify(s.timeOffset || 0));
     console.log('[preview-auth] seeded session for user', s.userId, 'on', s.isTest ? 'test dc' : 'dc', dc);
   } catch(e) {
@@ -173,7 +197,7 @@ const seedScript = `(function(){
     // once per tab, as for account1 above
     if(window.sessionStorage.getItem('preview_auth_seeded_2') === fingerprint) return;
     window.sessionStorage.setItem('preview_auth_seeded_2', fingerprint);
-    var account = {userId: s.userId, dcId: dc, auth_key_fingerprint: fingerprint};
+    var account = {userId: s.userId, dcId: dc, auth_key_fingerprint: ${JSON.stringify(getStateFingerprint(seed2))}};
     Object.keys(s.authKeys).forEach(function(id){
       account['dc' + id + '_auth_key'] = s.authKeys[id].key;
       account['dc' + id + '_server_salt'] = s.authKeys[id].salt;
