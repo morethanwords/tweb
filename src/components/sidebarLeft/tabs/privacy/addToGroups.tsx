@@ -12,6 +12,7 @@ export default privacyTab('privacy-add-to-groups', (tab) => {
     captions: [caption, caption, caption],
     exceptionTexts: ['PrivacySettingsController.NeverAllow', 'PrivacySettingsController.AlwaysAllow'],
     appendTo: tab.scrollable,
-    managers: tab.managers
+    managers: tab.managers,
+    allowPremium: true
   });
 });

@@ -1325,6 +1325,7 @@ type AppAddMembersTabPayload = {
   selectedExtras?: Set<string>;
   extraCategories?: ReadonlyArray<AppAddMembersExtraCategory>;
   extraCategoriesSectionLangKey?: LangPackKey;
+  peersSectionLangKey?: LangPackKey;
   peerType?: SelectSearchPeerType[];
   channelParticipantsPeerId?: PeerId;
   peerLoader?: AppAddMembersPeerLoader;

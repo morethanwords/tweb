@@ -3,9 +3,10 @@ import anchorCallback from '@helpers/dom/anchorCallback';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import replaceContent from '@helpers/dom/replaceContent';
 import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
-import {InputPrivacyKey, InputPrivacyRule} from '@layer';
+import {InputPrivacyKey, InputPrivacyRule, PrivacyRule} from '@layer';
 import {AppManagers} from '@lib/managers';
 import getPrivacyRulesDetails from '@appManagers/utils/privacy/getPrivacyRulesDetails';
+import getPrivacyRulesToKeep from '@appManagers/utils/privacy/getPrivacyRulesToKeep';
 import PrivacyType from '@appManagers/utils/privacy/privacyType';
 import {i18n, join, LangPackKey, _i18n} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
@@ -18,6 +19,7 @@ import {hideToast, toastNew} from '@components/toast';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import bindManagersToAccount from '@lib/accounts/bindManagersToAccount';
 import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
+import type {AppAddMembersExtraCategory} from '@components/solidJsTabs/tabs';
 
 type PrivacyKey = InputPrivacyKey['_'];
 type PrivacyExceptionKey = 'allow' | 'disallow';
@@ -27,6 +29,15 @@ type PrivacyException = {
   icon: Icon,
   subtitle: Accessor<JSX.Element>,
   setSubtitle: Setter<JSX.Element>
+};
+
+// * the kinds of user an exception can name besides peers, chosen in its picker
+const PREMIUM_CATEGORY: AppAddMembersExtraCategory = {key: 'premium', icon: 'premium_badge', text: 'PrivacyPremium'};
+const MINI_APPS_CATEGORY: AppAddMembersExtraCategory = {
+  key: 'miniapps',
+  icon: 'bot_filled',
+  text: 'PrivacyMiniApps',
+  statusLangKey: 'PrivacyMiniAppsStatus'
 };
 
 export type PrivacySectionStr = LangPackKey | '' | HTMLElement;
@@ -43,6 +54,9 @@ export default class PrivacySection {
     allow?: Set<string>
   } = {};
   public type: PrivacyType;
+  // * the rules as the screen loaded them, and the part of them it edits (`getEditedState`)
+  private loadedRules: PrivacyRule[];
+  private loadedState: string;
 
   private setLocked: Setter<boolean>;
   private setSelectedType: Setter<PrivacyType>;
@@ -63,7 +77,9 @@ export default class PrivacySection {
     premiumError?: LangPackKey,
     myContactsAndPremium?: boolean,
     privacyType?: PrivacyType,
-    allowMiniApps?: boolean
+    allowMiniApps?: boolean,
+    // * "Premium users" offered in "Always allow" (elsewhere it is offered only while chosen, to be taken off)
+    allowPremium?: boolean
   }) {
     if(options.captions) {
       options.captions.reverse();
@@ -187,6 +203,10 @@ export default class PrivacySection {
                 promise.then(() => {
                   const _peerIds = this.peerIds[exception.key];
                   const _extras = this.extras[exception.key] ?? (this.extras[exception.key] = new Set());
+                  const extraCategories = [
+                    exception.key === 'allow' && (options.allowPremium || _extras.has(PREMIUM_CATEGORY.key)) && PREMIUM_CATEGORY,
+                    options.allowMiniApps && MINI_APPS_CATEGORY
+                  ].filter(Boolean) as AppAddMembersExtraCategory[];
                   options.tab.slider.createTab(hotReloadGuard.tabs.AppAddMembersTab).open({
                     type: 'privacy',
                     skippable: true,
@@ -202,12 +222,12 @@ export default class PrivacySection {
                     },
                     selectedPeerIds: _peerIds,
                     selectedExtras: new Set(_extras),
-                    extraCategories: options.allowMiniApps ? [{
-                      key: 'miniapps',
-                      icon: 'bot_filled',
-                      text: 'PrivacyMiniApps',
-                      statusLangKey: 'PrivacyMiniAppsStatus'
-                    }] : undefined
+                    extraCategories,
+                    // * the kinds of user apart from the peers, under titles of their own, as tdesktop does
+                    ...(extraCategories.length && {
+                      extraCategoriesSectionLangKey: 'PrivacyUserTypes',
+                      peersSectionLangKey: 'PrivacyUsersAndGroups'
+                    })
                   });
                 });
               }}
@@ -235,7 +255,8 @@ export default class PrivacySection {
       const details = rules ? getPrivacyRulesDetails(rules) : undefined;
       const originalType = options.privacyType || details?.type;
 
-      if(this.exceptions) {
+      // * the exceptions are kept on a screen that does not show them too, for a save to send them back
+      if(details) {
         this.peerIds = {};
         this.extras = {};
         ['allow' as const, 'disallow' as const].forEach((k) => {
@@ -246,11 +267,19 @@ export default class PrivacySection {
           this.peerIds[k] = arr;
           const extras = this.extras[k] = new Set<string>();
           if(options.allowMiniApps && (k === 'allow' ? details.allowMiniApps : details.disallowMiniApps)) {
-            extras.add('miniapps');
+            extras.add(MINI_APPS_CATEGORY.key);
           }
-          this.exceptions.get(k).setSubtitle(this.generateStr(from, extras));
+          // * "Premium users" as the account has them, or chosen ahead on a screen that offers them while it stands
+          // * at "Everybody", for a switch away to take them along, as tdesktop does
+          if(k === 'allow' && (details.allowPremium || (options.allowPremium && originalType === PrivacyType.Everybody))) {
+            extras.add(PREMIUM_CATEGORY.key);
+          }
+          this.exceptions?.get(k).setSubtitle(this.generateStr(from, extras));
         });
       }
+
+      this.loadedRules = rules || [];
+      this.loadedState = this.getEditedState(originalType);
 
       if(options.premiumOnly) {
         const toggleLock = () => {
@@ -288,6 +317,11 @@ export default class PrivacySection {
       return;
     }
 
+    // * a visit that changed nothing saves nothing: what the screen sends is only what it shows
+    if(this.getEditedState(this.type) === this.loadedState) {
+      return;
+    }
+
     const rules: InputPrivacyRule[] = [];
 
     switch(this.type) {
@@ -302,7 +336,7 @@ export default class PrivacySection {
         break;
     }
 
-    if(this.exceptions) {
+    if(this.peerIds) {
       const a = ([
         ['allow',     'inputPrivacyValueAllowChatParticipants',     'inputPrivacyValueAllowUsers',     'inputPrivacyValueAllowBots'],
         ['disallow',  'inputPrivacyValueDisallowChatParticipants',  'inputPrivacyValueDisallowUsers',  'inputPrivacyValueDisallowBots']
@@ -337,14 +371,33 @@ export default class PrivacySection {
           });
         }
 
-        if(this.options.allowMiniApps && this.extras[k]?.has('miniapps')) {
+        if(this.options.allowMiniApps && this.extras[k]?.has(MINI_APPS_CATEGORY.key)) {
           rules.push({_: botsKey});
+        }
+
+        if(k === 'allow' && this.extras[k]?.has(PREMIUM_CATEGORY.key)) {
+          rules.push({_: 'inputPrivacyValueAllowPremium'});
         }
       }
     }
 
+    rules.push(...getPrivacyRulesToKeep(
+      this.loadedRules,
+      this.type,
+      this.options.allowMiniApps ? ['privacyValueAllowBots', 'privacyValueDisallowBots'] : []
+    ));
+
     managers.appPrivacyManager.setPrivacy(this.options.inputKey, rules);
   };
+
+  // * what the screen edits - the type and the exceptions - to tell a change from a visit
+  private getEditedState(type: PrivacyType) {
+    const sorted = (values: Iterable<PeerId | string> = []) => [...values].map(String).sort();
+    return JSON.stringify([
+      type,
+      ...(['allow', 'disallow'] as const).map((k) => [sorted(this.peerIds?.[k]), sorted(this.extras[k])])
+    ]);
+  }
 
   private replaceCaption(caption: PrivacySectionStr = this.isLocked() ? this.options.premiumCaption : this.options.captions[this.type]) {
     const captionElement = this.radioSection.caption;
@@ -382,15 +435,17 @@ export default class PrivacySection {
   }
 
   private generateStr(peers: {users: UserId[], chats: ChatId[]}, extras?: Set<string>) {
-    const hasMiniApps = extras?.has('miniapps');
-    if(!peers.users.length && !peers.chats.length && !hasMiniApps) {
+    const hasMiniApps = extras?.has(MINI_APPS_CATEGORY.key);
+    const hasPremium = extras?.has(PREMIUM_CATEGORY.key);
+    if(!peers.users.length && !peers.chats.length && !hasMiniApps && !hasPremium) {
       return [i18n('PrivacySettingsController.AddUsers')];
     }
 
     return join([
+      hasPremium ? i18n(PREMIUM_CATEGORY.text) : null,
       peers.users.length ? i18n('Users', [peers.users.length]) : null,
       peers.chats.length ? i18n('Chats', [peers.chats.length]) : null,
-      hasMiniApps ? i18n('PrivacyMiniApps') : null
+      hasMiniApps ? i18n(MINI_APPS_CATEGORY.text) : null
     ].filter(Boolean), false);
   }
 }

@@ -478,7 +478,11 @@ const PrivacyAndSecurity: Component = () => {
           tab.managers.appPrivacyManager.getPrivacy(key as InputPrivacyKey['_']).then((rules) => {
             const details = getPrivacyRulesDetails(rules);
             let langKey = map[details.type];
-            if(details.type === PrivacyType.Nobody && details.allowMiniApps) {
+            if(details.type === PrivacyType.Nobody && details.allowPremium) {
+              langKey = 'PrivacyPremium';
+            } else if(details.type === PrivacyType.Contacts && details.allowPremium) {
+              langKey = 'Privacy.ContactsAndPremium';
+            } else if(details.type === PrivacyType.Nobody && details.allowMiniApps) {
               langKey = 'PrivacyMiniApps';
             } else if(details.type === PrivacyType.Everybody && details.disallowMiniApps) {
               langKey = 'PrivacyNoMiniApps';

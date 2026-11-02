@@ -22,6 +22,7 @@ const AddMembersTab = () => {
     selectedExtras,
     extraCategories,
     extraCategoriesSectionLangKey,
+    peersSectionLangKey,
     peerType,
     channelParticipantsPeerId,
     peerLoader,
@@ -73,6 +74,7 @@ const AddMembersTab = () => {
     peerId: channelParticipantsPeerId,
     getMoreCustom: peerLoader,
     placeholder,
+    sectionNameLangPackKey: peersSectionLangKey,
     exceptSelf: exceptSelf ??
       (isPrivacy || !!channelParticipantsPeerId || !!peerLoader),
     filterPeerTypeBy: filterPeerTypeBy ??

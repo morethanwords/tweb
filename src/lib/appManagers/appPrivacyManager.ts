@@ -70,17 +70,13 @@ export class AppPrivacyManager extends AppManager {
       this.appUsersManager.saveApiUsers(privacyRules.users);
       this.appChatsManager.saveApiChats(privacyRules.chats);
 
+      // * the rules as the server keeps them: the input ones carry input users, which a screen opened next cannot read
       this.apiUpdatesManager.processLocalUpdate({
         _: 'updatePrivacy',
         key: {
           _: convertInputKeyToKey(inputKey)
         },
-        rules: rules.map((inputRule) => {
-          const rule: PrivacyRule = {} as any;
-          Object.assign(rule, inputRule);
-          rule._ = convertInputKeyToKey(rule._) as any;
-          return rule;
-        })
+        rules: privacyRules.rules
       });
 
       // console.log('privacy rules', inputKey, privacyRules, privacyRules.rules);

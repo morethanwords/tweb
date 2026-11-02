@@ -29,6 +29,9 @@ const PrivacyPhoneNumber: Component = () => {
       })
     );
 
+    // * "added by phone" goes back to "Everybody" as the phone number's type changes, never as it loads: the two
+    // * sections' rules come in any order, and a reset then would stand for a change nobody made
+    let phoneType: PrivacyType;
     const phoneSection = new PrivacySection({
       tab,
       title: 'PrivacyPhoneTitle',
@@ -37,7 +40,10 @@ const PrivacyPhoneNumber: Component = () => {
       exceptionTexts: ['PrivacySettingsController.NeverShare', 'PrivacySettingsController.AlwaysShare'],
       appendTo: tab.scrollable,
       onRadioChange: (type) => {
-        s.setRadio(PrivacyType.Everybody);
+        if(phoneType !== undefined && type !== phoneType) {
+          s.setRadio(PrivacyType.Everybody);
+        }
+        phoneType = type;
         s.radioSection.container.classList.toggle('hide', type !== PrivacyType.Nobody);
       },
       managers: tab.managers
