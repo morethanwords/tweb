@@ -5,12 +5,11 @@
  */
 
 import {ButtonMenuItemOptions, ButtonMenuSync} from '@components/buttonMenu';
-import {avatarNew} from '@components/avatarNew';
+import ButtonMenuPeerText from '@components/buttonMenuPeerText';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import contextMenuController from '@helpers/contextMenuController';
 import positionMenu from '@helpers/positionMenu';
 import ListenerSetter from '@helpers/listenerSetter';
-import {getMiddleware, Middleware} from '@helpers/middleware';
 import {getOverlayRoot} from '@helpers/appWindow';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
 import isDocumentRTL from '@helpers/dom/isDocumentRTL';
@@ -18,6 +17,7 @@ import {i18n} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import apiManagerProxy from '@lib/apiManagerProxy';
+import {makeFullMid} from '@appManagers/utils/messages/fullMid';
 import {parseTonAddress} from '@lib/wallet/tonAddress';
 import {copyWalletAddress} from '@components/wallet/parts';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
@@ -36,50 +36,33 @@ type AddressOwner = {peerId?: PeerId, unlinked?: boolean};
 
 /**
  * The Telegram user whose wallet this is, by the profiles or the server; `unlinked` when neither knows one — not when
- * the answer did not come in time, or the owner is no one to show
+ * the answer did not come in time, or the owner is no one to show. Only the profiles loaded already are asked before
+ * the server: a profile to load is waited for only when the server will not say
  */
 async function getAddressOwner(address: string, userIds: UserId[]): Promise<AddressOwner> {
   const managers = bindManagersToSession(rootScope.managers);
-  const lookup = managers.appWalletManager.getKnownAddressOwner(address, userIds)
-  .then((known) => known ?? managers.appWalletManager.getAddressOwner(address).then((owner) => owner?.user_id?.toUserId()))
+  const {appWalletManager} = managers;
+  const lookup = appWalletManager.getKnownAddressOwner(address, userIds)
+  .then((known) => known ?? appWalletManager.getAddressOwner(address).then((owner) => owner?.user_id?.toUserId(), (err: ApiError) => {
+    if(err?.type !== 'WALLET_UNAVAILABLE') throw err;
+    return appWalletManager.getKnownAddressOwner(address, userIds, true);
+  }))
   .then(async(userId): Promise<AddressOwner> => {
     if(!userId) return {unlinked: true};
     return await managers.appUsersManager.isRegularUser(userId) ? {peerId: userId.toPeerId(false)} : {};
-  }, (err: ApiError): AddressOwner => err?.type === 'WALLET_UNAVAILABLE' ? {unlinked: true} : {});
+  }, (): AddressOwner => ({}));
 
   return Promise.race([lookup, new Promise<AddressOwner>((resolve) => setTimeout(() => resolve({}), OWNER_TIMEOUT))]);
 }
 
-/** Who is at hand where the address was clicked: the author of its message and the user of the chat */
+/** Who is at hand where the address was clicked: the author of its message and the user of its chat */
 function getUsersAtHand(element: HTMLElement) {
   const chat = hotReloadGuard.appImManager?.chat;
   const bubble = element.closest<HTMLElement>('.bubble');
-  const senderPeerId = bubble?.dataset.mid && chat?.getMessage(+bubble.dataset.mid)?.fromId;
-  return [senderPeerId, chat?.peerId].filter((peerId) => peerId && peerId.isUser()).map((peerId) => peerId.toUserId());
-}
-
-/** The owner's row, laid out as on Android (ItemOptions.addProfile) */
-async function createOwnerRow(peerId: PeerId, middleware: Middleware) {
-  const row = document.createElement('div');
-  row.classList.add(styles.owner);
-
-  const avatar = avatarNew({peerId, size: OWNER_AVATAR_SIZE, middleware});
-  avatar.node.classList.add(styles.avatar);
-
-  const name = document.createElement('div');
-  name.classList.add(styles.name);
-  name.append(await wrapPeerTitle({peerId}));
-
-  const action = document.createElement('div');
-  action.classList.add(styles.action);
-  action.append(i18n('Wallet.ViewProfile'));
-
-  const info = document.createElement('div');
-  info.classList.add(styles.info);
-  info.append(name, action);
-
-  row.append(avatar.node, info);
-  return row;
+  // * the bubble's own peer: a search through every chat shows messages of others than the chat's
+  const chatPeerId = bubble?.dataset.peerId ? bubble.dataset.peerId.toPeerId() : chat?.peerId;
+  const senderPeerId = bubble?.dataset.mid && chat?.getMessage(makeFullMid(chatPeerId, +bubble.dataset.mid))?.fromId;
+  return [senderPeerId, chatPeerId].filter((peerId) => peerId && peerId.isUser()).map((peerId) => peerId.toUserId());
 }
 
 function createGap() {
@@ -118,10 +101,9 @@ export default async function openTonAddressMenu(options: {
     return;
   }
 
-  const middlewareHelper = getMiddleware();
-  const ownerRow = ownerPeerId && await createOwnerRow(ownerPeerId, middlewareHelper.get());
+  // * the name is in the owner's row before the menu opens: the row sets the menu's width
+  const ownerTitle = ownerPeerId && await wrapPeerTitle({peerId: ownerPeerId});
   if(request !== menuRequest || !element.isConnected) {
-    middlewareHelper.destroy();
     return;
   }
 
@@ -147,8 +129,9 @@ export default async function openTonAddressMenu(options: {
 
   if(ownerPeerId) {
     buttons.push({
-      className: styles.item,
-      textElement: ownerRow,
+      avatarInfo: {peerId: ownerPeerId, size: OWNER_AVATAR_SIZE},
+      className: styles.owner,
+      textElement: ButtonMenuPeerText(ownerPeerId, i18n('Wallet.ViewProfile'), ownerTitle),
       separator: createGap(),
       onClick: () => hotReloadGuard.appImManager.setInnerPeer({peerId: ownerPeerId})
     });
@@ -177,7 +160,6 @@ export default async function openTonAddressMenu(options: {
 
   positionMenu(point, menu);
   contextMenuController.openBtnMenu(menu, () => {
-    middlewareHelper.destroy();
     setTimeout(() => {
       menu.remove();
       listenerSetter.removeAll();

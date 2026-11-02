@@ -13,6 +13,7 @@ import type {
   ToncenterStreamingUrl,
   Update,
   Updates,
+  UserFull,
   WalletHolderDc,
   WalletOwnershipProof,
   WalletSecretPhraseParts,
@@ -557,9 +558,10 @@ export default class AppWalletManager extends AppManager {
 
   /**
    * Whose wallet this is, as far as profiles tell, with no wallet method asked: one opened before,
-   * or the card of someone at hand or our own
+   * or the card of someone at hand or our own — of the profiles loaded already, or, with `load`, of all of them,
+   * loaded at once
    */
-  public async getKnownAddressOwner(address: string, userIds: UserId[] = []): Promise<UserId | undefined> {
+  public async getKnownAddressOwner(address: string, userIds: UserId[] = [], load?: boolean): Promise<UserId | undefined> {
     const canonical = canonicalTonAddress(address);
     if(!canonical) return;
 
@@ -568,12 +570,15 @@ export default class AppWalletManager extends AppManager {
       if(canonicalTonAddress(walletAddresses[userId]) === canonical) return +userId as UserId;
     }
 
-    for(const userId of new Set([...userIds, this.rootScope.myId.toUserId()])) {
-      try {
-        const {wallet_card} = await this.appProfileManager.getProfile(userId);
-        if(wallet_card && canonicalTonAddress(wallet_card.address) === canonical) return userId;
-      } catch{}
-    }
+    const candidates = [...new Set([...userIds, this.rootScope.myId.toUserId()])];
+    const profiles = await Promise.all(candidates.map((userId) => load ?
+      Promise.resolve(this.appProfileManager.getProfile(userId)).catch((): UserFull => undefined) :
+      this.appProfileManager.getCachedFullUser(userId)));
+    const index = profiles.findIndex((profile) => {
+      const card = (profile as UserFull.userFull)?.wallet_card;
+      return card && canonicalTonAddress(card.address) === canonical;
+    });
+    return index === -1 ? undefined : candidates[index];
   }
 
   // MARK: Toncenter proxy

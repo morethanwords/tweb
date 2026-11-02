@@ -757,6 +757,7 @@ export function walletSandboxManagers(options: {
         getRates: () => ({rates: {USD: 2.12, EUR: 1.87, GBP: 1.61, RUB: 172.4}, date: Date.now()}),
         getUserAddress: () => ({_: 'walletUserAddress', pFlags: {}, user_id: ctx.peer('private').toUserId(), address: walletSandboxOtherAddress, public_key: walletSandboxPublicKey}),
         getAddressOwner: (): any => undefined,
+        getKnownAddressOwner: (): any => undefined,
         getGaslessInfo: () => ({available: options.gasless ?? true, left: 4, reset_at: WALLET_NOW + 86400, min_amount: '100000000', relayer_address: walletSandboxOtherAddress, date: Date.now()}),
         performToncenterRequest: () => Promise.reject({type: 'WALLET_TONCENTER_ERROR', message: 'sandbox'}),
         getAddressFunds: () => options.parkedNanos !== undefined ?

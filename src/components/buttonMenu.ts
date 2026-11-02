@@ -29,7 +29,8 @@ type AvatarInfo = {
   accountNumber?: ActiveAccountNumber,
   peerId?: PeerId,
   peer?: Chat.channel | Chat.chat | User.user,
-  active?: boolean
+  active?: boolean,
+  size?: number
 };
 
 export type ButtonMenuItemOptions = {

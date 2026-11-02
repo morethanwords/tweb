@@ -6,10 +6,29 @@
   background-color: var(--light-secondary-text-color);
 }
 
-.item:global(.btn-menu-item) {
+// * the owner's row, laid out as on Android (ItemOptions.addProfile): a bigger avatar, the name over the action
+.owner:global(.btn-menu-item) {
+  --icon-size: 2.125rem;
+  --icon-margin: .75rem;
   height: 3.25rem;
   padding-block: 0;
   padding-inline: .8125rem 1rem;
+
+  :global(.btn-menu-item-avatar) {
+    --add: 0px;
+
+    // the peer's colour is for the initials: it must not show around a photo
+    &:has(:global(.avatar-photo)) {
+      background: none;
+    }
+  }
+
+  :global(.btn-menu-item-peer-subtitle) {
+    color: var(--primary-color);
+    font-size: .8125rem;
+    font-weight: inherit;
+    line-height: 1rem;
+  }
 }
 
 .note:global(.btn-menu-item) {
@@ -27,38 +46,4 @@
     overflow: visible;
     white-space: normal;
   }
-}
-
-.owner {
-  display: flex;
-  align-items: center;
-  gap: .75rem;
-  min-width: 0;
-}
-
-.avatar {
-  flex: none;
-
-  // the peer's colour is for the initials: it must not show around a photo
-  &:has(:global(.avatar-photo)) {
-    background: none;
-  }
-}
-
-.info {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.action {
-  font-size: .8125rem;
-  color: var(--primary-color);
 }
