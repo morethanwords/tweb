@@ -38,7 +38,7 @@ import GenericTable, {GenericTableCell, GenericTableRow} from '@components/gener
 import {SolidJSHotReloadGuardContextValue, useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {formatDate, formatFullSentTime} from '@helpers/date';
 import findUpClassName from '@helpers/dom/findUpClassName';
-import findUpTag from '@helpers/dom/findUpTag';
+import findUpAnchorWithin from '@helpers/dom/findUpAnchorWithin';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import onQuoteClick from '@helpers/dom/onQuoteClick';
@@ -2298,8 +2298,7 @@ function wireInlinePageButtons(context: InstantViewContextValue, fragment: Docum
 
     // Enter and Space come through here too (role="button")
     attachClickEvent(element, (e) => {
-      const anchor = findUpTag(e.target, 'A');
-      if(anchor && element.contains(anchor)) return;
+      if(findUpAnchorWithin(e.target, element)) return;
       cancelEvent(e);
       // a link button's link is its label: a press beside it (the padding, the ripple over it)
       // opens that link the way a press on it does

@@ -1,6 +1,7 @@
 import Scrollable from '@components/scrollable';
 import animateSomethingWithScroll from '@helpers/animateSomethingWithScroll';
 import cancelEvent from '@helpers/dom/cancelEvent';
+import findUpAnchorWithin from '@helpers/dom/findUpAnchorWithin';
 import liteMode from '@helpers/liteMode';
 import pause from '@helpers/schedulers/pause';
 import ScrollSaver from '@helpers/scrollSaver';
@@ -11,6 +12,12 @@ export default function onQuoteClick(
   scrollable?: Scrollable,
   createScrollSaver?: () => ScrollSaver
 ) {
+  // * a link in the quote opens, folded or not, as on Android: the quote folds and unfolds by a press
+  // * anywhere else in it
+  if(findUpAnchorWithin(e.target, quoteDiv)) {
+    return false;
+  }
+
   const isTruncated = quoteDiv.classList.contains('is-truncated');
   const isExpanded = quoteDiv.classList.contains('is-expanded');
   const isGood = isTruncated || isExpanded;

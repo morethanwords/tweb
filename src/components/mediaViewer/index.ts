@@ -59,7 +59,7 @@ export const onMediaCaptionClick = (caption: HTMLElement, e: MouseEvent) => {
   const spoiler = findUpClassName(e.target, 'spoiler');
   const quoteDiv = findUpClassName(e.target, 'quote-like-collapsable');
   const isSpoilerVisible = caption.classList.contains('is-spoiler-visible');
-  if(quoteDiv && !a && (!spoiler || isSpoilerVisible)) {
+  if(quoteDiv && (!spoiler || isSpoilerVisible)) {
     if(onQuoteClick(e, quoteDiv)) {
       return;
     }
