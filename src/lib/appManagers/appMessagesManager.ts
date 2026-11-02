@@ -13067,7 +13067,7 @@ export class AppMessagesManager extends AppManager {
           if(photo) this.updatePhoto(photo as Photo.photo, id);
           else if(document) this.updateDocument(document as Document.document, id);
         });
-      } else if(message.media._ === 'messageMediaPoll' && tempMessage._ === 'message' && tempMessage.media._ === 'messageMediaPoll') {
+      } else if(message.media._ === 'messageMediaPoll' && tempMessage?._ === 'message' && tempMessage.media._ === 'messageMediaPoll') {
         const updateMedia = (prevMedia: MessageMedia | InputMedia, newMedia: MessageMedia | InputMedia) => {
           if(prevMedia?._ === 'messageMediaPhoto' && newMedia?._ === 'messageMediaPhoto' && newMedia.photo?._ === 'photo') {
             this.updatePhoto(newMedia.photo, '' + prevMedia.photo.id)
@@ -13095,6 +13095,12 @@ export class AppMessagesManager extends AppManager {
     }
 
     this.deleteMessageFromStorage(storage, tempId);
+
+    // * the chat's history was flushed (cleared, deleted, reloaded) while it was being sent: its temp message went
+    // * with it, released already, and has no bubble left to become the sent one
+    if(!tempMessage) {
+      return;
+    }
 
     if(!(tempMessage as Message.message).reply_markup && (message as Message.message).reply_markup) {
       setTimeout(() => { // TODO: refactor it to normal buttons adding
