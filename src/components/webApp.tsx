@@ -1118,13 +1118,14 @@ export default class WebApp {
           slug
         };
 
+        const onInvoiceClosed = (status: TelegramWebViewSendEventMap['invoice_closed']['status']) => {
+          telegramWebView.dispatchWebViewEvent('invoice_closed', {slug, status});
+        };
+
         hotReloadGuard.internalLinkProcessor.processInvoiceLink(link).then((popupPayment) => {
-          popupPayment.addEventListener('finish', (result) => {
-            telegramWebView.dispatchWebViewEvent('invoice_closed', {
-              slug,
-              status: result
-            });
-          });
+          popupPayment.addEventListener('finish', onInvoiceClosed);
+        }, () => { // * an invoice that does not open (a bad slug, a form the server refuses) is a failed one, as in tdesktop
+          onInvoiceClosed('failed');
         });
       },
       web_app_request_theme: this.sendTheme,
