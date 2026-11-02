@@ -3206,28 +3206,40 @@ export default class ChatBubbles {
 
   private viewsObserverCallback = (entry: IntersectionObserverEntry) => {
     if(entry.isIntersecting) {
-      const fullMid = getBubbleFullMid(entry.target as HTMLElement);
       this.observer.unobserve(entry.target, this.viewsObserverCallback);
-
-      if(this.chat.isPreview) return;
-
-      if(fullMid) {
-        if(this.sponsoredMessagesMids.includes(fullMid)) {
-          const {mid} = splitFullMid(fullMid);
-          const msg = this.sponsoredMessages.find((msg) => msg.mid === mid);
-          const sponsoredMessage = (msg as Message.message)?.sponsoredMessage
-
-          if(sponsoredMessage && !sponsoredMessage.viewed) {
-            this.managers.appMessagesManager.viewSponsoredMessage(sponsoredMessage.random_id)
-          }
-          return
-        }
-
-        this.viewsMids.add(fullMid);
-        this.sendViewCountersDebounced();
-      }
+      this.onViewed(entry.target as HTMLElement);
     }
   };
+
+  /**
+   * What is watched for its views came into view: a post's view is counted, an ad is reported as seen. Of an ad the
+   * button under it is watched, which has no id of its own: its bubble has
+   */
+  private onViewed(target: HTMLElement) {
+    if(this.chat.isPreview) return;
+
+    const fullMid = getBubbleFullMid(findUpClassName(target, 'bubble'));
+    if(!fullMid) return;
+
+    if(this.sponsoredMessagesMids.includes(fullMid)) {
+      const {mid} = splitFullMid(fullMid);
+      const msg = this.sponsoredMessages.find((msg) => msg.mid === mid);
+      const sponsoredMessage = (msg as Message.message)?.sponsoredMessage;
+
+      // * once per ad of the load: a bubble of it rendered anew is not another view. One that failed goes again
+      if(sponsoredMessage && !sponsoredMessage.viewed) {
+        sponsoredMessage.viewed = true;
+        this.managers.appMessagesManager.viewSponsoredMessage(sponsoredMessage.random_id).catch(() => {
+          sponsoredMessage.viewed = false;
+        });
+      }
+
+      return;
+    }
+
+    this.viewsMids.add(fullMid);
+    this.sendViewCountersDebounced();
+  }
 
   // * guarded to at most once per chat-open (like iOS's hasDisplayedGuestChatMessageTooltip); reset in cleanup
   private guestChatHintShown = false;
@@ -6411,6 +6423,8 @@ export default class ChatBubbles {
     this.getSponsoredMessagePromise = undefined;
     this.sponsoredMessagesLoaded = false;
     this.sponsoredMessagesMids = [];
+    // * the next chat's ads have the same ids
+    this.sponsoredMessages = [];
     this.sponsoredMessagesAvailable = [];
     this.sponsoredAfterMids.clear();
 
@@ -14326,6 +14340,8 @@ export default class ChatBubbles {
     // * every load makes the same ids: one dropped while it waited must not register them for the next
     if(middleware()) {
       this.sponsoredMessagesMids.push(makeFullMid(this.peerId, msg.mid));
+      // * every ad made, the ones put in their places too: their views are reported by them (`onViewed`)
+      this.sponsoredMessages.push(msg);
       this.liveSponsoredMessages.add(msg);
     }
 
@@ -14352,7 +14368,7 @@ export default class ChatBubbles {
         return Promise.all(sponsoredMessages.messages.map((it, idx) => this.generateSponsoredMessage(it, idx, middleware))).then((msgs) => {
           if(!middleware()) return;
           this.messagesSinceLastSponsored = 0;
-          this.sponsoredMessages = this.sponsoredMessagesAvailable = msgs
+          this.sponsoredMessagesAvailable = msgs
           if(this.scrollable.loadedAll.bottom && msgs.length) {
             this.renderNewMessage(msgs.shift());
           }

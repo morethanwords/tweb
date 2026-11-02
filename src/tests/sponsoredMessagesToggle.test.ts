@@ -1,4 +1,5 @@
 import {loadChatBubbles, LOAD_CHAT_BUBBLES_TIMEOUT} from '@/tests/helpers/chatBubbles';
+import makeSponsoredHarness from '@/tests/helpers/sponsoredChatBubbles';
 import '@helpers/peerIdPolyfill';
 import deferredPromise from '@helpers/cancellablePromise';
 import {makeFullMid} from '@appManagers/utils/messages/fullMid';
@@ -21,20 +22,7 @@ const ADS: MessagesSponsoredMessages = {
 };
 
 function makeHarness(overrides: Record<string, any> = {}) {
-  return Object.assign(Object.create(ChatBubbles.prototype), {
-    chat: {peerId: PEER_ID},
-    log: {bindPrefix: () => vi.fn()},
-    managers: {appMessagesManager: {getSponsoredMessage: vi.fn(async() => ADS)}},
-    sponsoredMessagesMids: [],
-    sponsoredMessages: [],
-    sponsoredMessagesAvailable: [],
-    sponsoredMessageEvery: 0,
-    messagesSinceLastSponsored: 0,
-    sponsoredAfterMids: new Map(),
-    sponsoredMessagesLoaded: false,
-    liveSponsoredMessages: new WeakSet(),
-    scrollable: {loadedAll: {bottom: true}},
-    getMiddleware: (check?: () => boolean) => () => !check || check(),
+  return makeSponsoredHarness(ChatBubbles, PEER_ID, ADS, {
     generateSponsoredMessage: vi.fn(async(_: unknown, idx: number) => ({mid: -1 - idx})),
     deleteMessagesByIds: vi.fn(),
     renderNewMessage: vi.fn(),
