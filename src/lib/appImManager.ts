@@ -1557,9 +1557,11 @@ export class AppImManager extends EventListenerBase<{
       buttonId
     ).then((urlAuthResult) => {
       onUrlAuthResult(urlAuthResult);
-    }, () => {
-      // * the server could not say how to open it: it opens as it is, as tdesktop does (url_auth_box.cpp)
-      safeWindowOpen(url);
+    }, (err: ApiError) => {
+      // * a request the server refused opens the link all the same, as tdesktop does (but for an account left meanwhile)
+      if(err?.type !== 'MIDDLEWARE') {
+        safeWindowOpen(url);
+      }
     });
   }
 

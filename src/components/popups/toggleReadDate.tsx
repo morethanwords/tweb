@@ -13,6 +13,7 @@ import {getMiddleware} from '@helpers/middleware';
 import MediaHeader from '@components/mediaHeader';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import toastError from '@components/toastError';
 
 export default async function showToggleReadDatePopup(peerId: PeerId, type: 'lastSeen' | 'readTime') {
   const managers = bindManagersToSession(rootScope.managers);
@@ -108,7 +109,11 @@ export default async function showToggleReadDatePopup(peerId: PeerId, type: 'las
           onClick={() => {
             const result = props.onClick();
             if(result instanceof Promise) {
-              toggleDisability(button, true);
+              const toggle = toggleDisability(button, true);
+              result.catch((err: ApiError) => {
+                toggle();
+                toastError(err, 'toggle read date error');
+              });
             }
           }}
         >

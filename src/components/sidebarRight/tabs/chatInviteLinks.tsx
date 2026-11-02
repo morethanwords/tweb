@@ -29,6 +29,7 @@ import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {mountSolidComponent, wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import type {AppChatInviteLinkTab, AppChatInviteLinksTab} from '@components/solidJsTabs/tabs';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import toastError from '@components/toastError';
 
 const ChatInviteLinks: Component = () => {
   const [tab] = useSuperTab<typeof AppChatInviteLinksTab>();
@@ -319,8 +320,14 @@ const ChatInviteLinks: Component = () => {
         });
 
         const toggle = toggleDisability(btn, true);
-        await tab.managers.appChatInvitesManager.deleteRevokedExportedChatInvites(chatId, adminId);
-        toggle();
+        try {
+          await tab.managers.appChatInvitesManager.deleteRevokedExportedChatInvites(chatId, adminId);
+        } catch(err) {
+          toastError(err as ApiError, 'delete revoked links error');
+          return;
+        } finally {
+          toggle();
+        }
 
         Array.from(revokedLinksContent.children).forEach((el) => {
           const cache = invitesMap.get(el as HTMLElement);

@@ -207,6 +207,7 @@ import getRichMessagePostingChoice from '@components/chat/inputEditor/richMessag
 import {APP_TABS} from '@lib/appColumns';
 import verifyMenuItem from '@helpers/verifyMenuItem';
 import {isWalletAvailable, isWalletReleased} from '@lib/wallet/release';
+import toastError from '@components/toastError';
 
 const HOT_CHAT_INPUTS = import.meta.hot ? [] as ChatInput[] : null;
 let botCommandsListId = 0;
@@ -2379,10 +2380,10 @@ export default class ChatInput {
     });
 
     this.managers.appUsersManager.toggleBlock(peerId, false).then(() => {
-      if(middleware()) {
-        toggle();
-        this.toggleControlButtonDisability = undefined;
-      }
+      this.releaseControlButton(toggle, middleware);
+    }, (err: ApiError) => {
+      this.releaseControlButton(toggle, middleware);
+      toastError(err, 'unblock error');
     });
   };
 
@@ -2398,13 +2399,29 @@ export default class ChatInput {
     });
 
     this.managers.appMessagesManager.startBot(peerId.toUserId(), undefined, startParam).then(() => {
-      if(middleware()) {
-        toggle();
-        this.toggleControlButtonDisability = undefined;
+      if(this.releaseControlButton(toggle, middleware)) {
         this.setStartParam();
       }
+    }, (err: ApiError) => {
+      // * a start parameter the bot does not take, a block that could not be lifted
+      this.releaseControlButton(toggle, middleware);
+      toastError(err, 'start bot error');
     });
   };
+
+  /**
+   * A control button (Unblock, Start) comes back once its request answers, a refusal included: it is there to be pressed
+   * again. Not when the chat, or what the button was for, changed meanwhile
+   */
+  private releaseControlButton(toggle: () => void, middleware: () => boolean) {
+    if(!middleware()) {
+      return false;
+    }
+
+    toggle();
+    this.toggleControlButtonDisability = undefined;
+    return true;
+  }
 
   public isReplyInTopicOverlayNeeded() {
     return REPLY_IN_TOPIC &&

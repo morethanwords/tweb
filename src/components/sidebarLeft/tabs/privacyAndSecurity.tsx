@@ -34,6 +34,7 @@ import Row from '@components/rowTsx';
 import {renderComponent} from '@helpers/solid/renderComponent';
 import type {AppPrivacyLastSeenTab} from '@components/solidJsTabs/tabs';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import toastError from '@components/toastError';
 
 const PrivacyAndSecurity: Component = () => {
   const [tab] = useSuperTab<typeof AppPrivacyAndSecurityTab>();
@@ -91,11 +92,12 @@ const PrivacyAndSecurity: Component = () => {
           return;
         }
 
-        toggle();
         toastNew({
           langPackKey: info && payment ? 'PrivacyPaymentsPaymentShippingCleared' : (info ? 'PrivacyPaymentsShippingInfoCleared' : 'PrivacyPaymentsPaymentInfoCleared')
         });
-      });
+      }, (err: ApiError) => {
+        toastError(err, 'clear saved info error');
+      }).finally(toggle);
     }, noop);
   };
 
@@ -105,9 +107,9 @@ const PrivacyAndSecurity: Component = () => {
         langKey: 'Delete',
         callback: () => {
           const toggle = toggleDisability([deleteButton], true);
-          tab.managers.appDraftsManager.clearAllDrafts().then(() => {
-            toggle();
-          });
+          tab.managers.appDraftsManager.clearAllDrafts().catch((err: ApiError) => {
+            toastError(err, 'clear drafts error');
+          }).finally(toggle);
         },
         isDanger: true
       }],

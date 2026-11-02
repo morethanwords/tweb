@@ -16,6 +16,8 @@ import {getStickerSetInputById, getStickerSetInputByStickerSet} from '@lib/appMa
 import isStickerSetAdded from '@lib/appManagers/utils/stickers/isStickerSetAdded';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import toastError from '@components/toastError';
+import makeError from '@helpers/makeError';
 
 // * a trending set counts as seen once (all but a sliver of) it is on the screen
 const READ_VISIBLE_RATIO = 0.95;
@@ -262,17 +264,24 @@ const Stickers: Component = () => {
 
         button.setAttribute('disabled', 'true');
 
+        // * a set the server would not give (it resolves to nothing) or a toggle it refused leaves the button usable
         tab.managers.appStickersManager.getStickerSet(input).then((full) => {
-          tab.managers.appStickersManager.toggleStickerSet(full.set).then((changed) => {
+          if(!full) {
+            throw makeError('UNKNOWN');
+          }
+
+          return tab.managers.appStickersManager.toggleStickerSet(full.set).then((changed) => {
             if(changed) {
               button.textContent = '';
               const added = isStickerSetAdded(full.set);
               button.append(i18n(added ? 'Stickers.SearchAdded' : 'Stickers.SearchAdd'));
               button.classList.toggle('gray', added);
             }
-          }).finally(() => {
-            button.removeAttribute('disabled');
           });
+        }).catch((err: ApiError) => {
+          toastError(err, 'toggle sticker set error');
+        }).finally(() => {
+          button.removeAttribute('disabled');
         });
       } else {
         tab.managers.appStickersManager.getStickerSet(input).then((full) => {

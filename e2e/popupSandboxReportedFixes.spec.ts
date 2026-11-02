@@ -255,3 +255,19 @@ for(const prepaid of [false, true]) test(`an upgrade${prepaid ? ' paid for someo
   await expect(upgrade).toBeEnabled();
   await expect(page.locator('.popup-star-gift-upgrade.active')).toHaveCount(1);
 });
+
+// * a refused request used to leave the button that sent it disabled for good, with no word of it
+test('showing my last seen time, refused, says so and frees its button', async({page}) => {
+  await preparePopupSandbox(page, false);
+  await page.evaluate(async() => {
+    const {getMockManagers} = await window.e2eImport('/src/components/popupSandbox/environment.ts');
+    getMockManagers().override({appPrivacyManager: {setPrivacy: () => Promise.reject({type: 'PRIVACY_TOO_LONG'})}});
+  });
+  expect(await openStory(page, 'toggleReadDate/lastSeen')).toBeNull();
+
+  const show = page.locator('.popup-toggle-read-date.active .popup-toggle-read-date-button').first();
+  await show.click();
+  await expect(page.locator('.toast')).toContainText('An error occurred');
+  await expect(show).toBeEnabled();
+  await expect(page.locator('.popup-toggle-read-date.active')).toHaveCount(1);
+});

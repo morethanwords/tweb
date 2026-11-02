@@ -70,7 +70,12 @@ export default function LanguageChangeButton(): JSX.Element {
   const onClick = () => {
     appliedAlready = true;
     setSubmitting(true);
-    I18n.getLangPackAndApply(suggestedLangCode);
+    // * a language pack that did not come leaves the button to be pressed again
+    I18n.getLangPackAndApply(suggestedLangCode).catch((err) => {
+      console.error('suggested language error', err);
+      appliedAlready = false;
+      setSubmitting(false);
+    });
   };
 
   return (

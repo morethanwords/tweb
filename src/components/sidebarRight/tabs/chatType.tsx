@@ -28,6 +28,7 @@ import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {type AppChatTypeTab} from '@components/solidJsTabs/tabs';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import toastError from '@components/toastError';
 
 const ChatType: Component = () => {
   const [tab] = useSuperTab<typeof AppChatTypeTab>();
@@ -111,9 +112,10 @@ const ChatType: Component = () => {
             const toggle = toggleDisability([btnRevoke], true);
 
             tab.managers.appProfileManager.getChatInviteLink(chatId, true).then((link) => {
-              toggle();
               inviteLinkSignal[1](link);
-            });
+            }, (err: ApiError) => {
+              toastError(err, 'revoke link error');
+            }).finally(toggle);
           }
         }],
         titleLangKey: 'RevokeLink',

@@ -362,9 +362,10 @@ const EditContact: Component = () => {
         console.error(error);
         toastNew({langPackKey: 'Error.AnError'});
         return;
+      } finally {
+        editPeer.nextBtn.removeAttribute('disabled');
       }
 
-      editPeer.nextBtn.removeAttribute('disabled');
       tab.close();
     }, {listenerSetter: tab.listenerSetter});
   })());
