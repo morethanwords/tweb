@@ -68,6 +68,8 @@ type GetAdminLogsFetcherKeyArgs = Pick<FetchAdminLogsArgs, 'channelId' | 'flags'
 
 export class AppChatsManager extends AppManager {
   private storage: AppStoragesManager['storages']['chats'];
+  /** The chats kept on disk are in: what is asked of them before then finds none */
+  public loaded: Promise<unknown>;
 
   private chats: {[id: ChatId]: Exclude<Chat, Chat.chatEmpty>};
   // private usernames: any;
@@ -90,7 +92,7 @@ export class AppChatsManager extends AppManager {
       updateChatDefaultBannedRights: this.onUpdateChatDefaultBannedRights
     });
 
-    return Promise.all([
+    return this.loaded = Promise.all([
       this.appStateManager.getState(),
       this.appStoragesManager.loadStorage('chats')
     ]).then(([state, {results: chats, storage}]) => {

@@ -62,6 +62,8 @@ type GetPaidMessagesRevenueArgs = {
 
 export class AppUsersManager extends AppManager {
   private storage: AppStoragesManager['storages']['users'];
+  /** The users kept on disk are in: what is asked of them before then finds none */
+  public loaded: Promise<unknown>;
 
   private users: {[userId: UserId]: User};
   private usernames: {[username: string]: PeerId};
@@ -177,7 +179,7 @@ export class AppUsersManager extends AppManager {
     this.onContactUpdated(update.user_id, update.my_link._ === 'contactLinkContact');
     break; */
 
-    return Promise.all([
+    return this.loaded = Promise.all([
       this.appStateManager.getState(),
       this.appStoragesManager.loadStorage('users')
     ]).then(([state, {results: users, storage}]) => {

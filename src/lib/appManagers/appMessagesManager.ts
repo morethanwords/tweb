@@ -12942,6 +12942,9 @@ export class AppMessagesManager extends AppManager {
   }
 
   public async canSendToPeer(peerId: PeerId, threadId?: number, action: ChatRights = 'send_messages') {
+    // * as the app starts, a chat can be opened (a link in the address, a quick click) before the peers kept on disk are
+    // * in: asked then, a peer not there yet answered that nothing could be sent, and the field stayed locked for good
+    await (peerId.isUser() ? this.appUsersManager.loaded : this.appChatsManager.loaded)?.catch(noop);
     if(await this.appPeersManager.isPeerRestricted(peerId)) {
       return false;
     }
