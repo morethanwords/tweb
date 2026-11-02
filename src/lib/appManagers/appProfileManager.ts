@@ -881,7 +881,15 @@ export class AppProfileManager extends AppManager {
           fullChat.available_min_id ?? 0,
           true
         );
-        return this.saveFullPeerResult(peerId, result, settingsAskedAt) as ChatFull.channelFull;
+        const saved = this.saveFullPeerResult(peerId, result, settingsAskedAt) as ChatFull.channelFull;
+        // * the group this supergroup was made from, which its history and shared media go on into, as
+        // * tdesktop learns it from here (ApplyChannelUpdate -> ApplyMigration): the service message that
+        // * says so comes with the top of the history only, and the old group's dialog may be gone
+        if(fullChat.migrated_from_chat_id) {
+          this.appMessagesManager.migrateChecks(fullChat.migrated_from_chat_id.toPeerId(true), peerId);
+        }
+
+        return saved;
       },
       processError: (error) => {
         switch(error.type) {
