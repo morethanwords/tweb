@@ -22,6 +22,7 @@ import {usePeer} from '@stores/peers';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 import Modes from '@config/modes';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {subscribeOn} from '@helpers/solid/subscribeOn';
 
 let canvas: HTMLCanvasElement, context: CanvasRenderingContext2D;
 export function SimilarPeer(props: {
@@ -155,7 +156,7 @@ export default function SimilarChannels(props: {
   canvas.height = 20;
   const context = canvas.getContext('2d', {alpha: false, willReadFrequently: true});
 
-  rootScope.addEventListener('premium_toggle', setPremium);
+  subscribeOn(rootScope)('premium_toggle', setPremium);
 
   const getDetails = async() => {
     const r = apiManagerProxy.isPremiumFeaturesHidden();
