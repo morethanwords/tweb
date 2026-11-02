@@ -18,6 +18,7 @@ import showPickUserPopup from '@components/popups/pickUser';
 import PopupElement from '@components/popups/indexTsx';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {toastNew} from '@components/toast';
+import toastError from '@components/toastError';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {purchaseUsernameCaption} from '@components/sidebarLeft/tabs/purchaseUsernameCaption';
 import {BusinessWorkHours, ConnectedBot, User, UserFull} from '@layer';
@@ -279,14 +280,9 @@ const EditProfileForm = (props: {
     ).then(() => {
       tab.close();
     }, (err: ApiError) => {
-      console.error('updateProfile error:', err);
-      // * a session the tab has left drops the answer on purpose (another account opened)
-      if(err?.type === 'MIDDLEWARE') {
-        return;
-      }
-
       // * a field the server would not take turns red where it stands, as tdesktop shows it - a bio kept from Premium
-      // * is longer than the limit after it, and every field goes in the one request; any other refusal is said
+      // * is longer than the limit after it, and every field goes in the one request; any other refusal is said (but
+      // * not for a session the tab has left meanwhile - toastError keeps quiet then)
       const field = ({
         FIRSTNAME_INVALID: firstNameInputField,
         LASTNAME_INVALID: lastNameInputField,
@@ -301,7 +297,7 @@ const EditProfileForm = (props: {
           field.simulateInputEvent();
         }, {once: true});
       } else {
-        toastNew({langPackKey: 'Error.AnError'});
+        toastError(err, 'updateProfile error:');
       }
     }));
 

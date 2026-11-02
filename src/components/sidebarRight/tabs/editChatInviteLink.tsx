@@ -15,7 +15,7 @@ import {InputStarsField} from '@components/popups/makePaid';
 import {InputRightNumber} from '@components/popups/payment';
 import showDatePickerPopup from '@components/popups/datePicker';
 import {setButtonLoader} from '@components/putPreloader';
-import toastInviteLinkError from './toastInviteLinkError';
+import toastError from '@components/toastError';
 import RangeStepsSelector from '@components/rangeStepsSelector';
 import Row from '@components/rowTsx';
 import Section from '@components/section';
@@ -103,7 +103,7 @@ const EditChatInviteLink: Component = () => {
       } catch(err) {
         // * a link the server would not take: the screen stays as it was, to be changed and saved again
         removeLoader();
-        toastInviteLinkError(err as ApiError, 'invite link save error');
+        toastError(err as ApiError, 'invite link save error');
         return;
       }
 

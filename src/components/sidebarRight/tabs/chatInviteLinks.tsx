@@ -17,7 +17,6 @@ import rootScope from '@lib/rootScope';
 import Button from '@components/button';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import confirmationPopup from '@components/confirmationPopup';
-import toastInviteLinkError from './toastInviteLinkError';
 import {StarsAmount} from '@components/stars/starsAmount';
 import Section, {appendSectionContent} from '@components/section';
 import UsernameRow from '@components/usernameRow';
@@ -129,7 +128,7 @@ const ChatInviteLinks: Component = () => {
             revoked: true
           });
         } catch(err) {
-          toastInviteLinkError(err as ApiError, 'revoke invite link error');
+          toastError(err as ApiError, 'revoke invite link error');
           return;
         }
 
@@ -169,7 +168,7 @@ const ChatInviteLinks: Component = () => {
           onRevokedLinksUpdate();
 
           chatInviteLinkTab?.close();
-        }, (err: ApiError) => toastInviteLinkError(err, 'delete invite link error'));
+        }, (err: ApiError) => toastError(err, 'delete invite link error'));
       },
       verify: () => !!menuInvite?.pFlags?.revoked
     }];
