@@ -61,7 +61,6 @@ export class ApiManager extends ApiManagerMethods {
     }
   };
 
-  private cachedExportPromise: {[x: number]: Promise<unknown>};
   private gettingNetworkers: {[dcIdAndType: string]: Promise<MTPNetworker>};
   // * Perfect Forward Secrecy: temporary keys per DC, and per its media cluster
   private tempAuthKeys: {[dcIdAndCluster: string]: TempAuthKeys};
@@ -84,7 +83,6 @@ export class ApiManager extends ApiManagerMethods {
     this.name = 'API';
 
     this.cachedNetworkers = {} as any;
-    this.cachedExportPromise = {};
     this.gettingNetworkers = {};
     this.tempAuthKeys = {};
     this.baseDcId = 0;
@@ -785,20 +783,20 @@ export class ApiManager extends ApiManagerMethods {
           }
           throw error;
         } else if(error.code === 401 && this.baseDcId && dcId !== this.baseDcId) {
-          if(this.cachedExportPromise[dcId] === undefined) {
-            const promise = new Promise((exportResolve, exportReject) => {
-              this.invokeApi('auth.exportAuthorization', {dc_id: dcId}, {noErrorBox: true}).then((exportedAuth) => {
-                this.invokeApi('auth.importAuthorization', {
-                  id: exportedAuth.id,
-                  bytes: exportedAuth.bytes
-                }, {dcId, noErrorBox: true}).then(exportResolve, exportReject);
-              }, exportReject);
-            });
-
-            this.cachedExportPromise[dcId] = promise;
-          }
-
-          return this.cachedExportPromise[dcId].then(() => performRequest());
+          // * the home DC's authorization imported once for the requests that hit 401 meanwhile, and anew for the next
+          // * 401 (as tdesktop's _authWaiters): kept for the session instead, one failed import would fail every later
+          // * request there, and a DC that has dropped the authorization since would send them round in circles
+          return this.invokeApiSingleProcess({
+            method: 'auth.exportAuthorization',
+            params: {dc_id: dcId},
+            options: {noErrorBox: true},
+            processResult: (exportedAuth) => {
+              return this.invokeApi('auth.importAuthorization', {
+                id: exportedAuth.id,
+                bytes: exportedAuth.bytes
+              }, {dcId, noErrorBox: true});
+            }
+          }).then(() => performRequest());
         } else if(error.code === 303) {
           // * a 303 of a kind not listed here is an ordinary error, as in tdesktop's onErrorDefault; FILE_MIGRATE comes
           // * as a 303 too (payments.getBankCardData), and moves only the request, as its 400 below does
