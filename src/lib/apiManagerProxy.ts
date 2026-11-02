@@ -59,7 +59,7 @@ import {createAppURLForAccount} from '@lib/accounts/createAppURLForAccount';
 import {setAppSettingsSilent} from '@stores/appSettings';
 import {batch} from 'solid-js';
 import createNotificationImage from '@helpers/createNotificationImage';
-import EncryptionKeyStore from '@lib/passcode/keyStore';
+import EncryptionKeyStore, {importEncryptionKey} from '@lib/passcode/keyStore';
 import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 import CacheStorageController, {CacheStorageDbName} from '@lib/files/cacheStorage';
 import type {PushSingleManager} from '@appManagers/pushSingleManager';
@@ -535,8 +535,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
         }
       },
 
-      saveEncryptionKey: (payload) => {
-        EncryptionKeyStore.save(payload);
+      saveEncryptionKey: async(payload) => {
+        EncryptionKeyStore.save(await importEncryptionKey(payload));
       },
 
       toggleLock: (isLocked) => {
@@ -547,9 +547,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
         CacheStorageController.temporarilyToggle(enabled);
       },
 
-      toggleUsingPasscode: (payload) => {
+      toggleUsingPasscode: async(payload) => {
+        const encryptionKey = await importEncryptionKey(payload.encryptionKey);
         DeferredIsUsingPasscode.resolveDeferred(payload.isUsingPasscode);
-        EncryptionKeyStore.save(payload.encryptionKey);
+        EncryptionKeyStore.save(encryptionKey);
       }
 
       // hello: () => {

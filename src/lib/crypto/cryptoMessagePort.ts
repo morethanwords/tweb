@@ -4,6 +4,7 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import {IS_WORKER} from '@helpers/context';
 import type {ThreadedWorkerEvents} from '@lib/mainWorker/mainMessagePort';
 import type {ThreadMemoryStats} from '@lib/debug/memoryStats';
+import {toLocalDataKeyBytes, type EncryptLocalDataArgs} from '@lib/crypto/utils/aesLocal';
 
 
 type CryptoEvent = {
@@ -46,8 +47,19 @@ export class CryptoMessagePort<Master extends boolean = false> extends SuperMess
     const sendPortIndex = method === 'aes-encrypt' || method === 'aes-decrypt' ?
       this.lastIndex = (this.lastIndex + 1) % this.sendPorts.length :
       0;
+    const port = this.sendPorts[sendPortIndex];
+
+    // * the local data key goes over as its bytes: see `LocalDataKey`
+    const keyArgs = (method === 'aes-local-encrypt' || method === 'aes-local-decrypt') && args[0] as EncryptLocalDataArgs;
+    if(keyArgs && !ArrayBuffer.isView(keyArgs.key)) {
+      return toLocalDataKeyBytes(keyArgs.key).then((key) => {
+        // @ts-ignore
+        return this.invoke('invoke', {method, args: [{...keyArgs, key}]}, undefined, port, transfer);
+      }) as Promise<any>;
+    }
+
     // @ts-ignore
-    return this.invoke('invoke', payload, undefined, this.sendPorts[sendPortIndex], transfer);
+    return this.invoke('invoke', payload, undefined, port, transfer);
   }
 
   public invokeCrypto<T extends keyof CryptoMethods>(method: T, ...args: Parameters<CryptoMethods[T]>) {

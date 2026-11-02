@@ -8,7 +8,7 @@ import {doubleRaf} from '@helpers/schedulers';
 import pause from '@helpers/schedulers/pause';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {takeEncryptionKeyHandoff} from '@lib/passcode/keyHandoff';
-import EncryptionKeyStore from '@lib/passcode/keyStore';
+import EncryptionKeyStore, {importEncryptionKey} from '@lib/passcode/keyStore';
 import LockScreenHotReloadGuardProvider from '@lib/solidjs/lockScreenHotReloadGuardProvider';
 import StaticUtilityClass from '@lib/staticUtilityClass';
 
@@ -34,15 +34,9 @@ export default class PasscodeLockScreenController extends StaticUtilityClass {
       if(!isValid) return false;
 
       const keyAsBuffer = new Uint8Array(atob(storedBase64Key).split('').map(c => c.charCodeAt(0)));
-      const importedKey =  await crypto.subtle.importKey(
-        'raw',
-        keyAsBuffer,
-        {name: 'AES-GCM'},
-        true,
-        ['encrypt', 'decrypt']
-      );
+      const importedKey = await importEncryptionKey(keyAsBuffer);
 
-      await apiManagerProxy.invoke('saveEncryptionKey', importedKey);
+      await apiManagerProxy.invoke('saveEncryptionKey', keyAsBuffer);
       EncryptionKeyStore.save(importedKey);
 
       return true;

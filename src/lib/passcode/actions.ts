@@ -8,7 +8,7 @@ import CacheStorageController from '@lib/files/cacheStorage';
 import {useLockScreenHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 
 import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
-import EncryptionKeyStore from '@lib/passcode/keyStore';
+import EncryptionKeyStore, {exportEncryptionKey} from '@lib/passcode/keyStore';
 import {createEncryptionArtifactsForPasscode, deriveEncryptionKey, hashPasscode} from '@lib/passcode/utils';
 
 export type PasscodeActions = ReturnType<typeof usePasscodeActions>;
@@ -59,12 +59,11 @@ export function usePasscodeActions() {
     await disableCacheStorages();
     await clearCacheStorages();
 
-    const togglePayload = {
+    await apiManagerProxy.invoke('toggleUsingPasscode', {
       isUsingPasscode: true,
-      encryptionKey
-    };
-    await apiManagerProxy.invoke('toggleUsingPasscode', togglePayload);
-    await apiManagerProxy.serviceMessagePort.invoke('toggleUsingPasscode', {type: 'full', ...togglePayload});
+      encryptionKey: await exportEncryptionKey(encryptionKey)
+    });
+    await apiManagerProxy.serviceMessagePort.invoke('toggleUsingPasscode', {type: 'full', isUsingPasscode: true, encryptionKey});
 
 
     rootScope.dispatchEvent('toggle_using_passcode', true);
@@ -129,7 +128,7 @@ export function usePasscodeActions() {
 
     await apiManagerProxy.invoke('changePasscode', {
       toStore,
-      encryptionKey
+      encryptionKey: await exportEncryptionKey(encryptionKey)
     });
     await apiManagerProxy.serviceMessagePort.invoke('saveEncryptionKey', encryptionKey);
 
@@ -153,7 +152,7 @@ export function usePasscodeActions() {
     passcode = ''; // forget;
 
     EncryptionKeyStore.save(encryptionKey);
-    await apiManagerProxy.invoke('saveEncryptionKey', encryptionKey);
+    await apiManagerProxy.invoke('saveEncryptionKey', await exportEncryptionKey(encryptionKey));
     // Make sure we resolve the DeferredIsUsingPasscode as there is no storage available in SW to get the value
     await apiManagerProxy.serviceMessagePort.invoke('toggleUsingPasscode', {type: 'full', isUsingPasscode: true, encryptionKey});
 

@@ -6,6 +6,7 @@ import type toggleStorages from '@helpers/toggleStorages';
 import type {ActiveAccountNumber} from '@lib/accounts/types';
 import type {LoadStateResult} from '@appManagers/utils/state/loadState';
 import type {PasscodeStorageValue} from '@lib/commonStateStorage';
+import type {EncryptionKeyBytes} from '@lib/passcode/keyStore';
 import type {ThreadedWorkerType} from '@lib/threadedWorkerTypes';
 import type {LogEntry} from '@lib/debug/logsBuffer';
 import type {ThreadMemoryStats} from '@lib/debug/memoryStats';
@@ -28,7 +29,7 @@ type MTProtoBroadcastEvent = {
 
 export type ToggleUsingPasscodePayload = {
   isUsingPasscode: boolean;
-  encryptionKey?: CryptoKey;
+  encryptionKey?: EncryptionKeyBytes;
 };
 
 export type ThreadedWorkerEvents = {
@@ -59,8 +60,8 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   clearInterval: (intervalId: number) => void,
   terminate: () => void,
   toggleUsingPasscode: (payload: ToggleUsingPasscodePayload, source: MessageEventSource) => void,
-  changePasscode: (payload: {toStore: PasscodeStorageValue, encryptionKey: CryptoKey}, source: MessageEventSource) => void,
-  saveEncryptionKey: (payload: CryptoKey, source: MessageEventSource) => void,
+  changePasscode: (payload: {toStore: PasscodeStorageValue, encryptionKey: EncryptionKeyBytes}, source: MessageEventSource) => void,
+  saveEncryptionKey: (payload: EncryptionKeyBytes, source: MessageEventSource) => void,
   isLocked: (payload: void, source: MessageEventSource) => Promise<boolean>,
   toggleLockOthers: (isLocked: boolean, source: MessageEventSource) => void
   localStorageEncryptedProxy: (payload: LocalStorageEncryptedProxyTaskPayload) => Promise<any>,
@@ -96,7 +97,7 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   callNotification: (payload: CallNotificationPayload) => void,
   intervalCallback: (intervalId: number) => void,
   toggleLock: (isLocked: boolean) => void,
-  saveEncryptionKey: (payload: CryptoKey, source: MessageEventSource) => void,
+  saveEncryptionKey: (payload: EncryptionKeyBytes, source: MessageEventSource) => void,
   toggleCacheStorage: (value: boolean, source: MessageEventSource) => void,
   toggleUsingPasscode: (payload: ToggleUsingPasscodePayload, source: MessageEventSource) => void,
 } & MTProtoBroadcastEvent, Master> {

@@ -1,10 +1,35 @@
 import SuperMessagePort from '@lib/superMessagePort';
+import bytesCmpConstTime from '@helpers/bytes/bytesCmpConstTime';
+import {EncryptionKeyBytes, exportEncryptionKey, importEncryptionKey} from '@lib/passcode/keyStore';
 
 
 const IV_LENGTH = 12;
 
+/**
+ * The key of the local data: a crypto worker is a SharedWorker, and WebKit cannot clone a CryptoKey into one (the
+ * call is dropped and never answers), so a key that crosses into one goes as its raw bytes - see `toLocalDataKeyBytes`
+ */
+export type LocalDataKey = CryptoKey | EncryptionKeyBytes;
+
+const exportedKeys: WeakMap<CryptoKey, Promise<EncryptionKeyBytes>> = new WeakMap();
+export function toLocalDataKeyBytes(key: CryptoKey) {
+  let bytes = exportedKeys.get(key);
+  if(!bytes) exportedKeys.set(key, bytes = exportEncryptionKey(key));
+  return bytes;
+}
+
+let importedKey: {bytes: EncryptionKeyBytes, key: Promise<CryptoKey>};
+function toCryptoKey(key: LocalDataKey): Promise<CryptoKey> | CryptoKey {
+  if(!ArrayBuffer.isView(key)) return key;
+  if(!importedKey || !bytesCmpConstTime(importedKey.bytes, key)) {
+    importedKey = {bytes: key, key: importEncryptionKey(key)};
+  }
+
+  return importedKey.key;
+}
+
 export type EncryptLocalDataArgs = {
-  key: CryptoKey;
+  key: LocalDataKey;
   data: Uint8Array;
 };
 
@@ -13,7 +38,7 @@ export async function encryptLocalData({key, data}: EncryptLocalDataArgs) {
 
   const encrypted = await crypto.subtle.encrypt(
     {name: 'AES-GCM', iv: iv as BufferSource},
-    key,
+    await toCryptoKey(key),
     data as BufferSource
   );
 
@@ -25,7 +50,7 @@ export async function encryptLocalData({key, data}: EncryptLocalDataArgs) {
 }
 
 export type DecryptLocalDataArgs = {
-  key: CryptoKey;
+  key: LocalDataKey;
   encryptedData: Uint8Array;
 };
 
@@ -35,7 +60,7 @@ export async function decryptLocalData({key, encryptedData}: DecryptLocalDataArg
 
   const decrypted = await crypto.subtle.decrypt(
     {name: 'AES-GCM', iv: iv as BufferSource},
-    key,
+    await toCryptoKey(key),
     ciphertext as BufferSource
   );
 
