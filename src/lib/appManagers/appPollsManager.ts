@@ -926,7 +926,7 @@ export class AppPollsManager extends AppManager {
             id: getPhotoInput(photo),
             pFlags: {}
           });
-        }, (e) => deferred.reject(e));
+        }).catch((e) => deferred.reject(e)); // * the server refusing the photo fails the poll too, not only its upload
 
         return uploadFileDeferred;
       }
