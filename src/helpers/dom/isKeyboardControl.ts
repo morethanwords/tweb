@@ -9,11 +9,13 @@ export default function isKeyboardControl(element: HTMLElement) {
 }
 
 /** Keys a composer that takes what is typed anywhere (a chat's, a story's) leaves where they are: a
- * bare Control or Meta, which begins a shortcut, and copying, which copies what is selected on the
- * page — focusing the field first would drop that selection. */
+ * bare Control or Meta, which begins a shortcut, and copying (Ctrl+C, Cmd+C, and Ctrl+Insert on
+ * Windows and Linux), which copies what is selected on the page — focusing the field first would
+ * drop that selection. */
 export function keepsKeyFromComposer(event: KeyboardEvent) {
   return event.key === 'Control' || event.key === 'Meta' ||
-    (event.code === 'KeyC' && (event.ctrlKey || event.metaKey));
+    (event.code === 'KeyC' && (event.ctrlKey || event.metaKey)) ||
+    (event.key === 'Insert' && event.ctrlKey);
 }
 
 export function shouldPreserveKeyboardFocus(event: KeyboardEvent) {
