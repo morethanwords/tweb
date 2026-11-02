@@ -57,6 +57,7 @@ import whichChild from '@helpers/dom/whichChild';
 import {animateSingle, cancelAnimationByKey, getAnimationInstance} from '@helpers/animation';
 import assumeType from '@helpers/assumeType';
 import debounce, {DebounceReturnType} from '@helpers/schedulers/debounce';
+import forgetSettledRequest from '@helpers/forgetSettledRequest';
 import windowSize from '@helpers/windowSize';
 import {formatPhoneNumber} from '@helpers/formatPhoneNumber';
 import SetTransition from '@components/singleTransition';
@@ -12576,13 +12577,7 @@ export default class ChatBubbles {
 
     const promise = this.mountMessageSpoilerOverlay(args);
     this.spoilerOverlayPromises.set(messageDiv, promise);
-    const cleanup = () => {
-      if(this.spoilerOverlayPromises.get(messageDiv) === promise) {
-        this.spoilerOverlayPromises.delete(messageDiv);
-      }
-    };
-    void promise.then(cleanup, cleanup);
-    return promise;
+    return forgetSettledRequest(this.spoilerOverlayPromises, messageDiv, promise);
   }
 
   private async mountMessageSpoilerOverlay({mid, messageDiv, middleware, loadPromises, canTranslate}: AddMessageSpoilerOverlayArgs) {

@@ -112,6 +112,7 @@ import isObject from '@helpers/object/isObject';
 import pickKeys from '@helpers/object/pickKeys';
 import namedPromises from '@helpers/namedPromises';
 import callbackifyAll from '@helpers/callbackifyAll';
+import forgetSettledRequest from '@helpers/forgetSettledRequest';
 import {createBotforumTopicFromAction} from '@appManagers/utils/dialogs/createBotforumTopicFromAction';
 import {AttachedMedia, CreatePollPayload} from '@components/popups/createPoll/storeContext';
 import StreamedMessageDrafts, {StreamedMessageDraft, StreamedMessageDraftContent, StreamedMessageDraftRemovalReason, StreamedMessageDraftScope, StreamedMessageStopScope, getStreamedMessageContentMatchText} from '@appManagers/utils/messages/streamedMessageDrafts';
@@ -8615,13 +8616,7 @@ export class AppMessagesManager extends AppManager {
     this.invalidateRichMessage(peerId, mid);
     const promise = this.getRichMessage(peerId, mid);
     this.richMessageRefreshes.set(key, promise);
-    const release = () => {
-      if(this.richMessageRefreshes.get(key) === promise) {
-        this.richMessageRefreshes.delete(key);
-      }
-    };
-    promise.then(release, release);
-    return promise;
+    return forgetSettledRequest(this.richMessageRefreshes, key, promise);
   }
 
   public async getFirstMessageToEdit({

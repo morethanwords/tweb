@@ -134,6 +134,7 @@ import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {DialogElement, findDialogListElement, setPromiseMiddleware, disposeTextHighlight, setDialogSubtitle, isRenderedSubtitleIntact, getFolderTitleTextColor} from '@components/dialogElement';
 import type {DialogDom, DialogElementOptions} from '@components/dialogElement';
 import createStyleRule from '@helpers/dom/createStyleRule';
+import forgetSettledRequest from '@helpers/forgetSettledRequest';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import {getManagersSession, isSessionLeaving} from '@lib/accounts/getCurrentAccount';
 
@@ -1679,14 +1680,7 @@ export class AppDialogsManager {
       previousPromise.then(run, run) :
       run();
     this.forumTabByPeerIdPromises.set(peerId, promise);
-
-    const cleanup = () => {
-      if(this.forumTabByPeerIdPromises.get(peerId) === promise) {
-        this.forumTabByPeerIdPromises.delete(peerId);
-      }
-    };
-    promise.then(cleanup, cleanup);
-    return promise;
+    return forgetSettledRequest(this.forumTabByPeerIdPromises, peerId, promise);
   }
 
   private async toggleForumTabByPeerIdInternal(
