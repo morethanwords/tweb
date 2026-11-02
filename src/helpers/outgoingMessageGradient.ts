@@ -1,6 +1,7 @@
 import {channelsLuminance, ColorRgb, darkenToMaxLuminance, ensureTextContrast, getContrastRatio, getHexColorFromTelegramColor, hexToRgb, mixColors, relativeLuminance, rgbaToHexa} from '@helpers/color';
 import {getGradientPixels, GRADIENT_PHASES, GRADIENT_SIZE} from '@helpers/freeformGradient';
 import clamp from '@helpers/number/clamp';
+import {holdCount, releaseCount} from '@helpers/holdCount';
 
 // * the outgoing bubbles' fill when the theme gives them more than one colour: a gradient over the chat's frame
 // * (`.bubbles`), of which every bubble shows the part it stands over, as on Android, iOS and Desktop
@@ -526,17 +527,13 @@ const heldBy = new WeakMap<HTMLElement, number>();
 /** marks the elements as moved (a write); what is returned unmarks them, once the last of their moves is over */
 export function markOutgoingMessageGradientHeld(elements: HTMLElement[]): VoidFunction {
   for(const element of elements) {
-    heldBy.set(element, (heldBy.get(element) || 0) + 1);
+    holdCount(heldBy, element);
     element.classList.add(MESSAGE_OUT_GRADIENT_HELD_CLASS);
   }
 
   return () => {
     for(const element of elements) {
-      const count = heldBy.get(element) - 1;
-      if(count > 0) {
-        heldBy.set(element, count);
-      } else {
-        heldBy.delete(element);
+      if(releaseCount(heldBy, element)) {
         element.classList.remove(MESSAGE_OUT_GRADIENT_HELD_CLASS);
       }
     }
