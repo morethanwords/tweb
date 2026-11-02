@@ -1,5 +1,5 @@
 import {attachClickEvent} from '@helpers/dom/clickEvent';
-import {MissingInvitee} from '@layer';
+import {Chat, MissingInvitee, User} from '@layer';
 import {FormatterArguments, LangPackKey, i18n, join} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import Button from '@components/button';
@@ -11,6 +11,11 @@ import {toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import hasRights from '@appManagers/utils/chats/hasRights';
+import getBotAdminRightsForChat from '@appManagers/utils/bots/getBotAdminRightsForChat';
+import confirmationPopup from '@components/confirmationPopup';
+import {openBotAdminEditor} from '@components/popups/addBotToChat';
 
 export async function handleMissingInvitees(chatId: ChatId, missingInvitees: MissingInvitee[]) {
   if(!missingInvitees.length) {
@@ -133,6 +138,18 @@ export async function handleMissingInvitees(chatId: ChatId, missingInvitees: Mis
   }
 }
 
+/** what to tell of a refusal to add members: the reason where it is known, as tdesktop and Android do */
+export function getAddMembersErrorLangKey(err: ApiError, isBroadcast: boolean): LangPackKey {
+  switch(err?.type) {
+    case 'USER_PRIVACY_RESTRICTED': return isBroadcast ? 'InviteToChannelError' : 'InviteToGroupError';
+    case 'USER_BOT': return 'CantAddBotAsAdmin';
+    case 'BOTS_TOO_MUCH': return isBroadcast ? 'ChannelUserCantBot' : 'GroupUserCantBot';
+    case 'YOU_BLOCKED_USER': return 'YouBlockedUser';
+    case 'USER_KICKED': return 'AddUserErrorBlacklisted';
+    default: return 'Error.AnError';
+  }
+}
+
 export default async function addChatUsers({
   peerId,
   slider,
@@ -203,14 +220,42 @@ export default async function addChatUsers({
     });
   };
 
+  // * every refusal is said, as tdesktop and Android do: a member nobody was told about was never added -
+  // * but not what an account switch dropped (MIDDLEWARE), which is no refusal and is not this account's
   const onError = (err: ApiError) => {
-    if(err.type === 'USER_PRIVACY_RESTRICTED') {
-      toastNew({langPackKey: 'InviteToGroupError'});
-    }/*  else if(err.type === 'USER_NOT_MUTUAL_CONTACT') {
-      toastNew({langPackKey: 'InviteToGroupError'});
-    }  */else {
-      throw err;
+    if(err?.type === 'MIDDLEWARE') {
+      return;
     }
+
+    toastNew({langPackKey: getAddMembersErrorLangKey(err, isBroadcast)});
+  };
+
+  // * a channel takes a bot as an admin only (the server would answer USER_BOT): nothing is sent, as in
+  // * tdesktop, and one bot is offered to be made an admin where admins can be added
+  const offerBotsAsAdmins = async(peerIds: PeerId[]) => {
+    const chat = apiManagerProxy.getChat(id) as Chat.channel;
+    if(peerIds.length !== 1 || !hasRights(chat, 'add_admins')) {
+      toastNew({langPackKey: 'CantAddBotAsAdmin'});
+      return;
+    }
+
+    try {
+      await confirmationPopup({
+        descriptionLangKey: 'CantAddBotAsAdmin',
+        button: {langKey: 'SetAsAdmin'}
+      });
+    } catch{
+      return;
+    }
+
+    const botId = peerIds[0].toUserId();
+    const userFull = await managers.appProfileManager.getProfile(botId);
+    await openBotAdminEditor({
+      managers,
+      chat,
+      botId,
+      rights: getBotAdminRightsForChat({chat, userFull, scope: 'channelAdmin'})
+    });
   };
 
   const tab = slider.createTab(hotReloadGuard.tabs.AppAddMembersTab);
@@ -218,6 +263,12 @@ export default async function addChatUsers({
     type: 'channel',
     skippable,
     takeOut: (peerIds) => {
+      if(isBroadcast && peerIds.some((peerId) => (apiManagerProxy.getUser(peerId.toUserId()) as User.user)?.pFlags?.bot)) {
+        // * the button waits while it goes, so that a second press does not offer the bot again; the tab stays
+        tab.payload.attachToPromise(offerBotsAsAdmins(peerIds).catch(onError).then(() => false));
+        return false;
+      }
+
       showConfirmation(peerIds, (e, checked) => {
         const promise = isChannel ?
           rootScope.managers.appChatsManager.inviteToChannel(id, peerIds) :
