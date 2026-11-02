@@ -220,6 +220,8 @@ describe('story account lists', () => {
     const saveApiUser = vi.fn((user) => users.set(user.id, user));
     const manager = Object.assign(Object.create(AppUsersManager.prototype), {
       getContacts: async() => [...users.keys()], getUser: (id: PeerId) => users.get(id),
+      // * the contacts came from the server
+      contactsKnown: true,
       apiManager: {invokeApi}, saveApiUser
     }) as AppUsersManager;
     await manager.updateCloseFriends([bob], [alice]);

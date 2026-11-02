@@ -72,6 +72,8 @@ export class AppUsersManager extends AppManager {
   private contactsFillPromise: CancellablePromise<AppUsersManager['contactsList']>;
   private contactsList: Set<UserId>;
   private updatedContactsList: boolean;
+  // * the list is the server's, or the one kept from it - not what a failed request left to go on with
+  private contactsKnown: boolean;
 
   private getTopPeersPromises: {[type in TopPeerType]?: Promise<MyTopPeer[]>};
   // * until when the server asked to wait, per list: nothing is asked again before that
@@ -199,6 +201,7 @@ export class AppUsersManager extends AppManager {
           if(!this.contactsFillPromise) {
             this.contactsFillPromise = deferredPromise();
             this.contactsFillPromise.resolve(this.contactsList);
+            this.contactsKnown = true;
           }
         }
       }
@@ -275,6 +278,7 @@ export class AppUsersManager extends AppManager {
     this.contactsFillPromise = undefined;
     this.contactsList = new Set();
     this.updatedContactsList = false;
+    this.contactsKnown = false;
   };
 
   public indexMyself() {
@@ -379,11 +383,15 @@ export class AppUsersManager extends AppManager {
         this.onContactsModified(true);
 
         this.contactsFillPromise = promise;
+        this.contactsKnown = true;
       }
 
       promise.resolve(this.contactsList);
     }, () => {
       this.updatedContactsList = false;
+      // * a custom folder's dialogs wait for it: they go on with the contacts known - the same set the next answer
+      // * fills - and the next call asks again without making them wait once more
+      promise.resolve(this.contactsList);
     });
 
     return {
@@ -596,6 +604,11 @@ export class AppUsersManager extends AppManager {
   public async updateCloseFriends(added: PeerId[], removed: PeerId[]) {
     if(!added.length && !removed.length) return;
     const current = await this.getCloseFriends();
+    // * the list is replaced as a whole: built from contacts that could not be loaded, it would drop the close friends
+    if(!this.contactsKnown) {
+      throw new Error('CLOSE_FRIENDS_NOT_UPDATED');
+    }
+
     const next = new Set(current.filter((peerId) => !removed.includes(peerId)));
     added.forEach((peerId) => next.add(peerId));
     const result = await this.apiManager.invokeApi('contacts.editCloseFriends', {
