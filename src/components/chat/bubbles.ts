@@ -7335,8 +7335,8 @@ export default class ChatBubbles {
           return this.managers.appReactionsManager.getMessagesReactions(peerId, [...mids]);
         });
 
-        const promise = Promise.all(promises);
-        promise.then(() => {
+        // * a round the server refused is over too: the next one asks again
+        Promise.all(promises).catch(noop).then(() => {
           setTimeout(fetchReactions, 10e3);
         });
       };
