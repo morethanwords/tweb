@@ -115,6 +115,7 @@ import canLookupMessageAuthor from '@appManagers/utils/messages/canLookupMessage
 import canDeletePollAnswer from '@appManagers/utils/polls/canDeletePollAnswer';
 import tsNow from '@helpers/tsNow';
 import blockUserWithConfirmation from '@components/blockUser';
+import {WALLET_SEND_MONEY_RELEASED} from '@lib/wallet/release';
 
 let rateTranscriptionTitleId = 0;
 
@@ -1286,7 +1287,8 @@ export default class ChatContextMenu {
         const userId = this.peerId.toUserId();
         import('@components/wallet').then(({default: showWalletPopup}) => showWalletPopup({send: {userId}, fromChat: true}));
       },
-      verify: async() => this.message?._ === 'messageService' &&
+      verify: async() => WALLET_SEND_MONEY_RELEASED &&
+        this.message?._ === 'messageService' &&
         this.message.action._ === 'messageActionGramTransfer' &&
         this.peerId.isUser() &&
         this.peerId !== rootScope.myId &&

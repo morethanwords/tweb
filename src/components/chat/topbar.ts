@@ -38,6 +38,7 @@ import callbackify from '@helpers/callbackify';
 import confirmationPopup from '@components/confirmationPopup';
 import noop from '@helpers/noop';
 import clearHistoryWithConfirmation from '@components/clearHistory';
+import {WALLET_SEND_MONEY_RELEASED} from '@lib/wallet/release';
 import blockUserWithConfirmation, {unblockUser} from '@components/blockUser';
 import shareContact, {canShareContact} from '@components/shareContact';
 import addContact from '@components/addContact';
@@ -641,6 +642,7 @@ export default class ChatTopbar {
         });
       },
       verify: async() => (
+        WALLET_SEND_MONEY_RELEASED &&
         this.chat.peerId.isUser() &&
         !this.chat.isBot &&
         rootScope.myId !== this.peerId &&
