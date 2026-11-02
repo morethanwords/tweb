@@ -9927,6 +9927,16 @@ export class AppMessagesManager extends AppManager {
         return false;
       }
 
+      // * a send that failed the server has nothing of: it is called off, which takes the message away and
+      // * forgets the send (else it is still waited for, and slow mode holds every next one back)
+      if(
+        (message as Message.message)?.pFlags?.is_outgoing &&
+        (message as Message.message).error &&
+        this.cancelPendingMessage((message as Message.message).random_id)
+      ) {
+        return false;
+      }
+
       return true;
     });
 
