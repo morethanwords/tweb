@@ -9,11 +9,13 @@ export default interface MTTransport {
   noScheduler?: boolean;
 }
 
-export interface MTConnection extends EventListenerBase<{
+export type MTConnectionEvents = {
   open: () => void,
   message: (buffer: ArrayBuffer) => any,
-  close: () => void,
-}> {
+  close: () => void
+};
+
+export interface MTConnection extends EventListenerBase<MTConnectionEvents> {
   send: MTTransport['send'];
   close: () => void;
 }

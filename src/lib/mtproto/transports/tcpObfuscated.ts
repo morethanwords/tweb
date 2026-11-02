@@ -21,7 +21,6 @@ export default class TcpObfuscated implements MTTransport {
     resolve: any,
     reject: any,
     body: Uint8Array,
-    encoded?: Uint8Array,
     bodySent: boolean
   }>> = [];
 
@@ -69,13 +68,7 @@ export default class TcpObfuscated implements MTTransport {
     if(this.networker) {
       this.pending.length = 0; // ! clear queue and reformat messages to container, because if sending simultaneously 10+ messages, connection will die
       this.networker.onTransportOpen();
-    }/*  else {
-      for(const pending of this.pending) {
-        if(pending.encoded && pending.body) {
-          pending.encoded = this.encodeBody(pending.body);
-        }
-      }
-    } */
+    }
 
     setTimeout(() => {
       this.releasePending();
@@ -264,16 +257,12 @@ export default class TcpObfuscated implements MTTransport {
   public send(body: Uint8Array) {
     this.debug && this.log.debug('-> body length to pending:', body.length);
 
-    const encoded: typeof body = /* this.connected ? this.encodeBody(body) :  */undefined;
-
-    // return;
-
     if(this.networker) {
-      this.pending.push({body, encoded});
+      this.pending.push({body});
       this.releasePending();
     } else {
       const promise = new Promise<typeof body>((resolve, reject) => {
-        this.pending.push({resolve, reject, body, encoded});
+        this.pending.push({resolve, reject, body});
       });
 
       this.releasePending();
@@ -289,6 +278,8 @@ export default class TcpObfuscated implements MTTransport {
     }
 
     this.releasingPending = true;
+    // * the obfuscation is keyed anew for every connection: what is encoded here is for this one only
+    const connection = this.connection;
 
     /* if(!tt) {
       this.releasePendingDebounced();
@@ -311,12 +302,10 @@ export default class TcpObfuscated implements MTTransport {
 
         this.debug && this.log.debug('-> body length to send:', body.length);
 
-        // if(!encoded) {
-        //   encoded = pending.encoded = this.encodeBody(body);
-        // }
-
-        const encoded = pending.encoded ??= await this.encodeBody(body);
-        if(!this.connected) {
+        // * encoded every time it goes, never kept: a plain request is sent again after a
+        // * reconnect, and bytes of the previous connection read as noise on the next one
+        const encoded = await this.encodeBody(body);
+        if(!this.connected || this.connection !== connection) {
           break;
         }
 
@@ -337,7 +326,8 @@ export default class TcpObfuscated implements MTTransport {
 
     this.releasingPending = undefined;
 
-    if(this.pending.length && sent) {
+    // * a connection that opened meanwhile found the queue busy and left it to this run
+    if(this.pending.length && (sent || this.connection !== connection)) {
       this.releasePending();
     }
   }
