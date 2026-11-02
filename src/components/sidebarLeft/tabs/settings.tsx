@@ -40,6 +40,7 @@ import styles from '@components/sidebarLeft/tabs/settings.module.scss';
 import type {WalletStatus} from '@appManagers/appWalletManager';
 import bigInt from 'big-integer';
 import {splitGrams} from '@components/wallet/format';
+import {isWalletAvailable, isWalletReleased} from '@lib/wallet/release';
 
 /** 0.01 GRAM: below it the Money row shows no balance, as on iOS */
 const WALLET_BALANCE_SHOWN_FROM = 10_000_000;
@@ -362,7 +363,7 @@ const Settings = () => {
   const [walletAvailable, setWalletAvailable] = createSignal(false);
   promiseCollector.collect(
     Promise.resolve(apiManagerProxy.getAppConfig()).then((appConfig) => {
-      setWalletAvailable(appConfig.wallet_available !== false);
+      setWalletAvailable(isWalletAvailable(appConfig));
     })
   );
   // * "New" until four weeks after the wallet came out, by the server's clock (Android SettingsActivity)
@@ -379,7 +380,8 @@ const Settings = () => {
     setWalletBalance(balance !== undefined && bigInt(String(balance)).greater(WALLET_BALANCE_SHOWN_FROM) ? splitGrams(balance) : undefined);
   };
   subscribeOn(rootScope)('wallet_status', onWalletStatus);
-  rootScope.managers.appWalletManager.getStatus().then(onWalletStatus, () => {});
+  // * no wallet asked of the server before its release: there is no row to show its balance in
+  if(isWalletReleased()) rootScope.managers.appWalletManager.getStatus().then(onWalletStatus, () => {});
 
   // ── Self profile (avatar + name + collapse-on-scroll). The avatar inside
   //    `PeerProfileAvatars` is filled async via `setPeer()` (peer photo IPC →

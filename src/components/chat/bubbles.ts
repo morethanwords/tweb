@@ -219,6 +219,7 @@ import showStarGiftInfoPopup from '@components/popups/starGiftInfo';
 import {StarGiftBubble, UniqueStarGiftWebPageBox} from '@components/chat/bubbles/starGift';
 import {PremiumGiftBubble} from '@components/chat/bubbles/premiumGift';
 import WalletChatCard from '@components/wallet/chatCard';
+import {isWalletReleased} from '@lib/wallet/release';
 import {UnknownUserBubble} from '@components/chat/bubbles/unknownUser';
 import {
   HIDDEN_LINK_ENTITY_TYPES,
@@ -9581,7 +9582,7 @@ export default class ChatBubbles {
           bubbleContainer.after(content);
         } else if(action._ === 'messageActionWalletTonConnectRequest') {
           // * a connected app's request: a click reviews it in the wallet while it is pending (Android, tdesktop)
-          if(message.peerId === SERVICE_PEER_ID && !message.pFlags.out && !action.pFlags.accepted && !action.pFlags.declined) {
+          if(isWalletReleased() && message.peerId === SERVICE_PEER_ID && !message.pFlags.out && !action.pFlags.accepted && !action.pFlags.declined) {
             bubbleContainer.classList.add('is-clickable');
             // * a button to assistive technology, and with the a11y layer a tab stop Enter and Space open
             ensureButtonSemantics(s);

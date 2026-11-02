@@ -22,6 +22,7 @@ import {createLiveManagers, LiveManagersController} from './liveManagers';
 import type {AppManagers, TabManagers} from '@lib/managers';
 import {setAppSettingsSilent} from '@stores/appSettings';
 import {AppTheme, SETTINGS_INIT} from '@config/state';
+import {setWalletOnFixtures} from '@lib/wallet/release';
 
 export function getMockManagers() {
   return mockManagers;
@@ -110,10 +111,14 @@ function useManagers(managers: AppManagers & TabManagers) {
   };
 
   rootScope.managers = PopupElementTsx.MANAGERS = managers;
+  // * the wallet is not released, but its stories run on fixtures: it shows while they stand in, and never with the
+  // * session's own managers (lib/wallet/release)
+  setWalletOnFixtures(managers === mockManagers.managers);
 
   return () => {
     rootScope.managers = previous.root;
     PopupElementTsx.MANAGERS = previous.popup;
+    setWalletOnFixtures(previous.root === mockManagers.managers);
   };
 }
 

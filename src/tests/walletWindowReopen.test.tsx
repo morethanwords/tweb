@@ -19,6 +19,8 @@ const fake = vi.hoisted(() => ({
 vi.mock('@components/appNavigationController', () => ({default: {pushItem: (_: NavigationItem) => {}, removeItem: () => {}}}));
 vi.mock('@helpers/liteMode', () => ({default: {isAvailable: () => false}}));
 vi.mock('@lib/apiManagerProxy', () => ({default: {getAppConfig: async() => ({})}}));
+// * the wallet's own window, as it works once released
+vi.mock('@lib/wallet/release', () => ({isWalletAvailable: () => true, isWalletReleased: () => true}));
 vi.mock('@lib/rootScope', () => ({default: {managers: {}}}));
 vi.mock('@components/toast', () => ({toastNew: () => {}}));
 vi.mock('@components/wallet/store', () => ({createWalletStore: () => ({session: {}})}));

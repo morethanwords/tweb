@@ -38,7 +38,11 @@ export default function wrapUrl(url: string, safe?: boolean) {
       onclick = 'premium_offer';
     } else if(/^\+/.test(fullPath) && !PHONE_NUMBER_REG_EXP.test(fullPath)) { // second regexp is for phone numbers (t.me/+38050...)
       onclick = 'joinchat';
-    } else if(path[0].toLowerCase() === 'sendgrams' && (path.length === 1 || (path.length === 2 && !path[1])) && !prefix) { // t.me/sendgrams/?to=…&amount=…
+    } else if(
+      // * the wallet's handler is there only once it is released (lib/wallet/release): a username link till then
+      (window as any).sendgrams &&
+      path[0].toLowerCase() === 'sendgrams' && (path.length === 1 || (path.length === 2 && !path[1])) && !prefix
+    ) { // t.me/sendgrams/?to=…&amount=…
       onclick = 'sendgrams';
     } else if(path[0]) switch(path[0]) {
       case 'm':

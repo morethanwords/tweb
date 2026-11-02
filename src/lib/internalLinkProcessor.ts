@@ -66,6 +66,7 @@ import confirmationPopup from '@components/confirmationPopup';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import {getManagersSession, isSessionLeaving} from '@lib/accounts/getCurrentAccount';
+import {isWalletReleased} from '@lib/wallet/release';
 
 /**
  * For a lookup whose failure is only a miss: any error is one but MIDDLEWARE, the end of the account
@@ -517,7 +518,7 @@ export class InternalLinkProcessor {
       callback: ({uriParams, element, masked}) => {
         let link: InternalLink;
         // * a dApp's request addressed to the wallet by name
-        if(uriParams.domain?.toLowerCase() === 'sendgrams' && uriParams.startapp?.startsWith('tonconnect-')) {
+        if(isWalletReleased() && uriParams.domain?.toLowerCase() === 'sendgrams' && uriParams.startapp?.startsWith('tonconnect-')) {
           return this.processInternalLink(this.makeLink(INTERNAL_LINK_TYPE.TON_CONNECT, {url: element.href}));
         }
 
@@ -727,93 +728,97 @@ export class InternalLinkProcessor {
       }
     });
 
-    // t.me/sendgrams?to=@user&amount=…&text=…&encrypted=1 and tg://sendgrams?to=…
-    type SendGramsParams = {to?: string, amount?: string, text?: string, comment?: string, encrypted?: string, startapp?: string, id?: string, v?: string, r?: string};
-    const onSendGrams = ({uriParams, element}: {uriParams: SendGramsParams, element?: HTMLAnchorElement}) => {
-      // * with TON Connect's fields (id, v, r or a `tonconnect-` start parameter) the wallet's link is a dApp's
-      if(uriParams.startapp?.startsWith('tonconnect-') || uriParams.id !== undefined || uriParams.v !== undefined || uriParams.r !== undefined) {
-        return this.processInternalLink(this.makeLink(INTERNAL_LINK_TYPE.TON_CONNECT, {url: element.href}));
-      }
-
-      // * a link that names two recipients or two amounts means neither (iOS)
-      try {
-        const search = new URL(element.href).searchParams;
-        if(search.getAll('to').length > 1 || search.getAll('amount').length > 1) {
-          return;
+    // * the wallet's links (Grams to send, TON Connect, a TON address's menu) are known only once it is released:
+    // * till then they stay what they were — a username, an unknown tg:// link, a plain one
+    if(isWalletReleased()) {
+      // t.me/sendgrams?to=@user&amount=…&text=…&encrypted=1 and tg://sendgrams?to=…
+      type SendGramsParams = {to?: string, amount?: string, text?: string, comment?: string, encrypted?: string, startapp?: string, id?: string, v?: string, r?: string};
+      const onSendGrams = ({uriParams, element}: {uriParams: SendGramsParams, element?: HTMLAnchorElement}) => {
+        // * with TON Connect's fields (id, v, r or a `tonconnect-` start parameter) the wallet's link is a dApp's
+        if(uriParams.startapp?.startsWith('tonconnect-') || uriParams.id !== undefined || uriParams.v !== undefined || uriParams.r !== undefined) {
+          return this.processInternalLink(this.makeLink(INTERNAL_LINK_TYPE.TON_CONNECT, {url: element.href}));
         }
-      } catch(err) {}
 
-      const link = this.makeLink(INTERNAL_LINK_TYPE.WALLET_SEND, {
-        to: uriParams.to,
-        amount: uriParams.amount,
-        text: uriParams.text || uriParams.comment,
-        encrypted: uriParams.encrypted
-      });
-      return this.processInternalLink(link);
-    };
+        // * a link that names two recipients or two amounts means neither (iOS)
+        try {
+          const search = new URL(element.href).searchParams;
+          if(search.getAll('to').length > 1 || search.getAll('amount').length > 1) {
+            return;
+          }
+        } catch(err) {}
 
-    addAnchorListener<{uriParams: SendGramsParams}>({
-      name: 'sendgrams',
-      callback: onSendGrams
-    });
-
-    addAnchorListener<{uriParams: SendGramsParams}>({
-      name: 'sendgrams',
-      protocol: 'tg',
-      callback: onSendGrams
-    });
-
-    // * a connected app's request is shown as it arrives in the service chat (iOS, tdesktop): TON Connect's code is
-    // * loaded for the first one only
-    rootScope.addEventListener('wallet_tonconnect_request', (action) => {
-      if(action.accepted || action.declined) return;
-      import('@components/wallet/tonConnect').then(({queueTonConnectRequest}) => queueTonConnectRequest(action));
-    });
-
-    // tc://?v=2&id=…&r=… and tg://ton-connect?…: a dApp connecting to the wallet
-    const onTonConnect = ({element}: {element?: HTMLAnchorElement}) => {
-      return this.processInternalLink(this.makeLink(INTERNAL_LINK_TYPE.TON_CONNECT, {url: element.href}));
-    };
-
-    addAnchorListener<{}>({
-      name: 'tonconnect',
-      protocol: 'tc',
-      noPathnameParams: true,
-      noUriParams: true,
-      callback: onTonConnect
-    });
-
-    addAnchorListener<{}>({
-      name: 'ton-connect',
-      protocol: 'tg',
-      noPathnameParams: true,
-      noUriParams: true,
-      callback: onTonConnect
-    });
-
-    // * a TON address in a message (tg://sendgrams?to=<address>): the menu of what can be done with it
-    addAnchorListener<{uriParams: {to?: string}}>({
-      name: 'openTonAddress',
-      noPathnameParams: true,
-      callback: ({uriParams, element, event}) => {
-        const address = uriParams.to || element.textContent;
-        import('@components/wallet/addressMenu').then(({default: openTonAddressMenu}) => {
-          return openTonAddressMenu({address, element, event});
+        const link = this.makeLink(INTERNAL_LINK_TYPE.WALLET_SEND, {
+          to: uriParams.to,
+          amount: uriParams.amount,
+          text: uriParams.text || uriParams.comment,
+          encrypted: uriParams.encrypted
         });
-      }
-    });
-
-    // ton://transfer/<address>?amount=…&text=…
-    addAnchorListener<{}>({
-      name: 'transfer',
-      protocol: 'ton',
-      noPathnameParams: true,
-      noUriParams: true,
-      callback: ({element}) => {
-        const link = this.makeLink(INTERNAL_LINK_TYPE.WALLET_SEND, {tonLink: element.href});
         return this.processInternalLink(link);
-      }
-    });
+      };
+
+      addAnchorListener<{uriParams: SendGramsParams}>({
+        name: 'sendgrams',
+        callback: onSendGrams
+      });
+
+      addAnchorListener<{uriParams: SendGramsParams}>({
+        name: 'sendgrams',
+        protocol: 'tg',
+        callback: onSendGrams
+      });
+
+      // * a connected app's request is shown as it arrives in the service chat (iOS, tdesktop): TON Connect's code is
+      // * loaded for the first one only
+      rootScope.addEventListener('wallet_tonconnect_request', (action) => {
+        if(action.accepted || action.declined) return;
+        import('@components/wallet/tonConnect').then(({queueTonConnectRequest}) => queueTonConnectRequest(action));
+      });
+
+      // tc://?v=2&id=…&r=… and tg://ton-connect?…: a dApp connecting to the wallet
+      const onTonConnect = ({element}: {element?: HTMLAnchorElement}) => {
+        return this.processInternalLink(this.makeLink(INTERNAL_LINK_TYPE.TON_CONNECT, {url: element.href}));
+      };
+
+      addAnchorListener<{}>({
+        name: 'tonconnect',
+        protocol: 'tc',
+        noPathnameParams: true,
+        noUriParams: true,
+        callback: onTonConnect
+      });
+
+      addAnchorListener<{}>({
+        name: 'ton-connect',
+        protocol: 'tg',
+        noPathnameParams: true,
+        noUriParams: true,
+        callback: onTonConnect
+      });
+
+      // * a TON address in a message (tg://sendgrams?to=<address>): the menu of what can be done with it
+      addAnchorListener<{uriParams: {to?: string}}>({
+        name: 'openTonAddress',
+        noPathnameParams: true,
+        callback: ({uriParams, element, event}) => {
+          const address = uriParams.to || element.textContent;
+          import('@components/wallet/addressMenu').then(({default: openTonAddressMenu}) => {
+            return openTonAddressMenu({address, element, event});
+          });
+        }
+      });
+
+      // ton://transfer/<address>?amount=…&text=…
+      addAnchorListener<{}>({
+        name: 'transfer',
+        protocol: 'ton',
+        noPathnameParams: true,
+        noUriParams: true,
+        callback: ({element}) => {
+          const link = this.makeLink(INTERNAL_LINK_TYPE.WALLET_SEND, {tonLink: element.href});
+          return this.processInternalLink(link);
+        }
+      });
+    }
 
     // tg://stars_topup?amount=100
     addAnchorListener<{

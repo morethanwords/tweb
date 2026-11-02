@@ -116,6 +116,7 @@ import IS_CONFERENCE_CALL_SUPPORTED from '@environment/conferenceCallSupport';
 import IS_CALL_SUPPORTED from '@environment/callSupport';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import verifyMenuItem from '@helpers/verifyMenuItem';
+import {isWalletAvailable, isWalletReleased} from '@lib/wallet/release';
 
 
 type SearchInitResult = {
@@ -789,7 +790,7 @@ export class AppSidebarLeft extends SidebarSlider {
       onClick: () => {
         import('@components/wallet').then(({default: showWalletPopup}) => showWalletPopup());
       },
-      verify: async() => (await apiManagerProxy.getAppConfig()).wallet_available !== false
+      verify: async() => isWalletReleased() && isWalletAvailable(await apiManagerProxy.getAppConfig())
     }, {
       icon: 'phone',
       text: 'Calls',

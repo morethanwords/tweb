@@ -127,6 +127,11 @@ describe('wrapUrl wallet links', () => {
     expect(wrapUrl('https://t.me/share/url?url=https://x').onclick).toBe('share');
   });
 
+  test('keeps t.me/sendgrams a username link while the wallet has no handler, as before its release', () => {
+    vi.stubGlobal('im', vi.fn());
+    expect(wrapUrl('https://t.me/sendgrams?to=@durov&amount=1').onclick).toBe('im');
+  });
+
   test('sends ton://transfer to the wallet', () => {
     vi.stubGlobal('ton_transfer', vi.fn());
     expect(wrapUrl('ton://transfer/UQA8RRt6mUoTcShtSDlxDvF1SX6Femu9dMCB-ZTK3uQ-aU_k?amount=1').onclick).toBe('ton_transfer');

@@ -21,6 +21,7 @@ import rootScope from '@lib/rootScope';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {toastNew} from '@components/toast';
 import styles from '@components/wallet/wallet.module.scss';
+import {isWalletAvailable} from '@lib/wallet/release';
 
 const WalletReceiveScreen = lazy(() => import('@components/wallet/screens/receive'));
 const WalletAmountScreen = lazy(() => import('@components/wallet/screens/amount'));
@@ -229,8 +230,9 @@ function WalletWindow(props: {options: ShowWalletPopupOptions, handle: WalletWin
 export default async function showWalletPopup(options: ShowWalletPopupOptions = {}): Promise<void> {
   // * the account it is asked for on: the window does not open over another one the tab switched to meanwhile
   const managers = bindManagersToSession(rootScope.managers);
-  // * the server can switch the wallet off for an account: every way in says so instead (iOS, Android)
-  if((await apiManagerProxy.getAppConfig()).wallet_available === false) {
+  // * the server can switch the wallet off for an account: every way in says so instead (iOS, Android); and until the
+  // * release no way in is shown, so a missed one says the same
+  if(!isWalletAvailable(await apiManagerProxy.getAppConfig())) {
     toastNew({langPackKey: 'Wallet.Unavailable'});
     return;
   }

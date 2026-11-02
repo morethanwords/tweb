@@ -206,6 +206,7 @@ import captureInputContent from '@components/chat/inputEditor/captureInputConten
 import getRichMessagePostingChoice from '@components/chat/inputEditor/richMessagePostingChoice';
 import {APP_TABS} from '@lib/appColumns';
 import verifyMenuItem from '@helpers/verifyMenuItem';
+import {isWalletAvailable, isWalletReleased} from '@lib/wallet/release';
 
 const HOT_CHAT_INPUTS = import.meta.hot ? [] as ChatInput[] : null;
 let botCommandsListId = 0;
@@ -1556,13 +1557,13 @@ export default class ChatInput {
       },
       verify: async() => {
         const peerId = this.chat.peerId;
-        if(this.editMsgId || this.ephemeralComposer || this.isWelcomeComposer) return false;
+        if(!isWalletReleased() || this.editMsgId || this.ephemeralComposer || this.isWelcomeComposer) return false;
         if(!peerId.isUser() || peerId === rootScope.myId || this.chat.isBot) return false;
         const [regular, appConfig] = await Promise.all([
           this.managers.appUsersManager.isRegularUser(peerId.toUserId()),
           this.managers.apiManager.getAppConfig()
         ]);
-        return regular && appConfig.wallet_available !== false;
+        return regular && isWalletAvailable(appConfig);
       }
     }, {
       icon: 'poll',

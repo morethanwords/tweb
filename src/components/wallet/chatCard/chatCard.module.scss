@@ -48,6 +48,11 @@ $center: rgb(14, 127, 255);
   color: #fff;
   cursor: pointer;
   user-select: none;
+
+  // * nothing to open until the wallet is released (lib/wallet/release)
+  &.isPlain {
+    cursor: default;
+  }
   --ticker-color: #{$ticker};
   --card-shade: transparent;
   background-color: #0b7aff;
@@ -405,4 +410,8 @@ $word-y: 22.7px;
 
 .cover {
   cursor: pointer;
+
+  &.isPlain {
+    cursor: inherit;
+  }
 }

@@ -19,7 +19,7 @@ import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {makeFullMid} from '@appManagers/utils/messages/fullMid';
 import {parseTonAddress} from '@lib/wallet/tonAddress';
-import {WALLET_SEND_MONEY_RELEASED} from '@lib/wallet/release';
+import {isWalletAvailable} from '@lib/wallet/release';
 import {copyWalletAddress} from '@components/wallet/parts';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import styles from '@components/wallet/addressMenu.module.scss';
@@ -109,7 +109,7 @@ export default async function openTonAddressMenu(options: {
   }
 
   const buttons: ButtonMenuItemOptions[] = [];
-  if(WALLET_SEND_MONEY_RELEASED && valid && appConfig.wallet_available !== false) {
+  if(valid && isWalletAvailable(appConfig)) {
     buttons.push({
       icon: 'wallet',
       text: 'Wallet.SendMoney',

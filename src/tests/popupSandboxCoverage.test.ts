@@ -1,6 +1,7 @@
 import {describe, expect, it} from 'vitest';
-import {readdirSync, readFileSync, statSync} from 'fs';
+import {readdirSync, readFileSync} from 'fs';
 import {join} from 'path';
+import walkSources from '@/tests/helpers/walkSources';
 
 /*
  * The popup sandbox is only worth as much as its coverage, and a popup added without a story is
@@ -27,21 +28,13 @@ const REACHED_INDIRECTLY: {[file: string]: string} = {
   'indexTsx.tsx': 'the popup base component, not a popup'
 };
 
-function walk(dir: string): string[] {
-  return readdirSync(dir).flatMap((name) => {
-    const path = join(dir, name);
-    if(statSync(path).isDirectory()) return walk(path);
-    return /\.tsx?$/.test(name) ? [path] : [];
-  });
-}
-
 describe('popup sandbox coverage', () => {
   const storySource = readdirSync(STORIES_DIR)
   .filter((name) => name.endsWith('.ts'))
   .map((name) => readFileSync(join(STORIES_DIR, name), 'utf8'))
   .join('\n');
 
-  const modulesWithEntries = walk(POPUPS_DIR).filter((path) => {
+  const modulesWithEntries = walkSources(POPUPS_DIR).filter((path) => {
     ENTRY.lastIndex = 0;
     return ENTRY.test(readFileSync(path, 'utf8'));
   });

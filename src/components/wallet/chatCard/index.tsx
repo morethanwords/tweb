@@ -18,6 +18,7 @@ import Modes from '@config/modes';
 import liteMode from '@helpers/liteMode';
 import classNames from '@helpers/string/classNames';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
+import {isWalletReleased} from '@lib/wallet/release';
 import idleController from '@helpers/idleController';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import {StarGiftBadge} from '@components/stargifts/stargiftBadge';
@@ -580,6 +581,9 @@ export default function WalletChatCard(props: {
     fastPlayer?.remove();
   });
 
+  // * until the wallet's release the card only shows the transfer: its details are the wallet's
+  const released = isWalletReleased();
+
   // * the first transfer's "Your first Grams!" comes first, the details after it closes
   const openDetails = async() => {
     const [{showWalletFirstGramsIfPending}, {default: showWalletTransactionPopup}] = await Promise.all([
@@ -601,12 +605,13 @@ export default function WalletChatCard(props: {
     <div ref={wrap} class={classNames(stylesCommon.addon, styles.wrap)}>
       <div
         ref={card}
-        class={classNames(styles.card, ribbon().class)}
-        role="button"
-        tabindex={Modes.a11y ? 0 : undefined}
+        class={classNames(styles.card, ribbon().class, !released && styles.isPlain)}
+        // * not a button till the release, but still named for assistive technology: the amount is hidden from it below
+        role={released ? 'button' : 'group'}
+        tabindex={released && Modes.a11y ? 0 : undefined}
         aria-label={label()}
-        onClick={openDetails}
-        onKeyDown={buttonKeyDown}
+        onClick={released ? openDetails : undefined}
+        onKeyDown={released ? buttonKeyDown : undefined}
       >
         <div class={styles.sweepTurn} aria-hidden="true">
           <div ref={sweep} class={styles.sweep} />
@@ -774,18 +779,20 @@ function TransferComment(props: {message: Message.messageService, out: boolean})
   const content = (): JSX.Element => {
     if(!encrypted()) return wrapEmojiText(transfer().comment);
     if(plain() !== undefined) return wrapEmojiText(plain());
+    // * until the wallet's release the cover stays: decrypting it is the wallet's
+    const released = isWalletReleased();
     return (
       <span
-        class={styles.cover}
-        role="button"
-        tabindex={Modes.a11y ? 0 : undefined}
-        aria-label={I18n.format('Wallet.Card.DecryptComment', true)}
+        class={classNames(styles.cover, !released && styles.isPlain)}
+        role={released ? 'button' : undefined}
+        tabindex={released && Modes.a11y ? 0 : undefined}
+        aria-label={released ? I18n.format('Wallet.Card.DecryptComment', true) : undefined}
         aria-busy={busy() || undefined}
-        onClick={(e) => {
+        onClick={released ? (e) => {
           e.stopPropagation();
           open();
-        }}
-        onKeyDown={buttonKeyDown}
+        } : undefined}
+        onKeyDown={released ? buttonKeyDown : undefined}
       >
         {cover()}
       </span>

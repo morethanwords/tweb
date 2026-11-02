@@ -487,9 +487,10 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
       }
 
       // * a TON wallet address the server marked: a click opens what can be done with it (wallet/addressMenu);
-      // * the link itself starts a transfer to it, for wherever the menu is not
+      // * the link itself starts a transfer to it, for wherever the menu is not. Plain text while nothing handles it:
+      // * the menu's handler is there only once the wallet is released (lib/wallet/release)
       case 'messageEntityTonAddress': {
-        if(!options.noLinks) {
+        if(!options.noLinks && (window as any).openTonAddress) {
           element = document.createElement('a');
           element.classList.add('ton-address');
           (element as HTMLAnchorElement).href = encodeEntities('tg://sendgrams?to=' + encodeURIComponent(fullEntityText));
