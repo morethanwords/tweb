@@ -327,7 +327,7 @@
       z-index: 1;
 
       .btn-primary-transparent.danger {
-        background: #fff;
+        background: var(--surface-color);
         box-shadow: 0px 0px 12px 4px var(--section-box-shadow-color) !important;
 
         @include hover() {
