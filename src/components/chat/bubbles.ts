@@ -8431,6 +8431,19 @@ export default class ChatBubbles {
   }
 
   /**
+   * Renders a message's bubble again once what its render waited for has come (the story it shows, loaded or gone) -
+   * while it is still this list's bubble of the message. By then the message may be deleted, its bubble sliced away or
+   * rendered anew, another chat opened: rendered all the same, it came back, or went into that chat's list
+   */
+  private rerenderWhenLoaded(bubble: HTMLElement, message: MyMessage) {
+    if(this.getBubble(makeFullMid(message)) !== bubble) {
+      return;
+    }
+
+    void this.safeRenderMessage({message: this.getMessageAsItIsNow(message), reverse: true, bubble});
+  }
+
+  /**
    * A message as the mirror has it now, by `mid` (its server id when its send was confirmed meanwhile); as it
    * was passed when the mirror holds no such message of that chat. A local one is what it is.
    */
@@ -9757,13 +9770,7 @@ export default class ChatBubbles {
         const result = await modifyAckedPromise(this.managers.acknowledged.appStoriesManager.getStoryById(storyPeerId, storyId));
         if(!result.cached) {
           s.append(i18n('Loading'));
-          (result.result as Promise<any>).then(() => {
-            this.safeRenderMessage({
-              message,
-              reverse: true,
-              bubble
-            });
-          });
+          (result.result as Promise<any>).then(() => this.rerenderWhenLoaded(bubble, message), noop);
         } else if(!result.result) {
           let elem: HTMLElement;
           if(isMyStory) elem = i18n('ExpiredStoryMentionYou', [await wrapPeerTitle({peerId: message.peerId})]);
@@ -12880,12 +12887,7 @@ export default class ChatBubbles {
         canAutoplay: false,
         onExpiredStory: async() => {
           await getHeavyAnimationPromise(); // wait for scroll to end
-          message = this.chat.getMessageByPeer(message.peerId, message.mid) as Message.message;
-          this.safeRenderMessage({
-            message,
-            reverse: true,
-            bubble
-          });
+          this.rerenderWhenLoaded(bubble, message);
         },
         withPreloader: true
       });
