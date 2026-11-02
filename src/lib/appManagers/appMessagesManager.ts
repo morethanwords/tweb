@@ -15166,8 +15166,9 @@ export class AppMessagesManager extends AppManager {
           if(!history.grouped) history.grouped = {};
           (history.grouped[groupedId] || (history.grouped[groupedId] = new Set())).add(mid);
 
+          // * an album deleted whole is not told what is left of it, the others deleted from are
           if(!groupedStorage.size) {
-            delete history.grouped;
+            delete history.grouped[groupedId];
             delete this.groupedMessagesStorage[groupedId];
           }
         }
