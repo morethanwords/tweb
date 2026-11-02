@@ -83,10 +83,16 @@ export function parseChatTableClipboardRows(
   if(!sawTab || rows.flat().length < 2) return;
   if(rows.some((cells) => cells.some((value) => value.length > cellTextLimit))) return;
 
-  const width = Math.max(...rows.map((cells) => cells.length));
-  rows.forEach((cells) => {
-    while(cells.length < width) cells.push('');
-  });
+  // * only a spreadsheet's rectangle is a table: as many cells in every row, and not every row opening
+  // * with an empty one — code indented with tabs is either ragged or a column of indents, and stays text
+  const width = rows[0].length;
+  if(
+    rows.some((cells) => cells.length !== width) ||
+    rows.every((cells) => cells[0] === '')
+  ) {
+    return;
+  }
+
   return rows;
 }
 

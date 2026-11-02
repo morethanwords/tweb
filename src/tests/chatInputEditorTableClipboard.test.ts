@@ -7,6 +7,7 @@ import {
   buildChatTableClipboardSerializer,
   normalizeChatTableClipboardHTML,
   parseChatTableClipboardRows,
+  parseChatTableClipboardText,
   serializeChatTableClipboardText,
   TABLE_CLIPBOARD_CELL_TEXT_LIMIT,
   TABLE_CLIPBOARD_TITLE_HTML_ATTRIBUTE
@@ -173,9 +174,22 @@ describe('chat input table clipboard', () => {
       ['C\nC', 'Say "hello"']
     ]);
     expect(parseChatTableClipboardRows('plain text')).toBeUndefined();
+    expect(parseChatTableClipboardRows('A\t\tC\n\tB\t')).toEqual([['A', '', 'C'], ['', 'B', '']]);
     expect(parseChatTableClipboardRows(
       `${'x'.repeat(TABLE_CLIPBOARD_CELL_TEXT_LIMIT + 1)}\ty`
     )).toBeUndefined();
+  });
+
+  test('leaves code indented with tabs as text', () => {
+    for(const code of [
+      '\tfoo();\n\tbar();',
+      'function a() {\n\treturn 1;\n}',
+      'if(x) {\n\tif(y) {\n\t\tz();\n\t}\n}\n',
+      '\tonly();'
+    ]) {
+      expect(parseChatTableClipboardRows(code)).toBeUndefined();
+      expect(parseChatTableClipboardText(code, schema)).toBeUndefined();
+    }
   });
 
   test('serializes a table as semantic Bot API HTML', () => {
