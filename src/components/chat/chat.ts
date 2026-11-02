@@ -56,6 +56,7 @@ import {isTempId} from '@appManagers/utils/messages/isTempId';
 import {usePeer} from '@stores/peers';
 import {useAppSettings} from '@stores/appSettings';
 import useHistoryStorage from '@stores/historyStorages';
+import useTopbarBarsHeight from '@stores/topbarBarsHeight';
 import useAutoDownloadSettings, {ChatAutoDownloadSettings} from '@hooks/useAutoDownloadSettings';
 import usePeerTranslation from '@hooks/usePeerTranslation';
 import debounce from '@helpers/schedulers/debounce';
@@ -292,6 +293,7 @@ export default class Chat extends EventListenerBase<{
       [this.appSettings, this.setAppSettings] = useAppSettings();
       this.appConfig = useAppConfig();
       this.fullPeer = createMemo(() => useFullPeer(this.peerIdSignal[0]())());
+      createEffect(on(useTopbarBarsHeight(), (height) => this.updateTopRoom(this.pinnedFloatingHeightPx, height)));
     });
   }
 
@@ -303,6 +305,7 @@ export default class Chat extends EventListenerBase<{
   private chatInputKeyboardPx = 0;
   private chatInputKeyboardFinish?: () => void;
   private pinnedFloatingHeightPx = 0;
+  private topbarBarsPx = 0;
   private preservePaddingScrollAbort?: () => void;
 
   public updateChatInputHeight(surplus: number) {
@@ -430,24 +433,34 @@ export default class Chat extends EventListenerBase<{
   }
 
   public updatePinnedFloatingHeight(value: number) {
-    if(this.pinnedFloatingHeightPx === value) return;
-    const delta = value - this.pinnedFloatingHeightPx;
-    this.pinnedFloatingHeightPx = value;
-    const scrollable = this.bubbles?.scrollable;
+    this.updateTopRoom(value, this.topbarBarsPx);
+  }
+
+  /**
+   * The room above the history: the topbar's plates (`ChatTopbar.setFloating`), and the bars over the topbar, a
+   * call's and the audio player's, which put it and the plates down (`useTopbarBarsHeight`)
+   */
+  private updateTopRoom(plates: number, bars: number) {
+    if(this.pinnedFloatingHeightPx === plates && this.topbarBarsPx === bars) return;
+    this.pinnedFloatingHeightPx = plates;
+    this.topbarBarsPx = bars;
     // * a list still on its way (the chat is opening) is scrolled where it belongs once it is mounted: reading
     // * the one being replaced only forced a layout of it
-    const wasAtEnd = this.bubbles?.chatInner?.isConnected && scrollable.isScrolledToEnd;
+    const inner = this.bubbles?.chatInner;
+    const mounted = !!inner?.isConnected;
+    const wasTop = mounted ? inner.getBoundingClientRect().top : 0;
     this.recomputePaddings();
     // Mobile-faithful (verified against iOS ListView + Android ChatActivity):
-    // leave a mid-scroll position anchored. recomputePaddings grows the
-    // in-scroller paddingTop, and the browser's own scroll anchoring keeps the
-    // visible content put as it grows — so the plate slides in OVER the content
-    // (which scrolls under it) rather than shoving it down. Both mobile clients
-    // do exactly this; neither shifts the history when a top panel appears.
-    // Only re-pin when the chat was glued to the bottom, so the newest message
-    // stays in view — otherwise the grown paddingTop drifts it off the end.
-    if(scrollable && wasAtEnd && delta > 0) {
-      scrollable.setScrollPositionSilently(scrollable.scrollPosition + delta);
+    // the history stays where it is on the screen as the room above it changes,
+    // so a plate slides in OVER the content (which scrolls under it) rather than
+    // shoving it down, and the newest message stays at the end. Both mobile
+    // clients do exactly this; neither shifts the history when a top panel
+    // appears. Not left to the browser's scroll anchoring: the list's least
+    // height changes with the room (`--bubbles-padding-height`), which suppresses it.
+    const moved = mounted ? inner.getBoundingClientRect().top - wasTop : 0;
+    if(moved) {
+      const {scrollable} = this.bubbles;
+      scrollable.setScrollPositionSilently(scrollable.scrollPosition + moved);
     }
   }
 
@@ -507,7 +520,9 @@ export default class Chat extends EventListenerBase<{
     const collapse = this.isPreview || mediaSizes.isMobile;
     const topBase = collapse ? 3.5 : 4.5;
     const bottomBase = collapse ? 3.5 : 4;
-    const top = Math.round(topBase * rem + this.pinnedFloatingHeightPx);
+    // * the preview's topbar stays where it is under the bars of a call or the player (_chatPreview.scss)
+    const bars = this.isPreview ? 0 : this.topbarBarsPx;
+    const top = Math.round(topBase * rem + this.pinnedFloatingHeightPx + bars);
     const bottom = Math.round(bottomBase * rem + this.chatInputSurplusPx + this.chatInputKeyboardPx);
     this.chatPaddingTop[1](top);
     this.chatPaddingBottom[1](bottom);
