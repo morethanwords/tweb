@@ -3199,7 +3199,9 @@ export class AppMessagesManager extends AppManager {
         largeMedia: boolean,
         smallMedia: boolean,
         optional: boolean
-      }>
+      }>,
+      // * a part of a longer text: text whatever it holds (a part that is a die alone is not sent as one)
+      splitPart: boolean
     }>
   ): Promise<void> {
     let {peerId, text} = options;
@@ -3275,6 +3277,7 @@ export class AppMessagesManager extends AppManager {
     // * a custom emoji whose emoticon is a die is sent as itself, as in tdesktop
     if(
       !richMessage &&
+      !options.splitPart &&
       appConfig.emojies_send_dice?.includes(text.trim()) &&
       !options.entities.some((entity) => entity._ === 'messageEntityCustomEmoji')
     ) {
@@ -3302,6 +3305,8 @@ export class AppMessagesManager extends AppManager {
     let entities = splitted.length > 1 && originalEntities?.length ?
       sliceMessageEntities(originalEntities, 0, text.length) :
       originalEntities;
+    // * the part's own entities as they come, to send it again with: parseMarkdown moves the ones it is given
+    const partEntities = copy(entities);
     if(!options.viaBotId && !richMessage) {
       [text, entities] = parseMarkdown(text, entities);
     }
@@ -3450,7 +3455,14 @@ export class AppMessagesManager extends AppManager {
           messageCount: 1,
           repayCallback: (override) => {
             this.cancelPendingMessage(message.random_id);
-            this.sendText({...options, ...override})
+            // * this part alone: the parts after it are sent again by their own requests
+            this.sendText({
+              ...options,
+              text: splitted[0],
+              entities: partEntities,
+              splitPart: options.splitPart || splitted.length > 1,
+              ...override
+            })
           },
           paidStars,
           wereStarsReserved: options.confirmedPaymentResult?.canUndo
@@ -3480,6 +3492,7 @@ export class AppMessagesManager extends AppManager {
       promises.push(this.sendText({
         ...options,
         peerId,
+        splitPart: true,
         text: splitted[i],
         entities: originalEntities?.length ? sliceMessageEntities(originalEntities, partOffset, splitted[i].length) : undefined
       }));

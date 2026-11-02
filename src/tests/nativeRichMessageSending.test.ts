@@ -2,17 +2,12 @@ import {describe, expect, test, vi} from 'vitest';
 import '@helpers/peerIdPolyfill';
 import deferredPromise from '@helpers/cancellablePromise';
 import {AppMessagesManager, RichMessagePayload} from '@appManagers/appMessagesManager';
+import {inputPeer, makeMessagesManager, makeUpdates, peerId} from '@/tests/helpers/messageSending';
 import {AppDraftsManager} from '@appManagers/appDraftsManager';
 import {tiptapToRichMessage} from '@components/chat/inputEditor/richMessage';
 import {createChatInputEditorTestData} from '@components/chat/inputEditor/testData';
-import {DraftMessage, InputPeer, InputRichMessage, Message, PageBlock, PageCaption, RichMessage, Updates, WebPage} from '@layer';
+import {DraftMessage, InputRichMessage, Message, PageBlock, PageCaption, RichMessage, WebPage} from '@layer';
 
-const peerId = (42 as UserId).toPeerId(false);
-const inputPeer: InputPeer.inputPeerUser = {
-  _: 'inputPeerUser',
-  user_id: 42,
-  access_hash: '1'
-};
 const emptyText = {_: 'textEmpty'} as const;
 const emptyCaption: PageCaption = {_: 'pageCaption', text: emptyText, credit: emptyText};
 
@@ -38,17 +33,6 @@ function makeRichMessage(): RichMessagePayload {
   };
 
   return {input, output};
-}
-
-function makeUpdates(): Updates.updates {
-  return {
-    _: 'updates',
-    updates: [],
-    users: [],
-    chats: [],
-    date: 0,
-    seq: 0
-  };
 }
 
 function makeReferencedRichMessage(): RichMessagePayload {
@@ -89,59 +73,6 @@ function makeReferencedRichMessage(): RichMessagePayload {
       documents: []
     }
   };
-}
-
-function makeMessagesManager() {
-  const manager = new AppMessagesManager();
-  const invokeApi = vi.fn().mockResolvedValue(makeUpdates());
-  const invokeApiAfter = vi.fn().mockResolvedValue(makeUpdates());
-  const optimisticMessages: Message.message[] = [];
-
-  Object.assign(manager as any, {
-    apiManager: {
-      getAppConfig: vi.fn().mockResolvedValue({}),
-      invokeApi,
-      invokeApiAfter
-    },
-    apiUpdatesManager: {
-      processLocalUpdate: vi.fn(),
-      processPaidMessageUpdate: vi.fn(),
-      processUpdateMessage: vi.fn()
-    },
-    appPeersManager: {
-      getInputPeerById: () => inputPeer,
-      getPeerMigratedTo: (): PeerId | undefined => undefined,
-      isChannel: () => false,
-      isAnyGroup: () => false
-    },
-    appUsersManager: {isBot: () => false},
-    repayRequestHandler: {tryRegisterRequest: vi.fn()},
-    appProfileManager: {isEphemeralBotCommand: vi.fn().mockReturnValue(false)},
-    rootScope: {dispatchEvent: vi.fn(), premium: true}
-  });
-
-  vi.spyOn(manager, 'checkSendOptions').mockResolvedValue({
-    config: {message_length_max: 4},
-    appConfig: {emojies_send_dice: ['🎲']}
-  } as any);
-  vi.spyOn(manager, 'generateOutgoingMessage').mockImplementation(() => ({
-    _: 'message',
-    id: -1,
-    mid: -1,
-    peerId,
-    pFlags: {},
-    message: '',
-    random_id: '1',
-    promise: deferredPromise<void>()
-  } as any));
-  vi.spyOn(manager, 'beforeMessageSending').mockImplementation((message) => {
-    optimisticMessages.push(message);
-    void message.send();
-    return undefined;
-  });
-  vi.spyOn(manager as any, 'onMessagesSendError').mockImplementation(() => {});
-
-  return {invokeApi, invokeApiAfter, manager, optimisticMessages};
 }
 
 describe('native rich-message manager plumbing', () => {
