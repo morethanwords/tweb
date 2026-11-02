@@ -12,5 +12,8 @@ export default function getSearchType(options: RequestHistoryOptions): RequestHi
     return 'cached';
   }
 
-  return options.query || !options.peerId || options.fromPeerId ? 'uncached' : 'cached';
+  // * a chat's media between some dates is not its media list, which the cached storage of the filter is
+  return options.query || !options.peerId || options.fromPeerId || options.minDate || options.maxDate ?
+    'uncached' :
+    'cached';
 }
