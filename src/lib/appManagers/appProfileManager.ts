@@ -1510,14 +1510,16 @@ export class AppProfileManager extends AppManager {
 
     const participants = _participants.participants;
     for(let i = 0, length = participants.length; i < length; i++) {
-      if(participants[i].user_id === update.user_id) {
+      const participant = participants[i] as ChatParticipant.chatParticipant;
+      if(participant.user_id === update.user_id) {
+        // * the update says only who is an admin: who added the member and when stay (the administrators list shows
+        // * that inviter as the one who promoted, and canEditAdmin goes by it), and so does the member tag
         participants[i] = {
           _: update.is_admin ? 'chatParticipantAdmin' : 'chatParticipant',
           user_id: update.user_id,
-          inviter_id: this.appUsersManager.getSelf().id,
-          date: tsNow(true),
-          // * the member tag outlives a promotion or a demotion
-          rank: (participants[i] as ChatParticipant.chatParticipant).rank
+          inviter_id: participant.inviter_id,
+          date: participant.date,
+          rank: participant.rank
         };
         return;
       }
