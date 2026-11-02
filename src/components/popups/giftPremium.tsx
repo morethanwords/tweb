@@ -13,6 +13,7 @@ import {createSignal} from 'solid-js';
 import Section from '@components/section';
 import MediaHeader from '@components/mediaHeader';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import toastError from '@components/toastError';
 
 const className = 'popup-gift-premium';
 
@@ -29,18 +30,25 @@ export default async function showGiftPremiumPopup(peerId: PeerId, giftOptions: 
 
     const onGift = async() => {
       const giftOption = selectedOption();
-      await createPaymentPopup({
-        inputInvoice: {
-          _: 'inputInvoicePremiumGiftCode',
-          option: giftOption,
-          purpose: {
-            _: 'inputStorePaymentPremiumGiftCode',
-            amount: giftOption.amount,
-            currency: giftOption.currency,
-            users: [await rootScope.managers.appUsersManager.getUserInput(peerId.toUserId())]
+      try {
+        await createPaymentPopup({
+          inputInvoice: {
+            _: 'inputInvoicePremiumGiftCode',
+            option: giftOption,
+            purpose: {
+              _: 'inputStorePaymentPremiumGiftCode',
+              amount: giftOption.amount,
+              currency: giftOption.currency,
+              users: [await rootScope.managers.appUsersManager.getUserInput(peerId.toUserId())]
+            }
           }
-        }
-      });
+        });
+      } catch(err) {
+        // * the button comes back on its own; what went wrong is said
+        toastError(err as ApiError, 'premium gift form error');
+        return false;
+      }
+
       setShow(false);
     };
 

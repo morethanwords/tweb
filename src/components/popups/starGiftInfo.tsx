@@ -60,6 +60,7 @@ import {getCanManagePeerGifts} from '@components/stargifts/canManageGifts';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import {GiftAttributeValue} from '@components/stargifts/giftAttributeValue';
+import toastError from '@components/toastError';
 
 const attributeValueKeyFrames = (element: Element, removed: boolean) => [
   {opacity: 0, transform: `translateY(${removed ? '-14px' : '14px'}) scaleY(0.5)`},
@@ -898,12 +899,18 @@ export default function showStarGiftInfoPopup(options: {
                 icon="delete"
                 aria-label={I18n.format('Delete', true)}
                 onClick={async() => {
-                  const popup = await createPaymentPopup({
-                    inputInvoice: {
-                      _: 'inputInvoiceStarGiftDropOriginalDetails',
-                      stargift: input
-                    }
-                  });
+                  let popup: Awaited<ReturnType<typeof createPaymentPopup>>;
+                  try {
+                    popup = await createPaymentPopup({
+                      inputInvoice: {
+                        _: 'inputInvoiceStarGiftDropOriginalDetails',
+                        stargift: input
+                      }
+                    });
+                  } catch(err) {
+                    toastError(err as ApiError, 'drop original details form error');
+                    return;
+                  }
 
                   popup.addEventListener('finish', (result) => {
                     if(result === 'paid') {

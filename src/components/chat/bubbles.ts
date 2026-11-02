@@ -1,4 +1,5 @@
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
+import toastError from '@components/toastError';
 import makeMediaPreviewsAccessible from '@helpers/dom/mediaPreviewAccessibility';
 import type {AppImManager, ChatSavedPosition, ChatSetInnerPeerOptions, ChatSetPeerOptions} from '@lib/appImManager';
 import type {HistoryResult, MyEphemeralMessage, MyMessage} from '@appManagers/appMessagesManager';
@@ -4148,13 +4149,20 @@ export default class ChatBubbles {
       const media = (message as Message.message).media;
       const paidMedia = media?._ === 'messageMediaPaidMedia' ? media : undefined;
 
-      const inputInvoice = await this.managers.appPaymentsManager.getInputInvoiceByPeerId(message.peerId, message.mid);
-      const popup = await createPaymentPopup({
-        message: message as Message.message,
-        inputInvoice,
-        isReceipt: buyButton.classList.contains('is-receipt'),
-        paidMedia
-      });
+      let popup: Awaited<ReturnType<typeof createPaymentPopup>>;
+      try {
+        const inputInvoice = await this.managers.appPaymentsManager.getInputInvoiceByPeerId(message.peerId, message.mid);
+        popup = await createPaymentPopup({
+          message: message as Message.message,
+          inputInvoice,
+          isReceipt: buyButton.classList.contains('is-receipt'),
+          paidMedia
+        });
+      } catch(err) {
+        // * a payment form or a receipt the server would not give: the press is not lost without a word
+        toastError(err as ApiError, 'payment form error');
+        return;
+      }
 
       if(paidMedia) {
         popup.addEventListener('finish', async(result) => {

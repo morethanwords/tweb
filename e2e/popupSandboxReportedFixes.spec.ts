@@ -271,3 +271,18 @@ test('showing my last seen time, refused, says so and frees its button', async({
   await expect(show).toBeEnabled();
   await expect(page.locator('.popup-toggle-read-date.active')).toHaveCount(1);
 });
+
+// * a payment form the server would not give was a press lost without a word
+test('a Premium gift whose payment form is refused says so and frees its button', async({page}) => {
+  await preparePopupSandbox(page, false);
+  await page.evaluate(async() => {
+    const {getMockManagers} = await window.e2eImport('/src/components/popupSandbox/environment.ts');
+    getMockManagers().override({appPaymentsManager: {getPaymentForm: () => Promise.reject({type: 'FORM_SUBMIT_FAILED'})}});
+  });
+  expect(await openStory(page, 'giftPremium')).toBeNull();
+
+  const gift = page.locator('.popup-gift-premium.active .popup-footer-button, .popup.active .popup-footer-button').first();
+  await gift.click();
+  await expect(page.locator('.toast')).toContainText('An error occurred');
+  await expect(gift).toBeEnabled();
+});
