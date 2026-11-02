@@ -92,7 +92,7 @@ const FormattingSection = () => (
     <ShortcutRow action="KeyboardShortcuts.Action.Italic" keys={<KeyCombo keys={['ctrl', 'I']} />} />
     <ShortcutRow action="KeyboardShortcuts.Action.Underline" keys={<KeyCombo keys={['ctrl', 'U']} />} />
     <ShortcutRow action="KeyboardShortcuts.Action.Strikethrough" keys={<KeyCombo keys={['ctrl', 'S']} />} />
-    <ShortcutRow action="KeyboardShortcuts.Action.Monospace" keys={<KeyCombo keys={['ctrl', 'M']} />} />
+    <ShortcutRow action="KeyboardShortcuts.Action.Monospace" keys={<KeyCombo keys={IS_APPLE ? ['ctrl', 'shift', 'M'] : ['ctrl', 'M']} />} />
     <ShortcutRow action="KeyboardShortcuts.Action.Spoiler" keys={<KeyCombo keys={['ctrl', 'P']} />} />
     <ShortcutRow action="KeyboardShortcuts.Action.Link" keys={<KeyCombo keys={['ctrl', 'K']} />} />
   </Section>

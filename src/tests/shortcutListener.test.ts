@@ -1,12 +1,5 @@
+import {appleEnv} from '@/tests/mocks/isApple';
 import {addShortcutListener} from '@helpers/shortcutListener';
-
-const env = vi.hoisted(() => ({isApple: false}));
-vi.mock('@environment/userAgent', async(importOriginal) => {
-  const actual = await importOriginal<typeof import('@environment/userAgent')>();
-  return {...actual, get IS_APPLE() {
-    return env.isApple;
-  }};
-});
 
 // * what the browser reports for one key press: `key` is the character the layout types, `code` the key's place
 type Press = {
@@ -32,7 +25,7 @@ const SEARCH = ['ctrl+f', 'alt+f', 'meta+f'];
 
 describe('shortcut listener', () => {
   afterEach(() => {
-    env.isApple = false;
+    appleEnv.isApple = false;
   });
 
   test('a Latin layout matches by the letter it types', () => {
@@ -51,7 +44,7 @@ describe('shortcut listener', () => {
     // * Alt types nothing on Windows and Linux
     expect(press(SEARCH, {key: 'а', code: 'KeyF', altKey: true}).fired).toEqual(['alt+f']);
 
-    env.isApple = true;
+    appleEnv.isApple = true;
     expect(press(SEARCH, {key: 'а', code: 'KeyF', metaKey: true}).fired).toEqual(['meta+f']);
   });
 
@@ -62,7 +55,7 @@ describe('shortcut listener', () => {
     expect(press(SEARCH, {key: 'ѓ', code: 'KeyF', modifierAltGraph: true})).toEqual({fired: [], prevented: false});
 
     // * a Mac layout whose Option+F types a Cyrillic letter (SuperCyrillic)
-    env.isApple = true;
+    appleEnv.isApple = true;
     expect(press(SEARCH, {key: 'ѓ', code: 'KeyF', altKey: true})).toEqual({fired: [], prevented: false});
   });
 

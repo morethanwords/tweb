@@ -4,6 +4,7 @@ import {MarkdownType} from '@helpers/dom/getRichElementValue';
 import isSelectionEmpty from '@helpers/dom/isSelectionEmpty';
 import {getChatInputEditor} from '@components/chat/inputEditor/registry';
 import openCreateLinkPopupForInput from '@components/popups/createLinkForInput';
+import {IS_APPLE} from '@environment/userAgent';
 
 /**
  * Formatting is applied by the editor mounted on the input.
@@ -27,6 +28,14 @@ export function applyMarkdown({input, type, href, dateSuffix}: {
   return applied;
 }
 
+/**
+ * Whether Mod+M (the M of a keydown with Ctrl or Cmd) asks for monospace: Cmd+M minimizes the window on
+ * a Mac, so there it takes Cmd+Shift+M, as tdesktop's (ctrl+shift+m, Cmd on a Mac); elsewhere Ctrl+M
+ */
+export function isMonospaceShortcut(e: KeyboardEvent) {
+  return e.shiftKey === IS_APPLE;
+}
+
 export function handleMarkdownShortcut(input: HTMLElement, e: KeyboardEvent) {
   const formatKeys: {[key: string]: MarkdownType} = {
     'KeyB': 'bold',
@@ -41,6 +50,7 @@ export function handleMarkdownShortcut(input: HTMLElement, e: KeyboardEvent) {
   const markdownType = formatKeys[e.code];
   const selection = input.ownerDocument.defaultView.getSelection();
   if(isSelectionEmpty(selection) || !markdownType) return;
+  if(markdownType === 'monospace' && IS_APPLE && !isMonospaceShortcut(e)) return;
 
   if(e.code === 'KeyK') void openCreateLinkPopupForInput(input);
   else applyMarkdown({input, type: markdownType});

@@ -1,7 +1,7 @@
 import type {Editor, JSONContent} from '@tiptap/core';
 import {NodeSelection} from '@tiptap/pm/state';
 import '@/tests/mocks/chatInputEditorNodes';
-import {mountChatInputEditor} from '@/tests/helpers/chatInputEditor';
+import {useMountedChatInputEditors} from '@/tests/helpers/chatInputEditor';
 import type {
   ChatInputEditor,
   ChatInputEditorSelection
@@ -25,18 +25,7 @@ function logicalDocumentContent(editor: ChatInputEditor) {
 }
 
 describe('chat input editor tdesktop parity', () => {
-  const editors: ChatInputEditor[] = [];
-
-  function mountEditor(options: Parameters<typeof mountChatInputEditor>[0] = {}) {
-    const mounted = mountChatInputEditor(options);
-    editors.push(mounted.editor);
-    return mounted;
-  }
-
-  afterEach(() => {
-    editors.splice(0).forEach((editor) => editor.destroy());
-    document.body.replaceChildren();
-  });
+  const mountEditor = useMountedChatInputEditors();
 
   test('expands a collapsed link selection and routes Mod+K through one callback', () => {
     const onLinkEditor = vi.fn<(selection: ChatInputEditorSelection) => void>();

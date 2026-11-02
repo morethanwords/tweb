@@ -22,7 +22,7 @@ import {
   instantViewStyles
 } from '@components/instantViewFormatting';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
-import {handleMarkdownShortcut} from '@helpers/dom/markdown';
+import {handleMarkdownShortcut, isMonospaceShortcut} from '@helpers/dom/markdown';
 import type {MarkdownType} from '@helpers/dom/getRichElementValue';
 import classNames from '@helpers/string/classNames';
 import type {Document, MessageEntity, PageBlock, Photo, RichMessage, RichText} from '@layer';
@@ -1932,7 +1932,7 @@ class TiptapChatInputEditor implements ChatInputEditor {
               event.preventDefault();
               return this.setBodyText();
             }
-            if(!event.shiftKey && code === 'KeyM') {
+            if(code === 'KeyM' && isMonospaceShortcut(event)) {
               event.preventDefault();
               return this.applyMonospaceShortcut();
             }
