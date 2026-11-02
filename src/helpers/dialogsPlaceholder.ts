@@ -68,7 +68,9 @@ export default class DialogsPlaceholder {
     this.shimmer.night = this.night = sizes.night;
     this.tempId = 0;
     this.canvas = document.createElement('canvas');
-    this.canvas.classList.add('dialogs-placeholder-canvas');
+    // * disable-hover: the skeleton fades out over the rows that came in, and a press there is theirs - a click
+    // * on a chat shown at startup went nowhere for as long as the fade lasted
+    this.canvas.classList.add('dialogs-placeholder-canvas', 'disable-hover');
     this.ctx = this.canvas.getContext('2d');
 
     this.generatedValues = [];
