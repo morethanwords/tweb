@@ -1,3 +1,4 @@
+import '@helpers/peerIdPolyfill';
 import {beforeAll, describe, expect, it, vi} from 'vitest';
 import type SidebarSlider from '@components/slider';
 import * as tabs from '@components/solidJsTabs/tabs';
@@ -196,5 +197,39 @@ describe('Two-Step Verification screen', () => {
     for(const path of ['privacy/2sv', 'privacy/2sv/change', 'privacy/2sv/disable', 'privacy/2sv/change-email']) {
       expect(findSettingsLink(path)?.sectionId, path).toBe('AppTwoStepVerificationTab');
     }
+  });
+});
+
+/**
+ * A screen whose payload Settings or Privacy and Security hands it opened from the search with none, and stayed blank
+ * (its component read a field of `undefined`): the search hands it the same payload
+ */
+describe('screens that need a payload', () => {
+  it('opens Edit Profile with what Settings opens it with', async() => {
+    rootScope.myId = (1 as UserId).toPeerId(false);
+    rootScope.managers = {
+      apiManager: {getLimit: async() => 70},
+      appUsersManager: {getSelf: async() => ({_: 'user', id: 1})},
+      appProfileManager: {getProfile: async() => ({_: 'userFull', id: 1})},
+      appBusinessManager: {getConnectedBot: async(): Promise<undefined> => undefined}
+    } as any;
+    const {slider, opened} = createSlider();
+
+    await openSectionTab('AppEditProfileTab', slider, undefined);
+    expect(opened[0].ctor).toBe(tabs.AppEditProfileTab);
+    const payload = opened[0].payload;
+    expect(await payload.bioMaxLength).toBe(70);
+    expect(await payload.user).toMatchObject({id: 1});
+    expect(await payload.userFull).toMatchObject({id: 1});
+  });
+
+  it('opens Auto-delete messages with the period that is set', async() => {
+    rootScope.managers = {appPrivacyManager: {getDefaultAutoDeletePeriod: async() => 86400}} as any;
+    const {slider, opened} = createSlider();
+
+    await openSectionTab('AppMessagesAutoDeleteTab', slider, undefined);
+    expect(opened[0].ctor).toBe(tabs.AppMessagesAutoDeleteTab);
+    expect(opened[0].payload.period).toBe(86400);
+    expect(() => opened[0].payload.onSaved(604800)).not.toThrow();
   });
 });

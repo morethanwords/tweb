@@ -1,3 +1,4 @@
+import noop from '@helpers/noop';
 import type SidebarSlider from '@components/slider';
 import type SliderSuperTab from '@components/sliderTab';
 import type {SliderSuperTabConstructable} from '@components/sliderTab';
@@ -146,6 +147,15 @@ const SECTION_OPENERS: {[sectionId: string]: SectionOpener} = {
   AppActiveWebSessionsTab: async(slider, middleware) => {
     const authorizations = await rootScope.managers.appSeamlessLoginManager.getWebAuthorizations();
     return openTab(slider, hotReloadGuard.tabs.AppActiveWebSessionsTab, middleware, authorizations);
+  },
+  // the payload Settings gives it (its rows load it as the tab opens)
+  AppEditProfileTab: (slider, middleware) => {
+    return openTab(slider, hotReloadGuard.tabs.AppEditProfileTab, middleware, hotReloadGuard.tabs.getEditProfileInitArgs(true));
+  },
+  AppMessagesAutoDeleteTab: async(slider, middleware) => {
+    const period = await rootScope.managers.appPrivacyManager.getDefaultAutoDeletePeriod();
+    // opened on its own, so there is no Privacy row waiting for the new value
+    return openTab(slider, hotReloadGuard.tabs.AppMessagesAutoDeleteTab, middleware, {period, onSaved: noop});
   }
 };
 
