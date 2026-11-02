@@ -862,7 +862,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
   }
 
   private registerServiceWorker() {
-    if(!('serviceWorker' in navigator)) return;
+    if(!('serviceWorker' in navigator)) { // * none in this browser: the worker takes one for online until told otherwise
+      this.invokeVoid('serviceWorkerOnline', false);
+      return;
+    }
 
     if(Modes.noServiceWorker) {
       navigator.serviceWorker.getRegistrations().then(regs => {

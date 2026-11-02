@@ -8,7 +8,7 @@ import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';
 
 function updateStreamInUse(url: string, inUse: boolean, accountNumber: ActiveAccountNumber) {
   if(url.includes('stream/')) {
-    apiManagerProxy.serviceMessagePort.invokeVoid('toggleStreamInUse', {url, inUse, accountNumber});
+    apiManagerProxy.serviceMessagePort?.invokeVoid('toggleStreamInUse', {url, inUse, accountNumber});
   }
 }
 
