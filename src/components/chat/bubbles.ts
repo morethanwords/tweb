@@ -14452,7 +14452,7 @@ export default class ChatBubbles {
 
     const message = await this.generateLocalFirstMessage(false, (message) => {
       message.message = '-'; // will get replaced anyway
-      message.date = Date.now() * 1000;
+      message.date = tsNow(true);
     });
 
     if(!middleware()) {
