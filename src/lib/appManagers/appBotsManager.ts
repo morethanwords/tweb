@@ -1,6 +1,7 @@
 import {AccountDatabase, getDatabaseState} from '@config/databases/state';
 import {TelegramWebViewSendEventMap} from '@types';
 import AppStorage from '@lib/storage';
+import createSerializedQueue from '@helpers/createSerializedQueue';
 import {AppManager} from '@appManagers/manager';
 import {BotPreviewMedia, User, UsersUsers} from '@layer';
 import type {ReferenceContext} from '@lib/storages/references';
@@ -34,6 +35,8 @@ export default class AppBotsManager extends AppManager {
   private recommendations: Map<BotId, MaybePromise<UsersUsers>> = new Map();
   private recommendationsGeneration = 0;
   private previewMedias: Map<BotId, MaybePromise<BotPreviewMedia[]>> = new Map();
+  // * device storage changes one at a time, in the order the apps asked: each reads the quota the one before it left
+  private deviceStorageChanges = createSerializedQueue();
 
   protected after() {
     this.webAppStorage = new AppStorage(getDatabaseState(this.getAccountNumber()), 'webapp')
@@ -173,7 +176,11 @@ export default class AppBotsManager extends AppManager {
     return this.writeBotStorage(botId, 'internal', key, value);
   }
 
-  public async writeBotDeviceStorage(botId: BotId, key: string, value: string | null): Promise<TelegramWebViewSendEventMap['device_storage_failed']['error'] | null> {
+  public writeBotDeviceStorage(botId: BotId, key: string, value: string | null) {
+    return this.deviceStorageChanges.enqueue(() => this.changeBotDeviceStorage(botId, key, value));
+  }
+
+  private async changeBotDeviceStorage(botId: BotId, key: string, value: string | null): Promise<TelegramWebViewSendEventMap['device_storage_failed']['error'] | null> {
     if(typeof key !== 'string') return 'KEY_INVALID';
     if(typeof value !== 'string' && value !== null) return 'VALUE_INVALID';
 
@@ -208,7 +215,11 @@ export default class AppBotsManager extends AppManager {
     return null
   }
 
-  public async clearBotDeviceStorage(botId: BotId) {
+  public clearBotDeviceStorage(botId: BotId) {
+    return this.deviceStorageChanges.enqueue(() => this.emptyBotDeviceStorage(botId));
+  }
+
+  private async emptyBotDeviceStorage(botId: BotId) {
     const prefix = `${botId.toString()}:device:`;
     const keys = await this.webAppStorage.getAllKeys()
 
