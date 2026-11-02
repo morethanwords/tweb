@@ -279,7 +279,9 @@ export default class InlineHelper extends AutocompleteHelper {
           setInnerHTML(btnSwitchTo, wrapEmojiText(switchTo.text));
           attachClickEvent(btnSwitchTo, async(e) => {
             if(switchTo._ === 'inlineBotSwitchPM') {
-              await this.chat.appImManager.setInnerPeer({peerId});
+              // * to the bot's chat, started with the result's parameter: its switch-inline button brings the user
+              // * back to this chat (checkSwitchReturn), as tdesktop does (inline_results_inner.cpp, switchPm)
+              await this.chat.appImManager.setInnerPeer({peerId: botId.toPeerId(false)});
               this.managers.appInlineBotsManager.switchToPM(peerId, botId, switchTo.start_param);
             } else {
               this.chat.openWebApp({
