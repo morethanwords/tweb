@@ -10,7 +10,12 @@ const mocks = vi.hoisted(() => ({
   }),
   openPermissions: vi.fn(),
   pickerOptions: undefined as any,
-  showPickUserPopup: vi.fn()
+  showPickUserPopup: vi.fn(),
+  toastNew: vi.fn()
+}));
+
+vi.mock('@components/toast', () => ({
+  toastNew: mocks.toastNew
 }));
 
 vi.mock('@appManagers/utils/chats/hasRights', () => ({
@@ -132,6 +137,10 @@ describe('chat administrators source', () => {
     source.openAddAdmin(open);
     mocks.pickerOptions.onSelect([{peerId: participantId}]);
     expect(open).toHaveBeenCalledWith(participant);
+    expect(mocks.pickerOptions).toMatchObject({
+      peerType: ['channelParticipants'],
+      participantsGlobalSearch: true
+    });
 
     source.openPermissions({
       participantId,
@@ -181,5 +190,62 @@ describe('chat administrators source', () => {
     expect(mocks.handleChannelsTooMuch).toHaveBeenCalledOnce();
     expect(tab.managers.appChatsManager.toggleAntiSpam)
     .toHaveBeenCalledWith(chatId, false);
+  });
+
+  it('lets a bot found by global search be promoted in a channel it is not in', async() => {
+    const botId = (30 as UserId).toPeerId(false);
+    tab.managers.appProfileManager.getParticipant = vi.fn().mockRejectedValue({type: 'USER_NOT_PARTICIPANT'});
+    tab.managers.appUsersManager = {isBot: vi.fn().mockResolvedValue(true)};
+
+    const source = await createChatAdministratorsSource({
+      tab,
+      chatId,
+      middleware: (() => true) as any
+    });
+
+    const open = vi.fn();
+    source.openAddAdmin(open);
+    await mocks.pickerOptions.onSelect([{peerId: botId}]);
+    expect(tab.managers.appProfileManager.getParticipant).toHaveBeenCalledWith(chatId, botId);
+    expect(open).toHaveBeenCalledWith(expect.objectContaining({
+      _: 'channelParticipant',
+      user_id: botId.toUserId()
+    }));
+  });
+
+  it('opens the rights of a found user who is already in the channel', async() => {
+    const memberId = (40 as UserId).toPeerId(false);
+    const member = {_: 'channelParticipant', user_id: memberId.toUserId(), date: 1};
+    tab.managers.appProfileManager.getParticipant = vi.fn().mockResolvedValue(member);
+
+    const source = await createChatAdministratorsSource({
+      tab,
+      chatId,
+      middleware: (() => true) as any
+    });
+
+    const open = vi.fn();
+    source.openAddAdmin(open);
+    await mocks.pickerOptions.onSelect([{peerId: memberId}]);
+    expect(open).toHaveBeenCalledWith(member);
+  });
+
+  it('keeps a basic group to its own members', async() => {
+    tab.managers.appChatsManager.getChat.mockResolvedValue({
+      _: 'chat',
+      id: chatId,
+      pFlags: {},
+      participants_count: 1
+    });
+    tab.managers.appChatsManager.isBroadcast.mockResolvedValue(false);
+
+    const source = await createChatAdministratorsSource({
+      tab,
+      chatId,
+      middleware: (() => true) as any
+    });
+
+    source.openAddAdmin(vi.fn());
+    expect(mocks.pickerOptions.participantsGlobalSearch).toBe(false);
   });
 });
