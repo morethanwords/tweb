@@ -1,0 +1,50 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+// * a note on a plate inside an alert, under its text (iOS's "background" text style)
+.plate {
+  margin: .5rem 1rem 0;
+  padding: .625rem .875rem;
+  border-radius: .75rem;
+  background-color: var(--light-secondary-text-color);
+  font-size: .875rem;
+  line-height: 1.25rem;
+  white-space: pre-wrap;
+}
+
+.plateCenter {
+  text-align: center;
+}
+
+// * a failure the next press tries again, under the alert's text
+.error {
+  margin: .5rem 1rem 0;
+  color: var(--danger-color);
+  font-size: .875rem;
+  line-height: 1.25rem;
+  white-space: pre-wrap;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  margin: .5rem 1rem 0;
+  height: 2.5rem;
+  align-items: center;
+
+  // * centred by the line: the app's own centring of a preloader (left 50% and back) would push it off by half the line
+  :global(.preloader) {
+    position: relative;
+    inset: auto;
+    transform: none;
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  :global(.preloader-path) {
+    stroke: var(--primary-color);
+  }
+}

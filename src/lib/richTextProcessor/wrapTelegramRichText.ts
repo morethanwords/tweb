@@ -217,6 +217,12 @@ function processRichText(richText: RichText, options: Options): TextWithEntities
         offset,
         length
       }), options);
+    case 'textTonAddress':
+      return wrapEntity(richText.text, (offset, length) => ({
+        _: 'messageEntityTonAddress',
+        offset,
+        length
+      }), options);
     case 'textMentionName':
       return wrapEntity(richText.text, (offset, length) => ({
         _: 'messageEntityMentionName',

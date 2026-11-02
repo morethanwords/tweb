@@ -7,6 +7,7 @@ export type RichMessageAttachMenuAction =
   | 'groupSlideshow'
   | 'editMedia'
   | 'giftPremium'
+  | 'sendMoney'
   | 'poll'
   | 'standaloneChecklist'
   | 'article'

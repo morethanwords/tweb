@@ -132,6 +132,7 @@ function addRichTextMetrics(text: RichText | undefined, depth: number, metrics: 
     case 'textAutoEmail':
     case 'textAutoPhone':
     case 'textBankCard':
+    case 'textTonAddress':
     case 'textMentionName':
     case 'textDate':
       return addRichTextMetrics(text.text, depth + 1, metrics);
@@ -432,6 +433,7 @@ function validateRichTextStructure(text: RichText): RichMessageLimitError | unde
     case 'textAutoEmail':
     case 'textAutoPhone':
     case 'textBankCard':
+    case 'textTonAddress':
       return 'invalid';
     case 'textUrl':
       if(!validTextUrl(text.url)) return 'invalid';

@@ -8,6 +8,8 @@ import styles from '@components/table.module.scss';
 import {NULL_PEER_ID} from '@appManagers/constants';
 import Button from '@components/buttonTsx';
 import showTooltip from '@components/tooltip';
+import Modes from '@config/modes';
+import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 
 export type TableRow = [LangPackKey | JSX.Element, JSX.Element];
 
@@ -59,11 +61,16 @@ export function TablePeer(props: {
   peerId: PeerId,
   onClick?: () => void
 }) {
-  const avatar = untrack(() => AvatarNew({peerId: props.peerId, size: 24}));
+  // * the picture repeats the name beside it
+  const avatar = untrack(() => AvatarNew({peerId: props.peerId, size: 24, props: {'aria-hidden': 'true'}}));
   return (
     <div
       class={/* @once */ styles.peer}
+      // * a peer that opens something is a button, named by its title; a tab stop with the keyboard layer
+      role={props.onClick ? 'button' : undefined}
+      tabindex={props.onClick && Modes.a11y ? 0 : undefined}
       onClick={props.onClick}
+      onKeyDown={props.onClick ? buttonKeyDown : undefined}
     >
       {props.peerId === NULL_PEER_ID ? (
         <>

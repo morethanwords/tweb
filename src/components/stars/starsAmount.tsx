@@ -5,6 +5,7 @@ import useStars from '@stores/stars';
 import {i18n} from '@lib/langPack';
 import {formatNanoton} from '@helpers/nanoton';
 import {IconTsx} from '@components/iconTsx';
+import CurrencyAmount, {CurrencyBalance} from '@components/currencyAmount';
 
 export function StarsStrokeStar(props: {stroke?: boolean, style?: JSX.HTMLAttributes<HTMLDivElement>['style']}) {
   return (
@@ -81,16 +82,15 @@ export function StarsStar() {
 export function StarsBalance(props: {ton?: boolean} = {}) {
   const stars = useStars(props.ton);
   return (
-    <div class="stars-balance">
-      <div class="stars-balance-title">{i18n('StarsBalance')}</div>
-      <div class="stars-balance-subtitle">{props.ton ? <IconTsx icon="ton" /> : <StarsStar />}{props.ton ? formatNanoton(stars() ?? 0, 9) : '' + (stars() ?? 0)}</div>
-    </div>
+    <CurrencyBalance icon={props.ton ? <IconTsx icon="gram_filled" /> : <StarsStar />}>
+      {props.ton ? formatNanoton(stars() ?? 0, 9) : '' + (stars() ?? 0)}
+    </CurrencyBalance>
   );
 }
 
 export function StarsAmount(props: {stars: Long}) {
   return (
-    <div class={classNames('popup-stars-pay-amount', 'popup-stars-pay-amount-plain')}>
+    <div class="currency-amount">
       <StarsStar />
       {props.stars}
     </div>
@@ -106,11 +106,13 @@ export function StarsChange(props: {
   ton?: boolean
 }) {
   return (
-    <div class={classNames('popup-stars-pay-amount', +props.stars >= 0 ? 'green' : 'danger', props.reverse && 'reverse', props.inline && 'inline')}>
-      {/* a signed number reads left to right whatever the layout */}
-      <span dir="ltr">{`${+props.stars > 0 && !props.noSign ? '+' : ''}${props.stars}`}</span>
-      {props.ton ? <IconTsx icon="ton" /> : <StarsStar />}
-      {props.isRefund && <span class="popup-stars-pay-amount-status">{i18n('StarsRefunded')}</span>}
-    </div>
+    <CurrencyAmount
+      amount={`${+props.stars > 0 && !props.noSign ? '+' : ''}${props.stars}`}
+      icon={props.ton ? <IconTsx icon="gram_filled" /> : <StarsStar />}
+      color={+props.stars >= 0 ? 'green' : 'danger'}
+      reverse={props.reverse}
+      inline={props.inline}
+      status={props.isRefund && i18n('StarsRefunded')}
+    />
   );
 }

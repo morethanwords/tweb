@@ -2580,6 +2580,18 @@ export class AppDialogsManager {
     });
     const hasReactionsBadge = isSaved ? false : !!dialog.unread_reactions_count;
     const hasPollVotesBadge = isSaved || isMonoforumThread ? false : !!(dialog as Dialog | ForumTopic).unread_poll_votes_count;
+    // * the last message is an incoming Gram transfer not read yet: the gem takes the mention's place and, when the
+    // * transfer is all that is unread, the count's too (iOS ChatListItem)
+    const hasGramBadge = hasUnreadBadge &&
+      !!unreadCount &&
+      !isTopic &&
+      !isSaved &&
+      !isMonoforumThread &&
+      lastMessage?._ === 'messageService' &&
+      lastMessage.action._ === 'messageActionGramTransfer' &&
+      !lastMessage.pFlags.out &&
+      lastMessage.mid > (dialog as Dialog).read_inbox_max_id;
+    const hasOnlyGram = hasGramBadge && unreadCount === 1;
     // * a bot's main mini app opens right from its row in the chat list, as in the official apps -
     // * where the row has nothing unread to show in its place
     dialogElement.hasBotMainApp = peerId.isUser() && !!apiManagerProxy.getUser(peerId.toUserId())?.pFlags?.bot_has_main_app;
@@ -2588,7 +2600,8 @@ export class AppDialogsManager {
       !hasUnreadBadge &&
       !hasMentionsBadge &&
       !hasReactionsBadge &&
-      !hasPollVotesBadge;
+      !hasPollVotesBadge &&
+      !hasGramBadge;
     let unreadBadgeText: string;
     if(hasUnreadBadge) {
       // dom.unreadMessagesSpan.innerText = '' + (unreadCount ? formatNumber(unreadCount, 1) : ' ');
@@ -2598,15 +2611,16 @@ export class AppDialogsManager {
     dialogElement.setBadgeState({
       muted: isMuted,
       pinned: hasPinnedBadge,
-      unread: hasUnreadBadge,
+      unread: hasUnreadBadge && !hasOnlyGram,
       unreadText: unreadBadgeText,
       unreadCount,
       unreadMention: isMention,
       unreadAvatar: hasUnreadAvatarBadge,
       unreadAvatarText: unreadBadgeText || undefined,
-      mentions: hasMentionsBadge,
+      mentions: hasMentionsBadge && !hasGramBadge,
       reactions: hasReactionsBadge,
       pollVotes: hasPollVotesBadge,
+      gram: hasGramBadge,
       botApp: hasBotAppButton,
       transitionDuration
     });

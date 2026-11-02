@@ -1,0 +1,27 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+.gem {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+
+.canvas {
+  display: block;
+  cursor: pointer;
+}
+
+// * a gem that stands still takes no click
+.still {
+  cursor: auto;
+}
+
+.fallback {
+  color: #37a1de;
+  line-height: 1;
+}

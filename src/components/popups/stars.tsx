@@ -307,7 +307,7 @@ export async function renderStarsTransaction(transaction: StarsTransaction, midd
     (
       <Row
         ref={container}
-        class="popup-stars-transaction-row"
+        class="transaction-row"
         noWrap
         role="button"
         tabIndex={0}
@@ -460,7 +460,7 @@ export default function showStarsPopup(options: PopupStarsOptions = {}) {
       (
         <Row
           ref={container}
-          class="popup-stars-transaction-row"
+          class="transaction-row"
           noWrap
           clickable={async() => {
             const popup = await createPaymentPopup({

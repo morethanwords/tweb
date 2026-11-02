@@ -240,7 +240,7 @@ export default async function showSharedFolderInvitePopup(options: Partial<{
     });
 
     return (
-      <PopupElement managers={managers} class={'popup-forward ' + CLASS_NAME} closable show={show()}>
+      <PopupElement managers={managers} class={'popup-forward selector-picker ' + CLASS_NAME} closable show={show()}>
         <PopupElement.Header>
           <PopupElement.CloseButton />
           <PopupElement.Title>{i18n(titleKey)}</PopupElement.Title>

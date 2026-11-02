@@ -1,0 +1,35 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+// The hint over the card's gem (iOS WalletTooltipComponent): a blue bubble with a small rounded arrow down to
+// the gem. It takes no clicks: a tap anywhere dismisses it and still reaches what is under it.
+
+.tooltip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.bubble {
+  padding: 6px 11px;
+  border-radius: 14px;
+  background: linear-gradient(90deg, #47bafe, #44b5ff);
+  color: #fff;
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+}
+
+.arrow {
+  position: absolute;
+  top: 100%;
+  width: 18px;
+  height: 7px;
+  display: block;
+}

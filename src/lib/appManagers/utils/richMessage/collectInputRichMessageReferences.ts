@@ -59,6 +59,7 @@ export default function collectInputRichMessageReferences(
       case 'textAutoEmail':
       case 'textAutoPhone':
       case 'textBankCard':
+      case 'textTonAddress':
       case 'textDate':
         visitText(text.text);
         break;

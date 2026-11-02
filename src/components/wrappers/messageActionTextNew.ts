@@ -5,7 +5,12 @@ export type WrapMessageActionTextOptions = {
   message: MyMessage,
   plain?: boolean,
   noLinks?: boolean,
-  noTextFormat?: boolean
+  noTextFormat?: boolean,
+  /**
+   * the line goes under the sender's name — a chat list row, a notification: an incoming Gram transfer leaves the
+   * name out ("sent you 1.5 Grams"), and a notification marks its amount with the gem
+   */
+  compact?: 'list' | 'notification'
 } & WrapSomethingOptions;
 
 export default async function wrapMessageActionTextNew(options: WrapMessageActionTextOptions & {plain: true}): Promise<string>;

@@ -1,0 +1,47 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+.value {
+  display: flex;
+  align-items: center;
+  gap: .375rem;
+
+  // * nested: the table's own pill colour must not win by load order
+  .rarity {
+    color: rgb(var(--primary-color-rgb));
+  }
+}
+
+.clickable {
+  color: var(--primary-color);
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+// * a tier tints the pill and its text alike
+.green {
+  --primary-color-rgb: 34, 180, 71;
+}
+
+.blue {
+  --primary-color-rgb: 37, 163, 185;
+}
+
+.violet {
+  --primary-color-rgb: 175, 82, 222;
+}
+
+.gold {
+  --primary-color-rgb: 213, 126, 50;
+}
+
+.tooltip {
+  white-space: nowrap;
+  max-width: 100% !important;
+}

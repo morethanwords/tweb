@@ -38,6 +38,11 @@ type InternalLinkAnchorType =
   | 'addstyle'
   | 'contact'
   | 'unknownDeepLink'
+  | 'sendgrams'
+  | 'transfer'
+  | 'openTonAddress'
+  | 'ton-connect'
+  | 'tonconnect'
 ;
 
 export const UNSAFE_ANCHOR_LINK_TYPES: Set<InternalLinkAnchorType> = new Set([
@@ -52,7 +57,7 @@ export default function addAnchorListener<
   }
 >(options: {
   name: InternalLinkAnchorType,
-  protocol?: 'tg',
+  protocol?: 'tg' | 'ton' | 'tc',
   callback: (params: Params & {element?: HTMLAnchorElement, masked?: boolean, event?: Event}) => any,
   noPathnameParams?: boolean,
   noUriParams?: boolean,

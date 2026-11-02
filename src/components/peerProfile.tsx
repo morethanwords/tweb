@@ -1669,7 +1669,7 @@ PeerProfile.BotVerification = () => {
             textColor: 'secondary-text-color'
           }
         }).container,
-        text: wrapRichText(verification().description)
+        text: wrapRichText(verification().description.text, {entities: verification().description.entities})
       };
     } else if(officialVerified()) {
       const isBroadcast = (context.peer as Chat.channel).pFlags.broadcast;

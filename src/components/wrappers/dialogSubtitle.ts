@@ -166,9 +166,10 @@ export default async function renderDialogSubtitleParts(options: {
 
   willPrepend.unshift(...names);
 
+  // * the row's title names the sender: a transfer's line leaves the name out
   const wrapOptions: Partial<
     WrapMessageForReplyOptions & WrapRichTextOptions
-  > = {textColor, middleware: options.wrapMiddleware};
+  > = {textColor, middleware: options.wrapMiddleware, compact: 'list'};
   let fragment: DocumentFragment;
   let wrapResult: ReturnType<typeof wrapMessageForReply>;
   if(highlightWord && lastMessage?._ === 'message' && lastMessage.message) {

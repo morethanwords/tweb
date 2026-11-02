@@ -1,0 +1,214 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+@use "../../scss/mixins" as *;
+
+.popup {
+  --popup-width: 26.25rem;
+}
+
+.body {
+  padding-inline: 1rem;
+}
+
+// the menu stands at the far end of the header
+.menu {
+  margin-inline-start: auto;
+}
+
+// * the amount is the header's title: a large whole part, a smaller fraction and the currency's code in blue
+// * (iOS: 48 / 32, here on the scale of the app's headers)
+.amount {
+  position: relative;
+  overflow: hidden;
+  align-self: center;
+  display: flex;
+  align-items: baseline;
+  max-width: 100%;
+  padding-inline: .25rem;
+  font-weight: var(--font-weight-bold);
+  font-size: 1.5rem;
+  line-height: 2.5rem;
+  white-space: nowrap;
+
+  &.incoming {
+    color: var(--green-color);
+  }
+
+  &.outgoing {
+    color: var(--primary-text-color);
+  }
+
+  &.pending {
+    color: var(--secondary-text-color);
+  }
+
+  // * the app's shimmer, its light the popup's own colour: what it passes over fades (iOS: an alpha mask down to .3)
+  &:global(.shimmer) {
+    --shimmer-rgb: var(--surface-color-rgb);
+    --opacity: .7;
+
+    &:before {
+      left: 0;
+    }
+  }
+
+  // * a colour and a fade: with reduced animations too
+  @include animation-level-global(1) {
+    transition: color .2s ease-in-out;
+
+    .suffix {
+      transition: opacity .2s ease-in-out;
+    }
+  }
+}
+
+.whole {
+  font-size: 2.25rem;
+}
+
+.suffix {
+  margin-inline-start: .5rem;
+  color: #0088ff;
+
+  :global(.night) & {
+    color: #30a1f5;
+  }
+
+  .pending & {
+    opacity: .5;
+  }
+}
+
+// * the fiat value, and after it how the transfer goes while it has not settled
+.status {
+  display: inline-grid;
+
+  > * {
+    grid-area: 1 / 1;
+  }
+}
+
+.statusText {
+  white-space: nowrap;
+  margin-inline-start: .375rem;
+
+  // * on a line of its own: no fiat value before it
+  &.statusAlone {
+    margin-inline-start: 0;
+  }
+
+  &.statusPending {
+    color: var(--primary-color);
+  }
+
+  &.statusFailed {
+    color: var(--danger-color);
+  }
+}
+
+.statusDot {
+  margin-inline-end: .25rem;
+  color: var(--secondary-text-color);
+}
+
+.keyCircle {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(to bottom, #9aa0ac, #b8bdc7);
+  color: #fff;
+  font-size: 3.25rem;
+}
+
+// * the comment and its cover in one cell: the cover fades out over the text fading in
+.comment {
+  display: grid;
+  justify-items: center;
+
+  > * {
+    grid-area: 1 / 1;
+  }
+}
+
+// * a long comment scrolls inside its own box (iOS: up to min(150, max(80, a quarter of the screen))), its edges
+// * fading where more of it is hidden
+.commentScroll {
+  --fade-top: .75rem;
+  --fade-bottom: .75rem;
+  max-height: min(150px, max(80px, 25vh));
+  width: 100%;
+  mask-image: linear-gradient(to bottom, transparent, #000 var(--fade-top), #000 calc(100% - var(--fade-bottom)), transparent);
+
+  &:global(.scrolled-start-manual) {
+    --fade-top: 0px;
+  }
+
+  &:global(.scrolled-end-manual) {
+    --fade-bottom: 0px;
+  }
+}
+
+.commentText {
+  user-select: text;
+  cursor: text;
+  overflow-wrap: anywhere;
+}
+
+.cover {
+  cursor: pointer;
+
+  &.coverBusy {
+    opacity: .25;
+    cursor: default;
+  }
+
+  @include animation-level-global(1) {
+    transition: opacity .2s ease-in-out;
+  }
+}
+
+// * 4 groups of 4 to a line, every other group grey: an address is read, and checked, by its groups
+.address {
+  cursor: pointer;
+  font-family: var(--font-monospace);
+  white-space: pre-wrap;
+  min-width: 0;
+}
+
+// * next to an address of several lines, Send stays at its first one
+.sendTop {
+  align-self: flex-start;
+}
+
+.feeFiat {
+  color: var(--secondary-text-color);
+}
+
+.feeSkeleton {
+  width: 8rem;
+  height: 1rem;
+  border-radius: .5rem;
+}
+
+.gramInfo {
+  margin-top: .75rem;
+  text-align: center;
+  font-size: var(--font-size-14);
+  line-height: var(--line-height-14);
+}
+
+.gramInfoLink {
+  color: var(--primary-color);
+  cursor: pointer;
+
+  @include hover-global() {
+    text-decoration: underline;
+  }
+}

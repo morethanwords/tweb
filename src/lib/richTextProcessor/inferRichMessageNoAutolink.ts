@@ -22,6 +22,7 @@ function inspectAutolinkRichText(
     case 'textAutoEmail':
     case 'textAutoPhone':
     case 'textBankCard':
+    case 'textTonAddress':
       state.auto = true;
       inspectAutolinkRichText(text.text, state, true);
       return;

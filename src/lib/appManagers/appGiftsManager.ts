@@ -459,11 +459,10 @@ export default class AppGiftsManager extends AppManager {
     });
   }
 
-  public getGiftWithdrawalUrl(input: InputSavedStarGift, password: InputCheckPasswordSRP) {
-    return this.apiManager.invokeApi('payments.getStarGiftWithdrawalUrl', {
-      stargift: input,
-      password
-    });
+  // * layer 232 takes a temporary password made of the 2FA one
+  public async getGiftWithdrawalUrl(stargift: InputSavedStarGift, password: InputCheckPasswordSRP) {
+    const {tmp_password} = await this.passwordManager.getTmpPassword(password, 60);
+    return this.apiManager.invokeApi('payments.getStarGiftWithdrawalUrl', {stargift, tmp_password});
   }
 
   public async getStarGiftOptions(): Promise<MyStarGift[]> {

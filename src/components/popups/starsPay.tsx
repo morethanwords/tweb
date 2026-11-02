@@ -337,7 +337,7 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
             container.style.width = container.style.height = size + 'px';
             // A decorative first frame must not delay opening a receipt (the container is still detached).
             void promise.catch(() => {
-              if(middleware()) container.replaceChildren(IconTsx({icon: transaction.amount._ === 'starsTonAmount' ? 'ton' : 'gift'}) as HTMLElement);
+              if(middleware()) container.replaceChildren(IconTsx({icon: transaction.amount._ === 'starsTonAmount' ? 'gram_filled' : 'gift'}) as HTMLElement);
             });
             return container as HTMLDivElement;
           });
@@ -415,7 +415,7 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
           }
         } else {
           confirmText = i18n('Stars.ConfirmPurchaseButton', [amount]);
-          confirmIcon = isTon ? 'ton' : 'star';
+          confirmIcon = isTon ? 'gram_filled' : 'star';
         }
 
         const onFulfill = async() => {

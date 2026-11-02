@@ -129,7 +129,7 @@ export function UnknownUserBubble(props: {
                 textColor: 'white'
               }
             }).container}
-            text={wrapRichText(props.userFull.bot_verification.description)}
+            text={wrapRichText(props.userFull.bot_verification.description.text, {entities: props.userFull.bot_verification.description.entities})}
           />
         )}
       </div>

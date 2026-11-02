@@ -478,6 +478,7 @@ describe('an answer older than a change made here', () => {
       appThemesManager: {saveWallPaper: (wallpaper: any) => wallpaper},
       appBusinessManager: {saveBusinessIntro: (userId: UserId, intro: any) => intro},
       appSavedMusicManager: {applyTopSavedMusic: vi.fn()},
+      appWalletManager: {saveWalletAddress: vi.fn()},
       rootScope: {dispatchEvent: vi.fn()},
       botCommandsByPeer: {},
       usersFull: {},

@@ -2400,30 +2400,6 @@ hr {
 }
 
 .stars {
-  &-balance {
-    text-align: end;
-
-    &-title {
-      font-size: var(--font-size-14);
-      line-height: 14px;
-    }
-
-    &-subtitle {
-      font-size: var(--font-size-16);
-      font-weight: var(--font-weight-bold);
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: .125rem;
-    }
-
-    .currency-star-icon {
-      width: 20px;
-      height: 20px;
-      margin-top: -1px;
-    }
-  }
-
   &-stacked {
     --size: 26px;
     --background-offset: calc(var(--size) - 10px);

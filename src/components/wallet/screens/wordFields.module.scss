@@ -1,0 +1,187 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+@use "../../../scss/mixins" as *;
+
+.grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: .5rem .75rem;
+  padding: .75rem;
+  border-radius: 1.5rem;
+  background-color: var(--surface-color);
+}
+
+// * two columns, numbered down each column like the paper copy people write
+.gridColumns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-template-rows: repeat(12, auto);
+}
+
+.gridShort {
+  grid-template-rows: repeat(6, auto);
+}
+
+.field {
+  --wallet-field-tint: transparent;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  height: 2.5rem;
+  padding-inline: .75rem .375rem;
+  border: 1px solid var(--border-color);
+  border-radius: .75rem;
+  background-color: var(--wallet-field-tint);
+
+  @include animation-level-global(1) {
+    transition: border-color .2s ease-in-out, background-color .2s ease-in-out;
+  }
+
+  &:focus-within {
+    border-color: var(--primary-color);
+  }
+}
+
+// * a word the check found wrong: red, on a 3% red tint (iOS)
+.fieldMismatched {
+  --wallet-field-tint: color-mix(in srgb, var(--danger-color) 3%, transparent);
+  border-color: var(--danger-color);
+
+  &:focus-within {
+    border-color: var(--danger-color);
+  }
+}
+
+// * "1." by the word; a right-to-left layout writes it ".1", the way its numbered lists do
+.number {
+  flex: none;
+  min-width: 1.5rem;
+  text-align: end;
+  font-size: .8125rem;
+  color: var(--secondary-text-color);
+  font-variant-numeric: tabular-nums;
+
+  @include animation-level-global(1) {
+    transition: color .2s ease-in-out;
+  }
+
+  .field:focus-within &,
+  .fieldFilled & {
+    color: var(--primary-text-color);
+  }
+}
+
+.input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--primary-text-color);
+  font: inherit;
+  font-size: .9375rem;
+}
+
+.paste {
+  flex: none;
+  height: 1.75rem;
+  padding: 0 1rem;
+  border: 0;
+  border-radius: .875rem;
+  background-color: var(--light-primary-color);
+  color: var(--primary-color);
+  font: inherit;
+  font-size: .875rem;
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+// * the suggestions under the active field: the app's tooltip bubble, kept in the grid
+.bubble:global(.tooltip) {
+  position: absolute;
+  z-index: 2;
+  margin-top: .5rem;
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+
+  @include animation-level-global(1) {
+    transition: opacity .25s ease-in-out;
+  }
+}
+
+// * Chromium leaves a clip-path unapplied on a backdrop-filtered element inside a scroller: the notch goes without blur
+.bubble :global(.tooltip-notch) {
+  backdrop-filter: none;
+}
+
+.bubbleVisible:global(.tooltip) {
+  opacity: 1;
+  pointer-events: auto;
+
+  @include animation-level-global(1) {
+    transition-duration: .1s;
+  }
+}
+
+.items {
+  display: flex;
+  height: 2.25rem;
+  padding: .1875rem;
+}
+
+.item {
+  flex: none;
+  min-width: 4rem;
+  padding: 0 .8125rem;
+  border: 0;
+  border-radius: .25rem;
+  background: none;
+  color: #b9b9ba;
+  font: inherit;
+  font-size: .875rem;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.875rem;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:first-child {
+    border-start-start-radius: .9375rem;
+    border-end-start-radius: .9375rem;
+  }
+
+  &:last-child {
+    border-start-end-radius: .9375rem;
+    border-end-end-radius: .9375rem;
+  }
+
+  // * the divider before it, at its inline start
+  & + & {
+    box-shadow: calc(-1px * var(--reflect)) 0 0 rgba(255, 255, 255, .08);
+  }
+
+  &:active {
+    background-color: #5a5a5e;
+  }
+}
+
+.itemSelected {
+  background-color: rgba(255, 255, 255, .1);
+}
+
+.itemMatch {
+  color: #fff;
+}
+
+.itemInvalid {
+  display: inline-block;
+  color: #fff;
+  cursor: default;
+}

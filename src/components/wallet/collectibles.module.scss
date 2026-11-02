@@ -1,0 +1,95 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+@use "../../scss/mixins" as *;
+
+.grid {
+  // * the profile's gift grid, its edges where the card's are
+  padding-inline: 1.5rem;
+}
+
+// * a gift tile of the profile's grid that is a button
+.item {
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  min-width: 0;
+
+  // * the grid's own overlay, hidden there: it lights the tile under the pointer, and on a touch while pressed
+  &::before {
+    border-radius: inherit;
+  }
+
+  @include hover-global() {
+    &::before {
+      opacity: .5;
+    }
+  }
+
+  &:active::before {
+    opacity: .5;
+  }
+
+  // * the press's and the pointer's feedback: a fade, with reduced animations too
+  @include animation-level-global(1) {
+    &::before {
+      transition: opacity .2s ease-in-out;
+    }
+  }
+}
+
+.image {
+  border-radius: .75rem;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background-color: var(--background-color);
+
+  :global(img),
+  :global(canvas) {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+  }
+}
+
+.text {
+  // * above the overlay, which would wash the text out
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-width: 0;
+}
+
+.placeholder {
+  font-size: 2rem;
+  color: var(--secondary-text-color);
+}
+
+.name {
+  display: block;
+  font-size: .8125rem;
+  line-height: 1.125rem;
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// * what the collectible is: "Collectible username" is wider than a tile, so it may take a second line
+.kind {
+  display: block;
+  font-size: .75rem;
+  line-height: 1rem;
+  color: var(--secondary-text-color);
+  @include text-overflow(2);
+}
+
+// * a gift's `#N`: the name reads first (iOS)
+.number {
+  color: var(--secondary-text-color);
+}

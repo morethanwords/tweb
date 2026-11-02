@@ -130,6 +130,7 @@ function isEditableRichText(text: RichText, marks: ReadonlySet<RichTextMark> = n
     case 'textAutoEmail':
     case 'textAutoPhone':
     case 'textBankCard':
+    case 'textTonAddress':
       return isEditableRichText(text.text, marks);
   }
 }

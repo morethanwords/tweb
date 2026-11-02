@@ -1,0 +1,35 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+// The recipient picker's own bits: the paste button in the header, what a typed address resolves to.
+
+.paste {
+  margin-inline-start: auto;
+  color: var(--secondary-text-color);
+}
+
+// * the screen sets it only when fades play
+.fadeIn {
+  animation: fadeIn .2s ease-in-out;
+}
+
+// * "No Results" in the list's place
+.failure {
+  display: flex;
+  justify-content: center;
+  padding-top: 1rem;
+  white-space: pre-line;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}

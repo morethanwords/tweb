@@ -426,3 +426,25 @@
     z-index: 1;
   }
 }
+
+// A picker — the search over a list that ends with its rows: the pick-user popup and what is built like it
+.selector-picker {
+  .selector-search {
+    &-section-container,
+    &-gradient-container {
+      z-index: 3;
+    }
+  }
+
+  .selector-height-container {
+    flex-shrink: 0;
+  }
+
+  .selector-list-section-container {
+    height: auto;
+  }
+
+  .selector-scrollable {
+    padding-bottom: 0;
+  }
+}

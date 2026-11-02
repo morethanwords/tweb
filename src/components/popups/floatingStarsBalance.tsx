@@ -30,7 +30,7 @@ export function FloatingStarsBalance(props: {
       <I18nTsx
         key="StarsBalanceLong"
         args={props.ton ? [
-          <IconTsx icon="ton" />,
+          <IconTsx icon="gram_filled" />,
           <b>{formatNanoton(balanceTon())}</b>
         ] : [
           <StarsStar />,

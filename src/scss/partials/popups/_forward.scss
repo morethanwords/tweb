@@ -40,26 +40,9 @@
   }
 
   .selector {
-    &-search {
-      &-section-container,
-      &-gradient-container {
-        z-index: 3;
-      }
-    }
-
+    // * room for the footer's button
     &-height-container {
       padding-bottom: calc(#{$button-height} + var(--section-padding-bottom));
-      flex-shrink: 0;
-    }
-
-    &-list-section-container {
-      height: auto;
-      // height: 1px;
-      // min-height: 184px;
-    }
-
-    &-scrollable {
-      padding-bottom: 0;
     }
 
     &.active {

@@ -344,12 +344,16 @@ describe('appGiftsManager: what the gift screens used to send by themselves', ()
     await manager.checkCanSendGift('5');
     expect(invokeApi).toHaveBeenLastCalledWith('payments.checkCanSendGift', {gift_id: '5'});
 
+    // * layer 232: the link takes a temporary password made of the 2FA one
     const input: InputSavedStarGift = {_: 'inputSavedStarGiftSlug', slug: 'gift-1'};
     const password = {_: 'inputCheckPasswordEmpty'} as InputCheckPasswordSRP;
+    const getTmpPassword = vi.fn().mockResolvedValue({_: 'account.tmpPassword', tmp_password: 'tmp', valid_until: 0});
+    Object.assign(manager as any, {passwordManager: {getTmpPassword}});
     await manager.getGiftWithdrawalUrl(input, password);
+    expect(getTmpPassword).toHaveBeenCalledWith(password, 60);
     expect(invokeApi).toHaveBeenLastCalledWith('payments.getStarGiftWithdrawalUrl', {
       stargift: input,
-      password
+      tmp_password: 'tmp'
     });
   });
 

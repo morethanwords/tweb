@@ -22,6 +22,7 @@ describe('rich-message Attach menu policy', () => {
   test.each<RichMessageAttachMenuAction>([
     'editMedia',
     'giftPremium',
+    'sendMoney',
     'poll',
     'standaloneChecklist',
     // it is what expands the editor

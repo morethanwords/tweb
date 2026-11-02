@@ -25,7 +25,7 @@ import {I18nTsx} from '@helpers/solid/i18n';
 import MediaHeader from '@components/mediaHeader';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import Table, {TableRow} from '@components/table';
-import {AttributeValue} from '@components/popups/starGiftInfo';
+import {GiftAttributeValue} from '@components/stargifts/giftAttributeValue';
 import paymentsWrapCurrencyAmount, {formatNanoton} from '@helpers/paymentsWrapCurrencyAmount';
 import {FloatingStarsBalance} from '@components/popups/floatingStarsBalance';
 import {doubleRaf} from '@helpers/schedulers';
@@ -52,19 +52,19 @@ export function transferStarGiftConfirmationPopup(options: {
 
     const rows: TableRow[] = [
       ['StarGiftModel', (
-        <AttributeValue
+        <GiftAttributeValue
           name={collectibleAttributes.model.name}
           rarity={collectibleAttributes.model.rarity}
         />
       )],
       ['StarGiftBackdrop', (
-        <AttributeValue
+        <GiftAttributeValue
           name={collectibleAttributes.backdrop.name}
           rarity={collectibleAttributes.backdrop.rarity}
         />
       )],
       ['StarGiftPattern', (
-        <AttributeValue
+        <GiftAttributeValue
           name={collectibleAttributes.pattern.name}
           rarity={collectibleAttributes.pattern.rarity}
         />

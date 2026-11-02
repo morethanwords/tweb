@@ -1,0 +1,72 @@
+@use "../shared" as *;
+
+// What the Stars popups and the wallet share: an amount with its currency's icon, the balance in a popup's
+// header, a row of a transactions list.
+
+.currency-amount {
+  font-weight: var(--font-weight-bold);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: bottom;
+  gap: .125rem;
+
+  .currency-star-icon {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  &-status {
+    // the chip takes the amount's own colour, the way tdesktop paints it (the amount's pen at
+    // 15% alpha for the pill, full strength for the label) — a refund on a negative amount used
+    // to end up as red text inside a green pill
+    background-color: color-mix(in srgb, currentColor 10%, transparent);
+    border-radius: $border-radius;
+    padding: 0 .375rem;
+  }
+}
+
+.currency-balance {
+  text-align: end;
+
+  // the balance sits at the far end of the header, whether or not there is a title next to it
+  .popup-header > & {
+    margin-inline-start: auto;
+    margin-top: .25rem;
+    margin-inline-end: .75rem;
+  }
+
+  &-title {
+    font-size: var(--font-size-14);
+    line-height: 14px;
+  }
+
+  &-subtitle {
+    font-size: var(--font-size-16);
+    font-weight: var(--font-weight-bold);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .125rem;
+  }
+
+  .currency-star-icon {
+    width: 20px;
+    height: 20px;
+    margin-top: -1px;
+  }
+}
+
+.transaction-row {
+  .row-midtitle,
+  .row-subtitle {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @include respond-to(handhelds) {
+    grid-template-columns: 3.5rem minmax(0, 1fr) !important;
+    grid-template-areas: "left title" "left midtitle" "left subtitle" "right right" !important;
+  }
+}

@@ -137,7 +137,8 @@ export type StateSettings = {
     sidebarResize: boolean,
     guestBotPrivacy: number, // how many times the guest-bot hint has been shown (capped at 2, like iOS)
     storyReactions: boolean, // * "long tap for more reactions" on a story's heart, once ever (iOS, Android)
-    storyStealthReply: boolean // * the warning that a reply or reaction shows you in Stealth Mode, once ever (iOS)
+    storyStealthReply: boolean, // * the warning that a reply or reaction shows you in Stealth Mode, once ever (iOS)
+    walletGram: number // how many times the wallet's "Gram" hint over the card's gem has been shown (capped at 3, like iOS)
   },
   playbackParams: ReturnType<AppMediaPlaybackController['getPlaybackParams']>,
   translations: {
@@ -259,6 +260,8 @@ export type State = {
   recentSearch: PeerId[],
   /** Peers whose chat was left behind — closed outright, or switched away from. Newest first. */
   recentlyClosedChats: PeerId[],
+  /** The wallet each profile showed when last opened: the memory of whose address is whose */
+  walletAddresses: {[userId: UserId]: string},
   version: typeof STATE_VERSION,
   build: typeof BUILD,
   authState: AuthState,
@@ -588,7 +591,8 @@ export const SETTINGS_INIT: StateSettings = {
     sidebarResize: false,
     guestBotPrivacy: 0,
     storyReactions: false,
-    storyStealthReply: false
+    storyStealthReply: false,
+    walletGram: 0
   },
   translations: {
     peers: {},
@@ -649,6 +653,7 @@ export const STATE_INIT: State = {
   topPeersCache: {},
   recentSearch: [],
   recentlyClosedChats: [],
+  walletAddresses: {},
   version: STATE_VERSION,
   build: BUILD,
   authState: {

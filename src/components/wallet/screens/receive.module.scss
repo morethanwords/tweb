@@ -1,0 +1,328 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+@use "../../../scss/mixins" as *;
+
+// Add Funds as on iOS: a blue sheet, the same in every theme — the code and the address stay black on white.
+// Sizes are iOS's points; the card's geometry comes from the screen (receive.tsx).
+
+$accent: #087cff;
+
+.root {
+  // * the accent as text: with the user's increased contrast it darkens to where it reads (4.5:1 on white and on
+  // * the pill's tint)
+  --receive-accent-text: #{$accent};
+  // * every other group of the address, greyed (iOS)
+  --receive-group-odd: #8e8e93;
+  position: relative;
+  // * no taller than the window: in a short one the sheet scrolls, and Buy stays within reach
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: max(22px, calc(env(safe-area-inset-bottom) + 12px));
+  background: linear-gradient(to bottom, #0079ff 0%, #46b2ff 33.333%, #46b2ff 66.667%, #067eff 100%);
+  color: #fff;
+  user-select: none;
+}
+
+.close {
+  position: absolute;
+  top: 16px;
+  inset-inline-start: 16px;
+  z-index: 1;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background-color: #1883fc;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.stage {
+  position: relative;
+  flex: none;
+  width: 100%;
+
+  // * the screen fills a phone: the sheet's content stands in its middle, between two auto margins (with Buy's)
+  // * that, unlike centring, never push a taller content's top out of reach
+  @include respond-to(handhelds) {
+    margin-top: auto;
+  }
+}
+
+.ring {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+
+.card {
+  position: absolute;
+}
+
+// * the faces turn inside this one: its own size dips while they do
+.flip {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  perspective: 650px;
+}
+
+.flipping {
+  pointer-events: none;
+}
+
+.face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 28px;
+  background-color: #fff;
+  color: #000;
+  backface-visibility: hidden;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+// * the face's edge darkens as it turns
+.shade {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: #003a80;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.qr {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background-color: #fff;
+}
+
+.qrCanvas {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  display: block;
+}
+
+// * a point at the cutout's centre: the gem's canvas grows around it
+.gem {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.gemCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.gemHit {
+  position: absolute;
+  top: -32px;
+  left: -32px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  touch-action: none;
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.gemFlat {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-50%, -50%);
+  color: #37a1de;
+  line-height: 1;
+}
+
+.pill {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 28px;
+  padding: 0 10.5px;
+  border: 0;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background-color: rgba($accent, .1);
+  color: var(--receive-accent-text);
+  font-size: 14px;
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:active {
+    background-color: #c8e4ff;
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+}
+
+.pillIcon {
+  font-size: 18px;
+}
+
+.grid {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(192px, calc(100% - 52px));
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 26px;
+  font-family: var(--font-monospace);
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 26px;
+  text-align: center;
+  color: #000;
+}
+
+.groupOdd {
+  color: var(--receive-group-odd);
+}
+
+.copied {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  color: var(--receive-accent-text);
+  font-size: 14px;
+  font-weight: var(--font-weight-bold);
+  line-height: 18px;
+}
+
+.check {
+  margin-inline-end: 6px;
+}
+
+.text {
+  flex: none;
+  width: calc(100% - 60px);
+  margin-top: 20px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 20px;
+  text-align: center;
+  white-space: pre-line;
+
+  .small & {
+    margin-top: 12px;
+  }
+}
+
+.buy {
+  position: relative;
+  flex: none;
+  width: calc(100% - 60px);
+  height: 52px;
+  margin-top: 30px;
+  padding: 0 1rem;
+  border: 0;
+  border-radius: 26px;
+  background-color: #fff;
+  color: var(--receive-accent-text);
+  font-size: 17px;
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+
+  .small & {
+    margin-top: 18px;
+  }
+
+  @include respond-to(handhelds) {
+    margin-bottom: auto;
+  }
+}
+
+.buyContent {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  vertical-align: middle;
+
+  // * the press's feedback: a fade, with reduced animations too
+  @include animation-level-global(1) {
+    transition: opacity .2s;
+  }
+
+  // * pressed: the content dims at once and comes back in .2 s
+  .buy:active & {
+    opacity: .7;
+    transition: none;
+  }
+
+  .buyOpening & {
+    visibility: hidden;
+  }
+}
+
+.buyIcon {
+  font-size: 24px;
+}
+
+.buy .buySpinner {
+  width: 22px;
+  height: 22px;
+
+  :global(.preloader-path) {
+    stroke: $accent;
+    stroke-width: 4.5;
+  }
+}
+
+// * with the keyboard layer: rings that read on the blue
+:global(:root:where(.a11y)) {
+  .close:focus-visible,
+  .buy:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+
+  .pill:focus-visible {
+    outline: 2px solid $accent;
+    outline-offset: 2px;
+  }
+}
+
+:global(:root.high-contrast) .root {
+  --receive-accent-text: #0062cc;
+  --receive-group-odd: #6d6d72;
+}

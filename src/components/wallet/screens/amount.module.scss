@@ -1,0 +1,749 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+// The amount screen, after the design's «Send Grams Filled» and iOS's send screen: the recipient chip on top, the
+// amount in the middle, the comment below it, the balance and the fee over the send button. Colours follow the
+// app's theme; the gem is the same. What animates follows the animation levels: fades and sizes from the reduced one,
+// what travels or pops only with the full one. Right to left the screen is mirrored, the amount itself, the codes
+// and the address staying left-to-right islands where they stand.
+
+@use "../../../scss/mixins" as *;
+
+.root {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding: 0 1rem .5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+// * a clickable part of a line: no box of its own, also when it is a native button (the a11y layer)
+.clickable {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+// MARK: Recipient chip
+
+.chip {
+  position: relative;
+  flex: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding-inline-start: .875rem;
+  background-color: var(--background-color);
+  border-radius: 6.25rem;
+  overflow: hidden;
+  transform-origin: 50% 50%;
+
+  &:global(.assembling) {
+    .chipAvatar > *,
+    .chipLabel,
+    .chipAddress {
+      visibility: hidden;
+    }
+  }
+}
+
+.chipAvatar {
+  width: 2.875rem;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  flex: none;
+
+  > * {
+    margin-inline-start: 2px;
+  }
+}
+
+.chipBadge {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.5rem;
+  color: #fff;
+  background: linear-gradient(#ffcd6a, #ffa85c);
+}
+
+.chipBody {
+  flex: 1;
+  min-width: 0;
+  padding: .25rem 0 .375rem;
+  container-type: inline-size;
+}
+
+.chipLabel {
+  display: flex;
+  align-items: baseline;
+  gap: .375rem;
+  height: 1.375rem;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.chipName {
+  font-size: 1rem;
+  line-height: 1.375rem;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -.31px;
+  color: var(--primary-text-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chipNick {
+  font-size: .875rem;
+  line-height: 1.1875rem;
+  letter-spacing: -.15px;
+  color: var(--secondary-text-color);
+}
+
+.chipAddress {
+  font-family: var(--font-monospace);
+  font-weight: 300;
+  // * a line of the address is 29 characters: on a narrow chip the font shrinks instead of going under the «?»
+  font-size: min(12px, 4.75cqi);
+  line-height: 18px;
+  color: var(--secondary-text-color);
+  white-space: pre;
+
+  b {
+    font-weight: 300;
+    color: var(--primary-text-color);
+  }
+
+  // * a left-to-right island (dir="ltr") as wide as its lines, standing at the inline start
+  &.clickable {
+    display: block;
+    width: fit-content;
+    text-align: start;
+  }
+}
+
+.chipHelp {
+  flex: none;
+  padding-block: .9375rem;
+  padding-inline: .75rem 1rem;
+  color: var(--primary-color);
+  display: grid;
+  place-items: center;
+  font-size: 1.5rem;
+  border-radius: 50%;
+}
+
+.chipMatrix {
+  position: absolute;
+  // * a physical place: the matrix draws at the chip's measured coordinates
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+
+// MARK: Amount
+
+.amountBlock {
+  flex: 1 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 0;
+}
+
+.amountLine {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding-inline-end: 6px;
+  height: 56px;
+  cursor: text;
+  // * as wide as the amount, centred, overflowing both sides alike: the screen scales it down to the width there is
+  transform-origin: 50% 50%;
+  white-space: nowrap;
+}
+
+.amountSymbol {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex: none;
+}
+
+.amountGemSlot {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+// * without WebGL2 or in lite mode the gem is the app's icon
+.amountGemIcon {
+  font-size: 2.25rem;
+  color: #37a1de;
+}
+
+.amountFiatSymbol {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 40px;
+  font-weight: 600;
+  color: var(--wallet-usd);
+  opacity: 0;
+
+  &.small {
+    font-size: 24px;
+  }
+}
+
+.amountValue {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  height: 56px;
+  min-width: 0;
+}
+
+.amountDigits {
+  display: flex;
+  align-items: baseline;
+  font-size: 48px;
+  line-height: 56px;
+  font-weight: 600;
+  letter-spacing: .384px;
+  font-feature-settings: "lnum" 1, "tnum" 1;
+  color: var(--primary-text-color);
+}
+
+.amountCaret {
+  position: relative;
+  flex: none;
+  height: 52px;
+  // * as on iOS: 4 from the digits, 4.5 to the code
+  margin-block-start: 2px;
+  margin-inline-start: 4px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--wallet-code);
+  animation: caret 1.05s steps(1) infinite;
+
+  @include animation-level-global(1) {
+    transition: background .46s;
+  }
+  visibility: hidden;
+
+  .amountLine:focus-within & {
+    visibility: visible;
+  }
+
+  &.typing {
+    animation: none;
+  }
+
+  &.fiat {
+    background: var(--wallet-usd);
+  }
+
+  // * the entrance fades it in (its opacity is set per frame): no blinking meanwhile
+  &.opening {
+    animation: none;
+  }
+}
+
+@keyframes caret {
+  0%,
+  55% {
+    opacity: 1;
+  }
+
+  56%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.amountCode {
+  padding-inline-start: 4px;
+  margin-block-start: 8px;
+  margin-inline-start: .5px;
+  font-size: 32px;
+  line-height: 52px;
+  font-weight: 600;
+  letter-spacing: .39px;
+  color: var(--wallet-code);
+  display: inline-block;
+
+  // * right to left the code reads after the digits: on their left, as on the card (the line reads left to right)
+  :global(.is-rtl) & {
+    order: -1;
+    padding-inline: 0 4px;
+    margin-inline: 0 .5px;
+  }
+}
+
+// * the field takes what is typed and is emptied at once: the line above draws the amount
+.amountInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  border: 0;
+  padding: 0;
+  font-size: 16px;
+  caret-color: transparent;
+  color: transparent;
+  background: transparent;
+  cursor: text;
+}
+
+// * colour probes: the drum's colours are read from the theme
+.probeGram {
+  color: var(--wallet-code);
+}
+
+.probeFiat {
+  color: var(--wallet-usd);
+}
+
+.probeMuted {
+  color: var(--secondary-text-color);
+}
+
+.probe {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+// MARK: Pill
+
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 26px;
+  margin-top: .5rem;
+  padding-block: 4px;
+  padding-inline: 8px 6px;
+  border-radius: 6.25rem;
+  background-color: var(--light-secondary-text-color);
+  color: var(--secondary-text-color);
+  transform-origin: 50% 50%;
+  overflow: hidden;
+  @include animation-level-transition(background-color .15s, opacity .2s ease-in-out, transform .2s ease-in-out, $global: true);
+
+  // * no amount, no rate: it keeps its place (iOS), out of sight — shrunk away only where it may move
+  &.pillHidden {
+    opacity: 0;
+    pointer-events: none;
+
+    @include animation-level-global(2) {
+      transform: scale(.01);
+    }
+  }
+
+  @media (hover: hover) {
+    &:hover {
+      background-color: var(--light-filled-secondary-text-color);
+    }
+  }
+}
+
+// * in fiat the gem stands for the Grams the pill shows (iOS)
+.pillGem {
+  flex: none;
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+  font-size: 15px;
+  color: var(--wallet-code);
+
+  &.shown {
+    width: 16px;
+    opacity: 1;
+  }
+
+  @include animation-level-global(1) {
+    transition: width .2s ease-in-out, opacity .2s ease-in-out;
+  }
+}
+
+.pillText {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: .52px;
+  white-space: nowrap;
+}
+
+// * the arrows are two halves of one icon: each rolls its own way
+.swapArrows {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  opacity: .72;
+
+  svg {
+    position: absolute;
+    inset: 0;
+    width: 18px;
+    height: 18px;
+  }
+
+  svg:first-child {
+    clip-path: inset(0 50% 0 0);
+  }
+
+  svg:last-child {
+    clip-path: inset(0 0 0 50%);
+  }
+}
+
+// MARK: Status, balance, fee
+
+// * a line that comes and goes: it grows into its place and fades in, and what is centred around it follows
+.collapse {
+  width: 100%;
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+
+  &.open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+
+  // * reduced: quicker (iOS 0.15 s)
+  @include animation-level-global(1) {
+    transition: grid-template-rows .15s ease-in-out, opacity .15s ease-in-out;
+  }
+
+  @include animation-level-global(2) {
+    transition-duration: .22s;
+  }
+}
+
+.collapseInner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+// * "Insufficient funds." and the deposit link after it
+.status {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: .25rem;
+  padding-top: .625rem;
+  font-size: .875rem;
+  line-height: 1.375rem;
+  text-align: center;
+}
+
+.insufficient {
+  color: var(--danger-color);
+}
+
+.deposit {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--primary-color);
+  cursor: pointer;
+
+  @media (hover: hover) {
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.depositArrow {
+  font-size: 1rem;
+}
+
+// * over the send button: the balance — or with nothing to send, the deposit link — and the fee
+.summary {
+  flex: none;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: .75rem;
+}
+
+// * the balance and the deposit link share a place and cross-fade
+.balanceSlot {
+  display: grid;
+  width: 100%;
+
+  > * {
+    grid-area: 1 / 1;
+  }
+}
+
+.summaryLine {
+  font-size: .875rem;
+  line-height: 1.5rem;
+  color: var(--secondary-text-color);
+  text-align: center;
+
+  @include animation-level-global(1) {
+    transition: opacity .15s ease-in-out;
+  }
+
+  @include animation-level-global(2) {
+    transition-duration: .22s;
+  }
+}
+
+.faded {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.depositSlot {
+  display: flex;
+  justify-content: center;
+}
+
+// * the fee while it is quoted (iOS: a 99 × 15 shimmer)
+.feePlaceholder {
+  --opacity: .3;
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+  width: 99px;
+  height: 15px;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: var(--background-color);
+
+  // * no wave in a line that is away
+  .collapse:not(.open) &::before {
+    animation: none;
+  }
+}
+
+// MARK: Comment
+
+.comment {
+  flex: none;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+}
+
+// * the recipient's alert (ⓘ): the linked user, and the address card (iOS)
+.recipientLink {
+  color: var(--primary-color);
+  cursor: pointer;
+}
+
+.addressCard {
+  display: block;
+  width: 100%;
+  margin: 1rem 0 0;
+  padding: 1rem 1rem .8125rem;
+  border: 0;
+  border-radius: .875rem;
+  background-color: var(--light-secondary-text-color);
+  color: var(--primary-text-color);
+  font-family: var(--font-monospace);
+  font-size: 1.125rem;
+  line-height: 1.5rem;
+  text-align: center;
+  white-space: pre;
+  cursor: pointer;
+}
+
+.addressMuted {
+  opacity: .32;
+}
+
+.commentPrivacy {
+  margin: 0 -.5rem;
+}
+
+.commentCaption {
+  padding: 0 1rem;
+  font-size: .875rem;
+  line-height: 1.25rem;
+  color: var(--secondary-text-color);
+}
+
+// MARK: Footer
+
+// * the footer's own button: the label gives way to a spinner while the transfer is prepared; nothing to send, it
+// * looks disabled (iOS: 0.7)
+.continue {
+  --disabled-opacity: .7;
+  position: relative;
+  overflow: hidden;
+}
+
+// * the button's line is its height: the label is a box of its own in the middle of it
+.continueLabel {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 100%;
+  vertical-align: middle;
+  line-height: 1.25rem;
+  @include animation-level-transition(opacity .3s, transform .3s, filter .3s, $global: true);
+}
+
+.sendTitle {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// * in fiat the amount it was typed in, under the Grams (iOS: 11 pt medium, 0.7)
+.sendSubtitle {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  font-size: .6875rem;
+  line-height: .875rem;
+  font-weight: var(--font-weight-bold);
+  text-transform: none;
+
+  > span {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  &.open {
+    grid-template-rows: 1fr;
+    opacity: .7;
+  }
+
+  @include animation-level-global(1) {
+    transition: grid-template-rows .22s ease-in-out, opacity .22s ease-in-out;
+  }
+}
+
+.spinner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border-radius: 50%;
+  border: 2.5px solid transparent;
+  border-top-color: currentColor;
+  border-right-color: currentColor;
+  opacity: 0;
+  @include animation-level-transition(opacity .35s .12s, transform .35s .12s, $global: true);
+
+  // * it grows into its place only where things may move; otherwise it fades in where it stands
+  .continue:not(.busy) & {
+    @include animation-level-global(2) {
+      transform: scale(.7);
+    }
+  }
+}
+
+.busy {
+  .continueLabel {
+    opacity: 0;
+    filter: blur(3px);
+
+    @include animation-level-global(2) {
+      transform: scale(.92);
+    }
+  }
+
+  .spinner {
+    opacity: 1;
+    animation: spin .9s linear infinite;
+  }
+}
+
+@keyframes spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+// * the pill and the comment step back while the gem is sent (out of reach meanwhile: inert); they shrink only where
+// * things may move, and fade where they stand otherwise
+.leaving {
+  opacity: 0;
+  @include animation-level-transition(opacity .3s, transform .3s, $global: true);
+
+  @include animation-level-global(2) {
+    transform: scale(.92);
+  }
+}
+
+// MARK: The gem's layer
+
+.gemLayer {
+  position: absolute;
+  // * physical: the scene places it at the gem's measured coordinates
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.gem,
+.glow,
+.ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.glow {
+  border-radius: 50%;
+  background: #6bb8ff;
+  filter: blur(12px);
+  opacity: 0;
+}
+
+.ring {
+  border-radius: 50%;
+  border: 2px solid rgba(0, 136, 255, .32);
+  opacity: 0;
+}

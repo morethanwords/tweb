@@ -1,0 +1,48 @@
+// Styles of the cells that Digits and RollText create themselves. The line
+// around them (font, size, colour) is the screen's: the amount digits sit in a
+// flex container with `align-items: baseline`.
+
+// Amount digits: a glyph per cell, the old glyph of a melt drawn over it.
+.amount-cell {
+  display: inline-block;
+  position: relative;
+  overflow: visible;
+  text-align: center;
+
+  > span {
+    display: inline-block;
+    transform-origin: 50% 85%;
+  }
+
+  &.fraction {
+    font-size: 32px;
+  }
+
+  .ghost {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    transform: translateX(-50%);
+    transform-origin: 50% 85%;
+  }
+}
+
+// The drum: an invisible glyph keeps the baseline, the visible ones roll over it.
+.roll-cell {
+  display: inline-block;
+  position: relative;
+  white-space: pre;
+  text-align: center;
+}
+
+.roll-strut {
+  visibility: hidden;
+}
+
+.roll-glyph {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  white-space: pre;
+  will-change: transform, opacity;
+}

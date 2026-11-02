@@ -45,6 +45,12 @@
   }
 }
 
+// a peer that opens something takes the keyboard layer's ring outside it, in the cell's padding: the inset one
+// crosses the avatar and the name's last letter
+:global(:root:where(.a11y)) .peer:focus-visible {
+  outline-offset: 2px;
+}
+
 .anonymous {
   background: linear-gradient(180deg, #6ED2FF 1.72%, #34A4FC 94.83%);
   border-radius: 50%;

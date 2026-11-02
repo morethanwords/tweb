@@ -13,12 +13,14 @@ import {createSignal, For, JSX, onMount, Show} from 'solid-js';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 
 export type PopupPeerButtonCallbackCheckboxes = Set<LangPackKey>;
-export type PopupPeerButtonCallback = (e: MouseEvent, checkboxes?: PopupPeerButtonCallbackCheckboxes) => void;
+export type PopupPeerButtonCallback = (e: MouseEvent, checkboxes?: PopupPeerButtonCallbackCheckboxes) => MaybePromise<boolean | void>;
 export type PopupPeerButton = Omit<PopupButton, 'callback'> & Partial<{
   callback: PopupPeerButtonCallback,
   onlyWithCheckbox: PopupPeerCheckboxOptions,
   /** In a footer (see `footer`): the transparent one under the filled. */
-  isSecondary: boolean
+  isSecondary: boolean,
+  /** a spinner on the button while its callback's promise is out */
+  preloader: boolean
 }>;
 // the caption belongs to the row the popup builds around the checkbox, not to the checkbox itself;
 // `text` doubles as the checkbox's identity in the button callbacks
@@ -118,8 +120,13 @@ export default function showPeerPopup(className: string, options: PopupPeerOptio
         }
 
         const props: Omit<Parameters<typeof PopupElement.Button>[0], 'danger'> = {
-          langKey: button.langKey,
-          langArgs: button.langArgs,
+          // read live, as `isDanger` below: a caller's getter can change what the button does and says
+          get langKey() {
+            return button.langKey;
+          },
+          get langArgs() {
+            return button.langArgs;
+          },
           cancel: button.isCancel,
           noRipple: button.noRipple,
           iconLeft: button.iconLeft,
@@ -128,6 +135,7 @@ export default function showPeerPopup(className: string, options: PopupPeerOptio
             return !gateChecked() || (button === inputButton && !inputValid());
           },
           confirm: button === confirmButton,
+          preloader: button.preloader,
           ref: (element) => button.element = element,
           // read at click time: a caller can swap the callback while the popup is up
           callback: (e) => button.callback?.(e, checkboxes && checkedSet()),

@@ -133,6 +133,32 @@ describe('rowTsxController', () => {
     expect(subtitleRight).toBe(row.querySelector('.row-subtitle-right'));
   });
 
+  it('keeps a title whose right part comes later, goes and comes back', async() => {
+    const [right, setRight] = createSignal<string>();
+    const row = createRoot(() => (
+      <RowTsx>
+        <RowTsx.Title titleRight={right()} titleRightSecondary>Money</RowTsx.Title>
+      </RowTsx>
+    )) as HTMLElement;
+    document.body.append(row);
+    const title = () => [...row.querySelectorAll('.row-title:not(.row-title-right)')].map((element) => element.textContent);
+    const value = () => row.querySelector('.row-title-right')?.textContent;
+
+    expect(title()).toEqual(['Money']);
+    setRight('1.5');
+    await Promise.resolve();
+    expect(title()).toEqual(['Money']);
+    expect(value()).toBe('1.5');
+    setRight(undefined);
+    await Promise.resolve();
+    expect(title()).toEqual(['Money']);
+    expect(value()).toBeUndefined();
+    setRight('2.5');
+    await Promise.resolve();
+    expect(title()).toEqual(['Money']);
+    expect(value()).toBe('2.5');
+  });
+
   it('mounts RowTsx parts and keeps explicit imperative parts available', () => {
     const row = mountController({title: '<b>Title</b>', noRipple: true});
 

@@ -1,0 +1,808 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+@use "../../scss/variables.scss" as *;
+@use "../../scss/mixins/respondTo" as *;
+
+// The wallet window, after the "Autumn 26 / FullScreen" design: a 420 pt window, 32 pt corners, at most 720 pt
+// tall; deeper content scrolls inside a screen. The card stays blue in every theme, everything around it
+// follows the app's theme.
+
+.popup {
+  --popup-width: 26.25rem;
+  --popup-background-color: var(--background-color);
+  --wallet-panel-max: min(45rem, calc(100dvh - 3rem));
+  --wallet-incoming: #00c73e;
+  --wallet-usd: #249b4a;
+  --wallet-code: #4097ed;
+
+  // * the design's bright green reads 2:1 on the surface: the night theme and the increased contrast setting
+  // * take the theme's own colours instead
+  :global(.night) &,
+  :global(.high-contrast) & {
+    --wallet-incoming: var(--green-color);
+    --wallet-usd: var(--green-color);
+    --wallet-code: var(--primary-color);
+  }
+
+  @include respond-to(handhelds) {
+    padding: 0 !important;
+    --popup-width: 100%;
+    --popup-border-radius: 0;
+    --wallet-panel-max: 100dvh;
+  }
+}
+
+.container {
+  // * own plane: the screens slide inside the rounding
+  isolation: isolate;
+  overflow: hidden;
+
+  @include respond-to(handhelds) {
+    height: 100dvh;
+  }
+}
+
+// MARK: Screens
+
+.screens {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+}
+
+.screen {
+  position: relative;
+  width: 100%;
+  max-height: var(--wallet-panel-max);
+  display: flex;
+  flex-direction: column;
+  background-color: var(--background-color);
+
+  &[hidden] {
+    display: none;
+  }
+
+  &:global(.is-moving) {
+    position: absolute;
+    left: 0;
+    top: 0;
+    will-change: transform;
+  }
+
+  @include respond-to(handhelds) {
+    height: 100dvh;
+    max-height: none;
+  }
+}
+
+.screenWallet {
+  background-color: var(--background-color);
+}
+
+// * the design's send screens are white
+.screenWhite {
+  background-color: var(--surface-color);
+}
+
+.screenTall {
+  height: var(--wallet-panel-max);
+}
+
+// MARK: Main screen content
+
+.content {
+  // * the sections stand where the card does
+  --section-padding-inline: 1.5rem;
+  // * the card's own offsets are read against the scroller
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  // * the card's background canvas is wider than the card for the tilt: never scroll sideways
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, .18) transparent;
+}
+
+// * the main screen's header lies over the history (iOS WalletScreen): the card folds away under it, the
+// * history scrolls under its edge
+.contentScrolled {
+  padding-top: 3.5rem;
+}
+
+.contentInner {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+
+  > * {
+    flex: none;
+  }
+}
+
+// * room for the card to fold away completely once the history scrolls at all (iOS minimum content height)
+.foldRoom {
+  margin-top: -1rem;
+}
+
+// MARK: Main screen header
+
+.top {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 4;
+
+  :global(.popup-header) {
+    // * the title gives way to the card coming up under it
+    :global(.popup-title) {
+      will-change: opacity, filter;
+    }
+  }
+}
+
+// * the background's edge under the header: what scrolls under it fades out (iOS EdgeEffectView). iOS lays it
+// * over a status bar and a navigation bar; the window's header alone is shorter, so it is solid under the
+// * header and fades over the 24 px below it
+.topEdge {
+  position: absolute;
+  inset: 0 0 auto;
+  height: calc(3.5rem + 24px);
+  z-index: 1;
+  background-color: var(--background-color);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+// * the balance at the header's middle: the card's balance arrives there, below the card's bottom edge
+.navClip {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 100dvh;
+  pointer-events: none;
+}
+
+.navBalance {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 3.5rem;
+  width: fit-content;
+  margin: 0 auto;
+  padding: 0 .5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: var(--primary-text-color);
+  font: inherit;
+  cursor: pointer;
+  pointer-events: none;
+
+  &.isFolded {
+    pointer-events: auto;
+  }
+}
+
+.navPrimary,
+.navFiat {
+  display: block;
+  transform-origin: 0 0;
+  white-space: nowrap;
+}
+
+.navPrimary {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.navIcon {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+  line-height: 20px;
+  color: #30a1f5;
+}
+
+.navFraction {
+  font-size: 14px;
+}
+
+.navFiat {
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--secondary-text-color);
+}
+
+// * the card's balance on its way to the header: a copy over the history, cut off below the card's bottom edge
+.flightLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.flight {
+  position: absolute;
+  inset: 0;
+}
+
+// * the Grams earned, in the accent colour with the gem (iOS)
+.earningsAmount {
+  color: var(--primary-color);
+  white-space: nowrap;
+}
+
+// * the menu's item with what it is set to under it
+.menuTwoLines {
+  display: flex;
+  flex-direction: column;
+
+  :global(.btn-menu-item-subtitle) {
+    font-size: var(--font-size-12);
+    line-height: var(--line-height-12);
+  }
+}
+
+.flightGroup {
+  position: absolute;
+  inset: 0;
+}
+
+.flightPrimary,
+.flightSecondary {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  color: #fff;
+}
+
+.flightIcon,
+.flightText {
+  position: absolute;
+  transform-origin: 0 0;
+}
+
+.flightIcon {
+  transform-origin: 50% 50%;
+
+  .cardGemFallback {
+    display: block;
+  }
+}
+
+.flightGem {
+  position: absolute;
+}
+
+.flightText {
+  white-space: pre;
+}
+
+// MARK: Card
+
+.card {
+  position: relative;
+  // * over the history's edge under the header, under the balance flying off it
+  z-index: 2;
+  width: calc(100% - 3rem);
+  margin-inline: auto;
+  aspect-ratio: 336 / 205;
+  touch-action: pan-y;
+  user-select: none;
+  overflow-x: clip;
+  overflow-clip-margin: 40px;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
+// * the scroll's fold (cardScroll.ts): pitched back and shrunk around the card's middle
+.cardFold {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+}
+
+// * the fold's shade on the metal, from the top (iOS: #001e4d 22% → 3%)
+.cardShading {
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  background: linear-gradient(rgba(0, 30, 77, .22), rgba(0, 30, 77, .03));
+  opacity: 0;
+}
+
+.cardBackground {
+  position: absolute;
+  pointer-events: none;
+}
+
+.cardShadow,
+.cardFace {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+.cardShadow {
+  border-radius: 20px;
+  box-shadow: 0 7px 24px rgba(0, 0, 0, 1);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cardFace {
+  pointer-events: none;
+}
+
+.cardDesign {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 336px;
+  height: 205px;
+  transform-origin: 0 0;
+  color: #fff;
+}
+
+// * the card's text is the interface's: it stands mirrored right to left (the gem and the QR chip go with it,
+// * visual/card/card.ts), the metal's light and the gem's facets do not
+.cardBalance {
+  position: absolute;
+  inset-inline-start: 22px;
+  top: 70px;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  height: 28px;
+  padding-top: 2px;
+  transform-origin: 40px 50%;
+
+  :global(.is-rtl) & {
+    transform-origin: calc(100% - 40px) 50%;
+  }
+}
+
+.cardGemSlot {
+  width: 28px;
+  height: 28px;
+  display: block;
+}
+
+.cardGemFallback {
+  display: none;
+  width: 28px;
+  height: 28px;
+  font-size: 24px;
+  line-height: 28px;
+  text-align: center;
+}
+
+.cardAmount {
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 500;
+  white-space: pre;
+}
+
+.cardCurrency {
+  // * the space after the digits, kept off them as a margin: right to left the ticker reads after the digits, to
+  // * their left, and a space of their own would land between the digits and the gem. Isolated, or with no space
+  // * between them the digits and the ticker would make one run that reads left to right
+  margin-inline-start: 4px;
+  unicode-bidi: isolate;
+  color: #6ddcff;
+}
+
+.cardFraction {
+  font-size: 18px;
+  // * the digits read left to right in either direction
+  margin-left: 1px;
+}
+
+.cardFiat,
+.cardName {
+  position: absolute;
+  inset-inline-start: 24px;
+  font-family: var(--font-monospace);
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.cardFiat {
+  top: 102px;
+}
+
+// * the fiat line's look, on the card and on the copy flying to the header
+.cardFiatText {
+  font-family: var(--font-monospace);
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: #87efff;
+}
+
+.cardName {
+  top: 172px;
+  text-transform: uppercase;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// * the address: a column by the inline-end edge, turned a quarter, embossed; its lines read left to right and
+// * turn the same way in either direction (card.tsx)
+.cardAddress {
+  position: absolute;
+  // * the column's middle 145 px from the card's middle: x 313 of 336, 23 right to left
+  left: calc(50% + 145px * var(--reflect));
+  top: 102.5px;
+  transform: translate(-50%, -50%) rotate(90deg);
+  font-family: var(--font-monospace);
+  font-size: 9.7px;
+  line-height: 1.15;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: rgba(0, 0, 0, .14);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .06);
+}
+
+// * the gem is clipped by the card's edge: growing, it never leaves it
+.cardGemClip {
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.cardGem {
+  position: absolute;
+  display: block;
+  transform-origin: 50% 50%;
+}
+
+// * without WebGL2 (or in lite mode): the flat card of the design
+.cardFlat {
+  .cardFace {
+    pointer-events: auto;
+  }
+
+  .cardDesign {
+    border-radius: 20px;
+    overflow: hidden;
+    background: conic-gradient(from 90deg at 50% 50%, #3390ec, #49a4ff, #3390ec, #49a4ff, #3390ec);
+    box-shadow: inset 0 -1px 1px rgba(0, 0, 0, .14);
+  }
+
+  .cardGemFallback {
+    display: block;
+  }
+
+  .cardGemClip,
+  .cardBackground {
+    display: none;
+  }
+}
+
+// MARK: Actions
+
+.actions {
+  width: 100%;
+  display: flex;
+  gap: .625rem;
+  padding: 0 1.5rem;
+
+  // * the footer's buttons, shared out side by side: the footer's gap between stacked ones is not wanted here
+  > * {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  > :global(.btn-primary) + :global(.btn-primary) {
+    margin-top: 0;
+  }
+}
+
+.state {
+  width: calc(100% - 3rem);
+  margin-inline: auto;
+  padding: 2.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+  color: var(--secondary-text-color);
+}
+
+// MARK: History
+
+.tabs {
+  width: 100%;
+}
+
+.history {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+
+  // * the class's display must not beat the attribute: the other tab's list stays hidden
+  &[hidden] {
+    display: none;
+  }
+}
+
+// * the tabs' contents in one cell: the one leaving fades out over the one coming
+.tabPanes {
+  display: grid;
+
+  > * {
+    grid-area: 1 / 1;
+    min-width: 0;
+  }
+}
+
+// * a history row's amount (iOS): the fraction smaller, the gram blue whichever way it went
+.amountFraction {
+  font-size: .8em;
+}
+
+.amountGram {
+  color: #30a1f5;
+}
+
+// * a bare address as the row's title (iOS): three monospace chips, the middle one fading out in its middle
+.addressChips {
+  display: inline-flex;
+  gap: 4px;
+  vertical-align: top;
+}
+
+.addressChip {
+  width: 48px;
+  height: 22px;
+  border-radius: 6px;
+  display: inline-grid;
+  place-items: center;
+  font-family: var(--font-monospace);
+  font-size: 16px;
+  font-weight: var(--font-weight-bold);
+  line-height: 22px;
+  background-color: rgba(112, 117, 121, .08);
+  background-color: color-mix(in srgb, var(--secondary-text-color) 8%, transparent);
+}
+
+.addressChipMasked {
+  mask-image: linear-gradient(90deg, #000 15%, transparent 50%, #000 85%);
+}
+
+// * WalletAddressGroups: a line of four groups, every other group grey
+.addressGroups {
+  font-family: var(--font-monospace);
+}
+
+.addressGroupLine {
+  display: block;
+}
+
+.addressGroupMuted {
+  color: var(--secondary-text-color);
+}
+
+// * "Sending" over the date while a transfer goes: they cross-fade when it went
+.rowStatus {
+  display: inline-grid;
+
+  > * {
+    grid-area: 1 / 1;
+  }
+}
+
+.rowMedia {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+// * iOS's look of a transfer going without its animation: a spinner on the avatar's corner at the inline end, cut
+// * out of it
+.rowMediaPending > :first-child {
+  mask-image: radial-gradient(circle 9px at calc(50% + 15.85px * var(--reflect)) calc(50% - 15.85px), transparent 98%, #000 100%);
+}
+
+.rowSpinner {
+  position: absolute;
+  left: calc(50% + 15.85px * var(--reflect) - 7px);
+  top: calc(50% - 15.85px - 7px);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background-color: var(--secondary-text-color);
+
+  svg {
+    width: 9px;
+    height: 9px;
+    animation: wallet-row-spinner 1s linear infinite;
+  }
+
+  circle {
+    fill: none;
+    stroke: #fff;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-dasharray: 16 8;
+  }
+}
+
+@keyframes wallet-row-spinner {
+  to {
+    rotate: 360deg;
+  }
+}
+
+// * a collectible's transfer: the item under the row, as the desktop client shows it
+.rowSubtitleChip {
+  white-space: normal;
+  overflow: visible;
+}
+
+.rowChip {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: .75rem;
+  padding-inline-end: .75rem;
+  border-radius: .625rem;
+  background-color: var(--light-secondary-text-color);
+  overflow: hidden;
+}
+
+.rowChip .rowChipImage {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: .625rem;
+  overflow: hidden;
+  font-size: 1.25rem;
+}
+
+.rowChipText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.rowChipTitle,
+.rowChipKind {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowChipTitle {
+  color: var(--primary-text-color);
+  font-weight: var(--font-weight-bold);
+}
+
+.rowChipKind {
+  color: var(--secondary-text-color);
+}
+
+.badge {
+  width: 2.625rem;
+  height: 2.625rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 1.75rem;
+  background: linear-gradient(#70a7db, #408acf);
+}
+
+.badgeOutgoing {
+  background: linear-gradient(#ffcd6a, #ffa85c);
+}
+
+.pendingBadge {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 17px;
+  height: 17px;
+}
+
+.historyMore {
+  align-self: center;
+}
+
+// * the rows while the first page loads (parts.tsx WalletHistorySkeletonRow): the app's skeleton, its sweep a
+// * decoration that goes with motion and runs from the line's start
+.skeleton {
+  :global(body:not(.animation-level-2)) &::before {
+    animation: none;
+  }
+
+  :global(html.is-rtl) &::before {
+    animation-direction: reverse;
+  }
+}
+
+.skeletonAmount {
+  width: 3.5rem;
+}
+
+.skeletonAvatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+
+// MARK: Picker
+
+// * the app's picker under a screen's header: it takes the rest of the screen
+.picker {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+// * a gap across the list's whole card, between a run of rows and the next (Android: the currencies' hints)
+.pickerDelimiter {
+  width: auto;
+  margin-inline: calc(-1 * var(--section-margin-inline, 0px));
+}
+
+// MARK: Generic sub-screen body
+
+.body {
+  // * the screen's own padding is the sections' edge: they add none of their own
+  --section-padding-inline: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding: .25rem 1rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.caption {
+  padding: 0 1rem;
+  font-size: .875rem;
+  line-height: 1.25rem;
+  color: var(--secondary-text-color);
+}
+
+.captionError {
+  color: var(--danger-color);
+}

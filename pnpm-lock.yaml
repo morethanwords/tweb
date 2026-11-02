@@ -39,6 +39,10 @@ patchedDependencies:
 importers:
 
   .:
+    dependencies:
+      '@ton/wallet-engine':
+        specifier: https://github.com/i582/wallet-engine/releases/download/v0.0.7/ton-wallet-engine-0.0.7.tgz
+        version: https://github.com/i582/wallet-engine/releases/download/v0.0.7/ton-wallet-engine-0.0.7.tgz
     devDependencies:
       '@axe-core/playwright':
         specifier: ^4.11.3
@@ -1725,6 +1729,13 @@ packages:
   '@tiptap/pm@3.31.3':
     resolution: {integrity: sha512-sZime0SWsz/k62W2WvHx5Ig7G2h7kVhrrmnqy+wEgIHfDwEfOlelRjaWCiBCFlF7dxGUntJusCh9FxlLhni0Ag==}
 
+  '@ton/wallet-engine@https://github.com/i582/wallet-engine/releases/download/v0.0.7/ton-wallet-engine-0.0.7.tgz':
+    resolution: {integrity: sha512-UDUiNFZn+3365yMirdZ62OSo2sSuSzyIy9StLCPKFhfwkuVk5tF3rTNW+TOVBooDui6Rx09K54DZixAmzUHRDA==, tarball: https://github.com/i582/wallet-engine/releases/download/v0.0.7/ton-wallet-engine-0.0.7.tgz}
+    version: 0.0.7
+
+  '@tonconnect/protocol@3.0.0':
+    resolution: {integrity: sha512-YqwllY12+rXsAZgKD5mlRBb6wXEbe9jKXMCFOV387yCKQDMnwXK1fbgKWrroPp9fPDtQHXhilZQNnuAKS/iR/w==}
+
   '@types/aes-js@3.1.4':
     resolution: {integrity: sha512-v3D66IptpUqh+pHKVNRxY8yvp2ESSZXe0rTzsGdzUhEwag7ljVfgCllkWv2YgiYXDhWFBrEywll4A5JToyTNFA==}
 
@@ -2607,6 +2618,9 @@ packages:
     peerDependencies:
       postcss: ^8.1.0
 
+  idb@8.0.3:
+    resolution: {integrity: sha512-LtwtVyVYO5BqRvcsKuB2iUMnHwPVByPCXFXOpuU96IZPPoPN6xjOGxZQ74pgSVVLQWtUOYgyeL4GE98BY5D3wg==}
+
   ignore@5.3.2:
     resolution: {integrity: sha512-hsBTNUqQTDwkWtcdYI2i06Y/nUBEsNEDJKjWdigLvegy8kDuJAS8uRlpkkcQpyEXL0Z/pjDy5HBmMjRCJ2gq+g==}
     engines: {node: '>= 4'}
@@ -3475,8 +3489,14 @@ packages:
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
+  tweetnacl-util@0.15.1:
+    resolution: {integrity: sha512-RKJBIj8lySrShN4w6i/BonWp2Z/uxwC3h4y7xsRrpP59ZboCd0GpEVsOnMDYLMmKBpYhb5TgHzZXy7wTfYFBRw==}
+
   tweetnacl@0.14.5:
     resolution: {integrity: sha512-KXXFFdAbFXY4geFIwoyNK+f5Z1b7swfXABfL7HXCmoIWMKU3dmS26672A4EeQtDzLKy7SXmfBu51JolvEKwtGA==}
+
+  tweetnacl@1.0.3:
+    resolution: {integrity: sha512-6rt+RN7aOi1nGMyC4Xa5DdYiukl2UWCbcJft7YhxReBGQD7OAM8Pbxw6YMo4r2diNEA8FEmu32YOn9rhaiE5yw==}
 
   type-check@0.4.0:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
@@ -5050,6 +5070,16 @@ snapshots:
       prosemirror-transform: 1.12.1
       prosemirror-view: 1.42.3
 
+  '@ton/wallet-engine@https://github.com/i582/wallet-engine/releases/download/v0.0.7/ton-wallet-engine-0.0.7.tgz':
+    dependencies:
+      '@tonconnect/protocol': 3.0.0
+      idb: 8.0.3
+
+  '@tonconnect/protocol@3.0.0':
+    dependencies:
+      tweetnacl: 1.0.3
+      tweetnacl-util: 0.15.1
+
   '@types/aes-js@3.1.4': {}
 
   '@types/babel__core@7.20.5':
@@ -5966,6 +5996,8 @@ snapshots:
     dependencies:
       postcss: 8.5.29
 
+  idb@8.0.3: {}
+
   ignore@5.3.2: {}
 
   immutable@5.1.9: {}
@@ -6847,7 +6879,11 @@ snapshots:
 
   tslib@2.8.1: {}
 
+  tweetnacl-util@0.15.1: {}
+
   tweetnacl@0.14.5: {}
+
+  tweetnacl@1.0.3: {}
 
   type-check@0.4.0:
     dependencies:

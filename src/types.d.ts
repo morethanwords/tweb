@@ -27,7 +27,12 @@ export type InvokeApiOptions = Partial<{
   timeout: number,
   waitTime: number,
   stopTime: number,
-  rawError: any
+  rawError: any,
+  /**
+   * The request must never run twice: an answer that may hide an executed request (a 5xx, an unparsable error)
+   * is thrown instead of resent with the same body
+   */
+  noRetry: true
 }>;
 
 export type WorkerTaskTemplate = {

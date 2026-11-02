@@ -282,7 +282,7 @@ export namespace MessageRender {
         span.classList.add('time-dice');
         span.textContent = formatNanoton(messageMedia.game_outcome.stake_ton_amount);
 
-        const icon = Icon('ton', 'time-icon', 'time-part');
+        const icon = Icon('gram_filled', 'time-icon', 'time-part');
 
         args.push(span, icon);
       }

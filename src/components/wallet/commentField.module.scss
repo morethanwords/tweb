@@ -1,0 +1,78 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+// A transfer's comment field: the byte counter and the lock stand at its end in the interface's direction, over room
+// the text leaves them. The text box takes its own direction from what is typed (dir="auto"), so that room is kept
+// on a physical side — the interface's end — not on the text's.
+
+.field {
+  --comment-end: 0rem;
+  position: relative;
+  width: 100%;
+
+  &.counting {
+    --comment-end: 2.75rem;
+  }
+
+  &.withLock {
+    --comment-end: 2.75rem;
+  }
+
+  &.withLock.counting {
+    --comment-end: 5.25rem;
+  }
+}
+
+.input {
+  margin: 0 !important;
+
+  :global(.input-field-input) {
+    // * a long comment scrolls inside its field
+    max-height: 7.5rem;
+    overflow-y: auto;
+    padding-right: calc(var(--padding-horizontal) - var(--border-width) + var(--comment-end));
+
+    :global(.is-rtl) & {
+      padding-right: calc(var(--padding-horizontal) - var(--border-width));
+      padding-left: calc(var(--padding-horizontal) - var(--border-width) + var(--comment-end));
+    }
+  }
+}
+
+// * at the bottom, on the last line's baseline, before the lock (Android)
+.counter {
+  position: absolute;
+  bottom: .875rem;
+  inset-inline-end: 1rem;
+  // * over the field's text box, which is positioned itself
+  z-index: 1;
+  font-size: .9375rem;
+  line-height: 1.25rem;
+  color: var(--secondary-text-color);
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+
+  .withLock & {
+    inset-inline-end: 3.25rem;
+  }
+
+  &.over {
+    color: var(--danger-color);
+  }
+}
+
+.lock {
+  position: absolute;
+  bottom: .375rem;
+  inset-inline-end: .375rem;
+  z-index: 1;
+  color: var(--secondary-text-color);
+
+  // * blue while it is private, grey once public (Android)
+  &.locked {
+    color: var(--primary-color);
+  }
+}

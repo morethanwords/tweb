@@ -362,6 +362,24 @@
       align-items: center;
     }
 
+    // * busy (`preloader`, its callback still out): a spinner in the label's colour stands in for the label,
+    // * which stays the button's name
+    &.is-pending {
+      opacity: 1;
+
+      > .i18n {
+        opacity: 0;
+      }
+
+      .preloader-circular {
+        height: 1.5rem;
+
+        .preloader-path {
+          stroke: currentColor;
+        }
+      }
+    }
+
     &-icon {
       font-size: 1.25rem;
 

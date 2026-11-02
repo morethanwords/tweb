@@ -5,6 +5,7 @@
 
 import {logger} from '@lib/logger';
 import ByteBuf from '@lib/calls/p2P/byteBuf';
+import {crc32c} from '@helpers/number/crc32';
 
 const DEBUG_CALLS = true;
 const log = logger('CALL-SCTP');
@@ -39,8 +40,6 @@ const SCTP_STATE_COOKIE = 7;
 const SCTP_COOKIE_ECHO = 10;
 const SCTP_COOKIE_ACK = 11;
 const SCTP_DATA = 0;
-
-const CRC32C_TABLE = createCrc32cTable();
 
 export class SctpSignaling {
   private localTag = generateUint32();
@@ -535,7 +534,7 @@ export class SctpSignaling {
     packet.writeUInt16BE(SCTP_PORT, 2);
     packet.writeUInt32BE(verificationTag, 4);
     chunk.copy(packet, 12);
-    packet.writeUInt32LE(crc32c(packet), 8);
+    packet.writeUInt32LE(sctpChecksum(packet), 8);
     return packet;
   }
 
@@ -617,7 +616,7 @@ export function isSctpPacket(packet: ByteBuf) {
 }
 
 function hasValidSctpChecksum(packet: ByteBuf) {
-  return isSctpPacket(packet) && packet.readUInt32LE(8) === crc32c(packet);
+  return isSctpPacket(packet) && packet.readUInt32LE(8) === sctpChecksum(packet);
 }
 
 function align4(value: number) {
@@ -639,26 +638,11 @@ function getForwardTsnGap(tsn: number, expectedTsn: number) {
   return (tsn - expectedTsn) >>> 0;
 }
 
-function createCrc32cTable() {
-  const table: number[] = [];
-  for(let i = 0; i < 256; i++) {
-    let value = i;
-    for(let bit = 0; bit < 8; bit++) {
-      value = value & 1 ? (0x82F63B78 ^ (value >>> 1)) : value >>> 1;
-    }
-    table[i] = value >>> 0;
-  }
-  return table;
-}
-
-function crc32c(data: ByteBuf) {
+// * the checksum is taken over the packet with its own field zeroed
+function sctpChecksum(data: ByteBuf) {
   const buffer = ByteBuf.wrap(data);
   buffer.writeUInt32LE(0, 8);
-  let crc = 0xFFFFFFFF;
-  for(let i = 0; i < buffer.length; i++) {
-    crc = CRC32C_TABLE[(crc ^ buffer[i]) & 0xFF] ^ (crc >>> 8);
-  }
-  return (~crc) >>> 0;
+  return crc32c(buffer);
 }
 
 function logSctp(message: string, data: Record<string, unknown> = {}) {

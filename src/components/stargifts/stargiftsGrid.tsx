@@ -244,7 +244,7 @@ function StarGiftGridItem(props: {
 
       {props.item.resellOnlyTon && props.view !== 'transfer' && (
         <div class={/* @once */ styles.tonIcon}>
-          <IconTsx icon="ton" />
+          <IconTsx icon="gram_filled" />
         </div>
       )}
 
