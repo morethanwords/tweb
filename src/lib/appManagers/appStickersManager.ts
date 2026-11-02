@@ -98,7 +98,7 @@ export class AppStickersManager extends AppManager {
       if(!this.getGreetingStickersPromise) {
         this.getGreetingStickersTimeout ??= ctx.setTimeout(() => {
           this.getGreetingStickersTimeout = undefined;
-          this.getGreetingSticker(true);
+          this.getGreetingSticker(true).catch(noop);
         }, 5000);
       }
 
@@ -185,13 +185,22 @@ export class AppStickersManager extends AppManager {
     }
 
     if(!this.getGreetingStickersPromise) {
-      this.getGreetingStickersPromise = this.getStickersByEmoticon({
+      // * searched anew: nothing greets yet, so the search kept by the emoji, if any, failed or found nothing
+      const promise = this.getGreetingStickersPromise = this.getStickersByEmoticon({
         emoticon: '👋⭐️',
-        includeServerStickers: true
+        includeServerStickers: true,
+        overwrite: true
       }).then((docs) => {
         if(!docs.length) throw 'NO_STICKERS';
         this.greetingStickers = docs.slice() as Document.document[];
         this.greetingStickers.sort((a, b) => Math.random() - Math.random());
+      });
+
+      // * a search that failed is not kept: the next greeting searches again
+      promise.catch(() => {
+        if(this.getGreetingStickersPromise === promise) {
+          this.getGreetingStickersPromise = undefined;
+        }
       });
     }
 

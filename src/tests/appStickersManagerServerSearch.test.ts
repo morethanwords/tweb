@@ -16,17 +16,52 @@ const found = (ids: string[], nextOffset?: number) => ({
 
 function createManager(language = 'ru') {
   const invokeApi = vi.fn();
+  const invokeApiHashable = vi.fn();
   const saveDoc = vi.fn((document: MyDocument, _context?: ReferenceContext) => document);
   const manager = new AppStickersManager();
   Object.assign(manager as any, {
-    apiManager: {invokeApi},
+    apiManager: {invokeApi, invokeApiHashable},
+    apiFileManager: {downloadMedia: vi.fn()},
     appDocsManager: {saveDoc},
     networkerFactory: {language},
     rootScope: {premium: false}
   });
   manager.clear(true);
-  return {manager, invokeApi, saveDoc};
+  return {manager, invokeApi, invokeApiHashable, saveDoc};
 }
+
+/**
+ * The sticker an empty private chat greets with (`getGreetingSticker`, the placeholder of `renderEmptyPlaceholder`)
+ * comes from a search by emoji (`messages.getStickers`), made once and kept. A search that failed - offline 5 seconds
+ * after the start, when it is preloaded - or found nothing was kept as well, here and by the emoji: every empty chat's
+ * placeholder failed with it, and was not shown, until the page was reloaded.
+ */
+describe('AppStickersManager.getGreetingSticker', () => {
+  const stickers = (ids: string[]) => ({_: 'messages.stickers', hash: 0, stickers: ids.map(doc)});
+
+  it.each([
+    ['the search failed', false, () => Promise.reject({type: 'NETWORK_BAD_REQUEST'})],
+    ['nothing was found', false, () => Promise.resolve(stickers([]))],
+    ['the preload failed', true, () => Promise.reject({type: 'NETWORK_BAD_REQUEST'})]
+  ])('%s: the next greeting searches again', async(_, justPreload, firstAnswer) => {
+    const {manager, invokeApiHashable} = createManager();
+    invokeApiHashable.mockImplementationOnce(firstAnswer).mockResolvedValue(stickers(['1']));
+
+    await expect(manager.getGreetingSticker(justPreload)).rejects.toBeDefined();
+    await expect(manager.getGreetingSticker()).resolves.toMatchObject({id: '1'});
+    expect(invokeApiHashable).toHaveBeenCalledTimes(2);
+  });
+
+  it('a search that came is kept: the next greetings take turns from it', async() => {
+    const {manager, invokeApiHashable} = createManager();
+    invokeApiHashable.mockResolvedValue(stickers(['1', '2']));
+
+    const first = await manager.getGreetingSticker();
+    const second = await manager.getGreetingSticker();
+    expect(new Set([first.id, second.id])).toEqual(new Set(['1', '2']));
+    expect(invokeApiHashable).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('AppStickersManager.searchStickersOnServer', () => {
   beforeEach(() => {
