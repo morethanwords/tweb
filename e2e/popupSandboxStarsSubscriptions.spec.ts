@@ -9,8 +9,8 @@ test('subscription receipts show product, actual billing period and cancellation
   await page.evaluate(() => window.popupSandbox.ready());
   for(const [id, state] of [
     ['minute', 'Renews'], ['five-minutes', 'Renews'], ['cancelled', 'Expires'],
-    ['expired', 'Expired'], ['bot-cancelled', 'Cancelled by the bot'],
-    ['business-cancelled', 'Cancelled by the business'], ['missing-balance', 'Insufficient Stars']
+    ['expired', 'Expired'], ['bot-cancelled', 'Canceled by the bot'],
+    ['business-cancelled', 'Canceled by the business'], ['missing-balance', 'Insufficient Stars']
   ]) {
     await page.evaluate((id) => window.popupSandbox.open(`transaction/subscription-${id}`), id);
     const popup = page.locator('.popup-stars-pay.active');
@@ -43,8 +43,8 @@ test('subscription history rows show invoice names, billing periods and terminal
   await expect(section).toContainText('Subscription product minute');
   await expect(section).toContainText('per 1 minute');
   await expect(section).toContainText('per 5 minutes');
-  await expect(section).toContainText('Cancelled by the bot');
-  await expect(section).toContainText('Cancelled by the business');
+  await expect(section).toContainText('Canceled by the bot');
+  await expect(section).toContainText('Canceled by the business');
   await expect(section).toContainText('Insufficient Stars');
   await expect(section).toContainText('expired on');
   const media = section.locator('.row-media');
@@ -89,7 +89,7 @@ test('mobile subscription statuses and product names stay within the popup', asy
   const section = page.locator('.popup-stars-subscriptions-section');
   const rows = section.locator('.transaction-row');
   await expect(rows).toHaveCount(9);
-  await expect(section).toContainText('Cancelled by the business');
+  await expect(section).toContainText('Canceled by the business');
   const overflow = await rows.evaluateAll((elements) => elements.map((element) => ({
     right: element.getBoundingClientRect().right,
     scroll: element.scrollWidth,

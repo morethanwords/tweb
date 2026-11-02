@@ -100,14 +100,26 @@ test.describe('keyboard focus is visible across the signed-in client', () => {
 
     // Closing the search must hand the keyboard to something. It used to drop it
     // on the document, which leaves a keyboard user with no place in the page.
+    //
+    // The walk went on past the search and out of the column, into the chat beside
+    // it, so the keyboard is put back in the field first: that is where a person
+    // closing the search has it. Escape from anywhere else is not this check.
+    const searchActive = page.locator('#column-left .is-search-active');
+    await expect(searchActive, 'the walk through the list opened the search').toHaveCount(1);
+    await page.locator('#column-left .sidebar-header .input-search-input').first().focus();
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(1800);
-    const afterEscape = await page.evaluate(() => {
+    await expect(searchActive, 'Escape closed the search').toHaveCount(0);
+    const focusedElement = () => page.evaluate(() => {
       const el = document.activeElement;
-      return !el || el === document.body ? 'the document body' :
-        el.tagName.toLowerCase() + '.' + String(el.className).trim().split(/\s+/).slice(0, 2).join('.');
+      if(!el || el === document.body) return 'the document body';
+      if(el.closest('.input-search')) return 'the search field';
+      return el.tagName.toLowerCase() + '.' + String(el.className).trim().split(/\s+/).slice(0, 2).join('.');
     });
-    expect(afterEscape, 'closing the sidebar search left nothing focused').not.toBe('the document body');
+    // the field is blurred as the search closes, and the control that takes the
+    // back button's place gets the focus once it is there
+    await expect.poll(focusedElement, {message: 'closing the sidebar search left nothing focused', timeout: 5_000})
+    .not.toMatch(/^the (document body|search field)$/);
+    const afterEscape = await focusedElement();
     await note(`closing the search leaves focus on ${afterEscape}`);
 
     // The chat list is virtual and drops rows it has scrolled past, the archive

@@ -933,6 +933,13 @@ test('labels and serializes the detected Auto code language', async({page}) => {
   })).toBe('JavaScript');
   await expect(codeBlock.locator('.chat-input-code-language-label'))
   .toHaveText(/^JavaScript \(.*Auto\)$/);
+  // The highlight waits for Prism, which the first highlight imports: in a full run every worker asks the
+  // server for it at once, and that alone outlasts an expect. Awaiting the same import the block awaits.
+  await page.evaluate(async() => {
+    const modulePath = '/src/codeLanguages.ts';
+    const {highlightCode} = await import(/* @vite-ignore */ modulePath);
+    await highlightCode('', 'JavaScript');
+  });
   await expect(codeBlock.locator('.chat-input-code-highlight .prism-keyword')).toHaveText('const');
   expect(await page.evaluate(() => window.chatInputEditorHarness.document().content?.[0].attrs))
   .toMatchObject({
@@ -1597,12 +1604,14 @@ for(const renderer of ['legacy', 'solid'] as const) test(`${renderer} renders a 
     const last = textRect(nodes[nodes.length - 1]);
     const quote = message.querySelector('blockquote')!.getBoundingClientRect();
     const style = getComputedStyle(message);
-    return {before: quote.top - first.bottom, after: last.top - quote.bottom, lineHeight: parseFloat(style.lineHeight), whiteSpace: style.whiteSpace, text: message.innerText};
+    return {before: quote.top - first.bottom, after: last.top - quote.bottom, lineHeight: parseFloat(style.lineHeight), whiteSpace: style.whiteSpace, text: message.textContent};
   }, renderer);
   expect(geometry.whiteSpace).toBe('pre-wrap');
   expect(geometry.before).toBeLessThan(geometry.lineHeight);
   expect(geometry.after).toBeLessThan(geometry.lineHeight);
-  expect(geometry.text).toBe('123123\n123123\n123123');
+  // a message keeps the line break before the quote, which pre-wrap hides before a block (the geometry above),
+  // and the quote takes the one after it
+  expect(geometry.text).toBe('123123\n123123123123');
 });
 
 for(const expanded of [false, true]) test(`Quote history survives changing composer expansion (initial=${expanded})`, async({page}) => {

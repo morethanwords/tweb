@@ -112,6 +112,14 @@ test.describe('a message edited where it stands', () => {
     }, mid);
   }
 
+  /** how big the message's bubble is, as `WIDTHxHEIGHT` */
+  function bubbleSize(page: Page, mid: number) {
+    return page.evaluate((mid) => {
+      const box = document.querySelector(`#column-center .bubble[data-mid="${mid}"] .bubble-content`)?.getBoundingClientRect();
+      return box && [Math.round(box.width), Math.round(box.height)].join('x');
+    }, mid);
+  }
+
   const near = (a: Rect, b: Rect, tolerance: number) => {
     return Math.abs(a.left - b.left) <= tolerance && Math.abs(a.top - b.top) <= tolerance &&
       Math.abs(a.width - b.width) <= tolerance && Math.abs(a.height - b.height) <= tolerance;
@@ -567,6 +575,8 @@ test.describe('a message edited where it stands', () => {
     }
     let previous = '';
     for(const [dimension, option, edit] of steps) {
+      // * how big the bubble was: one whose reactions leave it as big shows them changing, not its background
+      const size = await bubbleSize(page, mid);
       // * whether its background changes its size as it goes
       await page.evaluate(([dimension, option, mid]) => {
         const w = window as any;
@@ -575,6 +585,7 @@ test.describe('a message edited where it stands', () => {
         w.__widths = undefined;
         w.__mark = false;
         w.__chips = 0;
+        w.__reacted = false;
         // * how wide a reply's quote was: a quoting one stretches with the bubble
         w.__replyWidth = document.querySelector(`#column-center .bubble[data-mid="${mid}"] .reply.quote-like-icon`)
         ?.getBoundingClientRect().width;
@@ -605,6 +616,13 @@ test.describe('a message edited where it stands', () => {
           if(document.getAnimations().some((animation) => bubble?.contains((animation.effect as KeyframeEffect)?.target))) {
             w.__animated = true;
           }
+          // * a reaction that comes grows where it stands, and one that goes shrinks as a picture of it: `.reaction` both
+          if(document.getAnimations().some((animation) => {
+            const target = (animation.effect as KeyframeEffect)?.target;
+            return target instanceof Element && target.matches('.reaction') && bubble?.contains(target);
+          })) {
+            w.__reacted = true;
+          }
 
           if(performance.now() - started < 1000) requestAnimationFrame(watch);
         };
@@ -625,7 +643,10 @@ test.describe('a message edited where it stands', () => {
       await page.waitForTimeout(400);
       // * reactions that come and go, and a bubble rendered anew (a reply got or lost, a big emoji and back), change
       // * it in sight too
-      if(dimension === 'reactions' || edit.source.includes('rendered anew')) {
+      // * — its background going to its new box, or, when its reactions leave it as big as it was, they coming and going
+      if(dimension === 'reactions' && await bubbleSize(page, mid) === size) {
+        expect(await page.evaluate(() => (window as any).__reacted), `${dimension}: ${option} is shown changing`).toBe(true);
+      } else if(dimension === 'reactions' || edit.source.includes('rendered anew')) {
         expect(await page.evaluate(() => (window as any).__morphed), `${dimension}: ${option} is shown changing`).toBe(true);
       } else if(dimension === 'pinned') {
         expect(await page.evaluate(() => (window as any).__animated), `${dimension}: ${option} is shown changing`).toBe(true);

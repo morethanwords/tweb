@@ -15,13 +15,13 @@ test('saves the draft and discards subsequent cancelled changes', async({page}) 
   await expect(popup.getByRole('radio', {name: 'Everyone', exact: true})).toBeChecked();
   await popup.locator('label.row').filter({hasText: /^Contacts/}).click();
   await popup.locator('label.row').filter({hasText: /^Allow Screenshots$/}).click();
-  await popup.locator('label.row').filter({hasText: /^Keep on My Page$/}).click();
+  await popup.locator('label.row').filter({hasText: /^Post to My Profile$/}).click();
   await popup.getByRole('button', {name: 'SAVE SETTINGS'}).click();
   await expect(popup).toHaveCount(0);
   await page.evaluate(() => window.popupSandbox.open('storySettings'));
   await expect(popup.getByRole('radio', {name: 'Contacts', exact: true})).toBeChecked();
   await expect(popup.getByRole('checkbox', {name: 'Allow Screenshots'})).not.toBeChecked();
-  await expect(popup.getByRole('checkbox', {name: 'Keep on My Page'})).not.toBeChecked();
+  await expect(popup.getByRole('checkbox', {name: 'Post to My Profile'})).not.toBeChecked();
   await popup.locator('label.row').filter({hasText: /^Everyone/}).click();
   await page.keyboard.press('Escape');
   await expect(popup).toHaveCount(0);
