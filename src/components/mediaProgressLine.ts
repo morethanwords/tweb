@@ -58,7 +58,9 @@ export default class MediaProgressLine extends RangeSelector {
   } = {}) {
     super({
       ariaLabel: 'AccDescr.PlaybackPosition',
-      step: 1000 / 60 / 1000,
+      // * a decimal one: Firefox checks a value against a step of 1/60 with too little precision, takes every time
+      // * shown as invalid and shows its validation message as the bar's tooltip
+      step: 0.01,
       min: 0,
       max: 1,
       withTransition: options.withTransition,
