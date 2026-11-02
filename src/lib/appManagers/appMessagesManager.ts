@@ -4589,9 +4589,11 @@ export class AppMessagesManager extends AppManager {
     options.peerId = peerId;
 
     // * a game shared by its short name has no `Game` here to draw before the server answers - the
-    // * message comes with the update, as tdesktop and Android show it
+    // * message comes with the update, as tdesktop and Android show it; so does an inline result with no media of its
+    // * own to draw (a text with a link preview, a rich message), which the server makes from the result
     const noOutgoingMessage = /* inputMedia?._ === 'inputMediaPhotoExternal' ||  */inputMedia?._ === 'inputMediaDocumentExternal' ||
-      inputMedia?._ === 'inputMediaGame';
+      inputMedia?._ === 'inputMediaGame' ||
+      (!inputMedia && !!options.viaBotId);
     const ephemeralContext = options.forceOrdinary ?
       options.ephemeral ? {drop: true} as EphemeralSendContext : undefined :
       this.getEphemeralSendContext(
@@ -4641,7 +4643,7 @@ export class AppMessagesManager extends AppManager {
     const message = this.generateOutgoingMessage(peerId, options);
 
     let media: MessageMedia;
-    switch(inputMedia._) {
+    switch(inputMedia?._) {
       case 'inputMediaPoll': {
         // const pollId = '' + message.id;
         const pollId = randomLong();
