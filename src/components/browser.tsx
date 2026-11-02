@@ -654,6 +654,7 @@ export async function openWebAppInAppBrowser(options: WebAppLaunchOptions) {
     const page = lastContext[0].pages.find((page) => page.cacheKey === options.cacheKey);
     if(page) {
       lastContext[1].select(page);
+      lastContext[1].toggleCollapsed(false); // * opened again while minimized, it is shown, as a game is
       return;
     }
   }
