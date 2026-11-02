@@ -32,6 +32,7 @@ import {createBroadcastChannelWrapper} from '@lib/broadcastChannelWrapper';
 import {MainBroadcastChannelEvents, unversionedMainBroadcastChannelName} from '@config/broadcastChannel';
 import objectUrlRegistry from '@lib/mainWorker/objectUrlRegistry';
 import SharedObjectUrlCache, {getSharedObjectURLCacheStats, resetSharedObjectURLCaches} from '@lib/mainWorker/sharedObjectUrlCache';
+import TabIntervals from '@lib/mainWorker/tabIntervals';
 
 
 const log = logger('MTPROTO');
@@ -51,6 +52,9 @@ const backgroundObjectURLCache = new SharedObjectUrlCache<string>({
   }
 });
 const mainBroadcastChannel = createBroadcastChannelWrapper<MainBroadcastChannelEvents>(unversionedMainBroadcastChannelName);
+const tabIntervals = new TabIntervals((intervalId, source) => {
+  port.invokeVoid('intervalCallback', intervalId, source);
+});
 
 let isLocked = true;
 
@@ -244,16 +248,12 @@ port.addMultipleEventsListeners({
     backgroundObjectURLCache.delete(owner, url);
   },
 
-  setInterval: (timeout) => {
-    const intervalId = setInterval(() => {
-      port.invokeVoid('intervalCallback', intervalId);
-    }, timeout) as any as number;
-
-    return intervalId;
+  setInterval: (timeout, source) => {
+    return tabIntervals.set(timeout, source);
   },
 
-  clearInterval: (intervalId) => {
-    clearInterval(intervalId);
+  clearInterval: (intervalId, source) => {
+    tabIntervals.clear(intervalId, source);
   },
 
   terminate: () => {
@@ -445,6 +445,7 @@ function mirrorAccountTo(
 
 const onTabDisconnect = (source: MessageEventSource) => {
   objectUrlRegistry.releaseSource(source);
+  tabIntervals.releaseSource(source);
   appTabsManager.deleteTab(source);
   autoLockControls.removeTab(source);
 };
