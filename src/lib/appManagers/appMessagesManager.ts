@@ -10153,6 +10153,7 @@ export class AppMessagesManager extends AppManager {
     // only applied here, while another one was in flight, is not one of them: the
     // `finally` below sends it once that one is answered, and counting it here would
     // make it look sent already.
+    const triedBefore = historyStorage.triedToReadMaxId;
     if(apiPromise && !(historyStorage.triedToReadMaxId >= maxId)) {
       historyStorage.triedToReadMaxId = maxId;
     }
@@ -10166,14 +10167,19 @@ export class AppMessagesManager extends AppManager {
       return Promise.resolve();
     }
 
-    apiPromise.finally(() => {
+    apiPromise.catch(() => {
+      // * a read the server did not take is not sent: the next one for it asks again
+      if(historyStorage.triedToReadMaxId === maxId) {
+        historyStorage.triedToReadMaxId = triedBefore;
+      }
+    }).finally(() => {
       delete historyStorage.readPromise;
 
       const {readMaxId} = historyStorage;
       this.log('readHistory: promise finally', maxId, readMaxId);
 
       if(readMaxId > maxId) {
-        this.readHistory({peerId, maxId: readMaxId, threadId, force: true});
+        this.readHistory({peerId, maxId: readMaxId, threadId, monoforumThreadId, force: true});
       }
     });
 
