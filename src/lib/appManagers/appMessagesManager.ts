@@ -4529,6 +4529,9 @@ export class AppMessagesManager extends AppManager {
 
     return Promise.all(promises).then((inputs) => {
       inputs = inputs.filter(Boolean);
+      if(!inputs.length) {
+        return;
+      }
 
       if(options.stars) {
         const spliced = inputs.splice(1, Infinity);
@@ -4550,6 +4553,12 @@ export class AppMessagesManager extends AppManager {
         return;
       }
       return invoke(inputs);
+    }, (error) => {
+      // * the album goes whole or not at all (its bubble pairs the sent files with its items by their order):
+      // * a file that cannot be sent leaves the others unsent too, failed with it, so they can be deleted
+      // * instead of waiting for good
+      results.forEach(({message}) => message.error || toggleError(message, error));
+      throw error;
     });
   }
 
