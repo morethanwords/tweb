@@ -649,6 +649,13 @@ class ApiUpdatesManager {
     log('process', curState.pts, copy(update));
 
     if(curState.syncLoading && !options.ignoreSyncLoading) {
+      // * a sent message's id has no pts or seq of its own and no difference brings it again, while the
+      // * message may come through its channel's state, which is not syncing: it is kept anyway (tdesktop's
+      // * feedMessageIds). The state is left for the difference to move
+      if(update._ === 'updateMessageID') {
+        this.saveUpdate(update);
+      }
+
       log('ignoring update, sync loading');
       return false;
     } else if(curState.syncLoading) {
