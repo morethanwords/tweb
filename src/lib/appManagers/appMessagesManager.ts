@@ -116,6 +116,7 @@ import {createBotforumTopicFromAction} from '@appManagers/utils/dialogs/createBo
 import {AttachedMedia, CreatePollPayload} from '@components/popups/createPoll/storeContext';
 import StreamedMessageDrafts, {StreamedMessageDraft, StreamedMessageDraftContent, StreamedMessageDraftRemovalReason, StreamedMessageDraftScope, StreamedMessageStopScope, getStreamedMessageContentMatchText} from '@appManagers/utils/messages/streamedMessageDrafts';
 import GramTransferDrafts, {GramTransferDraftContent, WALLET_FIRST_GRAMS_SUGGESTION} from '@lib/wallet/transferMessages';
+import getFolderPinLimitType from '@appManagers/utils/dialogs/getFolderPinLimitType';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -8830,11 +8831,6 @@ export class AppMessagesManager extends AppManager {
     return this.filtersStorage.getFilter(filterId);
   }
 
-  /** Which limit a real folder's pins are held to */
-  private getFolderPinLimitType(folderId: number): ApiLimitType {
-    return folderId === FOLDER_ID_ARCHIVE ? 'folderPin' : 'pin';
-  }
-
   /**
    * Refuses a pin that would take a list past its limit. The pins counted are the ones the user can
    * see there (`getVisiblePinnedCount`), and `adding` is how many the pin would add.
@@ -8874,7 +8870,7 @@ export class AppMessagesManager extends AppManager {
       } else if(isTopic) {
         limitType = 'topicPin';
       } else {
-        limitType = this.getFolderPinLimitType(filterId);
+        limitType = getFolderPinLimitType(filterId);
       }
 
       await this.assertPinnedLimit(filterId, limitType, 1, !_isDialog ? 'PINNED_TOO_MUCH' : 'PINNED_DIALOGS_TOO_MUCH');
@@ -9099,7 +9095,7 @@ export class AppMessagesManager extends AppManager {
     }
 
     if(pinned) {
-      await this.assertPinnedLimit(filterId, this.getFolderPinLimitType(filterId), toChange.length, 'PINNED_DIALOGS_TOO_MUCH');
+      await this.assertPinnedLimit(filterId, getFolderPinLimitType(filterId), toChange.length, 'PINNED_DIALOGS_TOO_MUCH');
     }
 
     // a real folder takes one chat at a time, and every pin goes to the top - so bottom up

@@ -5,20 +5,27 @@ import showPeerPopup, {PopupPeerButton} from '@components/popups/peer';
 import LimitLine from '@components/limit';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
-const a: {[type in ApiLimitType]?: {
+type LimitStrings = {
   title: LangPackKey,
   description: LangPackKey,
   descriptionPremium: LangPackKey,
   descriptionLocked: LangPackKey,
   icon: Icon
-}} = {
-  pin: {
-    title: 'LimitReached',
-    description: 'LimitReachedPinDialogs',
-    descriptionPremium: 'LimitReachedPinDialogsPremium',
-    descriptionLocked: 'LimitReachedPinDialogsLocked',
-    icon: 'limit_pin_filled'
-  },
+};
+
+// * every list of pins says it the same way, with its own numbers
+const PIN_LIMIT: LimitStrings = {
+  title: 'LimitReached',
+  description: 'LimitReachedPinDialogs',
+  descriptionPremium: 'LimitReachedPinDialogsPremium',
+  descriptionLocked: 'LimitReachedPinDialogsLocked',
+  icon: 'limit_pin_filled'
+};
+
+const a: {[type in ApiLimitType]?: LimitStrings} = {
+  pin: PIN_LIMIT,
+  // * the archive's pins: the same box with the archive's numbers (tdesktop's FolderPinsLimitBox)
+  folderPin: PIN_LIMIT,
   folders: {
     title: 'LimitReached',
     description: 'LimitReachedFolders',
@@ -40,13 +47,7 @@ const a: {[type in ApiLimitType]?: {
     descriptionLocked: 'LimitReachedSharedFolderInvitesLocked',
     icon: 'limit_link'
   },
-  savedPin: {
-    title: 'LimitReached',
-    description: 'LimitReachedPinDialogs',
-    descriptionPremium: 'LimitReachedPinDialogsPremium',
-    descriptionLocked: 'LimitReachedPinDialogsLocked',
-    icon: 'limit_pin_filled'
-  },
+  savedPin: PIN_LIMIT,
   channels: {
     title: 'LimitReached',
     description: 'LimitReachedCommunities',

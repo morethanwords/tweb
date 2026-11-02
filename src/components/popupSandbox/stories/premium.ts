@@ -26,6 +26,14 @@ defineStories('Premium & Stars', [
     }
   },
   {
+    id: 'limit/folderPin',
+    title: 'Limit reached — pinned chats in the archive',
+    open: async(ctx) => {
+      const {default: showLimitPopup} = await import('@components/popups/limit');
+      await showLimitPopup('folderPin');
+    }
+  },
+  {
     id: 'limit/channels',
     title: 'Limit reached — channels (with inactive-chat picker)',
     managers: {

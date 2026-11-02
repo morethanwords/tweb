@@ -2,6 +2,7 @@ import {MAX_EDITABLE_VIDEO_SIZE} from '@components/mediaEditor/support';
 import getFileMimeType from '@helpers/files/getFileMimeType';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import rootScope from '@lib/rootScope';
+import LIMIT_DEFAULTS from '@config/limitDefaults';
 
 export type MovVideoInfo = {
   width: number,
@@ -16,14 +17,14 @@ export type MovVideoInfo = {
 const MAX_TRANSCODABLE_SIZE = MAX_EDITABLE_VIDEO_SIZE;
 
 const UPLOAD_PART_SIZE = 512 * 1024;
-// upload_max_fileparts_default/premium, until the app config arrives
-const FALLBACK_MAX_FILEPARTS = 4000;
 
 function getMaxUploadSize() {
   const appConfig = apiManagerProxy.getAppConfig();
+  // * until the app config arrives, the parts every account may upload
+  const fallback = LIMIT_DEFAULTS.upload_max_fileparts_default;
   const parts = appConfig instanceof Promise ?
-    FALLBACK_MAX_FILEPARTS :
-    (rootScope.premium ? appConfig.upload_max_fileparts_premium : appConfig.upload_max_fileparts_default) ?? FALLBACK_MAX_FILEPARTS;
+    fallback :
+    (rootScope.premium ? appConfig.upload_max_fileparts_premium : appConfig.upload_max_fileparts_default) ?? fallback;
   return parts * UPLOAD_PART_SIZE;
 }
 
