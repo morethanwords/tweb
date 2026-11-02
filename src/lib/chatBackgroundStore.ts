@@ -16,6 +16,7 @@ import {
   setSharedObjectURL
 } from '@helpers/objectUrl';
 import {makeObjectUrlOwner, parseObjectUrlOwner} from '@helpers/objectUrlUtils';
+import forgetFailedRequest from '@helpers/forgetFailedRequest';
 
 
 namespace ChatBackgroundStore {
@@ -153,11 +154,7 @@ class ChatBackgroundStore extends StaticUtilityClass {
       return this.backgroundPromises[owner] = url;
     } : undefined);
     // * a transient failure must not stay cached — let the next call retry
-    promise.catch(() => {
-      if(this.backgroundPromises[owner] === promise) {
-        delete this.backgroundPromises[owner];
-      }
-    });
+    forgetFailedRequest(promise, () => this.backgroundPromises[owner], () => delete this.backgroundPromises[owner]);
     this.backgroundPromises[owner] = promise;
     return promise;
   }

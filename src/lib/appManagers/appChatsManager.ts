@@ -26,6 +26,7 @@ import {SlicedCachedFetcher} from '@appManagers/utils/chats/slicedCachedFetcher'
 import {CHAT_LEGACY_ADMIN_RIGHTS} from '@lib/appManagers/utils/chats/constants';
 import getPhotoInput from '@appManagers/utils/photos/getPhotoInput';
 import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getStickerSetInput';
+import forgetFailedRequest from '@helpers/forgetFailedRequest';
 
 export type Channel = Chat.channel;
 export type ChatPhotoUpload = {
@@ -1455,7 +1456,7 @@ export class AppChatsManager extends AppManager {
       return result;
     }
 
-    const promise = this.recommendations[chatId] = this.apiManager.invokeApiSingleProcess({
+    const promise = this.recommendations[chatId] = forgetFailedRequest(this.apiManager.invokeApiSingleProcess({
       method: 'channels.getChannelRecommendations',
       params: {
         channel: chatId ? this.getChannelInput(chatId) : undefined
@@ -1469,7 +1470,7 @@ export class AppChatsManager extends AppManager {
 
         return messagesChats;
       }
-    });
+    }), () => this.recommendations[chatId], () => delete this.recommendations[chatId]);
 
     return promise;
   }

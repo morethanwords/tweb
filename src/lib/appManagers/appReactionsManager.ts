@@ -27,6 +27,7 @@ import forEachReverse from '@helpers/array/forEachReverse';
 import fixEmoji from '@lib/richTextProcessor/fixEmoji';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
 import removeParticipantReactions from '@appManagers/utils/reactions/removeParticipantReactions';
+import forgetFailedRequest from '@helpers/forgetFailedRequest';
 
 const SAVE_DOC_KEYS = [
   'static_icon' as const,
@@ -1097,7 +1098,7 @@ export class AppReactionsManager extends AppManager {
       this.availableEffects = undefined;
     }
 
-    return this.availableEffects ??= this.apiManager.invokeApiSingleProcess({
+    return this.availableEffects ??= forgetFailedRequest(this.apiManager.invokeApiSingleProcess({
       method: 'messages.getAvailableEffects',
       processResult: (availableEffects) => {
         assumeType<MessagesAvailableEffects.messagesAvailableEffects>(availableEffects);
@@ -1111,7 +1112,7 @@ export class AppReactionsManager extends AppManager {
 
         return this.availableEffects = availableEffects.effects;
       }
-    });
+    }), () => this.availableEffects, () => this.availableEffects = undefined);
   }
 
   public getAvailableEffect(effect: DocId) {

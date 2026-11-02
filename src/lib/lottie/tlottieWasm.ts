@@ -1,4 +1,5 @@
 import {createPeakRecorder, MemoryEvent} from '@lib/debug/memoryStats';
+import forgetFailedRequest from '@helpers/forgetFailedRequest';
 
 export type TLottieHandle = number;
 export type TLottieFitzModifier = 0 | 1 | 2 | 3 | 4 | 5;
@@ -450,14 +451,9 @@ export function getTLottieMemoryStats() {
 export default function loadTLottieWasm(wasmUrl: string) {
   let promise = tlottiePromises.get(wasmUrl);
   if(!promise) {
-    promise = TLottieWasm.create(wasmUrl);
+    promise = forgetFailedRequest(TLottieWasm.create(wasmUrl), () => tlottiePromises.get(wasmUrl), () => tlottiePromises.delete(wasmUrl));
     tlottiePromises.set(wasmUrl, promise);
     promise.then((wasm) => loadedWasms.add(wasm), () => {});
-    promise.catch(() => {
-      if(tlottiePromises.get(wasmUrl) === promise) {
-        tlottiePromises.delete(wasmUrl);
-      }
-    });
   }
 
   return promise;

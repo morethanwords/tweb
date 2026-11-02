@@ -27,6 +27,7 @@ import {AppStoragesManager} from '@appManagers/appStoragesManager';
 import deepEqual from '@helpers/object/deepEqual';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import callbackify from '@helpers/callbackify';
+import forgetFailedRequest from '@helpers/forgetFailedRequest';
 import {NULL_PEER_ID, TEST_NO_STORIES} from '@appManagers/constants';
 import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import pause from '@helpers/schedulers/pause';
@@ -1541,17 +1542,17 @@ export class AppUsersManager extends AppManager {
   }
 
   public getDefaultEmojiStatuses() {
-    return this.defaultEmojiStatuses ??= this.apiManager.invokeApiSingleProcess({
+    return this.defaultEmojiStatuses ??= forgetFailedRequest(this.apiManager.invokeApiSingleProcess({
       method: 'account.getDefaultEmojiStatuses',
       processResult: (emojiStatuses) => this.defaultEmojiStatuses = emojiStatuses
-    });
+    }), () => this.defaultEmojiStatuses, () => this.defaultEmojiStatuses = undefined);
   }
 
   public getRecentEmojiStatuses() {
-    return this.recentEmojiStatuses ??= this.apiManager.invokeApiSingleProcess({
+    return this.recentEmojiStatuses ??= forgetFailedRequest(this.apiManager.invokeApiSingleProcess({
       method: 'account.getRecentEmojiStatuses',
       processResult: (emojiStatuses) => this.recentEmojiStatuses = emojiStatuses
-    });
+    }), () => this.recentEmojiStatuses, () => this.recentEmojiStatuses = undefined);
   }
 
   public getRequirementToContact(userId: UserId, onlyCached?: boolean): MaybePromise<RequirementToContact> {

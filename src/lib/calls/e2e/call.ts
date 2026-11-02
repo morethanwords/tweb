@@ -40,6 +40,7 @@ import {
 import {VerificationChain, VerificationStateSnapshot} from './emoji';
 import {pruneGroupState} from './conferenceMembership';
 import createSerializedQueue from '@helpers/createSerializedQueue';
+import forgetFailedRequest from '@helpers/forgetFailedRequest';
 import {
   decryptData,
   decryptHeader,
@@ -119,11 +120,8 @@ export interface ActiveEpoch {
 
 function epochHeaderKey(epoch: ActiveEpoch): Promise<CryptoKey> {
   if(!epoch.headerKey) {
-    const headerKey = epoch.headerKey = importHeaderKey(epoch.groupSharedKey);
     // A failed derivation must not stick to the epoch: the next frame retries.
-    headerKey.catch(() => {
-      if(epoch.headerKey === headerKey) epoch.headerKey = undefined;
-    });
+    epoch.headerKey = forgetFailedRequest(importHeaderKey(epoch.groupSharedKey), () => epoch.headerKey, () => epoch.headerKey = undefined);
   }
   return epoch.headerKey;
 }

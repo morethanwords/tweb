@@ -5,6 +5,7 @@ import App from '@config/app';
 import Schema from '@lib/mtproto/schema';
 import noop from '@helpers/noop';
 import {IgnoredRestrictionReasons, makeIgnoredRestrictionReasons, SENSITIVE_RESTRICTION_REASON} from '@helpers/restrictions';
+import forgetFailedRequest from '@helpers/forgetFailedRequest';
 
 export class AppPrivacyManager extends AppManager {
   private privacy: Partial<{
@@ -95,7 +96,7 @@ export class AppPrivacyManager extends AppManager {
       return Promise.resolve(rules);
     }
 
-    return this.privacy[privacyKey] = this.apiManager.invokeApi('account.getPrivacy', {
+    return this.privacy[privacyKey] = forgetFailedRequest(this.apiManager.invokeApi('account.getPrivacy', {
       key: {
         _: inputKey
       }
@@ -106,7 +107,7 @@ export class AppPrivacyManager extends AppManager {
       // console.log('privacy rules', inputKey, privacyRules, privacyRules.rules);
 
       return this.privacy[privacyKey] = privacyRules.rules;
-    });
+    }), () => this.privacy[privacyKey], () => delete this.privacy[privacyKey]);
   }
 
   private globalPrivacy: GlobalPrivacySettings | Promise<GlobalPrivacySettings>;
@@ -121,9 +122,9 @@ export class AppPrivacyManager extends AppManager {
       return this.globalPrivacy;
     }
     if(this.globalPrivacy) return this.globalPrivacy;
-    return this.globalPrivacy = this.apiManager.invokeApi('account.getGlobalPrivacySettings').then((settings) => {
+    return this.globalPrivacy = forgetFailedRequest(this.apiManager.invokeApi('account.getGlobalPrivacySettings').then((settings) => {
       return this.globalPrivacy = settings;
-    });
+    }), () => this.globalPrivacy, () => this.globalPrivacy = undefined);
   }
 
   public setGlobalPrivacySettings(settings: GlobalPrivacySettings) {

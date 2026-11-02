@@ -33,6 +33,7 @@ import {AnimatedCounter} from '@components/animatedCounter';
 import getUnsafeRandomInt from '@helpers/number/getUnsafeRandomInt';
 import {IS_MOBILE} from '@environment/userAgent';
 import drawMediaToCanvas, {DrawableMedia} from '@helpers/canvas/drawMediaToCanvas';
+import forgetFailedRequest from '@helpers/forgetFailedRequest';
 import type {ReactionFlight} from '@components/chat/reactionFlight';
 
 const CLASS_NAME = 'reaction';
@@ -237,7 +238,7 @@ function loadReactionGeneric(): Promise<{layersPositions: ComputedFrameTransform
   }
 
   const url = lottieLoader.makeAssetUrl('ReactionGeneric');
-  const promise = reactionGenericPromise = lottieLoader.loadAnimationDataFromURL(url, 'json').then((animationData) => {
+  return reactionGenericPromise = forgetFailedRequest(lottieLoader.loadAnimationDataFromURL(url, 'json').then((animationData) => {
     const placeholderLayers: Layer[] = animationData.layers.filter((layer: any) => layer.nm.startsWith('placeholder_'))/* .slice(0, 1) */;
     const layersPositions: ComputedFrameTransformations[][] = [];
     for(const layer of placeholderLayers) {
@@ -245,14 +246,7 @@ function loadReactionGeneric(): Promise<{layersPositions: ComputedFrameTransform
     }
 
     return {layersPositions, op: animationData.op};
-  });
-  promise.catch(() => {
-    if(reactionGenericPromise === promise) {
-      reactionGenericPromise = undefined;
-    }
-  });
-
-  return promise;
+  }), () => reactionGenericPromise, () => reactionGenericPromise = undefined);
 }
 
 // * background warm-up downloads are sequential so the big effect files never

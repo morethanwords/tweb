@@ -28,6 +28,7 @@ import isStickerSetAdded from '@lib/appManagers/utils/stickers/isStickerSetAdded
 import filterUnique from '@helpers/array/filterUnique';
 import noop from '@helpers/noop';
 import App from '@config/app';
+import forgetFailedRequest from '@helpers/forgetFailedRequest';
 
 const CACHE_TIME = 3600e3;
 // * a page of messages.searchStickers, as tdesktop asks for it (stickers_list_widget.cpp)
@@ -1112,7 +1113,7 @@ export class AppStickersManager extends AppManager {
       return cached;
     }
 
-    const promise = this.apiManager.invokeApi('messages.searchStickers', {
+    const promise = forgetFailedRequest(this.apiManager.invokeApi('messages.searchStickers', {
       q: query,
       emoticon: '',
       lang_code: langCodes,
@@ -1130,13 +1131,7 @@ export class AppStickersManager extends AppManager {
         // * only an offset past this one goes on, as tdesktop's searchStickersResultsDone reads it
         nextOffset: found.next_offset > offset ? found.next_offset : undefined
       };
-    }, (err) => {
-      if(this.foundStickers.get(key) === promise) {
-        this.foundStickers.delete(key);
-      }
-
-      throw err;
-    });
+    }), () => this.foundStickers.get(key), () => this.foundStickers.delete(key));
 
     this.foundStickers.set(key, promise);
     return promise;

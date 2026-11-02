@@ -4,6 +4,7 @@ import {IS_MOBILE} from '@environment/userAgent';
 import callbackify from '@helpers/callbackify';
 import callbackifyAll from '@helpers/callbackifyAll';
 import clamp from '@helpers/number/clamp';
+import forgetFailedRequest from '@helpers/forgetFailedRequest';
 
 export type DotRendererConfig = {
   particlesCount: number,
@@ -309,11 +310,7 @@ export default class DotRendererCore {
     // a failed init must not be memoized either — otherwise the sim can never come up again and
     // every spoiler awaiting it stays unrendered for the rest of the session
     if(result instanceof Promise) {
-      result.catch(() => {
-        if(this.initPromise === result) {
-          this.initPromise = undefined;
-        }
-      });
+      forgetFailedRequest(result, () => this.initPromise, () => this.initPromise = undefined);
     }
 
     return this.initPromise = result;

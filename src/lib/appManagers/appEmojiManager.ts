@@ -12,6 +12,7 @@ import filterUnique from '@helpers/array/filterUnique';
 import assumeType from '@helpers/assumeType';
 import {EmojiGroup, EmojiList, MessagesEmojiGroups} from '@layer';
 import flatten from '@helpers/array/flatten';
+import forgetFailedRequest from '@helpers/forgetFailedRequest';
 import {EmojiSkinTone, getEmojiSkinToneBase, getEmojiSkinToneVariants} from '@helpers/emojiSkinTone';
 
 type EmojiLangPack = {
@@ -432,7 +433,7 @@ export class AppEmojiManager extends AppManager {
       });
     };
 
-    return this.emojiGroups[type] ??= this.apiManager.invokeApiSingleProcess({
+    return this.emojiGroups[type] ??= forgetFailedRequest(this.apiManager.invokeApiSingleProcess({
       method: EMOJI_GROUPS_METHODS[type],
       params: {hash: 0},
       processResult: async(messagesEmojiGroups) => {
@@ -447,7 +448,7 @@ export class AppEmojiManager extends AppManager {
           return {group, document: documents[idx]};
         });
       }
-    });
+    }), () => this.emojiGroups[type], () => this.emojiGroups[type] = undefined);
   }
 
   public searchCustomEmoji(emoticon: string) {

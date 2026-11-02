@@ -20,6 +20,7 @@ import toJSONValue from '@appManagers/utils/toJSONValue';
 import forEachReverse from '@helpers/array/forEachReverse';
 import makeError from '@helpers/makeError';
 import noop from '@helpers/noop';
+import forgetFailedRequest from '@helpers/forgetFailedRequest';
 import tsNow from '@helpers/tsNow';
 
 export default class AppPaymentsManager extends AppManager {
@@ -136,7 +137,7 @@ export default class AppPaymentsManager extends AppManager {
       this.premiumPromo = undefined;
     }
 
-    return this.premiumPromo ??= this.apiManager.invokeApiSingleProcess({
+    return this.premiumPromo ??= forgetFailedRequest(this.apiManager.invokeApiSingleProcess({
       method: 'help.getPremiumPromo',
       params: {},
       processResult: (helpPremiumPromo) => {
@@ -147,7 +148,7 @@ export default class AppPaymentsManager extends AppManager {
 
         return this.premiumPromo = helpPremiumPromo;
       }
-    });
+    }), () => this.premiumPromo, () => this.premiumPromo = undefined);
   }
 
   /**
@@ -330,7 +331,8 @@ export default class AppPaymentsManager extends AppManager {
       return this[key];
     }
 
-    const promise = this[key] = this.apiManager.invokeApiSingleProcess({
+    // a request that failed is not the balance: the next one asks again
+    return this[key] = forgetFailedRequest(this.apiManager.invokeApiSingleProcess({
       method: 'payments.getStarsStatus',
       params: {
         peer: this.getStarsOwnerInputPeer(),
@@ -339,14 +341,7 @@ export default class AppPaymentsManager extends AppManager {
       processResult: (starsStatus) => {
         return this[key] = this.saveStarsStatus(starsStatus);
       }
-    });
-
-    // a request that failed is not the balance: the next one asks again
-    promise.catch(() => {
-      if(this[key] === promise) this[key] = undefined;
-    });
-
-    return promise;
+    }), () => this[key], () => this[key] = undefined);
   }
 
   public getPeerStarsStatus(peerId: PeerId, ton?: boolean) {

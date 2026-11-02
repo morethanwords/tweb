@@ -1,4 +1,5 @@
 import findAndSplice from '@helpers/array/findAndSplice';
+import forgetFailedRequest from '@helpers/forgetFailedRequest';
 import assumeType from '@helpers/assumeType';
 import {BotInlineResult, MessagesSavedGifs, Document} from '@layer';
 import {NULL_PEER_ID} from '@appManagers/constants';
@@ -33,7 +34,7 @@ export default class AppGifsManager extends AppManager {
       this.gifs = undefined;
     }
 
-    return this.gifs ??= this.apiManager.invokeApi('messages.getSavedGifs').then((res) => {
+    return this.gifs ??= forgetFailedRequest(this.apiManager.invokeApi('messages.getSavedGifs').then((res) => {
       assumeType<MessagesSavedGifs.messagesSavedGifs>(res);
       const referenceContext: ReferenceContext = {type: 'savedGifs'};
       this.gifs = res.gifs.map((doc) => {
@@ -44,7 +45,7 @@ export default class AppGifsManager extends AppManager {
       }).filter(Boolean);
       // this.TEST_REFERENCE = false;
       return this.gifs;
-    });
+    }), () => this.gifs, () => this.gifs = undefined);
   }
 
   public async searchGifs(query: string, nextOffset?: string) {

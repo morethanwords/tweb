@@ -17,6 +17,7 @@ import isObject from '@helpers/object/isObject';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import createSerializedQueue, {SerializedQueue} from '@helpers/createSerializedQueue';
 import ctx from '@environment/ctx';
+import forgetFailedRequest from '@helpers/forgetFailedRequest';
 
 export type MyDraftMessage = DraftMessage.draftMessage;
 
@@ -248,7 +249,7 @@ export class AppDraftsManager extends AppManager {
   }
 
   private getAllDrafts() {
-    return this.getAllDraftPromise ??= this.requestAllDrafts();
+    return this.getAllDraftPromise ??= forgetFailedRequest(this.requestAllDrafts(), () => this.getAllDraftPromise, () => this.getAllDraftPromise = undefined);
   }
 
   public saveDraft({
