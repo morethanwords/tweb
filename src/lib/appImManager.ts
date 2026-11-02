@@ -1557,6 +1557,9 @@ export class AppImManager extends EventListenerBase<{
       buttonId
     ).then((urlAuthResult) => {
       onUrlAuthResult(urlAuthResult);
+    }, () => {
+      // * the server could not say how to open it: it opens as it is, as tdesktop does (url_auth_box.cpp)
+      safeWindowOpen(url);
     });
   }
 
