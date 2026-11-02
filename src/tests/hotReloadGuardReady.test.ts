@@ -5,7 +5,29 @@ describe('the registry of the app\'s top level, filled before the app is up', ()
   afterEach(() => {
     vi.doUnmock('@lib/appDialogsManager');
     vi.doUnmock('@lib/solidjs/hotReloadGuardValue');
+    vi.doUnmock('@/pages/appTopLevel');
     vi.doUnmock('@/pages/mountAuthFlow');
+  });
+
+  // * two graphs imported one after the other fetch the second only once the first has run: a whole round of
+  // * requests more on the way to the chat list, seconds on a slow link
+  it('loads the top level through one import, both graphs fetched at once', async() => {
+    vi.resetModules();
+    const separate: string[] = [];
+    const appDialogsManager = {};
+    vi.doMock('@/pages/mountAuthFlow', () => ({disposeActiveAuthFlow: () => {}}));
+    vi.doMock('@/pages/appTopLevel', () => ({default: appDialogsManager}));
+    vi.doMock('@lib/appDialogsManager', () => {
+      separate.push('appDialogsManager');
+      return {default: {}};
+    });
+    vi.doMock('@lib/solidjs/hotReloadGuardValue', () => {
+      separate.push('hotReloadGuardValue');
+      return {};
+    });
+    const {importAppTopLevel} = await import('@/pages/bootstrapIm');
+    await expect(importAppTopLevel()).resolves.toBe(appDialogsManager);
+    expect(separate).toEqual([]);
   });
 
   it('waits for the root\'s loader every time, and for nothing without one', async() => {

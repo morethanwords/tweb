@@ -66,20 +66,27 @@ export async function bootstrapIm(): Promise<void> {
 }
 
 let topLevel: Promise<typeof import('@lib/appDialogsManager')['default']>;
+let topLevelFailed = false;
 
 /**
  * The app's top level, and what <SolidJSHotReloadGuardProvider> hands down of it registered (src/index.ts lets the
  * provider fill it so before the app is up). Once, every caller waiting for the same load - and again after one that
- * failed. One after the other: two graphs that enter the app's import cycle at once race for its evaluation order (a
- * class can then be evaluated before the one it extends)
+ * failed. Never two graphs at once: two that enter the app's import cycle together race for its evaluation order (a
+ * class can then be evaluated before the one it extends). So one graph (pages/appTopLevel), fetched at once - and
+ * after a failure, which that graph keeps, its two parts one after the other
  */
 export function importAppTopLevel() {
   return topLevel ??= (async() => {
+    if(!topLevelFailed) {
+      return (await import('@/pages/appTopLevel')).default;
+    }
+
     const {default: appDialogsManager} = await import('@lib/appDialogsManager');
     await import('@lib/solidjs/hotReloadGuardValue');
     return appDialogsManager;
   })().catch((err) => {
     topLevel = undefined;
+    topLevelFailed = true;
     throw err;
   });
 }
