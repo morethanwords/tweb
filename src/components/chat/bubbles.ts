@@ -8688,7 +8688,11 @@ export default class ChatBubbles {
     previousMid?: number,
     preserveStructure = false
   ) {
-    const entry = this.getSolidMessageBody(bubble, previousMid) || this.getSolidMessageBody(bubble);
+    const entry = this.getSolidMessageBody(bubble, previousMid) ||
+      this.getSolidMessageBody(bubble, message.mid) ||
+      // * the only body a bubble of one message holds is its own; the one of an album is the caption of whichever
+      // * of its messages has one, which every other's sending would have taken over, the last one leaving it empty
+      (message.grouped_id ? undefined : this.getSolidMessageBody(bubble));
     if(!entry) return;
 
     previousMid = entry.message.mid;

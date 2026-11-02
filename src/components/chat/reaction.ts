@@ -871,7 +871,8 @@ export default class ReactionElement extends HTMLElement {
   public setPaidReactionCounter(count: number) {
     if(!this.paidReactionCounter) {
       this.paidReactionCounter = new AnimatedCounter({
-        reverse: false,
+        // * a count that grows rolls up, as iOS's does
+        reverse: true,
         prefix: '+',
         calculateWidth: true
         // calculateWidth: (text) => {

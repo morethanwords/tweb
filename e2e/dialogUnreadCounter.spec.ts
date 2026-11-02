@@ -168,6 +168,23 @@ test.describe('the unread count of a chat-list row', () => {
     expect(hasPassing(expectRolled(await renderDialog(page, peerId, {...READ, unread_count: 1000}), '1K'), '9', 'K', true)).toBe(true);
   });
 
+  test('keeps to the width of its count in a list that has a `--width` of its own, as the topics column does', async({page}) => {
+    await renderDialog(page, peerId, {...READ, unread_count: 9});
+    const setListWidth = (width?: string) => page.evaluate((width) => {
+      const list = document.querySelector<HTMLElement>('#column-left');
+      if(width) list.style.setProperty('--width', width);
+      else list.style.removeProperty('--width');
+    }, width);
+
+    await setListWidth('100%');
+    try {
+      const rolling = expectRolled(await renderDialog(page, peerId, {...READ, unread_count: 10}), '10');
+      expect(Math.max(...rolling.map((frame) => frame.width)), 'the badge took the width of the list').toBeLessThanOrEqual(rolling[rolling.length - 1].width + 0.5);
+    } finally {
+      await setListWidth();
+    }
+  });
+
   test('stays put where it should not roll', async({page}) => {
     await renderDialog(page, peerId, {...READ, unread_count: 9});
     // * the rows rendered in a batch, as the list does when it loads them

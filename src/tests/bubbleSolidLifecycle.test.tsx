@@ -644,6 +644,35 @@ test('fully regroups the live source when message_sent cancels a structural cand
   ejectBubble(oldBubble);
 });
 
+test('the sending of an album leaves its caption to the message that has it', () => {
+  // * an album forwarded from a channel: the caption is the second message's, and every message's
+  // * message_sent gives the bubble's bodies their server identity, in the album's order
+  const albumMessage = (mid: number, text = ''): Message.message => ({...message(), id: mid, mid, grouped_id: '1', message: text});
+  const tempIds = [99.0001, 99.0002, 99.0003];
+  const sent = [100, 101, 102].map((mid, i) => albumMessage(mid, i === 1 ? 'caption' : ''));
+  const bubble = document.createElement('div');
+  const update = vi.fn();
+  const entry = {bubble, controller: {update}, message: albumMessage(tempIds[1], 'caption'), revision: 1, structure: {}, ownsTime: false};
+  const harness = Object.assign(Object.create(ChatBubbles.prototype), {
+    solidMessageBodies: new Map([[bubble, new Map([[tempIds[1], entry]])]]),
+    modifyBubble: (callback: () => void) => callback()
+  }) as any;
+
+  tempIds.forEach((tempId, i) => harness.updateSolidMessageBodyIdentity(bubble, sent[i], tempId));
+
+  expect(entry.message).toBe(sent[1]);
+  expect([...harness.solidMessageBodies.get(bubble).entries()]).toEqual([[101, entry]]);
+  expect(update).toHaveBeenCalledOnce();
+  expect(update.mock.calls[0][0].text.text).toBe('caption');
+
+  // * the only body of a bubble of one message is its own, whatever it is known by
+  const single = {...message(), mid: 103};
+  const singleEntry = {...entry, message: {...message(), mid: 98}};
+  harness.solidMessageBodies.set(bubble, new Map([[98, singleEntry]]));
+  harness.updateSolidMessageBodyIdentity(bubble, single, 97);
+  expect(singleEntry.message).toBe(single);
+});
+
 test('preserves an unsupported source shell and retries it after a cancelled replacement batch', async() => {
   const tempId = 99;
   const fullMid = '10_100';

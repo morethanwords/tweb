@@ -3,7 +3,7 @@ import getLayoutWidth from '@helpers/dom/getLayoutWidth';
 import isInSight from '@helpers/dom/isInSight';
 import liteMode from '@helpers/liteMode';
 import sequentialDom from '@helpers/sequentialDom';
-import {AnimatedSuper, AnimatedSuperIndex} from '@components/animatedSuper';
+import {afterTransition, AnimatedSuper, AnimatedSuperIndex} from '@components/animatedSuper';
 
 /** a character that stays put is not written again, and changes nothing to lay out */
 function writeText(element: HTMLElement, text: string) {
@@ -32,7 +32,8 @@ export class AnimatedCounter {
   previousNumber = 0;
   /** the text it last put in, rolled to or at once */
   previousText = '0';
-  clearTimeout: number;
+  /** cancels the removal of the decimals the last roll left behind */
+  cancelClear: () => void;
   /** the roll `prepare` readied, for `commit` to make */
   private prepared: {text: string, flips: (() => void)[]};
 
@@ -80,18 +81,18 @@ export class AnimatedCounter {
   }
 
   clear(length: number) {
-    if(this.clearTimeout) clearTimeout(this.clearTimeout);
+    this.cancelClear?.();
 
     if(length >= this.decimals.length) {
       return;
     }
 
-    this.clearTimeout = window.setTimeout(() => {
+    this.cancelClear = afterTransition(this.container, this.duration, () => {
       const byDecimal = this.decimals.splice(length, this.decimals.length - length);
       byDecimal.forEach((decimal) => {
         decimal.container.remove();
       });
-    }, this.duration);
+    });
   }
 
   setCount(number: number, noRaf?: boolean) {
@@ -115,7 +116,7 @@ export class AnimatedCounter {
 
   /** Puts `text` in at once - and only it: the width follows on `updateWidth` */
   putText(text: string) {
-    if(this.clearTimeout) clearTimeout(this.clearTimeout);
+    this.cancelClear?.();
     this.prepared = undefined;
 
     const chars = Array.from(text);
@@ -140,7 +141,7 @@ export class AnimatedCounter {
    */
   prepare(text: string, direction: number) {
     // * the decimals the last roll is taking away may be the ones this one needs
-    if(this.clearTimeout) clearTimeout(this.clearTimeout);
+    this.cancelClear?.();
 
     const fromTop = this.reverse ? direction < 0 : direction > 0;
     const previousChars = Array.from(this.previousText);
@@ -206,7 +207,7 @@ export class AnimatedCounter {
   }
 
   setWidth(width: number) {
-    this.container.style.setProperty('--width', width + 'px');
+    this.container.style.setProperty('--animated-counter-width', width + 'px');
   }
 
   /**
@@ -229,7 +230,7 @@ export class AnimatedCounter {
   }
 
   destroy() {
-    if(this.clearTimeout) clearTimeout(this.clearTimeout);
+    this.cancelClear?.();
     this.decimals.forEach((decimal) => {
       decimal.animatedSuper.destroy();
     });

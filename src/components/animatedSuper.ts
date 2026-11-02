@@ -1,4 +1,5 @@
 import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
+import {onAppWindowChange} from '@helpers/appWindow';
 
 export interface AnimatedSuperOptions {
   duration?: number;
@@ -7,12 +8,44 @@ export interface AnimatedSuperOptions {
 /** what a row is known by - a number, or the very character it shows (`AnimatedCounter.setText`) */
 export type AnimatedSuperIndex = number | string;
 
+/**
+ * Calls `callback` `duration` ms after the frame that renders the change just made to `element`, where
+ * the transitions it set off start, and not after the change itself: a long task between the two (a paid
+ * reaction's effect starting) would have it cut them short. Returns what cancels it
+ */
+export function afterTransition(element: HTMLElement, duration: number, callback: () => void) {
+  // * the window the element is in, which is a Document Picture-in-Picture one while the app is there
+  const view = element.ownerDocument.defaultView ?? window;
+  let timeout: number, isOver = false;
+  const over = () => {
+    isOver = true;
+    stopFollowing();
+  };
+  const done = () => {
+    if(isOver) return;
+    over();
+    callback();
+  };
+  // * a Picture-in-Picture window takes its frames and timers with it as it closes, while the app leaves it:
+  // * what waits is done at once when the app changes windows, the move hiding the end of the transition
+  const stopFollowing = onAppWindowChange(done);
+  const frame = view.requestAnimationFrame(() => timeout = view.setTimeout(done, duration));
+  return () => {
+    // * nothing of a window that may be gone once it is over
+    if(isOver) return;
+    over();
+    view.cancelAnimationFrame(frame);
+    view.clearTimeout(timeout);
+  };
+}
+
 export class AnimatedSuper {
   static BASE_CLASS = 'animated-super';
   static DEFAULT_DURATION = 200;
   container: HTMLDivElement;
   rows: {[index: string]: {element: HTMLElement, middleware: MiddlewareHelper, timeout?: number, new?: true}} = {};
-  clearTimeout: number;
+  /** cancels the clearing of the rows the last change left behind */
+  cancelClear: () => void;
 
   duration: AnimatedSuperOptions['duration'];
   constructor(options?: AnimatedSuperOptions) {
@@ -33,7 +66,7 @@ export class AnimatedSuper {
 
   /** Shows the row of `index` at once, with no transition, and drops every other */
   public setRow(index: AnimatedSuperIndex) {
-    if(this.clearTimeout) clearTimeout(this.clearTimeout);
+    this.cancelClear?.();
     this.destroy();
     const row = this.getRow(index);
     delete this.rows[index].new;
@@ -48,13 +81,13 @@ export class AnimatedSuper {
   }
 
   public clearRows(currentIndex?: AnimatedSuperIndex) {
-    if(this.clearTimeout) clearTimeout(this.clearTimeout);
-    this.clearTimeout = window.setTimeout(() => {
+    this.cancelClear?.();
+    this.cancelClear = afterTransition(this.container, this.duration, () => {
       for(const i in this.rows) {
         if(i === '' + currentIndex) continue;
         this.clearRow(i);
       }
-    }, this.duration);
+    });
   }
 
   public setNewRow(index: AnimatedSuperIndex) {
@@ -91,7 +124,7 @@ export class AnimatedSuper {
    */
   public prepare(index: AnimatedSuperIndex, previousIndex: AnimatedSuperIndex, fromTop: boolean) {
     // * the rows a flip leaves behind must not be cleared while this one waits for its own
-    if(this.clearTimeout) clearTimeout(this.clearTimeout);
+    this.cancelClear?.();
 
     const row = this.rows[index];
     const previousRow = this.rows[previousIndex];

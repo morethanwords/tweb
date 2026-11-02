@@ -46,8 +46,9 @@
 
   &-dynamic-width {
     width: 100vw;
-    // * as wide as its text until it is measured, not as the viewport
-    max-width: var(--width, max-content);
+    // * as wide as its text until it is measured, not as the viewport - and not as an ancestor's
+    // * `--width` (the topics column has one), which a property of a common name would inherit
+    max-width: var(--animated-counter-width, max-content);
     // overflow: hidden;
 
     @include animation-level(1) {

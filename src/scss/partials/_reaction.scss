@@ -365,6 +365,18 @@
     filter: drop-shadow(0 0 1.25rem rgba(0, 0, 0, .5));
     pointer-events: none;
 
+    // * a digit grows in from a little below and shrinks away upwards, as iOS rolls it: a whole line of
+    // * travel, unclipped, took it over the text above and down onto the reaction
+    .animated-super-row.is-hiding {
+      &.from-top {
+        transform: translate3d(0, -40%, 0) scale(.01);
+      }
+
+      &.from-bottom {
+        transform: translate3d(0, 40%, 0) scale(.01);
+      }
+    }
+
     .animated-super-row,
     .animated-counter-decimal-prefix {
       -webkit-text-stroke: 1px #E58E0D;
