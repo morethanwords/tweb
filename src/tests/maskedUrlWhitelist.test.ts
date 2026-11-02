@@ -9,7 +9,7 @@ import {setAppStateSilent} from '@stores/appState';
 import isWhitelistedUrl from '@lib/richTextProcessor/isWhitelistedUrl';
 
 // wrapRichText reaches the worker proxy through langPack; none of that is needed to build a link
-vi.mock('@lib/apiManagerProxy', () => ({default: new Proxy({}, {get: () => vi.fn()})}));
+vi.mock('@lib/apiManagerProxy', () => import('@/tests/mocks/stubModule'));
 
 const WHITELISTED_DOMAINS = ['telegram.org', 'fragment.com'];
 

@@ -170,8 +170,16 @@ export default async function wrapDocument({
 
   const canActivate = !(!uploadingFileName && message.pFlags.is_outgoing && !message.mid);
   const canOpen = canActivate && !draft;
+  // * what a click does with the file (`load` takes the same turns): a Markdown one opens in Instant View, a
+  // * medium the viewer plays is kept for the bubble to open it there, and any other is downloaded to the disk
+  const canSaveToCache = doc.size <= MAX_FILE_SAVE_SIZE;
+  const isMarkdown = (doc: MyDocument) => ext === 'md' || ext === 'markdown' || /^text\/(x-)?markdown\b/i.test(doc.mime_type || '');
+  const isViewable = (doc: MyDocument) => MEDIA_MIME_TYPES_SUPPORTED.has(doc.mime_type) && !!doc.thumbs?.length && canSaveToCache;
   const icoDiv = canOpen && Modes.a11y ? Button('', {noRipple: true}) : document.createElement('div');
-  if(canOpen && Modes.a11y) icoDiv.setAttribute('aria-label', I18n.format('AccDescr.OpenDocument', true, [doc.file_name || 'Unknown.file']));
+  if(canOpen && Modes.a11y) {
+    const opens = isMarkdown(doc) || isViewable(doc);
+    icoDiv.setAttribute('aria-label', I18n.format(opens ? 'AccDescr.OpenDocument' : 'AccDescr.DownloadDocument', true, [doc.file_name || 'Unknown.file']));
+  }
   icoDiv.classList.add('document-ico');
   let icoTextEl: HTMLElement;
 
@@ -286,8 +294,6 @@ export default async function wrapDocument({
     return docDiv;
   }
 
-  const canSaveToCache = doc.size <= MAX_FILE_SAVE_SIZE;
-
   let downloadDiv: HTMLElement, preloader: ProgressivePreloader = null;
   const onLoad = () => {
     docDiv.classList.remove('downloading');
@@ -360,7 +366,7 @@ export default async function wrapDocument({
     const queueId = hotReloadGuard.appImManager.chat?.bubbles?.lazyLoadQueue.queueId;
     if(!save) {
       download = appDownloadManager.downloadToDisc({media: doc, queueId}, true);
-    } else if(ext === 'md' || ext === 'markdown' || /^text\/(x-)?markdown\b/i.test(doc.mime_type || '')) {
+    } else if(isMarkdown(doc)) {
       download = appDownloadManager.downloadMedia({media: doc, queueId});
       download.then(readBlobAsText).then((raw) => {
         openMarkdownInstantView({
@@ -379,11 +385,7 @@ export default async function wrapDocument({
           }, liteMode.isAvailable('animations') ? 250 : 0);
         });
       }
-    } else if(
-      MEDIA_MIME_TYPES_SUPPORTED.has(doc.mime_type) &&
-      doc.thumbs?.length &&
-      canSaveToCache
-    ) {
+    } else if(isViewable(doc)) {
       download = appDownloadManager.downloadMediaURL({media: doc, queueId});
     } else {
       download = appDownloadManager.downloadToDisc({media: doc, queueId});

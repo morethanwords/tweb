@@ -2,7 +2,7 @@ import '@helpers/peerIdPolyfill';
 import {AppProfileManager} from '@appManagers/appProfileManager';
 import {AppUsersManager} from '@appManagers/appUsersManager';
 
-vi.mock('@lib/apiManagerProxy', () => ({default: new Proxy({}, {get: () => vi.fn()})}));
+vi.mock('@lib/apiManagerProxy', () => import('@/tests/mocks/stubModule'));
 
 const appPeersManager = {
   getPeerId: (peer: {user_id: UserId}) => peer.user_id.toPeerId(false),

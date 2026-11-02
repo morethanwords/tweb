@@ -4,9 +4,9 @@ import {stubBrowserGlobals} from '@/tests/helpers/browserGlobals';
 import getRichMessagePreview, {getRichMessagePreviewMedia} from '@components/wrappers/richMessagePreview';
 
 // wrapRichText's graph starts the app's workers on import, messageForReply's builds the sidebars
-vi.mock('@lib/apiManagerProxy', () => ({default: new Proxy({}, {get: () => vi.fn()})}));
-vi.mock('@components/sidebarLeft', () => ({default: new Proxy({}, {get: () => vi.fn()})}));
-vi.mock('@components/sidebarRight', () => ({default: new Proxy({}, {get: () => vi.fn()})}));
+vi.mock('@lib/apiManagerProxy', () => import('@/tests/mocks/stubModule'));
+vi.mock('@components/sidebarLeft', () => import('@/tests/mocks/stubModule'));
+vi.mock('@components/sidebarRight', () => import('@/tests/mocks/stubModule'));
 
 const text = (value: string): RichText => ({_: 'textPlain', text: value});
 // the separator between blocks: two spaces, the first unbreakable

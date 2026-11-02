@@ -6,7 +6,7 @@ import {AppChatsManager} from '@appManagers/appChatsManager';
 const mocks = vi.hoisted(() => ({toastNew: vi.fn()}));
 
 // * the popup graph reaches the worker proxy, which none of this needs
-vi.mock('@lib/apiManagerProxy', () => ({default: new Proxy({}, {get: () => vi.fn()})}));
+vi.mock('@lib/apiManagerProxy', () => import('@/tests/mocks/stubModule'));
 vi.mock('@components/toast', () => ({toastNew: mocks.toastNew}));
 vi.mock('@helpers/preloadAnimatedEmojiSticker', () => ({default: vi.fn()}));
 

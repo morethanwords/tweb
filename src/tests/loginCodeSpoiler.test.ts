@@ -4,9 +4,9 @@ import {SERVICE_PEER_ID, VERIFICATION_CODES_BOT_ID} from '@appManagers/constants
 import getLoginCodeEntity from '@appManagers/utils/messages/getLoginCodeEntity';
 
 // wrapRichText's graph starts the app's workers on import, messageForReply's builds the sidebars
-vi.mock('@lib/apiManagerProxy', () => ({default: new Proxy({}, {get: () => vi.fn()})}));
-vi.mock('@components/sidebarLeft', () => ({default: new Proxy({}, {get: () => vi.fn()})}));
-vi.mock('@components/sidebarRight', () => ({default: new Proxy({}, {get: () => vi.fn()})}));
+vi.mock('@lib/apiManagerProxy', () => import('@/tests/mocks/stubModule'));
+vi.mock('@components/sidebarLeft', () => import('@/tests/mocks/stubModule'));
+vi.mock('@components/sidebarRight', () => import('@/tests/mocks/stubModule'));
 
 const LOGIN_TEXT = 'رمز الدخول: 62095. لا تعطه أبدًا لأي شخص كان، حتى لو ادعى أنه من تيليجرام!';
 

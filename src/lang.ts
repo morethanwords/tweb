@@ -5672,6 +5672,7 @@ const lang = {
   'AccDescr.TranscribeAudio': 'Transcribe audio',
   'AccDescr.ToggleTranscription': 'Show transcription',
   'AccDescr.OpenDocument': 'Open file %s',
+  'AccDescr.DownloadDocument': 'Download file %s',
   'AccDescr.PlaybackSpeed': 'Playback speed',
   'MediaEditor.LayerActions': 'Layer actions',
   'MediaEditor.MoveUp': 'Move up',
