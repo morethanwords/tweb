@@ -3353,6 +3353,8 @@ export class AppMessagesManager extends AppManager {
           query_id: options.queryId,
           id: options.resultId,
           clear_draft: options.clearDraft,
+          schedule_date: options.scheduleDate || undefined,
+          silent: options.silent,
           send_as: sendAs,
           allow_paid_stars: paidStars
         }, sentRequestOptions);
