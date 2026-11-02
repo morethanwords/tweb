@@ -4841,42 +4841,44 @@ export default class ChatBubbles {
   }
 
   public async onGoDownClick() {
-    if(!this.followStack.length) {
-      // this.onScroll(true, undefined, true);
-      this.chat.setMessageId(/* , dialog.top_message */);
-      // const dialog = this.appMessagesManager.getDialogByPeerId(this.peerId)[0];
+    if(this.followStack.length) {
+      const middleware = this.getMiddleware();
+      const slice = this.followStack.slice();
+      const messages = await Promise.all(slice.map((fullMid) => this.chat.getMessage(fullMid)));
+      if(!middleware()) return;
 
-      // if(dialog) {
-      //   this.chat.setPeer(this.peerId/* , dialog.top_message */);
-      // } else {
-      //   this.log('will scroll down 3');
-      //   this.scroll.scrollTop = this.scroll.scrollHeight;
-      // }
+      // * where the newest bubble on screen stands in the history (its place in the list, not its id: an ephemeral one's
+      // * is past them all; an ad inside a post is no item): one followed back to that is not rendered and is not newer
+      // * was scrolled past - the viewport slice took it away above - and is not one to go down to
+      const onScreen = this.getViewportSlice().visible;
+      let bottomPosition: number;
+      for(let i = onScreen.length - 1; i >= 0 && bottomPosition === undefined; --i) {
+        bottomPosition = this.bubbleGroups.getItemByBubble(onScreen[i].element)?.timelineKey.position;
+      }
 
-      return;
+      slice.forEach((fullMid, idx) => {
+        const message = messages[idx];
+
+        const bubble = this.getBubble(fullMid);
+        let bad = true;
+        if(bubble) {
+          const rect = bubble.getBoundingClientRect();
+          bad = (windowSize.height / 2) > rect.top;
+        } else if(message) {
+          bad = bottomPosition !== undefined && splitFullMid(fullMid).mid <= bottomPosition;
+        }
+
+        if(bad) {
+          this.followStack.splice(this.followStack.indexOf(fullMid), 1);
+        }
+      });
     }
 
-    const middleware = this.getMiddleware();
-    const slice = this.followStack.slice();
-    const messages = await Promise.all(slice.map((fullMid) => this.chat.getMessage(fullMid)));
-    if(!middleware()) return;
-
-    slice.forEach((fullMid, idx) => {
-      const message = messages[idx];
-
-      const bubble = this.getBubble(fullMid);
-      let bad = true;
-      if(bubble) {
-        const rect = bubble.getBoundingClientRect();
-        bad = (windowSize.height / 2) > rect.top;
-      } else if(message) {
-        bad = false;
-      }
-
-      if(bad) {
-        this.followStack.splice(this.followStack.indexOf(fullMid), 1);
-      }
-    });
+    // * nothing followed back to, or all of it behind by now: down is the end
+    if(!this.followStack.length) {
+      this.chat.setMessageId();
+      return;
+    }
 
     // ! WARNING
     this.followStack.sort((a, b) => splitFullMid(b).mid - splitFullMid(a).mid);
