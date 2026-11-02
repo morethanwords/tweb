@@ -26,7 +26,8 @@ import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import I18n, {i18n} from '@lib/langPack';
 import {avatarNew} from '@components/avatarNew';
 import {getMiddleware} from '@helpers/middleware';
-import MovablePanel from '@helpers/movablePanel';
+import MovablePanel, {IS_MOVABLE_PANEL} from '@helpers/movablePanel';
+import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import {MovableState} from '@components/movableElement';
 import {Ref, resolveElements, resolveFirst} from '@solid-primitives/refs';
 import Section from '@components/section';
@@ -152,6 +153,15 @@ function BrowserHeaderTab(props: {
   );
 }
 
+/** The header's left button: the page's own back (a mini app's BackButton), or closing the page */
+function pressBrowserBack([state, actions]: BrowserContextValue) {
+  if(state.page.needBackButton) {
+    state.page.onBackClick();
+  } else {
+    actions.close(state.page);
+  }
+}
+
 function BrowserHeader(props: {
 }) {
   const [state, actions] = useContext(BrowserContext);
@@ -246,13 +256,7 @@ function BrowserHeader(props: {
     <div class={styles.BrowserHeader}>
       <BrowserHeaderButton
         aria-label={I18n.format(needBackButton() ? 'AccDescr.Back' : 'Close', true)}
-        onClick={() => {
-          if(needBackButton()) {
-            state.page.onBackClick();
-          } else {
-            actions.close(state.page);
-          }
-        }}
+        onClick={() => pressBrowserBack([state, actions])}
       >
         <div class={classNames('animated-close-icon', needBackButton() && 'state-back')}></div>
       </BrowserHeaderButton>
@@ -467,6 +471,22 @@ function Browser(props: {
   const minHeight = height * (minWidth / width) + additionalHeight;
 
   const [state, actions] = lastContext = useContext(BrowserContext);
+
+  // * where it cannot be moved (a touch screen) the browser stands over the app as a screen of its own: back
+  // * (the system's, a swipe, Escape) is its header button there, as on Android and iOS, and not the chat under it
+  if(!IS_MOVABLE_PANEL) {
+    const navigationItem: NavigationItem = {
+      type: 'browser',
+      onPop: () => {
+        if(state.destroyed || !state.page) return;
+        pressBrowserBack([state, actions]);
+        // * it stays until the browser itself goes: a mini app's back, a page of several, a close asked about
+        return false;
+      }
+    };
+    appNavigationController.pushItem(navigationItem);
+    onCleanup(() => appNavigationController.removeItem(navigationItem));
+  }
   const [movableState, setMovableState] = createSignal<MovableState>({
     width,
     height: height + additionalHeight
