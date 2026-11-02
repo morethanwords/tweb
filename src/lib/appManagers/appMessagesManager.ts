@@ -7693,7 +7693,10 @@ export class AppMessagesManager extends AppManager {
             return;
           }
 
-          delete (message as Message.message).pFlags.pinned;
+          // * through modifyMessage, as onUpdatePinnedMessages does, so that the tab's copy is unpinned too
+          this.modifyMessage(message as Message.message, (message) => {
+            delete message.pFlags.pinned;
+          }, storage);
         });
 
         this.rootScope.dispatchEvent('peer_pinned_messages', {peerId, threadId, unpinAll: true});
