@@ -29,6 +29,7 @@ import showStarGiftInfoPopup from '@components/popups/starGiftInfo';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {createCurrentTime} from '@helpers/solid/createCurrentTime';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import toastError from '@components/toastError';
 
 export default async function createStarGiftUpgradePopup(props: {
   gift: MyStarGift,
@@ -62,6 +63,13 @@ export default async function createStarGiftUpgradePopup(props: {
   };
   randomize();
 
+  // * a payment form the server would not give (a gift its recipient has already turned into Stars keeps its upgrade
+  // * link) is said, and the button is free again - it waited for good
+  const onPaymentFormError = (err: ApiError) => {
+    toastError(err, 'star gift upgrade form error');
+    return false;
+  };
+
   async function handleUpgrade(): Promise<boolean> {
     const managers = bindManagersToSession(rootScope.managers);
     if(props.descriptionForPeerId && canPrepay) {
@@ -77,7 +85,7 @@ export default async function createStarGiftUpgradePopup(props: {
         popup.addEventListener('finish', (result) => {
           deferred.resolve(result === 'paid');
         });
-      });
+      }, (err) => deferred.resolve(onPaymentFormError(err)));
       return deferred;
     }
 
@@ -106,7 +114,7 @@ export default async function createStarGiftUpgradePopup(props: {
           upgradePromise.resolve(false);
         }
       });
-    });
+    }, (err) => upgradePromise.resolve(onPaymentFormError(err)));
 
     return upgradePromise;
   }

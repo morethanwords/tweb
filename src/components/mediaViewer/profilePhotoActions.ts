@@ -6,6 +6,7 @@ import getPeerPhoto from '@appManagers/utils/peers/getPeerPhoto';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import rootScope from '@lib/rootScope';
 import {toastNew} from '@components/toast';
+import toastError from '@components/toastError';
 import {showProfilePhotoReport} from '@components/popups/reportAd';
 
 type PhotoOwner = 'user' | 'group' | 'channel';
@@ -84,11 +85,7 @@ export async function setMainProfilePhoto(managers: AppManagers, peerId: PeerId,
       await managers.appChatsManager.setExistingPhoto(peerId.toChatId(), photoId);
     }
   } catch(err) {
-    if((err as ApiError)?.type !== 'MIDDLEWARE') {
-      console.error('set main photo error', err);
-      toastNew({langPackKey: 'Error.AnError'});
-    }
-
+    toastError(err as ApiError, 'set main photo error');
     return false;
   }
 

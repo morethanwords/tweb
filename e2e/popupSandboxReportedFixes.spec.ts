@@ -232,3 +232,26 @@ test('a media editor text layer outlines its text as text', async({page}) => {
   await expect(layer.locator('img')).toHaveCount(0);
   expect(await page.evaluate(() => (window as any).copiedMarkupRan)).toBeUndefined();
 });
+
+// * the sender's upgrade of a gift its recipient has already turned into Stars: the server keeps the upgrade link, the
+// * payment form for it is refused - and the button used to wait for that form for good. The own upgrade the same way
+for(const prepaid of [false, true]) test(`an upgrade${prepaid ? ' paid for someone else' : ''} whose payment form is refused says so and frees its button`, async({page}) => {
+  await preparePopupSandbox(page, false);
+  await page.evaluate(async(prepaid) => {
+    const {getMockManagers} = await window.e2eImport('/src/components/popupSandbox/environment.ts');
+    getMockManagers().override({appPaymentsManager: {getPaymentForm: () => Promise.reject({type: 'FORM_SUBMIT_FAILED'})}});
+    const {default: createStarGiftUpgradePopup} = await window.e2eImport('/src/components/popups/starGiftUpgrade.tsx');
+    const {myStarGift, CONTACT_USER_ID} = await window.e2eImport('/src/components/popupSandbox/fixtures.ts');
+    createStarGiftUpgradePopup(prepaid ? {
+      gift: {...myStarGift, isIncoming: false, saved: {...myStarGift.saved, prepaid_upgrade_hash: 'hash'}},
+      descriptionForPeerId: CONTACT_USER_ID.toPeerId()
+    } : {gift: myStarGift});
+  }, prepaid);
+
+  const upgrade = page.locator('.popup-star-gift-upgrade.active .popup-footer-button');
+  await expect(upgrade).toContainText(/upgrade/i);
+  await upgrade.click();
+  await expect(page.locator('.toast')).toContainText('An error occurred');
+  await expect(upgrade).toBeEnabled();
+  await expect(page.locator('.popup-star-gift-upgrade.active')).toHaveCount(1);
+});
