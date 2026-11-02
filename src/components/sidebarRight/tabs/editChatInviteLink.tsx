@@ -15,6 +15,7 @@ import {InputStarsField} from '@components/popups/makePaid';
 import {InputRightNumber} from '@components/popups/payment';
 import showDatePickerPopup from '@components/popups/datePicker';
 import {setButtonLoader} from '@components/putPreloader';
+import toastInviteLinkError from './toastInviteLinkError';
 import RangeStepsSelector from '@components/rangeStepsSelector';
 import Row from '@components/rowTsx';
 import Section from '@components/section';
@@ -69,7 +70,7 @@ const EditChatInviteLink: Component = () => {
     tab.content.append(confirmBtn);
 
     attachClickEvent(confirmBtn, async() => {
-      setButtonLoader(confirmBtn);
+      const removeLoader = setButtonLoader(confirmBtn);
       const expireDateValue = timePeriodSelector.value;
       const expireDate = expireDateValue instanceof Date ? expireDateValue.getTime() / 1000 | 0 : (expireDateValue ? tsNow(true) + expireDateValue : 0);
       const title = nameInputField.value;
@@ -77,26 +78,33 @@ const EditChatInviteLink: Component = () => {
       const usageLimit = requestNeeded ? 0 : (usersLimitSelector.value ?? 0);
 
       let chatInvite: ChatInvite;
-      if(invite) {
-        const result = await tab.managers.appChatInvitesManager.editExportedChatInvite({
-          chatId,
-          link: invite.link,
-          expireDate,
-          requestNeeded,
-          title,
-          usageLimit
-        });
+      try {
+        if(invite) {
+          const result = await tab.managers.appChatInvitesManager.editExportedChatInvite({
+            chatId,
+            link: invite.link,
+            expireDate,
+            requestNeeded,
+            title,
+            usageLimit
+          });
 
-        chatInvite = result.invite as ChatInvite;
-      } else {
-        chatInvite = await tab.managers.appChatInvitesManager.exportChatInvite({
-          chatId,
-          title,
-          requestNeeded,
-          usageLimit,
-          expireDate,
-          stars: paidLink() ? +paidLinkInputField.value : undefined
-        }) as ChatInvite;
+          chatInvite = result.invite as ChatInvite;
+        } else {
+          chatInvite = await tab.managers.appChatInvitesManager.exportChatInvite({
+            chatId,
+            title,
+            requestNeeded,
+            usageLimit,
+            expireDate,
+            stars: paidLink() ? +paidLinkInputField.value : undefined
+          }) as ChatInvite;
+        }
+      } catch(err) {
+        // * a link the server would not take: the screen stays as it was, to be changed and saved again
+        removeLoader();
+        toastInviteLinkError(err as ApiError, 'invite link save error');
+        return;
       }
 
       tab.eventListener.dispatchEvent('finish', chatInvite);

@@ -17,6 +17,7 @@ import rootScope from '@lib/rootScope';
 import Button from '@components/button';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import confirmationPopup from '@components/confirmationPopup';
+import toastInviteLinkError from './toastInviteLinkError';
 import {StarsAmount} from '@components/stars/starsAmount';
 import Section, {appendSectionContent} from '@components/section';
 import UsernameRow from '@components/usernameRow';
@@ -119,11 +120,17 @@ const ChatInviteLinks: Component = () => {
 
         const invite = _menuItem?.invite || primaryInvite;
 
-        const chatInvite = await tab.managers.appChatInvitesManager.editExportedChatInvite({
-          chatId: chatId,
-          link: invite.link,
-          revoked: true
-        });
+        let chatInvite: MessagesExportedChatInvite;
+        try {
+          chatInvite = await tab.managers.appChatInvitesManager.editExportedChatInvite({
+            chatId: chatId,
+            link: invite.link,
+            revoked: true
+          });
+        } catch(err) {
+          toastInviteLinkError(err as ApiError, 'revoke invite link error');
+          return;
+        }
 
         const editedInvite = chatInvite.invite as ChatInvite;
         const newInvite = (chatInvite as MessagesExportedChatInvite.messagesExportedChatInviteReplaced).new_invite as ChatInvite;
@@ -161,7 +168,7 @@ const ChatInviteLinks: Component = () => {
           onRevokedLinksUpdate();
 
           chatInviteLinkTab?.close();
-        });
+        }, (err: ApiError) => toastInviteLinkError(err, 'delete invite link error'));
       },
       verify: () => !!menuInvite?.pFlags?.revoked
     }];
