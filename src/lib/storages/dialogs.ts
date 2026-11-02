@@ -402,6 +402,21 @@ export default class DialogsStorage extends AppManager {
     this.appStateManager.pushToState('pinnedOrders', this.pinnedOrders);
   }
 
+  /** A pin given (the topmost) or taken back in a folder's pin order by its key, and saved */
+  public togglePinInOrder(folderId: number, key: PeerId, pinned: boolean) {
+    const order = this.getPinnedOrders(folderId);
+    if(!order) {
+      return;
+    }
+
+    indexOfAndSplice(order, key);
+    if(pinned) {
+      order.unshift(key);
+    }
+
+    this.savePinnedOrders();
+  }
+
   public resetPinnedOrder(folderId: number) {
     this.getPinnedOrders(folderId).length = 0;
   }
@@ -2490,7 +2505,12 @@ export default class DialogsStorage extends AppManager {
 
   // * SAVED SECTION END
 
-  private handleDialogTogglePinned(dialog: AnyDialog, pinned: boolean, folderId: number) {
+  /**
+   * `peerId`: whose dialog it is, and `savedPeerId` which of Saved Messages' - also without it at hand: one
+   * pinned elsewhere that is not loaded here is asked for (handleNewDialogs reloads it), as handleDialogsPinned
+   * does with a pin order
+   */
+  private handleDialogTogglePinned(dialog: AnyDialog, pinned: boolean, folderId: number, peerId: PeerId, savedPeerId?: PeerId) {
     if(dialog) {
       if(!pinned) {
         this.handleDialogUnpinning(dialog, folderId);
@@ -2501,7 +2521,7 @@ export default class DialogsStorage extends AppManager {
       this.generateIndexForDialog(dialog);
     }
 
-    this.appMessagesManager.scheduleHandleNewDialogs(dialog.peerId, dialog);
+    this.appMessagesManager.scheduleHandleNewDialogs(peerId, dialog ?? savedPeerId);
   }
 
   public handleDialogsPinned(folderId: number, order: (Dialog['peerId'] | ForumTopic['id'] | SavedDialog['savedPeerId'])[]) {
@@ -2613,7 +2633,19 @@ export default class DialogsStorage extends AppManager {
       }
     } */
 
-    this.handleDialogTogglePinned(dialog, update.pFlags.pinned, folderId);
+    const isSaved = update._ === 'updateSavedDialogPinned';
+    // * the pin order takes the pin at once, in the order the pins come: a dialog takes its place from it only
+    // * when it is indexed later (handleNewDialogs) or asked for (one not loaded; getSavedDialogById rebuilds a
+    // * Saved Messages subdialog's pin from it), and pins of one batch must not swap places meanwhile
+    this.togglePinInOrder(folderId, peerId, !!update.pFlags.pinned);
+
+    this.handleDialogTogglePinned(
+      dialog,
+      update.pFlags.pinned,
+      folderId,
+      isSaved ? this.appPeersManager.peerId : peerId,
+      isSaved ? peerId : undefined
+    );
   };
 
   private onUpdatePinnedForumTopic = (update: Update.updatePinnedForumTopic) => {
@@ -2625,7 +2657,7 @@ export default class DialogsStorage extends AppManager {
       return;
     }
 
-    this.handleDialogTogglePinned(topic, update.pFlags.pinned, this.getFilterIdForForum(topic));
+    this.handleDialogTogglePinned(topic, update.pFlags.pinned, this.getFilterIdForForum(topic), peerId);
   };
 
   private onUpdatePinnedDialogs = (update: Update.updatePinnedDialogs | Update.updatePinnedSavedDialogs) => {

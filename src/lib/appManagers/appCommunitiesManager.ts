@@ -1457,15 +1457,7 @@ export class AppCommunitiesManager extends AppManager {
     }
 
     const peerId = communityId.toPeerId(true);
-    const order = this.dialogsStorage.getPinnedOrders(folderId);
-    const index = order.indexOf(peerId);
-    if(index !== -1) {
-      order.splice(index, 1);
-    }
-    if(pinned) {
-      order.unshift(peerId);
-    }
-    this.dialogsStorage.savePinnedOrders();
+    this.dialogsStorage.togglePinInOrder(folderId, peerId, pinned);
 
     const sourceDialog = this.communityDialogs[communityId];
     if(sourceDialog) {
