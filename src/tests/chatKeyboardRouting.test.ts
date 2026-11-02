@@ -20,7 +20,8 @@ function attachHandler() {
   const input = document.createElement('div');
   Object.defineProperty(input, 'isContentEditable', {value: true});
   const host = {
-    chat: {input: {messageInput: input, passEventToInput: redirect}, selection: {isSelecting: false}}
+    chat: {input: {messageInput: input, passEventToInput: redirect}, selection: {isSelecting: false}},
+    isChatColumnShown: AppImManager.prototype.isChatColumnShown
   };
   callbacks.length = 0;
   (AppImManager.prototype as unknown as {attachKeydownListener(): void}).attachKeydownListener.call(host);

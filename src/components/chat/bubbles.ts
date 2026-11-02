@@ -5746,10 +5746,25 @@ export default class ChatBubbles {
   }
 
   private pollExtendedMediaMessages() {
-    const mids = Array.from(this.extendedMediaMessages);
-    return this.managers.appMessagesManager.getExtendedMedia(this.peerId, mids);
+    // * of what can be seen, as tdesktop polls the items it paints: not of a chat another one is opened over, nor of
+    // * one whose column a phone has left for the chat list or the profile (a preview stands by itself, over the
+    // * others), nor in a hidden tab - the next round asks once it is seen again
+    const {appImManager} = this.chat;
+    const isOffScreen = appImManager.chats.includes(this.chat) &&
+      (appImManager.chat !== this.chat || !appImManager.isChatColumnShown());
+    if(isOffScreen || getAppWindow().document.hidden) {
+      return;
+    }
+
+    // * of the list on screen: one on its way out keeps its bubbles, and their mids, until it is taken out
+    const mids = Array.from(this.extendedMediaMessages).filter((mid) => this.getBubble(this.peerId, mid));
+    return mids.length ? this.managers.appMessagesManager.getExtendedMedia(this.peerId, mids) : undefined;
   }
 
+  /**
+   * Paid media not bought yet is asked for every 30 seconds while bubbles of it are rendered and seen (tdesktop's
+   * `ViewsManager::pollExtendedMedia`): what is bought comes as updates. A round that failed is over too
+   */
   private setExtendedMediaMessagesPollInterval() {
     if(this.pollExtendedMediaMessagesPromise || !this.extendedMediaMessages.size) {
       return;
@@ -5757,7 +5772,11 @@ export default class ChatBubbles {
 
     this.pollExtendedMediaMessagesPromise = pause(30000)
     .then(() => this.pollExtendedMediaMessages())
-    .then(() => this.setExtendedMediaMessagesPollInterval());
+    .catch(noop)
+    .then(() => {
+      this.pollExtendedMediaMessagesPromise = undefined;
+      this.setExtendedMediaMessagesPollInterval();
+    });
   }
 
   private setTopPadding(middleware = this.getMiddleware()) {

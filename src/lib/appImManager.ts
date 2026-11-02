@@ -1926,7 +1926,7 @@ export class AppImManager extends EventListenerBase<{
         target !== chat.input.messageInput &&
         !targetIsInput &&
         !IS_TOUCH_SUPPORTED &&
-        (!mediaSizes.isMobile || this.tabId === APP_TABS.CHAT) &&
+        this.isChatColumnShown() &&
         !chat.selection.isSelecting &&
         !chat.input.recording &&
         chat.input.messageInput.isContentEditable
@@ -3501,7 +3501,12 @@ export class AppImManager extends EventListenerBase<{
     // On mobile these columns slide outside the viewport but stay mounted.
     // Match their keyboard/AT visibility to the selected screen, including PiP.
     appSidebarLeft.sidebarEl.inert = mediaSizes.isMobile && this.tabId !== APP_TABS.CHATLIST;
-    this.columnEl.inert = mediaSizes.isMobile && this.tabId !== APP_TABS.CHAT;
+    this.columnEl.inert = !this.isChatColumnShown();
+  }
+
+  /** On a phone one column is on screen at a time: the chats' only while their tab is selected */
+  public isChatColumnShown() {
+    return !mediaSizes.isMobile || this.tabId === APP_TABS.CHAT;
   }
 
   public updateStatus() {

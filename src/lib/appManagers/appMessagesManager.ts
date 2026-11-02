@@ -14851,6 +14851,8 @@ export class AppMessagesManager extends AppManager {
         id: toRequest.map((mid) => getServerMessageId(mid))
       }).then((updates) => {
         this.apiUpdatesManager.processUpdateMessage(updates);
+      }, noop).then(() => {
+        // * a request the server refused is over as well: the next poll asks for its mids again
         deferred.resolve();
       });
     }
