@@ -398,7 +398,8 @@ export default class VideoPlayer extends ControlsHover {
           let good = true;
           if(code === 'KeyF') {
             this.toggleFullScreen();
-          } else if(code === 'KeyM') {
+          // * M alone: held with Cmd it minimizes the window on a Mac, with Option it types a character
+          } else if(code === 'KeyM' && !e.ctrlKey && !e.metaKey && !e.altKey) {
             appMediaPlaybackController.muted = !appMediaPlaybackController.muted;
           } else if(code === 'Space' && this.canPause) {
             this.togglePlay();

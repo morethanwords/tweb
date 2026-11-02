@@ -24,6 +24,7 @@ declare global {
     headerFrames?: HeaderFrame[],
     positionRequests?: number[],
     movedAside?: HTMLElement,
+    viewerPictures?: Promise<string[]>,
     appMediaViewer?: any
   }
 }
@@ -276,55 +277,92 @@ test.describe('the media viewer', () => {
   // * with nothing in the chat to grow out of, as a video paged to is.
   test('stands a video\'s thumbnail in for it, not the video file', async({page}) => {
     test.setTimeout(4 * 60_000);
-    await page.goto('/?noSharedWorker=1');
-    await page.waitForFunction(() => document.querySelectorAll('.chatlist-chat').length > 0, null, {timeout: 180_000});
-    const opened = await page.evaluate(async(viewer) => {
+    const message = await findSmallVideo(page);
+    await page.evaluate(async({viewer, message}) => {
       const managers = (window as any).appImManager.managers;
-      const {dialogs} = await managers.dialogsStorage.getDialogs({filterId: 0, limit: 30});
-      let message: any;
-      for(const {peerId} of dialogs) {
-        const result = await managers.appMessagesManager.getHistory({peerId, inputFilter: {_: 'inputMessagesFilterVideo'}, limit: 10}).catch((): undefined => undefined);
-        for(const mid of result?.history || []) {
-          const candidate = await managers.appMessagesManager.getMessageByPeer(peerId, mid);
-          const doc = candidate?.media?.document;
-          // * small enough to download whole here, with a thumbnail to stand in for it
-          if(doc?.type === 'video' && doc.size < 5e6 && doc.thumbs?.some((thumb: any) => thumb._ === 'photoSize') && !candidate.media.pFlags.spoiler) {
-            message = candidate;
-            break;
-          }
-        }
-        if(message) break;
-      }
-      if(!message) return;
-
       const doc = message.media.document;
       const blob = await managers.apiFileManager.downloadMedia({media: doc});
       const {url} = await managers.thumbsStorage.setCacheContextBlob(doc, '', blob, blob.size);
-      const path = '/src/components/mediaViewer/index.ts';
-      const {default: AppMediaViewer} = await import(/* @vite-ignore */ path);
-      new AppMediaViewer()
-      .setSearchContext({peerId: message.peerId, inputFilter: {_: 'inputMessagesFilterVideo'}, useSearch: false})
-      .openMedia({message});
 
-      // * every picture the slide shows while it opens
-      const seen = new Set<string>();
-      for(let i = 0; i < 30; ++i) {
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        for(const element of document.querySelectorAll<HTMLElement>(`${viewer} .media-viewer-mover img, ${viewer} .media-viewer-mover canvas`)) {
-          if(element instanceof HTMLCanvasElement) {
-            if(element.width) seen.add('a picture');
-          } else if((element as HTMLImageElement).complete) {
-            const image = element as HTMLImageElement;
-            seen.add(image.src === url ? 'the video file' : image.naturalWidth ? 'a picture' : 'a broken image');
+      // * every picture the slide shows while it opens, looked at from just before it does
+      window.viewerPictures = (async() => {
+        const seen = new Set<string>();
+        for(let i = 0; i < 30; ++i) {
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          for(const element of document.querySelectorAll<HTMLElement>(`${viewer} .media-viewer-mover img, ${viewer} .media-viewer-mover canvas`)) {
+            if(element instanceof HTMLCanvasElement) {
+              if(element.width) seen.add('a picture');
+            } else if((element as HTMLImageElement).complete) {
+              const image = element as HTMLImageElement;
+              seen.add(image.src === url ? 'the video file' : image.naturalWidth ? 'a picture' : 'a broken image');
+            }
           }
         }
-      }
-      return [...seen];
-    }, VIEWER);
-    test.skip(!opened, 'no small video with a thumbnail in the recent chats of this account');
+        return [...seen];
+      })();
+    }, {viewer: VIEWER, message});
+    await openInViewer(page, message);
+    const opened = await page.evaluate(() => window.viewerPictures);
     expect(opened, 'what the slide shows until the video plays').toEqual(['a picture']);
   });
+
+  // * the player's M is M alone: held with Cmd it minimizes the window on a Mac, which the player took for
+  // * itself and muted the video instead
+  test('leaves M held with Ctrl, Cmd or Alt to the browser, and takes it alone', async({page}) => {
+    test.setTimeout(4 * 60_000);
+    await openInViewer(page, await findSmallVideo(page));
+    await page.waitForSelector(`${VIEWER} .ckin__player`, {timeout: 60_000});
+
+    // * whether the page took the key, and whether the sound is off after it
+    type Press = {code?: string, key?: string, ctrlKey?: boolean, metaKey?: boolean, altKey?: boolean};
+    const press = (init: Press) => page.evaluate((init) => {
+      const event = new KeyboardEvent('keydown', {bubbles: true, cancelable: true, ...init});
+      document.dispatchEvent(event);
+      return {taken: event.defaultPrevented, muted: (window as any).appMediaPlaybackController.muted as boolean};
+    }, init);
+
+    const before = (await press({})).muted;
+    for(const init of [{code: 'KeyM', key: 'm', metaKey: true}, {code: 'KeyM', key: 'm', ctrlKey: true}, {code: 'KeyM', key: 'µ', altKey: true}]) {
+      expect(await press(init), `${JSON.stringify(init)} was taken from the browser`).toEqual({taken: false, muted: before});
+    }
+
+    expect(await press({code: 'KeyM', key: 'm'}), 'M alone did not switch the sound').toEqual({taken: true, muted: !before});
+    await press({code: 'KeyM', key: 'm'});
+  });
 });
+
+/** signed in, a video of the recent chats small enough to download whole here, with a thumbnail to stand in for it */
+async function findSmallVideo(page: Page) {
+  await page.goto('/?noSharedWorker=1');
+  await page.waitForFunction(() => document.querySelectorAll('.chatlist-chat').length > 0, null, {timeout: 180_000});
+  const message = await page.evaluate(async() => {
+    const managers = (window as any).appImManager.managers;
+    const {dialogs} = await managers.dialogsStorage.getDialogs({filterId: 0, limit: 30});
+    for(const {peerId} of dialogs) {
+      const result = await managers.appMessagesManager.getHistory({peerId, inputFilter: {_: 'inputMessagesFilterVideo'}, limit: 10}).catch((): undefined => undefined);
+      for(const mid of result?.history || []) {
+        const candidate = await managers.appMessagesManager.getMessageByPeer(peerId, mid);
+        const doc = candidate?.media?.document;
+        if(doc?.type === 'video' && doc.size < 5e6 && doc.thumbs?.some((thumb: any) => thumb._ === 'photoSize') && !candidate.media.pFlags.spoiler) {
+          return candidate;
+        }
+      }
+    }
+  });
+  test.skip(!message, 'no small video with a thumbnail in the recent chats of this account');
+  return message;
+}
+
+/** the message's video in the viewer, with nothing in the chat to grow out of, as a video paged to is */
+function openInViewer(page: Page, message: any) {
+  return page.evaluate(async(message) => {
+    const path = '/src/components/mediaViewer/index.ts';
+    const {default: AppMediaViewer} = await import(/* @vite-ignore */ path);
+    new AppMediaViewer()
+    .setSearchContext({peerId: message.peerId, inputFilter: {_: 'inputMessagesFilterVideo'}, useSearch: false})
+    .openMedia({message});
+  }, message);
+}
 
 // * from now on, every frame the header differs from the one before: where the title is, how tall the
 // * date line is, the item and the place it shows - read back from window.headerFrames, which also stops it
