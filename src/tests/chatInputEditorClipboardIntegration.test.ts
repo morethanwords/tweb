@@ -4,6 +4,7 @@ import {
   tableDocument,
   currentTable
 } from '@/tests/helpers/chatInputEditorHarness';
+import {dispatchPaste} from '@/tests/helpers/chatInputEditor';
 import type {JSONContent} from '@tiptap/core';
 import {Slice} from '@tiptap/pm/model';
 import {AllSelection, TextSelection} from '@tiptap/pm/state';
@@ -106,17 +107,10 @@ describe('Tiptap chat input editor: Clipboard', () => {
   ])('parses $entity Markdown in a fallback paste after an internal clipboard paste', ({text, value, entity}) => {
     const {editor, input} = mountEditor();
     const tiptap = (editor as TiptapEditorInternals).editor;
-    const paste = (html: string, text: string) => {
-      const event = new Event('paste', {bubbles: true, cancelable: true});
-      Object.defineProperty(event, 'clipboardData', {value: {
-        getData: (type: string) => type === 'text/html' ? html : type === 'text/plain' ? text : ''
-      }});
-      input.dispatchEvent(event);
-    };
-    paste('<p data-pm-slice="1 1 []">internal</p>', 'internal');
+    dispatchPaste(input, '<p data-pm-slice="1 1 []">internal</p>', 'internal');
     tiptap.commands.setContent({type: 'doc', content: [{type: 'paragraph'}]});
 
-    paste(`<html><body><p>${text}</p><footer>Outside the selection</footer></body></html>`, text);
+    dispatchPaste(input, `<html><body><p>${text}</p><footer>Outside the selection</footer></body></html>`, text);
 
     expect(editor.getRichValue()).toMatchObject({
       value,

@@ -11,7 +11,7 @@ type TextWithEntitiesForCopying = Omit<TextWithEntities, '_'>;
  * cannot hold all of it — a code block is inline code there, a date has lost its format — so the
  * composer pastes a copy from these, as it opens a message for editing.
  */
-const COPIED_ATTRIBUTE = 'data-text-with-entities';
+export const COPIED_ATTRIBUTE = 'data-text-with-entities';
 
 /**
  * The draft markup keeps a line break as the character itself, which shows as one only where

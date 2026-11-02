@@ -6,12 +6,16 @@ import {Decoration, DecorationSet} from '@tiptap/pm/view';
 import emojiRegExp from '@vendor/emoji/regex';
 import getEmojiUnified from '@lib/richTextProcessor/getEmojiUnified';
 import {areAllEmojiNative, getEmojiImageUrl, isEmojiNative} from '@lib/richTextProcessor/emojiImage';
+import {COPIED_ATTRIBUTE} from '@helpers/prepareTextWithEntitiesForCopying';
 
 export const CHAT_INPUT_EMOJI_IMAGE_CLASS = 'chat-input-emoji-image';
 const CHAT_INPUT_EMOJI_IMAGE_SELECTED_CLASS = 'chat-input-emoji-image-selected';
 const CHAT_INPUT_EMOJI_IMAGE_REST_CLASS = 'chat-input-emoji-image-rest';
 
 const EMOJI_REG_EXP = new RegExp(emojiRegExp, 'g');
+const EMOJI_IMAGE_TAG_REG_EXP = /<img\b[^>]*>/gi;
+const EMOJI_IMAGE_CLASS_REG_EXP = /\sclass\s*=\s*(?:"[^"]*\bemoji-image\b[^"]*"|'[^']*\bemoji-image\b[^']*')/i;
+const EMOJI_IMAGE_ALT_REG_EXP = /\salt\s*=\s*(?:"([^"<]*)"|'([^'<]*)')/i;
 
 /**
  * One emoji can be split over text nodes whose marks differ (a skin tone in bold): it is the run
@@ -130,6 +134,21 @@ export const ChatEmojiImages = Extension.create({
         }
       },
       props: {
+        // * an emoji a message draws as a picture of it (wrapRichText's `emoji-image`, where this plugin
+        // * draws them too) is the emoji its alt says: a copy of several messages carries the chat's own
+        // * HTML, whose pictures the field would drop
+        // * The HTML is rewritten tag by tag, not reserialized: a paste plugin after this one tells a whole
+        // * copied document (`<html>`) from a fragment of it. A message the chat's Copy put on the clipboard
+        // * with its text and entities (`COPIED_ATTRIBUTE`) is pasted from those, which the shape of its
+        // * HTML vouches for, pictures included: left as it is
+        transformPastedHTML: (html) => html.includes('emoji-image') && !html.includes(COPIED_ATTRIBUTE) ?
+          html.replace(EMOJI_IMAGE_TAG_REG_EXP, (tag) => {
+            if(!EMOJI_IMAGE_CLASS_REG_EXP.test(tag)) return tag;
+            const alt = tag.match(EMOJI_IMAGE_ALT_REG_EXP);
+            // an attribute's value is escaped as text is, but for `<`, which no emoji has
+            return alt ? alt[1] ?? alt[2] : tag;
+          }) :
+          html,
         decorations: (state) => {
           const decorations = chatEmojiImagesKey.getState(state);
           const {from, to, empty} = state.selection;

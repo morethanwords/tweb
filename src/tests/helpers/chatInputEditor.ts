@@ -28,3 +28,12 @@ export function mountChatInputEditor(options: ChatInputEditorOptions = {}, snaps
   const tiptap = (editor as ChatInputEditor & {editor: Editor}).editor;
   return {editor, input, tiptap};
 }
+
+/** pastes into `input` a clipboard that holds `html`, and `text` as its plain text */
+export function dispatchPaste(input: HTMLElement, html: string, text = '') {
+  const event = new Event('paste', {bubbles: true, cancelable: true}) as ClipboardEvent;
+  Object.defineProperty(event, 'clipboardData', {value: {
+    getData: (type: string) => type === 'text/html' ? html : type === 'text/plain' ? text : ''
+  }});
+  input.dispatchEvent(event);
+}
