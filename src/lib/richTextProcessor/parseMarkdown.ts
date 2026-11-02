@@ -11,6 +11,7 @@ import {MessageEntity} from '@layer';
 import combineSameEntities from '@lib/richTextProcessor/combineSameEntities';
 import findConflictingEntity from '@lib/richTextProcessor/findConflictingEntity';
 import mergeEntities from '@lib/richTextProcessor/mergeEntities';
+import trimRichText from '@lib/richTextProcessor/trimRichText';
 
 export default function parseMarkdown(raw: string, currentEntities: MessageEntity[] = [], noTrim?: boolean) {
   /* if(!markdownTestRegExp.test(text)) {
@@ -196,29 +197,11 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
   currentEntities = mergeEntities(currentEntities, entities);
   combineSameEntities(currentEntities);
 
-  let length = newText.length;
   if(!noTrim) {
-    // trim left
-    newText = newText.replace(/^\s*/, '');
-
-    let diff = length - newText.length;
-    if(diff) {
-      currentEntities.forEach((entity) => {
-        entity.offset = Math.max(0, entity.offset - diff);
-      });
-    }
-
-    // trim right
-    newText = newText.replace(/\s*$/, '');
-    diff = length - newText.length;
-    length = newText.length;
-    if(diff) {
-      currentEntities.forEach((entity) => {
-        if((entity.offset + entity.length) > length) {
-          entity.length = length - entity.offset;
-        }
-      });
-    }
+    // * the formatting keeps the part of the text still there, and what was over nothing but the whitespace goes:
+    // * shifted by hand, one off a leading space landed on the letter after it, and one of a trailing space ended
+    // * at the end with no length or less than none, which the server refuses the message for
+    ({text: newText, entities: currentEntities} = trimRichText(newText, currentEntities));
   }
 
   return [newText, currentEntities] as const;
