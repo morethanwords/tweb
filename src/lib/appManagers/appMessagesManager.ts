@@ -370,6 +370,13 @@ type RichMessageChecklistEdit = {
   flushPending?: boolean
 };
 
+// * a tick of a to-do list, with the completion it shows (none for an untick)
+type TodoToggle = {
+  taskId: number,
+  action: 'complete' | 'uncomplete',
+  completion?: TodoCompletion
+};
+
 export type MessageSendingParams = Partial<{
   peerId: PeerId,
   threadId: number,
@@ -746,6 +753,9 @@ export class AppMessagesManager extends AppManager {
   private channelAvailableMinIdRequestGenerations: Map<PeerId, number> = new Map();
   private channelAvailableMinIdsEpoch = 0;
   private richMessageChecklistEdits: Map<string, RichMessageChecklistEdit> = new Map();
+  // * by `${peerId}:${mid}` of a to-do list with ticks not answered yet: the completion the server has of each
+  // * task they touch (none if not completed), which a refused tick goes back to
+  private todoChecklistBases: Map<string, Map<number, TodoCompletion>> = new Map();
 
   private deletedMessages: Set<string> = new Set();
   private missingMessages: Set<string> = new Set();
@@ -811,7 +821,7 @@ export class AppMessagesManager extends AppManager {
   private pendingDeliveryReports: Map<PeerId, Set<number>> = new Map();
   private deliveryReportsSending: Set<PeerId> = new Set();
   private deliveryReportsTimeout: number;
-  private checklistBatcher: Batcher<string, {taskId: number, oldItem?: TodoCompletion, action: 'complete' | 'uncomplete'}, void>;
+  private checklistBatcher: Batcher<string, TodoToggle, void>;
 
   private waitingTranscriptions: Map<string, CancellablePromise<MessagesTranscribedAudio>>;
   // * the finished transcription of a voice or round message by `${peerId}_${mid}`, which is what is
@@ -1059,11 +1069,7 @@ export class AppMessagesManager extends AppManager {
       processBatch: this.processFactCheckBatch
     });
 
-    this.checklistBatcher = new Batcher({
-      delay: 500,
-      debounce: true,
-      processBatch: this.processChecklistBatch
-    });
+    this.checklistBatcher = this.createChecklistBatcher();
 
     return this.appStateManager.getState().then((state) => {
       if(state.maxSeenMsgId) {
@@ -1129,6 +1135,7 @@ export class AppMessagesManager extends AppManager {
       if(state.timer) clearTimeout(state.timer);
     });
     this.richMessageChecklistEdits.clear();
+    this.todoChecklistBases.clear();
 
     if(!init) {
       this.appProfileManager.clearBotCommands();
@@ -15821,31 +15828,26 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
-    let oldItem: TodoCompletion;
+    const key = `${params.peerId}:${params.mid}`;
+    const {taskId, action} = params;
+    const toggle: TodoToggle = {
+      taskId,
+      action,
+      completion: action === 'complete' ? {
+        _: 'todoCompletion',
+        id: taskId,
+        completed_by: this.appPeersManager.getOutputPeer(this.rootScope.myId),
+        date: Date.now() / 1000
+      } : undefined
+    };
+
     this.modifyMessage(message, (message) => {
       const checklist = message.media as MessageMedia.messageMediaToDo;
-      if(!checklist.completions) checklist.completions = [];
-      const now = Date.now() / 1000;
-
-      if(params.action === 'complete') {
-        const existing = checklist.completions.findIndex((completion) => completion.id === params.taskId);
-        if(existing !== -1) {
-          checklist.completions.splice(existing, 1);
-        }
-
-        checklist.completions.push({
-          _: 'todoCompletion',
-          id: params.taskId,
-          completed_by: this.appPeersManager.getOutputPeer(this.rootScope.myId),
-          date: now
-        });
-      } else {
-        const existing = checklist.completions.findIndex((completion) => completion.id === params.taskId);
-        if(existing !== -1) {
-          oldItem = checklist.completions[existing];
-          checklist.completions.splice(existing, 1);
-        }
-      }
+      let base = this.todoChecklistBases.get(key);
+      if(!base) this.todoChecklistBases.set(key, base = new Map());
+      // * the first tick of the task that is not answered yet: what the list shows of it is what the server has
+      if(!base.has(taskId)) base.set(taskId, checklist.completions?.find((completion) => completion.id === taskId));
+      this.setTodoCompletion(checklist, taskId, toggle.completion);
     }, storage);
 
     this.rootScope.dispatchEvent('message_edit', {
@@ -15855,31 +15857,44 @@ export class AppMessagesManager extends AppManager {
       message
     });
 
-    const key = `${params.peerId}:${params.mid}`;
-    this.checklistBatcher.addToBatch(key, {taskId: params.taskId, oldItem, action: params.action});
+    this.checklistBatcher.addToBatch(key, toggle);
+  }
+
+  private setTodoCompletion(checklist: MessageMedia.messageMediaToDo, taskId: number, completion?: TodoCompletion) {
+    checklist.completions ??= [];
+    const existing = checklist.completions.findIndex((completion) => completion.id === taskId);
+    if(existing !== -1) checklist.completions.splice(existing, 1);
+    if(completion) checklist.completions.push(completion);
+  }
+
+  private createChecklistBatcher() {
+    return new Batcher<string, TodoToggle, void>({
+      delay: 500,
+      debounce: true,
+      processBatch: this.processChecklistBatch
+    });
   }
 
   private processChecklistBatch = async(batch: AppMessagesManager['checklistBatcher']['batchMap']) => {
     for(const [key, list] of batch) {
+      // * taken out before the request: a tick made while it is on its way starts a list of its own, which
+      // * this loop sends after it (the batcher runs one batch at a time) instead of dropping it with this one
+      batch.delete(key);
       const [peerId, mid] = key.split(':').map(Number);
+      const toggles = [...list.keys()];
 
       const completedIds = new Set<number>();
       const incompletedIds = new Set<number>();
-      const incompletedItems = new Map<number, TodoCompletion>();
 
-      for(const [{taskId, oldItem, action}, promise] of list) {
+      for(const [{taskId, action}, promise] of list) {
         promise.resolve();
 
         if(action === 'complete') {
           incompletedIds.delete(taskId);
-          incompletedItems.delete(taskId);
           completedIds.add(taskId);
         } else {
           completedIds.delete(taskId);
           incompletedIds.add(taskId);
-          if(oldItem) {
-            incompletedItems.set(taskId, oldItem);
-          }
         }
       }
 
@@ -15887,6 +15902,7 @@ export class AppMessagesManager extends AppManager {
         continue;
       }
 
+      let refused = false;
       try {
         const updates = await this.apiManager.invokeApi('messages.toggleTodoCompleted', {
           completed: Array.from(completedIds),
@@ -15898,43 +15914,48 @@ export class AppMessagesManager extends AppManager {
         this.apiUpdatesManager.processUpdateMessage(updates);
       } catch(e) {
         console.error(e);
+        refused = (e as any).type !== 'MESSAGE_NOT_MODIFIED';
+      }
 
-        if((e as any).type !== 'MESSAGE_NOT_MODIFIED') {
-        // revert
-          const storage = this.getHistoryMessagesStorage(peerId);
-          const message = this.getMessageFromStorage(storage, mid) as Message.message;
-          if(!message) {
-            return;
+      const base = this.todoChecklistBases.get(key);
+      if(!refused) {
+        toggles.forEach((toggle) => base?.set(toggle.taskId, toggle.completion));
+      }
+
+      const queued = [...(batch.get(key)?.keys() ?? [])];
+      if(!queued.length) {
+        this.todoChecklistBases.delete(key);
+      }
+
+      // * the tasks of a refused request go back to what the server has, and the ones ticked since it went show
+      // * their newest tick on top of that (the server's answer to this request may have taken it off)
+      const taskIds = new Set([...(refused ? toggles : []), ...queued].map((toggle) => toggle.taskId));
+      const storage = this.getHistoryMessagesStorage(peerId);
+      const message = this.getMessageFromStorage(storage, mid) as Message.message;
+      if(!base || !taskIds.size || !message) {
+        continue;
+      }
+
+      this.modifyMessage(message, (message) => {
+        const checklist = message.media as MessageMedia.messageMediaToDo;
+        for(const taskId of taskIds) {
+          let completion = base.get(taskId);
+          for(const toggle of queued) {
+            if(toggle.taskId === taskId) completion = toggle.completion;
           }
 
-          this.modifyMessage(message, (message) => {
-            const checklist = message.media as MessageMedia.messageMediaToDo;
-            if(!checklist.completions) checklist.completions = []
-
-            for(const oldItem of incompletedItems.values()) {
-              checklist.completions.push(oldItem)
-            }
-
-            for(const taskId of completedIds) {
-              const idx = checklist.completions.findIndex((completion) => completion.id === taskId);
-              if(idx !== -1) {
-                checklist.completions.splice(idx, 1);
-              }
-            }
-          }, storage)
-
-          this.rootScope.dispatchEvent('message_edit', {
-            storageKey: storage.key,
-            peerId,
-            mid,
-            message
-          })
+          this.setTodoCompletion(checklist, taskId, completion);
         }
-      }
-    }
+      }, storage);
 
-    batch.clear()
-  }
+      this.rootScope.dispatchEvent('message_edit', {
+        storageKey: storage.key,
+        peerId,
+        mid,
+        message
+      });
+    }
+  };
 
   public async appendTodo(params: {
     peerId: PeerId,
@@ -16395,6 +16416,7 @@ class Batcher<Key, Id, Result> {
   private delay: number;
   private debounce: boolean;
   private timeoutId: number;
+  private processing: boolean;
   private _processBatch: (batch: Batcher<Key, Id, Result>['batchMap']) => Promise<any>;
 
   constructor(options: {
@@ -16409,15 +16431,24 @@ class Batcher<Key, Id, Result> {
   }
 
   private async processBatch() {
-    await this._processBatch(this.batchMap);
-
-    this.timeoutId = undefined;
-    if(this.batchMap.size) {
-      this.scheduleBatch();
+    this.processing = true;
+    try {
+      await this._processBatch(this.batchMap);
+    } finally {
+      this.processing = false;
+      this.timeoutId = undefined;
+      if(this.batchMap.size) {
+        this.scheduleBatch();
+      }
     }
   }
 
   private scheduleBatch() {
+    // * what is added while a batch is on its way waits for it: one batch at a time, a debounced one too
+    if(this.processing) {
+      return;
+    }
+
     if(this.debounce && this.timeoutId) {
       clearTimeout(this.timeoutId);
       this.timeoutId = undefined;
