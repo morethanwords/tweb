@@ -3125,7 +3125,7 @@ export class AppMessagesManager extends AppManager {
         this.waitingTranscriptions.set(key, promise = deferredPromise());
         promise.finally(() => {
           this.waitingTranscriptions.delete(key);
-        });
+        }).catch(noop);
       }
     }
 
@@ -3149,6 +3149,11 @@ export class AppMessagesManager extends AppManager {
         throw error;
       }
     });
+
+    if(promise) {
+      // * the update ends the wait; a request that fails without one (a flood wait, the network) ends it too
+      ret.catch((error) => promise.reject(error));
+    }
 
     return promise || ret;
   }
