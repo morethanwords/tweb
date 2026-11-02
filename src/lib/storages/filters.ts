@@ -449,14 +449,14 @@ export default class FiltersStorage extends AppManager {
     });
   }
 
+  /**
+   * The folder as the server takes it: each chat once, the pinned ones in `pinned_peers` only (as tdesktop's
+   * ChatFilter::tl), out of a copy - the folder kept here goes on including its pinned chats, which is how its
+   * chat list finds them, whether the edit is taken or not
+   */
   public getOutputDialogFilter(filter: MyDialogFilter) {
     const c = copy(filter);
-    /* convertment.forEach(([from, to]) => {
-      c[from] = c[to].map((peerId) => this.appPeersManager.getInputPeerById(peerId));
-    }); */
-
-    this.filterIncludedPinnedPeers(filter);
-
+    this.filterIncludedPinnedPeers(c);
     return c;
   }
 

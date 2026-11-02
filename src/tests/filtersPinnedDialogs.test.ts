@@ -1,5 +1,6 @@
 import {describe, expect, it, vi} from 'vitest';
 import FiltersStorage, {MyDialogFilter} from '@lib/storages/filters';
+import {inputPeerUser} from '@/tests/helpers/dialogFilter';
 
 const FILTER_ID = 2;
 
@@ -10,7 +11,7 @@ const FILTER_ID = 2;
 const makeStorage = (pinnedPeerIds: PeerId[], rejects?: boolean, pinLimit = 5) => {
   const filter = {
     id: FILTER_ID,
-    pinned_peers: pinnedPeerIds.map((peerId) => ({_: 'inputPeerUser', user_id: peerId})),
+    pinned_peers: pinnedPeerIds.map(inputPeerUser),
     pinnedPeerIds: pinnedPeerIds.slice()
   } as any as MyDialogFilter;
 
@@ -20,7 +21,7 @@ const makeStorage = (pinnedPeerIds: PeerId[], rejects?: boolean, pinLimit = 5) =
   const storage: any = Object.create(FiltersStorage.prototype);
   storage.filters = {[FILTER_ID]: filter};
   storage.rootScope = {dispatchEvent};
-  storage.appPeersManager = {getInputPeerById: (peerId: PeerId) => ({_: 'inputPeerUser', user_id: peerId})};
+  storage.appPeersManager = {getInputPeerById: inputPeerUser};
   storage.updateDialogFilter = updateDialogFilter;
   storage.apiManager = {getLimit: () => Promise.resolve(pinLimit)};
 
