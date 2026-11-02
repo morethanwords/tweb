@@ -3,6 +3,10 @@
 .input-message-input {
   &[data-chat-input-editor="tiptap"] {
     --iv-font-size: var(--messages-text-size);
+    // * spaces wrap as they come rather than hang past the line's end (`pre-wrap`, the page's for every editable): a
+    // * held space bar ran the caret out of the field, and Firefox scrolled the page's hidden overflow to show it, the
+    // * whole interface along. ProseMirror's own stylesheet, which the editor goes without, says the same
+    white-space: break-spaces;
   }
 
   &.ProseMirror-hideselection {

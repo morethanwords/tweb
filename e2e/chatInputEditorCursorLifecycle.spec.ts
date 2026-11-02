@@ -215,6 +215,28 @@ test('moves a body caret to the summary when Details is collapsed', async({page}
   .toBe('false');
 });
 
+// a space bar held down: spaces past the line's end wrap with the caret instead of hanging out of the field, where
+// Firefox scrolled the page's hidden overflow, and the whole interface with it, to show the caret (in the app: this
+// page has no such overflow, so here it is the caret out of the field that tells, in Chromium and WebKit)
+test('keeps the caret of a run of spaces inside the field, the page unscrolled', async({page}) => {
+  await setDocument(page, {type: 'doc', content: [paragraph('hello')]});
+  await setCaret(page, await blocks(page), 'hello', 'end');
+  for(let i = 0; i < 4; ++i) await page.keyboard.insertText(' '.repeat(100));
+  await settleNativeSelection(page);
+
+  const state = await page.evaluate(() => {
+    const editor = document.getElementById('editor');
+    const caret = getSelection().getRangeAt(0).getBoundingClientRect();
+    const box = editor.getBoundingClientRect();
+    const scrolled = [...document.querySelectorAll('*')].filter((element) => element.scrollLeft).map((element) => element.tagName);
+    return {caretRight: caret.right, boxRight: box.right, scrolled, scrollX: window.scrollX, text: editor.textContent.length};
+  });
+  expect(state.text).toBe(405);
+  expect(state.caretRight).toBeLessThanOrEqual(state.boxRight + 1);
+  expect(state.scrolled).toEqual([]);
+  expect(state.scrollX).toBe(0);
+});
+
 test('undo and redo map both content and caret through a browser typing transaction', async({page}) => {
   await setDocument(page, {type: 'doc', content: [paragraph('AB')]});
   const descriptors = await blocks(page);
