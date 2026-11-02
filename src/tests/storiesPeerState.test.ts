@@ -4,6 +4,7 @@ import ApiManagerMethods from '@appManagers/apiManagerMethods';
 import {canCopyStoryLink} from '@appManagers/utils/stories/storyLink';
 import {copyPendingTextToClipboard} from '@helpers/clipboard';
 import noop from '@helpers/noop';
+import withTimeout from '@helpers/schedulers/withTimeout';
 import {PEER_STORIES_POLL_INTERVAL} from '@appManagers/utils/stories/canPollPeerStories';
 import {Chat, PeerStories, RecentStory, StoryItem, Update, User} from '@layer';
 import '@helpers/peerIdPolyfill';
@@ -424,5 +425,48 @@ describe('what the peers on screen have in stories', () => {
     await manager.pollPeersStories([stranger, named]);
     expect([peers.get(stranger), peers.get(named)]).toEqual(before);
     expect(dispatchEvent).not.toHaveBeenCalled();
+  });
+});
+
+// A profile's stories come page by page (getPinnedStories), each read back out of the cache the pages are put in,
+// where the stories pinned to the top come first. The profile asks for the next page while the last one came full -
+// so with a number of stories that pages fill exactly, it asks once past the end, and the server answers with
+// nothing. That answer has to settle as an empty page: read back out of the cache by asking the very same request
+// again, it waited on itself, and the profile's stories stayed loading for good.
+describe('a profile\'s stories, page by page', () => {
+  const PAGE = 30;
+  const range = (from: number, to: number) => [...Array(from - to + 1)].map((_, i) => from - i);
+
+  /** a server holding `ids` pinned (newest first), `pinnedToTop` of them on the top */
+  const withPinned = (ids: number[], pinnedToTop: number[] = []) => withServer((method, params) => {
+    const older = params.offset_id ? ids.filter((id) => id < params.offset_id) : ids;
+    return {
+      _: 'stories.stories',
+      count: ids.length,
+      stories: older.slice(0, params.limit).map((id) => story(id, {pinned: true})),
+      pinned_to_top: pinnedToTop,
+      chats: [],
+      users: []
+    };
+  });
+
+  // * the ids of the page, or `'hung'` when it does not come
+  const page = async(promise: ReturnType<AppStoriesManager['getPinnedStories']>) => {
+    const result = await withTimeout(Promise.resolve(promise), 1000, 'hung' as const);
+    return result === 'hung' ? result : result.stories.map(({id}) => id);
+  };
+
+  it('end with an empty page past the last full one', async() => {
+    const {manager} = withPinned(range(PAGE, 1));
+
+    expect(await page(manager.getPinnedStories(stranger, PAGE))).toEqual(range(PAGE, 1));
+    expect(await page(manager.getPinnedStories(stranger, PAGE, 1))).toEqual([]);
+  });
+
+  it('come in the cache\'s order, the ones pinned to the top first', async() => {
+    const {manager} = withPinned(range(40, 1), [35, 31]);
+
+    expect(await page(manager.getPinnedStories(stranger, PAGE))).toEqual([35, 31, 40, 39, 38, 37, 36, 34, 33, 32, ...range(30, 11)]);
+    expect(await page(manager.getPinnedStories(stranger, PAGE, 11))).toEqual(range(10, 1));
   });
 });

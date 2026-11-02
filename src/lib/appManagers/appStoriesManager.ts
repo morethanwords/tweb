@@ -1367,8 +1367,12 @@ export default class AppStoriesManager extends AppManager {
         offset_id: offsetId
       },
       processResult: (response) => { // * response list can have same story if it's pinned to top
-        this.processLoadedStoriesStories(cache, true, limit, response);
-        return this.getPinnedStories(peerId, limit, offsetId);
+        const loaded = this.processLoadedStoriesStories(cache, true, limit, response);
+        // * read back out of the cache, in its order (the ones pinned to the top first), but never by asking again:
+        // * that would join this very request, which waits on it - as a page past the last one did, which the cache
+        // * cannot give (nothing is older than the story it is asked from) and the server gives empty
+        const slice = this.getCachedStories(cache, true, limit, offsetId);
+        return slice ? {...loaded, stories: slice} : loaded;
       }
     });
   }
