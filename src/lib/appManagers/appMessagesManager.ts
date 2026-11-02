@@ -8987,14 +8987,19 @@ export class AppMessagesManager extends AppManager {
     if(
       this.appPeersManager.isForum(peerId) &&
       dialog._ === 'dialog' &&
-      !dialog.pFlags.view_forum_as_messages &&
-      (read || await this.dialogsStorage.getForumUnreadCount(peerId))
+      !dialog.pFlags.view_forum_as_messages
     ) {
+      // * loads the first topics when none are yet
+      await this.dialogsStorage.getForumUnreadCount(peerId);
       const folder = this.dialogsStorage.getFolder(peerId);
-      for(const topicId of folder.unreadPeerIds) {
-        this.readForumTopic(peerId, topicId);
+      // * a forum shown as topics is read by reading its topics and is never marked unread: only an unread mark
+      // * set elsewhere on one with no unread topic left goes on below, to be cleared
+      if(folder.unreadPeerIds.size || !dialog.pFlags.unread_mark) {
+        for(const topicId of folder.unreadPeerIds) {
+          this.readForumTopic(peerId, topicId);
+        }
+        return;
       }
-      return;
     }
 
     const unread = read || dialog.pFlags?.unread_mark ? undefined : true;

@@ -244,6 +244,8 @@ export default class DialogsContextMenu {
       verify: async() => !!this.dialog &&
         !this.isCommunityDialog &&
         !this.threadId &&
+        // * a forum shown as topics is read, never marked unread (as tdesktop's Thread::canToggleUnread)
+        !(apiManagerProxy.isForum(this.peerId) && !(this.dialog as Dialog).pFlags.view_forum_as_messages) &&
         !(await this.managers.appMessagesManager.isDialogUnread(this.dialog))
     }, {
       icon: 'readchats',
