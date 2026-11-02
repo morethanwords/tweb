@@ -2193,17 +2193,19 @@ const Stories = (props: {
     rootScope.managers.appStoriesManager.getStoriesById(props.state.peerId, ids, true);
   };
   const pollViewedStoriesSet: Set<number> = new Set();
-  let pollViewedStoriesInterval: number;
   createEffect(() => {
-    if(isActive()) {
-      pollViewedStoriesInterval = window.setInterval(pollViewedStories, 60e3);
-
-      createEffect(() => {
-        pollViewedStoriesSet.add(currentStory().id);
-      });
-    } else {
-      clearInterval(pollViewedStoriesInterval);
+    if(!isActive()) {
+      return;
     }
+
+    // * stopped as the peer stops being the active one, and as the viewer closes on it: left running then, it held
+    // * this whole peer's part of the viewer for good
+    const pollViewedStoriesInterval = window.setInterval(pollViewedStories, 60e3);
+    onCleanup(() => clearInterval(pollViewedStoriesInterval));
+
+    createEffect(() => {
+      pollViewedStoriesSet.add(currentStory().id);
+    });
   });
 
   const readStories = (maxId: number) => {
