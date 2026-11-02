@@ -3359,6 +3359,7 @@ const lang = {
   'NoBlockedChannel2': 'Users removed from the channel by admins can\'t rejoin via invite links.',
   'UserRemovedBy': 'Removed by %1$s',
   'AddBannedErrorAdmin': 'You can\'t ban this user because they are an admin in this group and you are not allowed to demote them.',
+  'AddAdminErrorNotAMember': 'Sorry, you can\'t add this user as an admin because they are not a member of this group and you are not allowed to add them.',
   'AddToGroup': 'Add to Group',
   'AddToChannel': 'Add to Channel',
   'SetAsAdmin': 'Promote to admin',

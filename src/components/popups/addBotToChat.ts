@@ -1,4 +1,4 @@
-import {ChannelParticipant, Chat, ChatAdminRights, ChatParticipant, User} from '@layer';
+import {Chat, ChatAdminRights, User} from '@layer';
 import hasRights from '@appManagers/utils/chats/hasRights';
 import {isParticipantAdmin} from '@appManagers/utils/chats/isParticipantAdmin';
 import apiManagerProxy from '@lib/apiManagerProxy';
@@ -8,54 +8,14 @@ import showPickUserPopup from '@components/popups/pickUser';
 import {toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import type {AddBotToChatScope} from '@appManagers/utils/bots/getBotAddToChatScope';
-import canOpenBotAdminEditor from '@appManagers/utils/bots/canOpenBotAdminEditor';
+import canOpenAdminEditor from '@appManagers/utils/chats/canOpenAdminEditor';
 import getAddBotToChatAction from '@appManagers/utils/bots/getAddBotToChatAction';
 import getBotAdminRightsForChat from '@appManagers/utils/bots/getBotAdminRightsForChat';
 import getBotExistingAdminRights from '@appManagers/utils/bots/getBotExistingAdminRights';
 import hasBotAdminRights from '@appManagers/utils/bots/hasBotAdminRights';
 import mergeBotAdminRights from '@appManagers/utils/bots/mergeBotAdminRights';
-import tsNow from '@helpers/tsNow';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
-
-function makeMissingParticipant(
-  chat: Chat.chat | Chat.channel,
-  botId: BotId
-): ChatParticipant.chatParticipant | ChannelParticipant.channelParticipant {
-  const date = tsNow(true);
-  if(chat._ === 'channel') {
-    return {
-      _: 'channelParticipant',
-      user_id: botId,
-      date
-    };
-  }
-
-  return {
-    _: 'chatParticipant',
-    user_id: botId,
-    inviter_id: rootScope.myId.toUserId(),
-    date
-  };
-}
-
-async function getParticipantOrMissing(chat: Chat.chat | Chat.channel, botId: BotId) {
-  try {
-    return {
-      participant: await rootScope.managers.appProfileManager.getParticipant(chat.id, botId.toPeerId(false)),
-      missing: false
-    };
-  } catch(err) {
-    if((err as ApiError)?.type !== 'USER_NOT_PARTICIPANT') {
-      throw err;
-    }
-
-    return {
-      participant: makeMissingParticipant(chat, botId),
-      missing: true
-    };
-  }
-}
 
 export default async function showAddBotToChat(options: {
   botId: BotId,
@@ -115,8 +75,11 @@ export default async function showAddBotToChat(options: {
       const canAddAsAdmin = hasBotAdminRights(rights) && hasRights(chat, 'add_admins');
 
       if(canAddAsAdmin) {
-        const {participant, missing} = await getParticipantOrMissing(chat, options.botId);
-        if(!canOpenBotAdminEditor(chat, missing)) {
+        const {participant, missing} = await managers.appProfileManager.getParticipantOrMissing(
+          chatId,
+          options.botId.toPeerId(false)
+        );
+        if(!canOpenAdminEditor(chat, missing)) {
           toastNew({langPackKey: 'Error.RequestPeer.NoRights.Group'});
           return;
         }

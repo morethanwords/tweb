@@ -250,58 +250,6 @@ describe('selector dialog readiness', () => {
     listMiddlewareHelper.destroy();
     expect(rowAlive()).toBe(false);
   });
-
-  it('adds the people a global search finds after the members, only for a typed query', async() => {
-    const renderResultsFunc = vi.fn();
-    const searchContacts = vi.fn().mockResolvedValue({
-      my_results: [peerId(1), (2).toPeerId(true)],
-      results: [peerId(3), peerId(1)]
-    });
-    Object.assign(selector, {
-      peerType: ['channelParticipants'],
-      participantsGlobalSearch: true,
-      query: '',
-      loadedWhat: {channelParticipants: true},
-      tempIds: {},
-      renderResultsFunc,
-      managers: {appUsersManager: {searchContacts}}
-    });
-    const getMore = () => (selector as any)._getMoreResults();
-
-    expect(getMore()).toBeUndefined();
-    expect(searchContacts).not.toHaveBeenCalled();
-
-    (selector as any).query = 'bot';
-    await getMore();
-    expect(searchContacts).toHaveBeenCalledWith('bot');
-    expect(renderResultsFunc).toHaveBeenCalledWith([peerId(1), peerId(3)]);
-    expect(getMore()).toBeUndefined();
-  });
-
-  it('searches globally at once when no member matches the query', async() => {
-    const renderResultsFunc = vi.fn();
-    const searchContacts = vi.fn().mockResolvedValue({my_results: [], results: [peerId(5)]});
-    Object.assign(selector, {
-      peerType: ['channelParticipants'],
-      participantsGlobalSearch: true,
-      query: 'bot',
-      peerId: (10).toPeerId(true),
-      list: document.createElement('ul'),
-      channelParticipantsSkipped: new Set(),
-      participants: new Map(),
-      loadedWhat: {channelParticipants: false},
-      tempIds: {},
-      renderResultsFunc,
-      managers: {
-        appProfileManager: {getParticipants: vi.fn().mockResolvedValue({participants: [], count: 0})},
-        appUsersManager: {searchContacts}
-      }
-    });
-
-    await (selector as any)._getMoreResults();
-    expect(searchContacts).toHaveBeenCalledWith('bot');
-    expect(renderResultsFunc).toHaveBeenLastCalledWith([peerId(5)]);
-  });
 });
 
 describe('selector channel members paging', () => {
@@ -363,6 +311,66 @@ describe('selector channel members paging', () => {
       }
     };
   }
+
+  it('goes on to the next stage where the members end, though none of them matched', async() => {
+    const {selector, rows} = makeSelector([]);
+    const found = (5).toPeerId();
+    const getMoreCustom = vi.fn(async() => ({result: [found], isEnd: true}));
+    Object.assign(selector, {
+      peerType: ['channelParticipants', 'custom'],
+      query: 'bot',
+      loadedWhat: {channelParticipants: false, custom: false},
+      middlewareHelperLoader: getMiddleware(),
+      getMoreCustom
+    });
+
+    // * an empty list never scrolls to ask for the next stage, so it comes with the members' last page
+    await selector._getMoreResults();
+    expect(getMoreCustom).toHaveBeenCalledWith('bot', expect.any(Function));
+    expect(rows()).toEqual([found]);
+    expect(selector.loadedWhat).toEqual({channelParticipants: true, custom: true});
+  });
+
+  it('leaves the next stage to a newer search', async() => {
+    const {selector} = makeSelector([]);
+    const getMoreCustom = vi.fn(async() => ({result: [] as PeerId[], isEnd: true}));
+    const middlewareHelperLoader = getMiddleware();
+    Object.assign(selector, {
+      peerType: ['channelParticipants', 'custom'],
+      query: 'bot',
+      loadedWhat: {channelParticipants: false, custom: false},
+      middlewareHelperLoader,
+      getMoreCustom
+    });
+
+    const promise = selector._getMoreResults();
+    // * what a typed query does to the search that was running
+    middlewareHelperLoader.clean();
+    await promise;
+    expect(getMoreCustom).not.toHaveBeenCalled();
+  });
+
+  it('leaves a newer search its own custom stage when the previous one is still rendering', async() => {
+    const {selector} = makeSelector([]);
+    const rendered = deferredPromise<void>();
+    const renderResultsFunc = vi.fn(() => rendered);
+    Object.assign(selector, {
+      peerType: ['channelParticipants', 'custom'],
+      query: 'bot',
+      loadedWhat: {channelParticipants: true, custom: false},
+      getMoreCustom: async() => ({result: [(5).toPeerId()], isEnd: true}),
+      renderResultsFunc
+    });
+
+    const stage = selector._getMoreCustom();
+    await vi.waitFor(() => expect(renderResultsFunc).toHaveBeenCalled());
+    // * what a typed query does: every stage's request goes stale, and the stages start over
+    for(const type in selector.tempIds) ++selector.tempIds[type];
+    selector.loadedWhat = {channelParticipants: false, custom: false};
+    rendered.resolve();
+    await stage;
+    expect(selector.loadedWhat).toEqual({channelParticipants: false, custom: false});
+  });
 
   it('pages on past members that got no row, and gives up the place of one that left', async() => {
     const members = range(1, 120);

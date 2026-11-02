@@ -1,7 +1,7 @@
 import {describe, expect, test} from 'vitest';
 import {ChannelParticipant, Chat, ChatAdminRights, ChatParticipant, User, UserFull} from '@layer';
 import {CHAT_LEGACY_ADMIN_RIGHTS} from '@appManagers/utils/chats/constants';
-import canOpenBotAdminEditor from '@appManagers/utils/bots/canOpenBotAdminEditor';
+import canOpenAdminEditor from '@appManagers/utils/chats/canOpenAdminEditor';
 import getAddBotToChatAction from '@appManagers/utils/bots/getAddBotToChatAction';
 import getBotAddToChatScope from '@appManagers/utils/bots/getBotAddToChatScope';
 import getBotAdminRightsForChat from '@appManagers/utils/bots/getBotAdminRightsForChat';
@@ -184,10 +184,10 @@ describe('bot admin rights', () => {
     const cannotInvite = makeChannel({adminRights: makeRights({add_admins: true})});
     const canInvite = makeChannel({adminRights: makeRights({add_admins: true, invite_users: true})});
 
-    expect(canOpenBotAdminEditor(cannotInvite, true)).toBe(false);
-    expect(canOpenBotAdminEditor(cannotInvite, false)).toBe(true);
-    expect(canOpenBotAdminEditor(canInvite, true)).toBe(true);
-    expect(canOpenBotAdminEditor(makeChannel({broadcast: true}), true)).toBe(true);
+    expect(canOpenAdminEditor(cannotInvite, true)).toBe(false);
+    expect(canOpenAdminEditor(cannotInvite, false)).toBe(true);
+    expect(canOpenAdminEditor(canInvite, true)).toBe(true);
+    expect(canOpenAdminEditor(makeChannel({broadcast: true}), true)).toBe(true);
   });
 });
 

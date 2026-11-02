@@ -4,13 +4,14 @@ from '@helpers/dom/createParticipantContextMenu';
 import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
 import showPickUserPopup from '@components/popups/pickUser';
 import hasRights from '@appManagers/utils/chats/hasRights';
+import canOpenAdminEditor from '@appManagers/utils/chats/canOpenAdminEditor';
 import {isParticipantAdmin} from '@appManagers/utils/chats/isParticipantAdmin';
-import type {ChannelParticipant, Chat, ChatFull} from '@layer';
+import type {Chat, ChatFull} from '@layer';
 import {toastNew} from '@components/toast';
-import tsNow from '@helpers/tsNow';
 import type {Middleware} from '@helpers/middleware';
 import {createSelectorForParticipants} from './participantsSelector';
 import type {
+  AdministratorParticipant,
   AdministratorsSelectorOptions,
   AdministratorsSource,
   AdministratorsTab
@@ -32,28 +33,6 @@ export default async function createChatAdministratorsSource(options: {
     tab.managers.appProfileManager.getChatFull(chatId),
     tab.managers.apiManager.getAppConfig()
   ]);
-
-  const getParticipantOrMissing = async(userId: PeerId): Promise<ChannelParticipant> => {
-    try {
-      return await tab.managers.appProfileManager.getParticipant(chatId, userId) as ChannelParticipant;
-    } catch(err) {
-      if((err as ApiError)?.type !== 'USER_NOT_PARTICIPANT') {
-        throw err;
-      }
-
-      const isBotUser = await tab.managers.appUsersManager.isBot(userId.toUserId());
-      if(!isBroadcast && !isBotUser && !hasRights(chat, 'invite_users')) {
-        toastNew({langPackKey: 'Error.RequestPeer.NoRights.Group'});
-        return;
-      }
-
-      return {
-        _: 'channelParticipant',
-        user_id: userId.toUserId(),
-        date: tsNow(true)
-      };
-    }
-  };
 
   const canSeeAntiSpam = !isBroadcast &&
     chat.participants_count >= appConfig.telegram_antispam_group_size_min;
@@ -78,19 +57,61 @@ export default async function createChatAdministratorsSource(options: {
       });
     },
     openAddAdmin: (openPermissions) => {
-      const isChannel = chat._ === 'channel';
+      const {managers} = tab;
+      // * promoting adds to a channel or a supergroup (channels.editAdmin) whom a global search finds
+      // after the members, a bot among them: it cannot join a channel by itself.
+      // A basic group promotes only its members (messages.editChatAdmin)
+      const searchGlobally = chat._ === 'channel';
+      let closed = false;
       const popup = showPickUserPopup({
         titleLangKey: 'Administrators',
-        peerType: ['channelParticipants'],
-        participantsGlobalSearch: isChannel,
+        peerType: searchGlobally ? ['channelParticipants', 'custom'] : ['channelParticipants'],
+        getMoreCustom: searchGlobally ? async(q) => {
+          if(!q) {
+            return {result: [], isEnd: true};
+          }
+
+          const {my_results, results} = await managers.appUsersManager.searchContacts(q);
+          return {
+            result: my_results.concat(results).filter((peerId) => peerId.isUser()),
+            isEnd: true
+          };
+        } : undefined,
+        // * a member list shows its members, the user among them, by name, as the picker of members alone does
+        meAsSaved: false,
         peerId,
         onSelect: async(chosen) => {
           const userId = chosen[0].peerId;
-          const participant = popup.selector.participants.get(userId) ||
-            await getParticipantOrMissing(userId);
-          if(participant) {
-            openPermissions(participant);
+          let participant: AdministratorParticipant = popup.selector.participants.get(userId);
+          if(!participant) {
+            let missing: boolean;
+            let error: ApiError;
+            try {
+              ({participant, missing} = await managers.appProfileManager.getParticipantOrMissing(chatId, userId));
+            } catch(err) {
+              error = err as ApiError;
+            }
+
+            // * dismissed while the lookup ran, or left for another account (MIDDLEWARE)
+            if(closed || !middleware() || error?.type === 'MIDDLEWARE') {
+              return;
+            }
+
+            if(error) {
+              toastNew({langPackKey: 'Error.AnError'});
+              return;
+            }
+
+            if(!canOpenAdminEditor(chat, missing)) {
+              toastNew({langPackKey: 'AddAdminErrorNotAMember'});
+              return;
+            }
           }
+
+          openPermissions(participant);
+        },
+        onClose: () => {
+          closed = true;
         },
         placeholder: 'SearchPlaceholder'
       });

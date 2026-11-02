@@ -691,6 +691,32 @@ export class AppProfileManager extends AppManager {
     });
   }
 
+  /**
+   * What the admin editor starts from: the member as they are, or a plain member made up for someone
+   * not in the chat, whom promoting adds
+   */
+  public async getParticipantOrMissing(id: ChatId, peerId: PeerId): Promise<{
+    participant: ChannelParticipant | ChatParticipant,
+    missing: boolean
+  }> {
+    try {
+      return {participant: await this.getParticipant(id, peerId), missing: false};
+    } catch(err) {
+      if((err as ApiError)?.type !== 'USER_NOT_PARTICIPANT') {
+        throw err;
+      }
+
+      const userId = peerId.toUserId();
+      const date = tsNow(true);
+      return {
+        participant: this.appChatsManager.isChannel(id) || this.appChatsManager.isCommunity(id) ?
+          {_: 'channelParticipant', user_id: userId, date} :
+          {_: 'chatParticipant', user_id: userId, inviter_id: this.rootScope.myId.toUserId(), date},
+        missing: true
+      };
+    }
+  }
+
   public getChannelParticipants(options: GetChannelParticipantsOptions) {
     options = {...defaultGetChannelParticipantsOptions, ...options};
     const {id, filter, offset, limit} = options;

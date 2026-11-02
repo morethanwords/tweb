@@ -1,7 +1,8 @@
 import {Chat} from '@layer';
 import hasRights from '@appManagers/utils/chats/hasRights';
 
-export default function canOpenBotAdminEditor(
+// * promoting someone who is not in a group adds them to it, which takes the right to add members
+export default function canOpenAdminEditor(
   chat: Chat.chat | Chat.channel,
   participantMissing: boolean
 ) {
