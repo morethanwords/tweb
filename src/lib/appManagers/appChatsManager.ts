@@ -377,19 +377,27 @@ export class AppChatsManager extends AppManager {
       delete chat.linked_community_id;
     }
 
-    this.mirrorChat(chat);
-    this.rootScope.dispatchEvent('chat_update', chatId);
+    this.onChatChanged(chat);
     this.appCommunitiesManager.handlePeerLinkedCommunityUpdate({
       peerId: chatId.toPeerId(true),
       previousCommunityId,
       communityId
     });
-    if(this.peersStorage.isPeerNeeded(chatId.toPeerId(true))) {
+    return true;
+  }
+
+  /**
+   * A chat changed in place: the tabs' copy of it (what they read synchronously), the listeners and the copy kept
+   * for the next start follow
+   */
+  private onChatChanged(chat: Exclude<Chat, Chat.chatEmpty>) {
+    this.mirrorChat(chat);
+    this.rootScope.dispatchEvent('chat_update', chat.id);
+    if(this.peersStorage.isPeerNeeded(chat.id.toPeerId(true))) {
       this.storage.set({
-        [chatId]: chat
+        [chat.id]: chat
       });
     }
-    return true;
   }
 
   /**
@@ -1589,7 +1597,7 @@ export class AppChatsManager extends AppManager {
     const chat = this.chats[chatId] as Chat.chat;
     if(chat) {
       chat.default_banned_rights = update.default_banned_rights;
-      this.rootScope.dispatchEvent('chat_update', chatId);
+      this.onChatChanged(chat);
     }
   };
 }
