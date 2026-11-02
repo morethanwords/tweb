@@ -13,7 +13,7 @@ import cleanUsername from '@helpers/cleanUsername';
 import tsNow from '@helpers/tsNow';
 import isObject from '@helpers/object/isObject';
 import safeReplaceObject from '@helpers/object/safeReplaceObject';
-import {AccountEmojiStatuses, Chat, ContactsResolvedPeer, EmojiStatus, InputContact, InputGeoPoint, InputMedia, InputPeer, InputUser, User as MTUser, RequirementToContact, UserProfilePhoto, UserStatus} from '@layer';
+import {AccountEmojiStatuses, Chat, ContactsResolvedPeer, EmojiStatus, InputContact, InputGeoPoint, InputMedia, InputPeer, InputUser, User as MTUser, RequirementToContact, Update, UserProfilePhoto, UserStatus} from '@layer';
 import parseEntities from '@lib/richTextProcessor/parseEntities';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 import SearchIndex from '@lib/searchIndex';
@@ -103,20 +103,7 @@ export class AppUsersManager extends AppManager {
     });
 
     this.apiUpdatesManager.addMultipleEventsListeners({
-      updateUserStatus: (update) => {
-        const userId = update.user_id;
-        const user = this.users[userId];
-        if(!user) {
-          return;
-        }
-
-        user.status = update.status;
-        this.saveUserStatus(user.status);
-
-        // user.sortStatus = this.getUserStatusForSort(user.status);
-        this.rootScope.dispatchEvent('user_update', userId);
-        this.setUserToStateIfNeeded(user);
-      },
+      updateUserStatus: this.onUpdateUserStatus,
 
       // updateUserPhoto: (update) => {
       //   const userId = update.user_id;
@@ -851,6 +838,27 @@ export class AppUsersManager extends AppManager {
     }
   }
 
+  private onUpdateUserStatus = (update: Update.updateUserStatus) => {
+    const user = this.users[update.user_id];
+    if(!user) {
+      return;
+    }
+
+    user.status = update.status;
+    this.saveUserStatus(user.status);
+    this.onUserChanged(user);
+  };
+
+  /**
+   * A user changed in place: the tabs' copy of them (what they read synchronously - the contacts list shows the
+   * status from it), the listeners and the copy kept for the next start follow
+   */
+  private onUserChanged(user: User) {
+    this.mirrorUser(user);
+    this.rootScope.dispatchEvent('user_update', user.id);
+    this.setUserToStateIfNeeded(user);
+  }
+
   private mirrorUser(user: User) {
     MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
       name: 'peers',
@@ -916,18 +924,12 @@ export class AppUsersManager extends AppManager {
       delete user.linked_community_id;
     }
 
-    this.mirrorUser(user);
-    this.rootScope.dispatchEvent('user_update', userId);
+    this.onUserChanged(user);
     this.appCommunitiesManager.handlePeerLinkedCommunityUpdate({
       peerId: userId.toPeerId(false),
       previousCommunityId,
       communityId
     });
-    if(this.peersStorage.isPeerNeeded(userId.toPeerId(false))) {
-      this.storage.set({
-        [userId]: user
-      });
-    }
     return true;
   }
 
@@ -1081,9 +1083,7 @@ export class AppUsersManager extends AppManager {
       user.status._ === 'userStatusOnline' &&
       user.status.expires < timestampNow) {
       user.status = {_: 'userStatusOffline', was_online: user.status.expires};
-      this.rootScope.dispatchEvent('user_update', user.id);
-
-      this.setUserToStateIfNeeded(user);
+      this.onUserChanged(user);
     }
   }
 
@@ -1113,10 +1113,7 @@ export class AppUsersManager extends AppManager {
         expires: timestamp + onlineTimeFor
       };
 
-      // user.sortStatus = this.getUserStatusForSort(user.status);
-      this.rootScope.dispatchEvent('user_update', id);
-
-      this.setUserToStateIfNeeded(user);
+      this.onUserChanged(user);
     }
   }
 
@@ -1449,10 +1446,7 @@ export class AppUsersManager extends AppManager {
       };
 
       user.status = status;
-      // user.sortStatus = this.getUserStatusForSort(user.status);
-      this.rootScope.dispatchEvent('user_update', userId);
-
-      this.setUserToStateIfNeeded(user);
+      this.onUserChanged(user);
     }
   }
 
