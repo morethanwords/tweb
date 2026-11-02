@@ -58,7 +58,9 @@ const SANDBOX_ATTRIBUTES = [
   'allow-popups',
   'allow-forms',
   'allow-modals',
-  'allow-storage-access-by-user-activation'
+  'allow-storage-access-by-user-activation',
+  // * a 3D game made as a mini app captures the mouse as one sent as a game does (GAME_SANDBOX_ATTRIBUTES)
+  'allow-pointer-lock'
 ].join(' ');
 
 const DEVICEMOTION_TIMEOUT = 500;
