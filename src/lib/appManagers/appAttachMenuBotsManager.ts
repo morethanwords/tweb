@@ -139,7 +139,8 @@ export default class AppAttachMenuBotsManager extends AppManager {
       throw makeError('BOT_INVALID');
     }
 
-    return (!overwrite && this.getAttachMenuBotCached(botId)) ?? this.apiManager.invokeApiSingleProcess({
+    // * `||`, not `??`: asked to overwrite, the left side is `false`, which `??` would hand back instead of asking
+    return (!overwrite && this.getAttachMenuBotCached(botId)) || this.apiManager.invokeApiSingleProcess({
       method: 'messages.getAttachMenuBot',
       params: {
         bot: this.appUsersManager.getUserInput(botId)
