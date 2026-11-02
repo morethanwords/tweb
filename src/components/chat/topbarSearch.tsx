@@ -11,7 +11,7 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import {ChannelsChannelParticipants, Message, MessageReactions, Reaction, ReactionCount, SavedReactionTag} from '@layer';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
-import {createLoadableList} from '@components/sidebarRight/tabs/statistics';
+import {createLoadableList} from '@helpers/solid/createLoadableList';
 import {Middleware, MiddlewareHelper, getMiddleware} from '@helpers/middleware';
 import {NULL_PEER_ID} from '@appManagers/constants';
 import whichChild from '@helpers/dom/whichChild';
@@ -110,9 +110,31 @@ const renderHistoryResult = ({rowsMiddleware, peerId, fromSavedDialog, messages,
   return Promise.all(promises);
 };
 
-const createSearchLoader = (options: LoadOptions) => {
+export const createSearchLoader = (options: LoadOptions) => {
   const {middleware, peerId, threadId, query, fromPeerId, reaction, searchType, monoforumThreadId} = options;
   const fromSavedDialog = !!(peerId === rootScope.myId && threadId);
+  const searchOptions: RequestHistoryOptions = {
+    peerId: searchType === 'this' || !searchType ? peerId : NULL_PEER_ID,
+    threadId: searchType === 'this' || !searchType ? threadId : undefined,
+    monoforumThreadId,
+    query,
+    inputFilter: {_: 'inputMessagesFilterEmpty'},
+    limit: 30,
+    fromPeerId,
+    savedReaction: reaction ? [reaction as Reaction.reactionEmoji] : undefined,
+    isPublicHashtag: searchType === 'public',
+    isCacheableSearch: !!searchType,
+    hashtagType: searchType
+  };
+
+  // * once for the search, held by it: a page loaded on a scroll has no owner to give a release to, and kept the
+  // * found list in the worker for good, so the same search later came back from it with nothing found since
+  const key = getHistoryStorageKey({type: getHistoryStorageType(searchOptions), ...searchOptions});
+  rootScope.managers.appMessagesManager.toggleHistoryKeySubscription(key, true);
+  onCleanup(() => {
+    rootScope.managers.appMessagesManager.toggleHistoryKeySubscription(key, false);
+  });
+
   let lastMessage: Message.message | Message.messageService, loading = false, nextRate: number;
   const loadMore = async() => {
     if(loading) {
@@ -120,30 +142,12 @@ const createSearchLoader = (options: LoadOptions) => {
     }
     loading = true;
 
-    const offsetId = lastMessage?.mid || 0;
-    const offsetPeerId = lastMessage?.peerId || NULL_PEER_ID;
     const requestHistoryOptions: RequestHistoryOptions = {
-      peerId: searchType === 'this' || !searchType ? peerId : NULL_PEER_ID,
-      threadId: searchType === 'this' || !searchType ? threadId : undefined,
-      monoforumThreadId,
-      query,
-      inputFilter: {_: 'inputMessagesFilterEmpty'},
-      offsetId,
-      offsetPeerId,
-      limit: 30,
-      fromPeerId,
-      savedReaction: reaction ? [reaction as Reaction.reactionEmoji] : undefined,
-      nextRate,
-      isPublicHashtag: searchType === 'public',
-      isCacheableSearch: !!searchType,
-      hashtagType: searchType
+      ...searchOptions,
+      offsetId: lastMessage?.mid || 0,
+      offsetPeerId: lastMessage?.peerId || NULL_PEER_ID,
+      nextRate
     };
-
-    const key = getHistoryStorageKey({type: getHistoryStorageType(requestHistoryOptions), ...requestHistoryOptions});
-    rootScope.managers.appMessagesManager.toggleHistoryKeySubscription(key, true);
-    onCleanup(() => {
-      rootScope.managers.appMessagesManager.toggleHistoryKeySubscription(key, false);
-    });
 
     const result = await rootScope.managers.appMessagesManager.getHistory(requestHistoryOptions);
     if(!middleware()) {

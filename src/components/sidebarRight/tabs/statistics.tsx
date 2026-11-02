@@ -6,6 +6,7 @@ import Section from '@components/section';
 import {SliderSuperTabEventable} from '@components/sliderTab';
 import {For, render} from 'solid-js/web';
 import {Accessor, JSX, Show, createEffect, createRoot, createSignal, onMount} from 'solid-js';
+import {createLoadableList, type LoadableList} from '@helpers/solid/createLoadableList';
 import formatNumber from '@helpers/number/formatNumber';
 import {FontFamily} from '@config/font';
 import {DcId, PickByType} from '@types';
@@ -139,16 +140,7 @@ export const makeAbsStats = (value: number, approximate?: boolean): StatsAbsValu
   };
 };
 
-export type LoadableList<T extends any = any> = {rendered: (HTMLElement | JSX.Element)[], values: T[], left: number, count: number, loadMore?: () => Promise<void>};
-export const createLoadableList = <T extends any = any>(props: Partial<LoadableList<T>> = {}) => {
-  return createSignal<LoadableList<T>>({
-    rendered: [],
-    values: [],
-    left: 0,
-    count: 0,
-    ...props
-  }, {equals: false});
-};
+export {createLoadableList, type LoadableList};
 
 export const MoreButton = (props: {
   count: number,
