@@ -1305,15 +1305,22 @@ export class AppImManager extends EventListenerBase<{
     }
 
     try {
-      const cacheKeyArr = [options.botId, options.startParam];
+      // * what tells one opened app from another: the same app asked for again is shown, not opened twice
+      // * an empty start parameter or url (a `?startapp` link) is none, as an omitted one is
+      const cacheKeyArr: (string | number)[] = [options.botId, options.startParam || undefined, options.url || undefined];
       if(options.fromBotMenu || options.fromSideMenu || options.main) {
         cacheKeyArr.push('main');
+      } else if(!options.isSimpleWebView && !options.app && !joinChat) {
+        // * an attach-menu or keyboard app answers into the chat (and topic) it was asked in: requestWebView's peer
+        // * and query_id. Asked from another chat it is another app, or its answer would go to the first chat - tdesktop
+        // * keys them by thread too
+        cacheKeyArr.push('peer', options.peerId, options.threadId);
       }
       if(joinChat) {
         cacheKeyArr.push('join', joinChat.queryId);
       }
 
-      const cacheKey = cacheKeyArr.join('-');
+      const cacheKey = JSON.stringify(cacheKeyArr); // * a url holds '-' too: joined, it could pass for another key
 
       const webViewResultUrl = joinChat ?
         await managers.appChatInvitesManager.requestChatJoinWebView(joinChat.queryId, options.themeParams) :
