@@ -5602,6 +5602,22 @@ export default class ChatInput {
       }
     }
     if(!isCurrent()) return;
+    if(!richMessage && (editValue.trim() || message.media)) {
+      // * as tdesktop: a text over the limit (a caption's, under media) is not sent but cut by the user, who is told by
+      // * how much - the server would only refuse it. What is counted is the text as it goes (editMessage parses its
+      // * markdown and trims it), by characters rather than UTF-16 units: an edit the server takes is never held back
+      const maxLength = !canUseRichMessage ?
+        await this.managers.apiManager.getLimit('caption') :
+        (await this.managers.apiManager.getConfig()).message_length_max;
+      if(!isCurrent()) return;
+      const [sentText] = parseMarkdown(editValue, editEntities?.map((entity) => ({...entity})));
+      const excess = [...sentText].length - maxLength;
+      if(excess > 0) {
+        toastNew({langPackKey: 'EditLimitReached', langPackArguments: [excess]});
+        return;
+      }
+    }
+
     if(richMessage || editValue.trim() || message.media) {
       try {
         await this.managers.appMessagesManager.editMessage(

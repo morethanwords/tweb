@@ -1,6 +1,6 @@
 import {expect, Page, test} from '@playwright/test';
 import {PNG} from 'pngjs';
-import {openChatList} from './chatList.helpers';
+import {openSavedMessages as openSavedMessagesOf, sendSavedText} from './savedMessages.helpers';
 
 /*
  * A message edited where it stands changes on the compositor (`components/chat/bubbleTransitions`): its background
@@ -47,30 +47,12 @@ test.describe('a message edited where it stands', () => {
 
   async function openSavedMessages(page: Page) {
     test.setTimeout(4 * 60_000);
-    await openChatList(page);
-    await page.evaluate(() => {
-      const {appImManager, rootScope} = window as any;
-      appImManager.setInnerPeer({peerId: rootScope.myId});
-    });
-    await page.waitForFunction(() => {
-      const {appImManager, rootScope} = window as any;
-      const chat = appImManager.chat;
-      return chat?.peerId === rootScope.myId && chat.bubbles.scrollable.loadedAll.bottom;
-    }, null, {timeout: 60_000});
-    await page.waitForTimeout(1500);
+    await openSavedMessagesOf(page);
   }
 
   /** sends `text` and returns its id once the server has given it, the message at the list's end */
   async function sendText(page: Page, text: string): Promise<number> {
-    await page.evaluate((text) => {
-      const {appImManager, rootScope} = window as any;
-      appImManager.managers.appMessagesManager.sendText({peerId: rootScope.myId, text});
-    }, text);
-    const mid: number = await page.waitForFunction((text) => {
-      const bubble = Array.from(document.querySelectorAll<HTMLElement>('#column-center .bubbles-inner .bubble'))
-      .find((bubble) => bubble.querySelector('.message')?.textContent.startsWith(text));
-      return bubble && !bubble.classList.contains('is-sending') && Number.isInteger(+bubble.dataset.mid) && +bubble.dataset.mid;
-    }, text, {timeout: 15_000}).then((handle) => handle.jsonValue() as Promise<number>);
+    const mid = await sendSavedText(page, text);
     sent.push(mid);
     await page.waitForTimeout(500);
     return mid;

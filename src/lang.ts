@@ -4200,6 +4200,10 @@ const lang = {
   'SlowModeHint': 'Slow Mode is active. You can send\nyour next message in %1$s.',
   'SlowmodeSendError': 'Slow Mode is active. You can\'t send more than one message at once.',
   'SlowmodeSelectSendError': 'Slow Mode is enabled. You can\'t select more items.',
+  'EditLimitReached': {
+    'one_value': 'You\'ve reached the message text limit. Please make the text shorter by %d character.',
+    'other_value': 'You\'ve reached the message text limit. Please make the text shorter by %d characters.'
+  },
   'SlowmodeSendErrorTooLong': 'This text is too long to send as one message.\n\nSlow Mode is active. You can\'t send more than one message at once.',
   'Slowmode': 'Slow Mode',
   'SlowmodeInfoOff': 'Choose how long each member must wait before sending their next message.',
