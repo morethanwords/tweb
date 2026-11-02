@@ -14568,13 +14568,21 @@ export default class ChatBubbles {
     const result = this.getHistory(maxId, reverse, isBackLimit, additionalFullMid, justLoad, middleware, firstScreen, onCachedHistoryReady);
     const waitPromise = result.then((res) => res && (res.waitPromise || res.promise));
 
-    (reverse ? this.getHistoryTopPromise = waitPromise : this.getHistoryBottomPromise = waitPromise);
-    waitPromise.then(() => {
+    // * the load is over, and the next one of this end may go: not when the next one has taken over, nor in a chat left
+    const release = () => {
       if(!middleware()) {
-        return;
+        return false;
       }
 
       (reverse ? this.getHistoryTopPromise = undefined : this.getHistoryBottomPromise = undefined);
+      return true;
+    };
+
+    (reverse ? this.getHistoryTopPromise = waitPromise : this.getHistoryBottomPromise = waitPromise);
+    waitPromise.then(() => {
+      if(!release()) {
+        return;
+      }
 
       if(!justLoad) {
         // preload more
@@ -14596,7 +14604,11 @@ export default class ChatBubbles {
 
         // this.scrollable.onScroll();
       }
-    }, noop); // * a load taken over by the next one ends in PEER_CHANGED_ERROR, which its owner handles
+    }, () => {
+      // * a load taken over by the next one ends in PEER_CHANGED_ERROR, which its owner handles. One that failed is
+      // * over as well: the next scroll to this end asks again, rather than wait for it till the chat is opened anew
+      release();
+    });
 
     return result;
   }
