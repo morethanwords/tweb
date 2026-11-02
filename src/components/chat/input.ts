@@ -529,6 +529,8 @@ export default class ChatInput {
   // * lowercased usernames known to be guest bots (bot_guestchat). a leading @guestbot in the
   // * composer is a plain, sendable message, not an inline query — this cache keeps typing flicker-free
   private knownGuestBots: Set<string> = new Set();
+  // * the inline query asked for last: only its end, whichever way it ends, stops the composer's spinner
+  private inlineQueryGeneration = 0;
   /** @internal — used by ChatRecording */
   public listenerSetter: ListenerSetter;
   private middlewareHelper: MiddlewareHelper;
@@ -4492,6 +4494,15 @@ export default class ChatInput {
           setPreloaderShow(true);
         }
 
+        // * a query a newer one replaced (skipped by the debounce, or answered late) leaves the spinner to that one;
+        // * the last one stops it however it ends, a failed answer (BOT_RESPONSE_TIMEOUT, no inline mode) included
+        const generation = ++this.inlineQueryGeneration;
+        const hidePreloader = () => {
+          if(generation === this.inlineQueryGeneration) {
+            setPreloaderShow(false);
+          }
+        };
+
         this.inlineHelper.checkQuery(this.chat.peerId, username, query, canSendInline, allowGuestChat).then(({user, renderPromise, guestChat}) => {
           if(guestChat) {
             // * a guest bot was resolved for the first time — remember it so the next keystroke
@@ -4499,7 +4510,7 @@ export default class ChatInput {
             this.knownGuestBots.add(username.toLowerCase());
             needPlaceholder = false;
             this.messageInputEditor?.setInlineBotPlaceholder();
-            setPreloaderShow(false);
+            hidePreloader();
             return;
           }
 
@@ -4507,11 +4518,9 @@ export default class ChatInput {
             this.messageInputEditor?.setInlineBotPlaceholder(user.bot_inline_placeholder);
           }
 
-          renderPromise.then(() => {
-            setPreloaderShow(false);
-          });
+          renderPromise.then(hidePreloader, hidePreloader);
         }).catch((err: ApiError) => {
-          setPreloaderShow(false);
+          hidePreloader();
         });
       }
     }
