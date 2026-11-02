@@ -12753,7 +12753,9 @@ export class AppMessagesManager extends AppManager {
     const storage = this.scheduledMessagesStorage[peerId];
     if(storage) {
       const mids = update.messages.map((id) => this.appMessagesIdsManager.generateMessageId(id, channelId));
-      this.handleDeletedMessages(peerId, storage, mids);
+      // * scheduled ids are numbered apart from the history's, and in a channel fall on its messages' mids:
+      // * the history message with the same id is not marked deleted
+      this.handleDeletedMessages(peerId, storage, mids, false);
 
       this.rootScope.dispatchEvent('scheduled_delete', {peerId, mids});
     }
@@ -15109,7 +15111,10 @@ export class AppMessagesManager extends AppManager {
         this.resetPinnedMessagesCache(peerId, [mid], false);
       }
 
-      this.updateMessageRepliesIfNeeded(message, false);
+      // * a scheduled one was never counted among its thread's replies
+      if(shouldClearContexts) {
+        this.updateMessageRepliesIfNeeded(message, false);
+      }
 
       if(!message.pFlags.out && !message.pFlags.is_outgoing && message.pFlags.unread) {
         ++history.unread;
