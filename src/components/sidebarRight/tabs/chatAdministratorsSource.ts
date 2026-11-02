@@ -5,7 +5,9 @@ import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
 import showPickUserPopup from '@components/popups/pickUser';
 import hasRights from '@appManagers/utils/chats/hasRights';
 import {isParticipantAdmin} from '@appManagers/utils/chats/isParticipantAdmin';
-import type {Chat, ChatFull} from '@layer';
+import type {ChannelParticipant, Chat, ChatFull} from '@layer';
+import {toastNew} from '@components/toast';
+import tsNow from '@helpers/tsNow';
 import type {Middleware} from '@helpers/middleware';
 import {createSelectorForParticipants} from './participantsSelector';
 import type {
@@ -31,6 +33,28 @@ export default async function createChatAdministratorsSource(options: {
     tab.managers.apiManager.getAppConfig()
   ]);
 
+  const getParticipantOrMissing = async(userId: PeerId): Promise<ChannelParticipant> => {
+    try {
+      return await tab.managers.appProfileManager.getParticipant(chatId, userId) as ChannelParticipant;
+    } catch(err) {
+      if((err as ApiError)?.type !== 'USER_NOT_PARTICIPANT') {
+        throw err;
+      }
+
+      const isBotUser = await tab.managers.appUsersManager.isBot(userId.toUserId());
+      if(!isBroadcast && !isBotUser && !hasRights(chat, 'invite_users')) {
+        toastNew({langPackKey: 'Error.RequestPeer.NoRights.Group'});
+        return;
+      }
+
+      return {
+        _: 'channelParticipant',
+        user_id: userId.toUserId(),
+        date: tsNow(true)
+      };
+    }
+  };
+
   const canSeeAntiSpam = !isBroadcast &&
     chat.participants_count >= appConfig.telegram_antispam_group_size_min;
 
@@ -54,15 +78,19 @@ export default async function createChatAdministratorsSource(options: {
       });
     },
     openAddAdmin: (openPermissions) => {
+      const isChannel = chat._ === 'channel';
       const popup = showPickUserPopup({
         titleLangKey: 'Administrators',
         peerType: ['channelParticipants'],
+        participantsGlobalSearch: isChannel,
         peerId,
-        onSelect: (chosen) => {
-          const participant = popup.selector.participants.get(
-            chosen[0].peerId
-          );
-          openPermissions(participant);
+        onSelect: async(chosen) => {
+          const userId = chosen[0].peerId;
+          const participant = popup.selector.participants.get(userId) ||
+            await getParticipantOrMissing(userId);
+          if(participant) {
+            openPermissions(participant);
+          }
         },
         placeholder: 'SearchPlaceholder'
       });

@@ -90,7 +90,7 @@ export default class AppSelectPeers {
   private query = '';
   private cachedContacts: PeerId[];
 
-  private loadedWhat: Partial<{[k in 'dialogs' | 'archived' | 'contacts' | 'channelParticipants' | 'custom']: boolean}> = {};
+  private loadedWhat: Partial<{[k in 'dialogs' | 'archived' | 'contacts' | 'channelParticipants' | 'custom' | 'global']: boolean}> = {};
 
   private renderedPeerIds: Set<PeerId> = new Set();
   private pendingLists = new Set<HTMLElement>();
@@ -113,6 +113,7 @@ export default class AppSelectPeers {
   private channelParticipantsFilter: ChannelParticipantsFilter | ((q: string) => ChannelParticipantsFilter);
   private channelParticipantsUpdateFilter: (participant: ChannelParticipant | ChatParticipant) => boolean;
   private channelParticipantsUpdatePeerId: PeerId;
+  private participantsGlobalSearch: boolean;
   private meAsSaved: boolean;
   private onSelect: (peerId: PeerId, adding: boolean, e: MouseEvent) => MaybePromise<void | boolean>;
 
@@ -193,6 +194,7 @@ export default class AppSelectPeers {
     channelParticipantsFilter?: AppSelectPeers['channelParticipantsFilter'],
     channelParticipantsUpdateFilter?: AppSelectPeers['channelParticipantsUpdateFilter'],
     channelParticipantsUpdatePeerId?: AppSelectPeers['channelParticipantsUpdatePeerId'],
+    participantsGlobalSearch?: AppSelectPeers['participantsGlobalSearch'],
     noSearch?: AppSelectPeers['noSearch'],
     rippleEnabled?: AppSelectPeers['rippleEnabled'],
     avatarSize?: AppSelectPeers['avatarSize'],
@@ -724,6 +726,10 @@ export default class AppSelectPeers {
       this.channelParticipantsSkipped.clear();
     }
 
+    if(this.participantsGlobalSearch && value) {
+      this.loadedWhat.global = false;
+    }
+
     if(this.peerType.includes('custom')) {
       this.loadedWhat.custom = false;
     }
@@ -1005,6 +1011,28 @@ export default class AppSelectPeers {
     return this.list.childElementCount + this.channelParticipantsSkipped.size;
   }
 
+  private async getMoreGlobal() {
+    const {middleware} = this.getTempId('global');
+    const promise = this.managers.appUsersManager.searchContacts(this.query);
+
+    promise.catch(() => {
+      if(!middleware()) {
+        return;
+      }
+
+      this.loadedWhat.global = true;
+    });
+
+    const {my_results, results} = await promise;
+    if(!middleware()) {
+      return;
+    }
+
+    this.loadedWhat.global = true;
+    const foundIds = filterUnique(my_results.concat(results)).filter((peerId) => peerId.isUser());
+    await this.renderResultsFunc(foundIds);
+  }
+
   private async _getMoreCustom() {
     if(this.loadedWhat.custom) {
       return;
@@ -1055,7 +1083,21 @@ export default class AppSelectPeers {
     }
 
     if(this.peerType.includes('channelParticipants') && !this.loadedWhat.channelParticipants) {
-      return this.getMoreSomething('channelParticipants');
+      const promise = this.getMoreSomething('channelParticipants');
+      if(!this.participantsGlobalSearch || !this.query) {
+        return promise;
+      }
+
+      const middleware = this.middlewareHelperLoader.get();
+      return promise.then(() => {
+        if(middleware() && this.loadedWhat.channelParticipants) {
+          return this._getMoreResults();
+        }
+      });
+    }
+
+    if(this.participantsGlobalSearch && this.query && !this.loadedWhat.global) {
+      return this.getMoreGlobal();
     }
 
     if(this.peerType.includes('custom') && !this.loadedWhat.custom) {

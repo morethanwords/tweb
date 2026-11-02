@@ -250,6 +250,58 @@ describe('selector dialog readiness', () => {
     listMiddlewareHelper.destroy();
     expect(rowAlive()).toBe(false);
   });
+
+  it('adds the people a global search finds after the members, only for a typed query', async() => {
+    const renderResultsFunc = vi.fn();
+    const searchContacts = vi.fn().mockResolvedValue({
+      my_results: [peerId(1), (2).toPeerId(true)],
+      results: [peerId(3), peerId(1)]
+    });
+    Object.assign(selector, {
+      peerType: ['channelParticipants'],
+      participantsGlobalSearch: true,
+      query: '',
+      loadedWhat: {channelParticipants: true},
+      tempIds: {},
+      renderResultsFunc,
+      managers: {appUsersManager: {searchContacts}}
+    });
+    const getMore = () => (selector as any)._getMoreResults();
+
+    expect(getMore()).toBeUndefined();
+    expect(searchContacts).not.toHaveBeenCalled();
+
+    (selector as any).query = 'bot';
+    await getMore();
+    expect(searchContacts).toHaveBeenCalledWith('bot');
+    expect(renderResultsFunc).toHaveBeenCalledWith([peerId(1), peerId(3)]);
+    expect(getMore()).toBeUndefined();
+  });
+
+  it('searches globally at once when no member matches the query', async() => {
+    const renderResultsFunc = vi.fn();
+    const searchContacts = vi.fn().mockResolvedValue({my_results: [], results: [peerId(5)]});
+    Object.assign(selector, {
+      peerType: ['channelParticipants'],
+      participantsGlobalSearch: true,
+      query: 'bot',
+      peerId: (10).toPeerId(true),
+      list: document.createElement('ul'),
+      channelParticipantsSkipped: new Set(),
+      participants: new Map(),
+      loadedWhat: {channelParticipants: false},
+      tempIds: {},
+      renderResultsFunc,
+      managers: {
+        appProfileManager: {getParticipants: vi.fn().mockResolvedValue({participants: [], count: 0})},
+        appUsersManager: {searchContacts}
+      }
+    });
+
+    await (selector as any)._getMoreResults();
+    expect(searchContacts).toHaveBeenCalledWith('bot');
+    expect(renderResultsFunc).toHaveBeenLastCalledWith([peerId(5)]);
+  });
 });
 
 describe('selector channel members paging', () => {
