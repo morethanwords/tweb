@@ -1374,7 +1374,12 @@ export default class ChatBubbles {
       }
 
       if(_bubble && message._ === 'message') {
-        this.updateSolidMessageBodyIdentity(_bubble, message, tempId, cancelledBubbleReplacement);
+        // * a link the server knows already comes back with its preview in the answer itself, which the
+        // * bubble drawn without it takes below (the `webPage` branch): its body keeps the structure it was
+        // * drawn with, or that edit would take the preview for one it has and not draw it
+        const bringsWebPage = ((message.media as MessageMedia.messageMediaWebPage)?.webpage)?._ === 'webPage' &&
+          !_bubble.querySelector('.web');
+        this.updateSolidMessageBodyIdentity(_bubble, message, tempId, cancelledBubbleReplacement || bringsWebPage);
         if(cancelledBubbleReplacement) {
           this.retryCancelledBubbleReplacement(_bubble, message, fullMid);
         }

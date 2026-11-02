@@ -645,6 +645,36 @@ test.describe('a message sent from the composer', () => {
     await expectOwnLanding(page);
   });
 
+  // * a link whose preview the server has already comes back with it in the answer to the send, and no edit
+  // * follows: the bubble drawn before the answer takes the preview from the answer itself
+  test('shows the preview of a link the server knows as soon as it is sent', async({page}) => {
+    await openSavedMessages(page);
+    const url = 'https://telegram.org/blog/instant-view';
+    const sendLink = () => page.evaluate((url) => new Promise<number>((resolve) => {
+      const {appImManager, rootScope} = window as any;
+      const onSent = ({message}: {message: {mid: number, message: string}}) => {
+        if(message.message !== url) return;
+        rootScope.removeEventListener('message_sent', onSent);
+        resolve(message.mid);
+      };
+      rootScope.addEventListener('message_sent', onSent);
+      // * from the manager, as a send before the composer has the preview: the message goes without one
+      appImManager.managers.appMessagesManager.sendText({peerId: rootScope.myId, text: url});
+    }), url);
+    const hasPreview = (mid: number) => page.waitForFunction((mid) => (
+      !!document.querySelector(`#column-center .bubble[data-mid="${mid}"] .webpage`)
+    ), mid, {timeout: 10_000});
+
+    // * the first send has the server fetch the preview, if it has not yet
+    const first = await sendLink();
+    sent.push(first);
+    await hasPreview(first);
+
+    const second = await sendLink();
+    sent.push(second);
+    await hasPreview(second);
+  });
+
   test('just comes at the reduced animation level', async({page}) => {
     // * the system's reduce motion under the accessibility layer is the reduced level
     await page.emulateMedia({reducedMotion: 'reduce'});
