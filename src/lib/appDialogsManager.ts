@@ -1019,6 +1019,10 @@ export class AppDialogsManager {
       order.forEach((filterId, idx) => {
         const {indexKey, filter} = r[idx];
         const renderedFilter = this.filtersRendered[filterId];
+        // * a folder removed while its place was read is gone, with its list
+        if(!renderedFilter || !filter) {
+          return;
+        }
 
         this.xds[filterId].setIndexKey(indexKey);
 

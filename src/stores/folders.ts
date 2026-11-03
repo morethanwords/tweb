@@ -5,7 +5,6 @@ import rootScope from '@lib/rootScope';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '@appManagers/constants';
 import type {MyDialogFilter} from '@lib/storages/filters';
 import type {ReadingManagers} from '@lib/managers';
-import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export type StoredFolder = {
   id: number,
@@ -30,27 +29,6 @@ async function getNotificationCountForFilter(filterId: number, managers: Reading
   };
 }
 
-async function getFolderItemsInOrder(folderItems: StoredFolder[], managers: ReadingManagers) {
-  const filters = new Map<number, MyDialogFilter>();
-
-  const filtersPromises = folderItems
-  .filter((item) => item.id)
-  .map((item) => managers.filtersStorage.getFilter(item.id));
-
-  const filtersArr = (
-    await Promise.all(filtersPromises)
-  ).filter(Boolean);
-
-  for(const filter of filtersArr) {
-    filters.set(filter.id, filter);
-  }
-
-  return folderItems.sort((a, b) => {
-    if(!a.id || !b.id) return 0;
-    return filters.get(a.id)?.localId - filters.get(b.id)?.localId;
-  });
-}
-
 const useFoldersStore = createRoot(() => {
   const [selectedFolderId, _setSelectedFolderId] = createSignal<number>(FOLDER_ID_ALL);
   const [folderItems, setFolderItems] = createStore<StoredFolder[]>([]);
@@ -63,6 +41,27 @@ const useFoldersStore = createRoot(() => {
     setSelectedFolderId = onClick();
   });
 
+  // * the folders' events come in bursts - a reload is updates, removals and an order at once - while what a tab
+  // * shows of a folder is read from the worker in between. So what comes back is written onto the tabs as they are
+  // * then, never onto a copy taken before the read, and only while it is still the latest word on its folder:
+  // * every event of a folder, and a hydration, marks it, and what was asked for before its last mark is dropped
+  let lastMark = 0;
+  const marks = new Map<number, number>();
+  const markFolder = (folderId: number) => {
+    const mark = ++lastMark;
+    marks.set(folderId, mark);
+    return mark;
+  };
+
+  const isLatestMark = (folderId: number, mark: number) => marks.get(folderId) === mark;
+
+  // * the folders' order as the events have left it, taken as they come - with a place for a folder still being
+  // * read. A new folder is the last one until an order says otherwise, as the worker places it
+  let order: number[] = [];
+  const sortByOrder = (items: StoredFolder[]) => {
+    return items.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  };
+
   function updateFolderItem(folderId: number, payload: Partial<StoredFolder>) {
     const idx = folderItems.findIndex((item) => item.id === folderId);
     if(idx === -1) {
@@ -74,9 +73,11 @@ const useFoldersStore = createRoot(() => {
   }
 
   async function updateFolderNotifications(folderId: number) {
-    updateFolderItem(folderId, {
-      notifications: await getNotificationCountForFilter(folderId, rootScope.managers)
-    });
+    const mark = marks.get(folderId);
+    const notifications = await getNotificationCountForFilter(folderId, rootScope.managers);
+    if(isLatestMark(folderId, mark)) {
+      updateFolderItem(folderId, {notifications});
+    }
   }
 
   function updateAllFolderNotifications() {
@@ -101,25 +102,28 @@ const useFoldersStore = createRoot(() => {
   }
 
   async function updateOrAddFolder(filter: MyDialogFilter) {
-    const managers = bindManagersToSession(rootScope.managers);
-    const items = [...folderItems];
-    const existingItem = items.find((item) => item.id === filter.id);
+    const mark = markFolder(filter.id);
+    if(!order.includes(filter.id)) {
+      order.push(filter.id);
+    }
 
-    if(existingItem) {
-      updateFolderItem(filter.id, await makeFolderItemPayload(filter));
+    const payload = await makeFolderItemPayload(filter);
+    if(!isLatestMark(filter.id, mark)) {
       return;
     }
 
-    const [payload, orderedFolderItems] = await Promise.all([
-      makeFolderItemPayload(filter),
-      getFolderItemsInOrder(items, managers)
-    ]);
-
-    items.push(payload);
-    setFolderItems(orderedFolderItems);
+    if(folderItems.some((item) => item.id === filter.id)) {
+      updateFolderItem(filter.id, payload);
+    } else {
+      setFolderItems(sortByOrder([...folderItems, payload]));
+    }
   }
 
   function deleteFolder(filterId: number) {
+    // * before anything else: the folder may be on its way in still, and is not to come
+    markFolder(filterId);
+    indexOfAndSplice(order, filterId);
+
     const items = [...folderItems];
     const existingItemIndex = items.findIndex((item) => item.id === filterId);
 
@@ -135,49 +139,72 @@ const useFoldersStore = createRoot(() => {
     }
   }
 
-  function updateItemsOrder(order: number[]) {
-    order = [...order];
-    indexOfAndSplice(order, FOLDER_ID_ARCHIVE);
-
-    const items = [...folderItems];
-
-    items.sort((a, b) => {
-      const aIndex = order.indexOf(a.id);
-      const bIndex = order.indexOf(b.id);
-
-      if(aIndex === -1) return -1;
-      if(bIndex === -1) return 1;
-
-      return aIndex - bIndex;
-    });
-
-    setFolderItems(items);
+  function updateItemsOrder(newOrder: number[]) {
+    order = newOrder.filter((folderId) => folderId !== FOLDER_ID_ARCHIVE);
+    setFolderItems(sortByOrder([...folderItems]));
   }
 
   let lastHydrationId = 0;
   let listenersInited = false;
   async function hydrateFilters(filters: MyDialogFilter[]) {
-    const managers = bindManagersToSession(rootScope.managers);
     const hydrationId = ++lastHydrationId;
-    const folderFilters = filters.filter((filter) => filter.id !== FOLDER_ID_ARCHIVE);
-    const items = await Promise.all(folderFilters.map(makeFolderItemPayload));
-    const orderedItems = await getFolderItemsInOrder(items, managers);
+    const folderFilters = filters
+    .filter((filter) => filter.id !== FOLDER_ID_ARCHIVE)
+    .sort((a, b) => a.localId - b.localId);
 
+    // * the hydration is the word on every folder known: the ones it has are written, the rest go - each unless an
+    // * event of its own comes after
+    const marked = folderFilters.map((filter) => markFolder(filter.id));
+    const hydratedIds = folderFilters.map((filter) => filter.id);
+    const leaving = new Map<number, number>();
+    for(const folderId of [...order, ...folderItems.map((item) => item.id)]) {
+      if(!hydratedIds.includes(folderId) && !leaving.has(folderId)) {
+        leaving.set(folderId, markFolder(folderId));
+      }
+    }
+
+    order = [...hydratedIds, ...leaving.keys()];
+
+    const items = await Promise.all(folderFilters.map(makeFolderItemPayload));
     if(hydrationId !== lastHydrationId) {
       return;
     }
 
-    setFolderItems(orderedItems);
+    const gone = new Set<number>();
+    leaving.forEach((mark, folderId) => {
+      if(isLatestMark(folderId, mark)) {
+        gone.add(folderId);
+        indexOfAndSplice(order, folderId);
+      }
+    });
+
+    const nextItems = folderItems.filter((item) => !gone.has(item.id));
+    items.forEach((item, idx) => {
+      if(!isLatestMark(item.id, marked[idx])) {
+        return;
+      }
+
+      const existingIdx = nextItems.findIndex((nextItem) => nextItem.id === item.id);
+      if(existingIdx === -1) {
+        nextItems.push(item);
+      } else {
+        nextItems[existingIdx] = item;
+      }
+    });
+
+    setFolderItems(sortByOrder(nextItems));
     if(!listenersInited) {
       listenersInited = true;
       initListeners();
     }
   }
 
-  // * the tab goes to another account: these folders are not its, and a hydration still on its way is for the
-  // * previous account - the lists they open are gone already
+  // * the tab goes to another account: these folders are not its, and whatever is still being read for them -
+  // * a hydration included - is for the previous account; the lists they open are gone already
   function resetForAccountSwitch() {
     ++lastHydrationId;
+    marks.clear();
+    order = [];
     setFolderItems([]);
     _setSelectedFolderId(FOLDER_ID_ALL);
   }
@@ -218,8 +245,10 @@ const useFoldersStore = createRoot(() => {
         return;
       }
 
-      const isFolderAvailable = await rootScope.managers.filtersStorage.isFilterIdAvailable(selectedFolderId());
-      if(!isFolderAvailable) {
+      const folderId = untrack(selectedFolderId);
+      const isFolderAvailable = await rootScope.managers.filtersStorage.isFilterIdAvailable(folderId);
+      // * another folder picked meanwhile is the user's choice
+      if(!isFolderAvailable && untrack(selectedFolderId) === folderId) {
         setSelectedFolderId(FOLDER_ID_ALL);
       }
     });
