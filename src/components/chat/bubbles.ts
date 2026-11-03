@@ -11706,7 +11706,9 @@ export default class ChatBubbles {
               context.attachmentDiv.append(priceEl);
             }
           } else {
-            context.attachmentDiv = undefined;
+            // * an invoice with no picture: its title, price and description are all the bubble has
+            noAttachmentDivNeeded = true;
+            context.mediaRequiresMessageDiv = true;
           }
 
           if(isNotPaid) {
@@ -11742,8 +11744,10 @@ export default class ChatBubbles {
             richText = isAlreadyPaid ? undefined : wrapEmojiText((context.messageMedia as I).description);
           }
 
-          messageDiv.prepend(...[titleDiv, richText].filter(Boolean));
-          context.attachmentDiv.append(...[(!innerMedia || !isInvoice) && priceEl].filter(Boolean));
+          // * an invoice with no picture has no attachment (it is taken away above): its price is a line of the message,
+          // * under its title. Paid media puts its price over what it has drawn on the media
+          messageDiv.prepend(...[titleDiv, !innerMedia && priceEl, richText].filter(Boolean));
+          if(innerMedia && !isInvoice && priceEl) context.attachmentDiv.append(priceEl);
 
           if(!isInvoice) {}
           else if(!richText) context.canHaveTail = false;
