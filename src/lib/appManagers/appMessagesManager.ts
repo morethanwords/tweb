@@ -10449,7 +10449,7 @@ export class AppMessagesManager extends AppManager {
     const isForum = this.appPeersManager.isForum(peerId);
     const isBotforum = this.appPeersManager.isBotforum(peerId);
     let hasMention = false;
-    let hasUnreadReaction = false;
+    let reactionsRead = 0;
     // For a forum/botforum these reads happen inside a single topic; derive its
     // id from the messages so the server-side reset is scoped to that topic.
     let threadId: number;
@@ -10457,7 +10457,7 @@ export class AppMessagesManager extends AppManager {
       const message = this.getMessageByPeer(peerId, mid) as MyMessage;
       if(!message) continue;
       if(isMentionUnread(message)) hasMention = true;
-      if(getUnreadReactions(message)) hasUnreadReaction = true;
+      if(getUnreadReactions(message)) ++reactionsRead;
       if((isForum || isBotforum) && !threadId) {
         threadId = getMessageThreadId(message as Message.message, {isForum, isBotforum});
       }
@@ -10469,9 +10469,13 @@ export class AppMessagesManager extends AppManager {
     // forum topic the mention/reaction counters live on the TOPIC dialog (the
     // parent channel dialog tracks them per-topic, not aggregated), so read the
     // badge from the topic — otherwise reactions in topics never get reset.
+    // * `readReactions` reads EVERY reaction of the chat (topic), on every device: only once these messages
+    // * are all the badge has left, as Android does (ChatActivity reads the chat's reactions once its count
+    // * of unseen ones reaches 0) — one reaction seen out of thousands read them all before
     const dialog = this.dialogsStorage.getAnyDialog(peerId, threadId) as Dialog | ForumTopic | undefined;
     const hadUnreadMentions = !!dialog?.unread_mentions_count;
-    const hadUnreadReactions = !!dialog?.unread_reactions_count;
+    const unreadReactions = dialog?.unread_reactions_count || 0;
+    const readsAllReactions = !!reactionsRead && !!unreadReactions && reactionsRead >= unreadReactions;
 
     msgIds = msgIds.map((mid) => getServerMessageId(mid));
     let promise: Promise<any>, update: Update.updateChannelReadMessagesContents | Update.updateReadMessagesContents;
@@ -10507,12 +10511,12 @@ export class AppMessagesManager extends AppManager {
 
     this.apiUpdatesManager.processLocalUpdate(update);
 
-    if(hasMention || hasUnreadReaction) {
+    if(hasMention || readsAllReactions) {
       const followUps: Promise<any>[] = [promise];
       if(hasMention && hadUnreadMentions) {
         followUps.push(this.readMentions(peerId, threadId).catch(noop));
       }
-      if(hasUnreadReaction && hadUnreadReactions) {
+      if(readsAllReactions) {
         followUps.push(this.readMentions(peerId, threadId, true).catch(noop));
       }
       promise = Promise.all(followUps).then(() => {});

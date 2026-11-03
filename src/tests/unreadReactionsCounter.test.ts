@@ -47,8 +47,12 @@ function makeHarness(unreadReactionsCount: number) {
   } as any;
   const events: Array<[string, any]> = [];
   const invokeApi = vi.fn((method: string, _params?: any): Promise<any> => {
-    if(method === 'messages.readReactions') {
+    if(method === 'messages.readReactions' || method === 'messages.readMentions') {
       return Promise.resolve({_: 'messages.affectedHistory', pts: 2, pts_count: 1, offset: 0});
+    }
+
+    if(method === 'messages.readMessageContents') {
+      return Promise.resolve({_: 'messages.affectedMessages', pts: 2, pts_count: 1});
     }
 
     return Promise.reject(new Error('unexpected ' + method));
@@ -62,7 +66,8 @@ function makeHarness(unreadReactionsCount: number) {
       getPeerId: (peer: any) => peer?.user_id?.toPeerId?.(false) ?? peerId,
       getInputPeerById: () => ({_: 'inputPeerUser', user_id: peerId.toUserId(), access_hash: '0'}),
       isForum: () => false,
-      isBotforum: () => false
+      isBotforum: () => false,
+      isChannel: () => false
     },
     getMonoforumThreadId: (): undefined => undefined,
     getMessageByPeer: () => message,
@@ -161,3 +166,23 @@ describe('unread reactions counter', () => {
     expect(events.some(([name, payload]) => name === 'dialog_unread' && payload.dialog === dialog)).toBe(true);
   });
 });
+
+// * `messages.readReactions` reads every reaction of the chat on every device: a message seen reads its
+// * own (`readMessageContents`), and the whole chat's only when it was all that was left, as Android does
+// * (ChatActivity: markReactionsAsRead once its count of unseen ones is 0)
+describe('reading the messages seen', () => {
+  const methods = (invokeApi: ReturnType<typeof makeHarness>['invokeApi']) => invokeApi.mock.calls.map(([method]) => method);
+
+  test('a reaction seen out of many reads that message alone', async() => {
+    const {manager, invokeApi} = makeHarness(4700);
+    await manager.readMessages(peerId, [mid]);
+    expect(methods(invokeApi)).toEqual(['messages.readMessageContents']);
+  });
+
+  test('the last unread reaction seen reads the chat\'s reactions too', async() => {
+    const {manager, invokeApi} = makeHarness(1);
+    await manager.readMessages(peerId, [mid]);
+    expect(methods(invokeApi)).toEqual(['messages.readMessageContents', 'messages.readReactions']);
+  });
+});
+
