@@ -119,7 +119,7 @@ describe('AppPollsManager: deleting an added option', () => {
   it('waits for a poll still being sent', () => {
     const {manager, invokeApi, invokeAfterMessageIsSent} = makeManager();
     manager.deletePollAnswer(makeMessage({is_outgoing: true}), new Uint8Array([3]));
-    expect(invokeAfterMessageIsSent).toHaveBeenCalledWith(15, 'deletePollAnswer', expect.any(Function));
+    expect(invokeAfterMessageIsSent).toHaveBeenCalledWith(PEER_ID, 15, 'deletePollAnswer', expect.any(Function));
     expect(invokeApi).not.toHaveBeenCalled();
   });
 });

@@ -22,7 +22,7 @@ import rootScope from '@lib/rootScope';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 import {joinDeepPath} from '@helpers/object/setDeepProperty';
-import isLegacyMessageId from '@appManagers/utils/messageId/isLegacyMessageId';
+import isGlobalHistoryMessageId from '@appManagers/utils/messageId/isGlobalHistoryMessageId';
 import I18n from '@lib/langPack';
 import Modes from '@config/modes';
 import liteMode, {AnimationLevel} from '@helpers/liteMode';
@@ -128,7 +128,7 @@ function getTargetMessage(target: Target) {
  */
 function mirrorMessage(target: Pick<Target, 'storageKey' | 'mid'>, message: Message.message) {
   // where it is read from (`getMessageFromStorage`): a chat's history keeps the ids of the global one there
-  const storageKey = target.storageKey.endsWith('history') && isLegacyMessageId(target.mid) ?
+  const storageKey = target.storageKey.endsWith('history') && isGlobalHistoryMessageId(target.mid) ?
     apiManagerProxy.getGlobalHistoryMessagesStorage() :
     target.storageKey;
   (apiManagerProxy as unknown as {onMirrorTask: (payload: object) => void}).onMirrorTask({

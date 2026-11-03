@@ -1363,13 +1363,7 @@ export default class DialogsStorage extends AppManager {
       const mid = historyStorage?.channelJoinedMid;
       if(mid) {
         historyStorage.channelJoinedMid = undefined;
-        this.apiUpdatesManager.processLocalUpdate({
-          _: 'updateDeleteChannelMessages',
-          channel_id: peerId.toChatId(),
-          messages: [mid],
-          pts: undefined,
-          pts_count: undefined
-        });
+        this.appMessagesManager.processLocalDeleteMessages(peerId, [mid]);
       }
     }
 

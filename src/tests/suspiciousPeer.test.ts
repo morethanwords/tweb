@@ -2,6 +2,7 @@ import {loadChatBubbles, LOAD_CHAT_BUBBLES_TIMEOUT} from '@/tests/helpers/chatBu
 import '@helpers/peerIdPolyfill';
 import type {PeerSettings} from '@layer';
 import {ChatType} from '@components/chat/chatType';
+import {makeFullMid} from '@appManagers/utils/messages/fullMid';
 
 let ChatBubbles: typeof import('@components/chat/bubbles').default;
 let AppProfileManager: typeof import('@appManagers/appProfileManager').AppProfileManager;
@@ -182,9 +183,11 @@ describe('a message sent to a suspicious user', () => {
     };
 
     // * what the server's answer to the send runs
-    const confirm = (tempId: number) => manager.takeTempFinalizeCallbacks(tempId)?.endSuspiciousPeer?.callback({});
+    const confirm = (tempId: number) => manager.takeTempFinalizeCallbacks(peerId, tempId)?.endSuspiciousPeer?.callback({});
+    // * the waits kept for a send of the chat
+    const waits = (tempId: number) => manager.tempFinalizeCallbacks[makeFullMid(peerId, tempId)];
 
-    return {manager, appProfileManager, endSuspiciousPeer, send, confirm};
+    return {manager, appProfileManager, endSuspiciousPeer, send, confirm, waits};
   }
 
   test('ends it once the server has the message, not before', async() => {
@@ -226,15 +229,15 @@ describe('a message sent to a suspicious user', () => {
 
   test('a refused one, a scheduled one, or one to a group or to Saved Messages changes nothing', () => {
     const refused = createSending();
-    refused.manager.rejectPendingMessageCallbacks(refused.send(), {type: 'PEER_FLOOD'});
+    refused.manager.rejectPendingMessageCallbacks(USER_ID, refused.send(), {type: 'PEER_FLOOD'});
     expect(refused.endSuspiciousPeer).not.toHaveBeenCalled();
 
     const scheduled = createSending();
-    expect(scheduled.manager.tempFinalizeCallbacks[scheduled.send({isScheduled: true})]).toBeUndefined();
+    expect(scheduled.waits(scheduled.send({isScheduled: true}))).toBeUndefined();
 
     for(const peerId of [-USER_ID as PeerId, MY_ID]) {
       const other = createSending(peerId);
-      expect(other.manager.tempFinalizeCallbacks[other.send()]).toBeUndefined();
+      expect(other.waits(other.send())).toBeUndefined();
     }
   });
 });

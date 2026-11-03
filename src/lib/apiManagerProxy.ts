@@ -38,7 +38,7 @@ import {NULL_PEER_ID, TEST_NO_STREAMING, THUMB_TYPE_FULL} from '@appManagers/con
 import generateEmptyThumb from '@lib/storages/utils/thumbs/generateEmptyThumb';
 import getStickerThumbKey from '@lib/storages/utils/thumbs/getStickerThumbKey';
 import callbackify from '@helpers/callbackify';
-import isLegacyMessageId from '@appManagers/utils/messageId/isLegacyMessageId';
+import isGlobalHistoryMessageId from '@appManagers/utils/messageId/isGlobalHistoryMessageId';
 import {forgetLoadedURL} from '@helpers/dom/loadedUrlCache';
 import type {SharedObjectURLUpdate} from '@helpers/objectUrlUtils';
 import {replaceAppStateSilent, setAppStateSilent} from '@stores/appState';
@@ -1288,7 +1288,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
   public getMessageFromStorage(key: MessagesStorageKey, mid: number) {
     // * use global storage instead
-    if(key.endsWith('history') && isLegacyMessageId(mid)) {
+    if(key.endsWith('history') && isGlobalHistoryMessageId(mid)) {
       key = this.getGlobalHistoryMessagesStorage();
     }
 
@@ -1334,7 +1334,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
   }
 
   public getMessageById(messageId: number) {
-    if(isLegacyMessageId(messageId)) {
+    if(isGlobalHistoryMessageId(messageId)) {
       return this.getMessageFromStorage(this.getGlobalHistoryMessagesStorage(), messageId);
     }
   }

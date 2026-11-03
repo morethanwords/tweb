@@ -1602,7 +1602,8 @@ export default class ChatBubbles {
       bubble.classList.remove('is-outgoing');
       this.setBubbleSendingStatus(bubble, 'error');
 
-      const message = apiManagerProxy.getMessageById(+bubble.dataset.mid);
+      // * read in its chat's storage: a temporary id names no message on its own
+      const message = apiManagerProxy.getMessageFromStorage(storageKey, +bubble.dataset.mid);
       if(!message || !('repayRequest' in message) || !message.repayRequest) return;
 
       const serviceMsgText = bubble.querySelector('.service-msg-i18n-element');

@@ -602,7 +602,7 @@ export class AppPollsManager extends AppManager {
     const messageId = message.mid;
 
     if(message.pFlags.is_outgoing) {
-      return this.appMessagesManager.invokeAfterMessageIsSent(messageId, 'sendVote', (message) => {
+      return this.appMessagesManager.invokeAfterMessageIsSent(message.peerId, messageId, 'sendVote', (message) => {
         this.log('invoke sendVote callback');
         return this.sendVote(message as Message.message, optionIndexes);
       });
@@ -669,7 +669,7 @@ export class AppPollsManager extends AppManager {
   /** A poll still being sent has no id to change it by: the change waits for the message to be sent */
   private invokeWhenPollIsSent(message: Message.message, callbackName: string, callback: (message: Message.message) => Promise<void>) {
     if(message.pFlags.is_outgoing) {
-      return this.appMessagesManager.invokeAfterMessageIsSent(message.mid, callbackName, (message) => {
+      return this.appMessagesManager.invokeAfterMessageIsSent(message.peerId, message.mid, callbackName, (message) => {
         if(message?._ !== 'message') return;
         return callback(message);
       });

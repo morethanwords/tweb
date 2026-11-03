@@ -14,7 +14,7 @@ import LazyLoadQueueBase from '@components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import tsNow from '@helpers/tsNow';
 import {nextRandomUint, randomLong} from '@helpers/random';
-import {BotCommand, Chat, ChatFull, Dialog as MTDialog, DocumentAttribute, EphemeralMessage, EphemeralSendMessage, InputMedia, InputMessage, InputMessageReadMetric, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesBotCallbackAnswer, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, PageBlock, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, WebPage, GeoPoint, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood, MessagesDeleteSavedHistory, ChannelsDeleteParticipantHistory, MessagesDeleteHistory, MessagesDeleteTopicHistory, RichMessage} from '@layer';
+import {BotCommand, Chat, ChatFull, Dialog as MTDialog, DocumentAttribute, EphemeralMessage, EphemeralSendMessage, InputMedia, InputMessage, InputMessageReadMetric, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesBotCallbackAnswer, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, PageBlock, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, WebPage, GeoPoint, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, MessagesAffectedMessages, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood, MessagesDeleteSavedHistory, ChannelsDeleteParticipantHistory, MessagesDeleteHistory, MessagesDeleteTopicHistory, RichMessage} from '@layer';
 import type {InputRichMessage} from '@layer';
 import {ArgumentTypes, InvokeApiOptions, Modify} from '@types';
 import {LogTypes} from '@lib/logger';
@@ -80,6 +80,8 @@ import getPinnedMessagesKey from '@appManagers/utils/messages/getPinnedMessagesK
 import callbackify from '@helpers/callbackify';
 import wrapMessageEntities from '@lib/richTextProcessor/wrapMessageEntities';
 import isLegacyMessageId from '@appManagers/utils/messageId/isLegacyMessageId';
+import isGlobalHistoryMessageId from '@appManagers/utils/messageId/isGlobalHistoryMessageId';
+import {FullMid, makeFullMid} from '@appManagers/utils/messages/fullMid';
 import {joinDeepPath} from '@helpers/object/setDeepProperty';
 import insertInDescendSortedArray from '@helpers/array/insertInDescendSortedArray';
 import {LOCAL_ENTITIES} from '@lib/richTextProcessor';
@@ -723,8 +725,9 @@ export class AppMessagesManager extends AppManager {
   private pendingAfterMsgs: {[peerId: PeerId]: PendingAfterMsg} = {};
   public pendingTopMsgs: {[peerId in PeerId | `${PeerId}_${number}`]: number} = {};
   private fillConversationsPromises: {[folderId: string]: Promise<void>} = {};
+  // * by the chat too, not by the temporary id alone: two empty chats both start at 0.0001
   private tempFinalizeCallbacks: {
-    [tempId: string]: {
+    [fullMid: FullMid]: {
       [callbackName: string]: Partial<{
         deferred: CancellablePromise<void>,
         callback: (message: MyMessage) => Promise<any>
@@ -739,9 +742,9 @@ export class AppMessagesManager extends AppManager {
     // * the messages sent to the topic while it is being made: sent once it is, failed if it cannot be
     queuedMessages: Message.message[];
   }> = {};
-  // * a topic that could not be made, by `${peerId}_${tempId}` (temporary ids are a chat's own): a send still preparing
-  // * took it as its reply then
-  private failedBotforumTopics: Map<string, ApiError> = new Map();
+  // * a topic that could not be made, by its chat and temporary id (temporary ids are a chat's own): a send still
+  // * preparing took it as its reply then
+  private failedBotforumTopics: Map<FullMid, ApiError> = new Map();
 
   public sendSmthLazyLoadQueue = new LazyLoadQueueBase(10);
   private conversationPreviewLoadQueue = new LazyLoadQueueBase(4);
@@ -2525,8 +2528,8 @@ export class AppMessagesManager extends AppManager {
     return validation;
   }
 
-  public invokeAfterMessageIsSent(tempId: number, callbackName: string, callback: (message: MyMessage) => Promise<any>) {
-    const finalize = this.tempFinalizeCallbacks[tempId] ??= {};
+  public invokeAfterMessageIsSent(peerId: PeerId, tempId: number, callbackName: string, callback: (message: MyMessage) => Promise<any>) {
+    const finalize = this.tempFinalizeCallbacks[makeFullMid(peerId, tempId)] ??= {};
     let obj = finalize[callbackName];
     if(!obj) {
       obj = finalize[callbackName] = {deferred: deferredPromise<void>()};
@@ -2538,14 +2541,15 @@ export class AppMessagesManager extends AppManager {
     return obj.deferred;
   }
 
-  private takeTempFinalizeCallbacks(tempId: number) {
-    const callbacks = this.tempFinalizeCallbacks[tempId];
-    delete this.tempFinalizeCallbacks[tempId];
+  private takeTempFinalizeCallbacks(peerId: PeerId, tempId: number) {
+    const key = makeFullMid(peerId, tempId);
+    const callbacks = this.tempFinalizeCallbacks[key];
+    delete this.tempFinalizeCallbacks[key];
     return callbacks;
   }
 
-  public rejectPendingMessageCallbacks(tempId: number, error: ApiError) {
-    const callbacks = this.takeTempFinalizeCallbacks(tempId);
+  public rejectPendingMessageCallbacks(peerId: PeerId, tempId: number, error: ApiError) {
+    const callbacks = this.takeTempFinalizeCallbacks(peerId, tempId);
     if(!callbacks) {
       return;
     }
@@ -2587,7 +2591,7 @@ export class AppMessagesManager extends AppManager {
     const {mid, peerId} = message;
 
     if(message.pFlags.is_outgoing) {
-      return this.invokeAfterMessageIsSent(mid, 'edit', (message) => {
+      return this.invokeAfterMessageIsSent(peerId, mid, 'edit', (message) => {
         // this.log('invoke editMessage callback', message);
         return this.editMessage(message, text, options);
       });
@@ -2765,7 +2769,7 @@ export class AppMessagesManager extends AppManager {
       return callInvoke(message);
     }
 
-    return this.invokeAfterMessageIsSent(message.mid, 'edit', (message) => {
+    return this.invokeAfterMessageIsSent(message.peerId, message.mid, 'edit', (message) => {
       if(message?._ !== 'message') return;
       return callInvoke(message);
     });
@@ -5134,7 +5138,7 @@ export class AppMessagesManager extends AppManager {
     if(!options.isScheduled && !options.isWelcome && peerId.isUser() && peerId !== this.appPeersManager.peerId) {
       const endSuspiciousPeer = async() => this.appProfileManager.endSuspiciousPeer(peerId);
       if(pending) {
-        this.invokeAfterMessageIsSent(messageId, 'endSuspiciousPeer', endSuspiciousPeer);
+        this.invokeAfterMessageIsSent(peerId, messageId, 'endSuspiciousPeer', endSuspiciousPeer);
       } else {
         // * a send that makes no message of its own (an inline result with an outside file) has no pending one to wait for
         message.promise?.then(endSuspiciousPeer, noop);
@@ -5144,6 +5148,7 @@ export class AppMessagesManager extends AppManager {
     if(message.reactions) {
       const reaction = message.reactions.results[0].reaction;
       this.invokeAfterMessageIsSent(
+        peerId,
         messageId,
         'reactions',
         (message) => {
@@ -5163,7 +5168,7 @@ export class AppMessagesManager extends AppManager {
         }
         if(DO_NOT_SEND_MESSAGES) return;
 
-        const topicError = options.replyToMsgId && this.failedBotforumTopics.get(`${peerId}_${options.replyToMsgId}`);
+        const topicError = options.replyToMsgId && this.failedBotforumTopics.get(makeFullMid(peerId, options.replyToMsgId));
         if(topicError) {
           // * prepared for a topic that could not be made: it fails like those that waited for it, rather than being
           // * sent as a reply to the temporary id, which comes out as the message before it
@@ -5674,6 +5679,33 @@ export class AppMessagesManager extends AppManager {
     this.scheduleHandleNewDialogs(message.peerId, dialog);
   }
 
+  /**
+   * Deletes messages of a chat here, after the server has (`affected`) or with nothing to tell it. The chat is named, not
+   * looked up by the ids: a temporary one is only its chat's, so no chat is found by it. `peerId` is left out only for
+   * server ids, which find their chat themselves: those of the group a supergroup was made of, the call log's.
+   */
+  public processLocalDeleteMessages(peerId: PeerId, mids: number[], affected?: Pick<MessagesAffectedMessages, 'pts' | 'pts_count'>) {
+    if(peerId && this.appPeersManager.isChannel(peerId)) {
+      this.apiUpdatesManager.processLocalUpdate({
+        _: 'updateDeleteChannelMessages',
+        channel_id: peerId.toChatId(),
+        messages: mids,
+        pts: affected?.pts,
+        pts_count: affected?.pts_count
+      });
+      return;
+    }
+
+    const update: LocalUpdateDeleteMessages = {
+      _: 'updateDeleteMessages',
+      messages: mids,
+      pts: affected?.pts,
+      pts_count: affected?.pts_count,
+      peerId
+    };
+    this.apiUpdatesManager.processLocalUpdate(update);
+  }
+
   public cancelPendingMessage(randomId: string, preserveMedia = false) {
     const pendingData = this.pendingByRandomId[randomId];
 
@@ -5685,7 +5717,7 @@ export class AppMessagesManager extends AppManager {
       const {peerId, tempId, storage} = pendingData;
       // a welcome template's placeholder never entered the history: the section drops it
       if(storage.type === 'welcome') {
-        this.rejectPendingMessageCallbacks(tempId, makeError('UPLOAD_CANCELED'));
+        this.rejectPendingMessageCallbacks(peerId, tempId, makeError('UPLOAD_CANCELED'));
         delete this.pendingByRandomId[randomId];
         this.removeWelcomeMessages(peerId, [tempId]);
         return true;
@@ -5700,29 +5732,11 @@ export class AppMessagesManager extends AppManager {
         this.appPollsManager.runUploadingCancelCallbacksForPoll(pollId);
       }
 
-      if(this.appPeersManager.isChannel(peerId)) {
-        this.apiUpdatesManager.processLocalUpdate({
-          _: 'updateDeleteChannelMessages',
-          channel_id: peerId.toChatId(),
-          messages: [tempId],
-          pts: undefined,
-          pts_count: undefined
-        });
-      } else {
-        // * a temporary id is its chat's own, another chat may have the same one: the chat is named, not looked up by it
-        const update: LocalUpdateDeleteMessages = {
-          _: 'updateDeleteMessages',
-          messages: [tempId],
-          pts: undefined,
-          pts_count: undefined,
-          peerId
-        };
-        this.apiUpdatesManager.processLocalUpdate(update);
-      }
+      this.processLocalDeleteMessages(peerId, [tempId]);
 
       historyStorage.history.delete(tempId);
 
-      this.rejectPendingMessageCallbacks(tempId, makeError('UPLOAD_CANCELED'));
+      this.rejectPendingMessageCallbacks(peerId, tempId, makeError('UPLOAD_CANCELED'));
       tempMessage && this.handleReleasingMessage(tempMessage, storage, preserveMedia);
       delete this.pendingByRandomId[randomId];
       this.deleteMessageFromStorage(storage, tempId);
@@ -6892,7 +6906,7 @@ export class AppMessagesManager extends AppManager {
     }
 
     // * use global storage instead
-    if(storage?.type === 'history' && isLegacyMessageId(mid)) {
+    if(storage?.type === 'history' && isGlobalHistoryMessageId(mid)) {
       storage = this.getGlobalHistoryMessagesStorage();
     }
 
@@ -6906,7 +6920,7 @@ export class AppMessagesManager extends AppManager {
     // * global storage mirror
     if(
       storage?.type === 'history' &&
-      isLegacyMessageId(mid) &&
+      isGlobalHistoryMessageId(mid) &&
       storage.peerId !== GLOBAL_HISTORY_PEER_ID &&
       !this.isDeliveredEphemeralMessage(message)
     ) {
@@ -6930,7 +6944,7 @@ export class AppMessagesManager extends AppManager {
     const message = storage?.get(mid);
     if(
       storage?.type === 'history' &&
-      isLegacyMessageId(mid) &&
+      isGlobalHistoryMessageId(mid) &&
       storage.peerId !== GLOBAL_HISTORY_PEER_ID &&
       !this.isDeliveredEphemeralMessage(message)
     ) {
@@ -7000,7 +7014,7 @@ export class AppMessagesManager extends AppManager {
   }
 
   public getMessageById(messageId: number) {
-    if(isLegacyMessageId(messageId)) {
+    if(isGlobalHistoryMessageId(messageId)) {
       return this.getMessageFromStorage(this.getGlobalHistoryMessagesStorage(), messageId);
     }
 
@@ -7018,6 +7032,14 @@ export class AppMessagesManager extends AppManager {
     // }
 
     // return this.getMessageFromStorage(null, messageId);
+  }
+
+  /**
+   * The chat a message id is known under by deletedMessages, missingMessages and the single-message requests: a server
+   * id of a basic group is account-wide, so it goes under the global history's; a temporary id stays its chat's.
+   */
+  private getMessageIdPeerId(peerId: PeerId, mid: number) {
+    return peerId.isAnyChat() && isGlobalHistoryMessageId(mid) ? GLOBAL_HISTORY_PEER_ID : peerId;
   }
 
   public getMessageByPeer(peerId: PeerId, messageId: number) {
@@ -7344,18 +7366,7 @@ export class AppMessagesManager extends AppManager {
       }
 
       if(deletedMids.length) {
-        this.apiUpdatesManager.processLocalUpdate(peerId.isUser() ? {
-          _: 'updateDeleteMessages',
-          messages: deletedMids,
-          pts: undefined,
-          pts_count: undefined
-        } : {
-          _: 'updateDeleteChannelMessages',
-          channel_id: peerId.toChatId(),
-          messages: deletedMids,
-          pts: undefined,
-          pts_count: undefined
-        });
+        this.processLocalDeleteMessages(peerId, deletedMids);
       }
 
       if(!affectedHistory.offset) {
@@ -7593,18 +7604,19 @@ export class AppMessagesManager extends AppManager {
         ss.forEach((message, mid) => {
           delete this.references[peerId + '_' + mid];
         });
-
-        if(!this.appPeersManager.isChannel(peerId)) {
-          const globalStorage = this.getGlobalHistoryMessagesStorage();
-          ss.forEach((message, mid) => {
-            this.deleteMessageFromStorage(globalStorage, mid);
-          });
-        }
       }
 
       ss.forEach((message) => {
         this.handleReleasingMessage(message, ss);
       });
+
+      if(ss.type === 'history' && !this.appPeersManager.isChannel(peerId)) {
+        // * each goes from where the tab reads it: a server id from the global storage, a temporary one from the chat's
+        const globalStorage = this.getGlobalHistoryMessagesStorage();
+        ss.forEach((message, mid) => {
+          this.deleteMessageFromStorage(isGlobalHistoryMessageId(mid) ? globalStorage : ss, mid);
+        });
+      }
 
       ss.clear();
       delete s[peerId];
@@ -7870,8 +7882,7 @@ export class AppMessagesManager extends AppManager {
 
     const mid = this.appMessagesIdsManager.generateMessageId(message.id, channelId);
     message.mid = mid;
-    const missingPeerId = peerId.isAnyChat() && isLegacyMessageId(mid) ? GLOBAL_HISTORY_PEER_ID : peerId;
-    this.missingMessages.delete(`${missingPeerId}_${mid}`);
+    this.missingMessages.delete(`${this.getMessageIdPeerId(peerId, mid)}_${mid}`);
 
     if(isMessage) {
       if(options.isScheduled) {
@@ -9882,7 +9893,9 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  private async deleteMessagesInner(channelId: ChatId, mids: number[], revoke?: boolean, isRecursion?: boolean) {
+  // * `peerId` is the chat the messages are of, none for those of a group a supergroup was made of (processLocalDeleteMessages)
+  private async deleteMessagesInner(peerId: PeerId, mids: number[], revoke?: boolean, isRecursion?: boolean) {
+    const channelId = peerId && this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined;
     let promise: Promise<any>;
 
     if(channelId && !isRecursion) {
@@ -9909,13 +9922,7 @@ export class AppMessagesManager extends AppManager {
     }).filter(Boolean);
 
     if(DO_NOT_DELETE_MESSAGES) {
-      this.apiUpdatesManager.processLocalUpdate({
-        _: 'updateDeleteMessages',
-        messages: mids,
-        pts: 0,
-        pts_count: 0
-      });
-
+      this.processLocalDeleteMessages(peerId, mids, {pts: 0, pts_count: 0});
       return;
     }
 
@@ -9923,32 +9930,21 @@ export class AppMessagesManager extends AppManager {
       promise = this.apiManager.invokeApi('channels.deleteMessages', {
         channel: this.appChatsManager.getChannelInput(channelId),
         id: serverMessageIds
-      }).then((affectedMessages) => {
-        this.apiUpdatesManager.processLocalUpdate({
-          _: 'updateDeleteChannelMessages',
-          channel_id: channelId,
-          messages: mids,
-          pts: affectedMessages.pts,
-          pts_count: affectedMessages.pts_count
-        });
       });
     } else {
       promise = this.apiManager.invokeApi('messages.deleteMessages', {
         revoke,
         id: serverMessageIds
-      }).then((affectedMessages) => {
-        this.apiUpdatesManager.processLocalUpdate({
-          _: 'updateDeleteMessages',
-          messages: mids,
-          pts: affectedMessages.pts,
-          pts_count: affectedMessages.pts_count
-        });
       });
     }
 
+    promise = promise.then((affectedMessages: MessagesAffectedMessages) => {
+      this.processLocalDeleteMessages(peerId, mids, affectedMessages);
+    });
+
     const promises: (typeof promise)[] = [promise];
     if(overflowMids.length) {
-      promises.push(this.deleteMessagesInner(channelId, overflowMids, revoke, true));
+      promises.push(this.deleteMessagesInner(peerId, overflowMids, revoke, true));
     }
 
     return Promise.all(promises).then(noop);
@@ -9980,11 +9976,12 @@ export class AppMessagesManager extends AppManager {
       return true;
     });
 
-    const channelId = this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined;
-    const splitted = this.appMessagesIdsManager.splitMessageIdsByChannels(mids, channelId);
+    const isChannel = this.appPeersManager.isChannel(peerId);
+    const splitted = this.appMessagesIdsManager.splitMessageIdsByChannels(mids, isChannel ? peerId.toChatId() : undefined);
     const promises: Promise<void>[] = ephemeralMids.map((mid) => this.deleteEphemeralMessage(peerId, mid));
     promises.push(...splitted.map(([channelId, {mids}]) => {
-      return this.deleteMessagesInner(channelId, mids, revoke);
+      // * a supergroup's own ids, or the ids of the group it was made of; any other chat's are all its own
+      return this.deleteMessagesInner(channelId ? channelId.toPeerId(true) : (isChannel ? undefined : peerId), mids, revoke);
     }));
 
     return Promise.all(promises).then(noop);
@@ -10005,12 +10002,7 @@ export class AppMessagesManager extends AppManager {
 
       // Calls only ever live in private chats, whose server ids are already
       // tweb mids — no channel offset to apply.
-      this.apiUpdatesManager.processLocalUpdate({
-        _: 'updateDeleteMessages',
-        messages: result.messages,
-        pts: result.pts,
-        pts_count: result.pts_count
-      });
+      this.processLocalDeleteMessages(undefined, result.messages, result);
 
       // `offset` alone drives the loop, but a page that deleted nothing while
       // still reporting more would spin it forever — stop on no progress.
@@ -11130,7 +11122,7 @@ export class AppMessagesManager extends AppManager {
       // * the topic is not made: it goes, what waited for it fails (to be deleted or sent again), and the next
       // * send makes a topic anew
       this.log.error('botforum topic error:', error);
-      this.failedBotforumTopics.set(`${peerId}_${tempId}`, error as ApiError);
+      this.failedBotforumTopics.set(makeFullMid(peerId, tempId), error as ApiError);
       finish();
       this.cancelPendingMessage(randomId);
       this.onMessagesSendError(queuedMessages, error as ApiError);
@@ -13104,7 +13096,7 @@ export class AppMessagesManager extends AppManager {
   }
 
   public finalizePendingMessageCallbacks(storage: MessagesStorage, tempId: number, message: MyMessage) {
-    const callbacks = this.takeTempFinalizeCallbacks(tempId);
+    const callbacks = this.takeTempFinalizeCallbacks(storage.peerId, tempId);
     // this.log.warn(callbacks, tempId);
     if(callbacks !== undefined) {
       for(const name in callbacks) {
@@ -14790,9 +14782,8 @@ export class AppMessagesManager extends AppManager {
                 promise.resolve(currentMessage);
                 continue;
               }
-              const deletedPeerId = peerId.isAnyChat() && isLegacyMessageId(mid) ? GLOBAL_HISTORY_PEER_ID : peerId;
               if(!this.isMessageIdUnavailableByChannelCutoff(peerId, mid)) {
-                this.missingMessages.add(`${deletedPeerId}_${mid}`);
+                this.missingMessages.add(`${this.getMessageIdPeerId(peerId, mid)}_${mid}`);
               }
               promise.resolve(this.generateEmptyMessage(mid));
             }
@@ -14836,10 +14827,7 @@ export class AppMessagesManager extends AppManager {
       return message;
     }
 
-    if(peerId.isAnyChat() && isLegacyMessageId(mid)) {
-      peerId = GLOBAL_HISTORY_PEER_ID;
-    }
-
+    peerId = this.getMessageIdPeerId(peerId, mid);
     message = this.getMessageByPeer(peerId, mid);
     const unavailableByCutoff = this.isMessageIdUnavailableByChannelCutoff(peerId, mid);
     if(
@@ -15184,8 +15172,7 @@ export class AppMessagesManager extends AppManager {
 
     for(const mid of messages) {
       if(markAsDeleted) {
-        const deletedPeerId = peerId.isAnyChat() && isLegacyMessageId(mid) ? GLOBAL_HISTORY_PEER_ID : peerId;
-        const key = `${deletedPeerId}_${mid}`;
+        const key = `${this.getMessageIdPeerId(peerId, mid)}_${mid}`;
         this.deletedMessages.add(key);
         this.missingMessages.delete(key);
       }
