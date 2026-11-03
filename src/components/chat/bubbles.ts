@@ -7455,9 +7455,17 @@ export default class ChatBubbles {
     // }
   }
 
+  /**
+   * The history is read where it is shown as itself: a chat, a thread of comments. A list of its pinned messages, of
+   * its recent actions or of search results shows some of them and reads nothing (tdesktop's PinnedWidget and admin
+   * log neither), nor does a preview
+   */
+  private isHistoryRead() {
+    return !this.chat.isPreview && (this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion);
+  }
+
   public onScrolledAllDown() {
-    if(this.chat.isPreview) return;
-    if(this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion) {
+    if(this.isHistoryRead()) {
       const {peerId, threadId, monoforumThreadId} = this.chat;
       const historyMaxId = this.chat.getHistoryMaxId();
 
@@ -8554,7 +8562,8 @@ export default class ChatBubbles {
   }
 
   private setUnreadObserver(type: 'history' | 'content', bubble: HTMLElement, mid?: number, element: HTMLElement = bubble) {
-    if(this.chat.isPreview) return;
+    // * elsewhere a pin seen read the chat up to it, the newest one up to the chat's last message
+    if(!this.isHistoryRead()) return;
     mid ??= (bubble as any).maxBubbleMid;
     // registration always happens while rendering the current chat, so this snapshot is the
     // authoritative owner of every mid in the unreaded maps/sets
