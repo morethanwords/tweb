@@ -1305,7 +1305,14 @@ export default class Chat extends EventListenerBase<{
         promise = this.publishBackground('auto');
       }
 
+      // * a chat opened before the default background is up finishes it with its own: the closing is over then, and
+      // * taking the parts away would take the opened chat's (its list load, input, side media) instead
+      const middleware = this.middlewareHelper.get();
       callbackify(promise, () => {
+        if(!middleware()) {
+          return;
+        }
+
         hotReloadGuard.appSidebarRight.toggleSidebar(false);
         this.cleanup(true);
         this.bubbles.setPeer({peerId, samePeer: false, sameSearch: false});
