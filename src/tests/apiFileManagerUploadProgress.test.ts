@@ -1,29 +1,11 @@
 import '@helpers/peerIdPolyfill';
-import noop from '@helpers/noop';
-import {ApiFileManager} from '@appManagers/apiFileManager';
+import makeUploadFileManager from '@/tests/helpers/uploadFileManager';
 import {AppMessagesManager} from '@appManagers/appMessagesManager';
 import type {Progress} from '@lib/appDownloadManager';
 
-function makeManager() {
-  const dispatchEvent = vi.fn();
-  const manager = Object.create(ApiFileManager.prototype) as ApiFileManager;
-  Object.assign(manager as any, {
-    log: Object.assign(noop, {error: noop, warn: noop}),
-    tempId: 0,
-    uploadPromises: {},
-    downloadPulls: {},
-    downloadActives: {},
-    maxUploadParts: 4000,
-    rootScope: {dispatchEvent, premium: false},
-    apiManager: {invokeApi: () => Promise.resolve(true)}
-  });
-
-  return {manager, dispatchEvent};
-}
-
 describe('ApiFileManager.upload progress', () => {
   it('tells the upload\'s listeners how far it has gone, as well as the tabs', async() => {
-    const {manager, dispatchEvent} = makeManager();
+    const {manager, dispatchEvent} = makeUploadFileManager();
     // two parts of 64 KB: the part size of a file this small
     const file = new Blob([new Uint8Array(64 * 1024 + 1)]);
     const upload = manager.upload({file, fileName: 'two-parts'});

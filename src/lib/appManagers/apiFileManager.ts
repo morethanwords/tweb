@@ -1111,6 +1111,12 @@ export class ApiFileManager extends AppManager {
       return deferred;
     }
 
+    // * no bytes, no part to send (the server takes no empty one), and nothing would ever settle the upload
+    if(!fileSize && !DO_NOT_UPLOAD_FILES) {
+      deferred.reject(makeError('FILE_EMPTY'));
+      return deferred;
+    }
+
     let canceled = false, resolved = false;
     let errorHandler = (error: ApiError) => {
       if(error?.type !== 'UPLOAD_CANCELED') {

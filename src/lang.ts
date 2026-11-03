@@ -6735,6 +6735,7 @@ const lang = {
   'Ephemeral.CommandTooltip': 'Other members won’t see this message',
   'Ephemeral.ReplySingleMessage': 'You can send only one message in reply to this message.',
   'Ephemeral.SingleAttachment': 'You can attach only one file to an ephemeral message.',
+  'Attach.FileEmpty': 'File: %s is empty and can\'t be sent.',
   'Ephemeral.CantSchedule': 'Ephemeral messages can’t be scheduled.',
   'Ephemeral.UnsupportedContent': 'This content can’t be sent as an ephemeral message.',
   'Ephemeral.CommandAmbiguous': 'Add @username to choose which bot should receive this command.',

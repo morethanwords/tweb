@@ -22,6 +22,14 @@ import {
   userFullWithRating
 } from '../fixtures';
 
+// * a real photo: a real preview size also exercises the edit/spoiler/delete controls
+async function loadSandboxPhoto(name: string) {
+  const {CHAT_INPUT_EDITOR_TEST_MEDIA_URL} = await import('@components/chat/inputEditor/testData');
+  const response = await fetch(CHAT_INPUT_EDITOR_TEST_MEDIA_URL);
+  if(!response.ok) throw new Error('Sandbox media fixture could not be loaded');
+  return new File([await response.blob()], name, {type: 'image/jpeg'});
+}
+
 defineStories('Live streams', [false, true].map((active) => ({
   id: `rtmp/${active ? 'active' : 'start'}`,
   fixtureOnly: true,
@@ -66,12 +74,17 @@ defineStories('Composer & bots', [
     title: 'Attach media',
     open: async(ctx) => {
       const {default: showNewMediaPopup} = await import('@components/popups/newMedia');
-      // a real photo: a real preview size also exercises the edit/spoiler/delete controls
-      const {CHAT_INPUT_EDITOR_TEST_MEDIA_URL} = await import('@components/chat/inputEditor/testData');
-      const response = await fetch(CHAT_INPUT_EDITOR_TEST_MEDIA_URL);
-      if(!response.ok) throw new Error('Sandbox media fixture could not be loaded');
-      const file = new File([await response.blob()], 'sandbox-photo.jpg', {type: 'image/jpeg'});
-      showNewMediaPopup(ctx.chat(), [file], 'media');
+      showNewMediaPopup(ctx.chat(), [await loadSandboxPhoto('sandbox-photo.jpg')], 'media');
+    }
+  },
+  {
+    // an empty file is left out of what is sent, named in a toast (tdesktop's FileIsEmpty)
+    id: 'newMedia/empty',
+    fixtureOnly: true,
+    title: 'Attach media with an empty file',
+    open: async(ctx) => {
+      const {default: showNewMediaPopup} = await import('@components/popups/newMedia');
+      showNewMediaPopup(ctx.chat(), [await loadSandboxPhoto('sandbox-photo.jpg'), new File([], 'empty.txt', {type: 'text/plain'})], 'media');
     }
   },
   {

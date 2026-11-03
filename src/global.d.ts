@@ -156,7 +156,7 @@ declare global {
     'flac' | 'opus' | 'oga' | 'ogg' | 'ogv' | 'json' |
     'png' | 'avif' | 'jxl' | 'bmp' | 'heic' | 'heif';
 
-  type ApiFileManagerError = 'DOWNLOAD_CANCELED' | 'UPLOAD_CANCELED' | 'FILE_TOO_BIG' | 'REFERENCE_IS_NOT_REFRESHED';
+  type ApiFileManagerError = 'DOWNLOAD_CANCELED' | 'UPLOAD_CANCELED' | 'FILE_TOO_BIG' | 'FILE_EMPTY' | 'REFERENCE_IS_NOT_REFRESHED';
   type StorageError = 'STORAGE_OFFLINE' | 'NO_ENTRY_FOUND' | 'IDB_CREATE_TIMEOUT';
   type ReferenceError = 'NO_NEW_CONTEXT' | 'NO_CONTEXT';
   type NetworkerError = 'NETWORK_BAD_RESPONSE' | 'NETWORK_BAD_REQUEST' | 'BIND_FAILED';
