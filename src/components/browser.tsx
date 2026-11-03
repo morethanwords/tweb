@@ -327,7 +327,7 @@ type BrowserContextState = {
 type BrowserContextActions = {
   add: (page: BrowserPageProps) => void,
   select: (page: BrowserPageProps | number) => void,
-  close: (page: BrowserPageProps) => void,
+  close: (page: BrowserPageProps, withoutConfirmation?: boolean) => Promise<void>,
   destroy: () => void,
   toggleCollapsed: (collapse?: boolean) => void,
   replace: (page: BrowserPageProps, originalPage: BrowserPageProps) => void,
@@ -391,13 +391,21 @@ function createBrowserStore(props: {
         });
       });
     },
-    close: async(page) => {
-      const index = state.pages.findIndex((_page) => _page.id === page.id);
-      if(index === -1) {
+    close: async(page, withoutConfirmation) => {
+      const findIndex = () => state.pages.findIndex((_page) => _page.id === page.id);
+      if(findIndex() === -1) {
         return;
       }
 
-      await page.isConfirmationNeededOnClose?.();
+      if(!withoutConfirmation) {
+        await page.isConfirmationNeededOnClose?.();
+      }
+
+      // * the user was asked meanwhile: the page may be gone (the app closed itself) or moved
+      const index = findIndex();
+      if(index === -1) {
+        return;
+      }
 
       if(state.pages.length === 1) {
         actions.destroy();
@@ -683,13 +691,14 @@ export async function openWebAppInAppBrowser(options: WebAppLaunchOptions) {
   const session = getAccountSession();
   const deferred = deferredPromise<void>();
   const [needBackButton, setNeedBackButton] = createSignal(false);
-  const [destroy, setDestroy] = createSignal(false);
+  // * who closes it: the app's own close asks nothing, and goes ahead even while the user is asked about theirs
+  const [destroy, setDestroy] = createSignal<false | 'user' | 'app'>(false);
   const webApp = new WebApp({
     ...options,
     header: document.createElement('div'),
     title: document.createElement('div'),
     body: document.createElement('div'),
-    forceHide: () => setDestroy(true),
+    forceHide: (byApp) => setDestroy((closing) => byApp ? 'app' : closing || 'user'),
     onBackStatus: setNeedBackButton
   });
 
@@ -737,8 +746,13 @@ export async function openWebAppInAppBrowser(options: WebAppLaunchOptions) {
     });
 
     createEffect(() => {
-      if(destroy()) {
-        lastContext[1].close(initialState);
+      const closing = destroy();
+      if(closing) {
+        // * a close the user declined (the app asked to confirm it) leaves the app open, and able to close itself
+        // * again: left set, the signal would never change, and this would never run again
+        lastContext[1].close(initialState, closing === 'app').catch(() => {
+          setDestroy((closing) => closing === 'user' ? false : closing);
+        });
       }
     });
 
