@@ -497,19 +497,22 @@ export default class AppGiftsManager extends AppManager {
     return this.cachedStarGiftOptions = options;
   }
 
+  // * The two below are shown once the server has taken them, as tdesktop shows them (ToggleStarGiftSaved,
+  // * ConvertStarGift): shown before and refused, the gift stayed as it was shown, not as it is - and taking it back
+  // * would have to guess what it is (another screen or tab may have changed it meanwhile)
   public async toggleGiftHidden(gift: InputSavedStarGift, hidden: boolean) {
-    this.rootScope.dispatchEvent('star_gift_update', {input: gift, unsaved: hidden});
     await this.apiManager.invokeApiSingle('payments.saveStarGift', {
       stargift: gift,
       unsave: hidden
     });
+    this.rootScope.dispatchEvent('star_gift_update', {input: gift, unsaved: hidden});
   }
 
   public async convertGift(gift: InputSavedStarGift) {
-    this.rootScope.dispatchEvent('star_gift_update', {input: gift, converted: true});
     await this.apiManager.invokeApiSingle('payments.convertStarGift', {
       stargift: gift
     });
+    this.rootScope.dispatchEvent('star_gift_update', {input: gift, converted: true});
 
     // * the server does not edit the gift's message, so it is marked here for its bubble to say so
     if(gift._ !== 'inputSavedStarGiftUser') return;

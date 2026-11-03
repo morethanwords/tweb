@@ -370,3 +370,44 @@ describe('appGiftsManager: what the gift screens used to send by themselves', ()
     expect((await manager.getProfileGifts({peerId: PEER_ID})).chatNotificationsEnabled).toBeUndefined();
   });
 });
+
+// * Hiding, showing and converting a gift are shown once the server has taken them, as tdesktop shows them: shown
+// * before and refused, the gift stayed as it was shown, not as the server has it
+describe('appGiftsManager: a gift hidden, shown or converted', () => {
+  function withAnswer(answer: Promise<unknown>) {
+    const {manager} = makeGiftsManager();
+    const dispatchEvent = vi.fn();
+    Object.assign(manager as any, {
+      apiManager: {invokeApiSingle: vi.fn(() => answer)},
+      rootScope: {myId: 1 as PeerId, dispatchEvent}
+    });
+
+    const shown = () => dispatchEvent.mock.calls.filter(([type]) => type === 'star_gift_update').map(([, update]) => update);
+    return {manager, shown};
+  }
+
+  const input: InputSavedStarGift = {_: 'inputSavedStarGiftUser', msg_id: 7};
+  const refused = () => Promise.reject({type: 'STARGIFT_CONVERT_TOO_OLD'});
+
+  test('and refused, shows nothing', async() => {
+    const hiding = withAnswer(refused());
+    await expect(hiding.manager.toggleGiftHidden(input, true)).rejects.toBeDefined();
+    expect(hiding.shown()).toEqual([]);
+
+    const converting = withAnswer(refused());
+    await expect(converting.manager.convertGift(input)).rejects.toBeDefined();
+    expect(converting.shown()).toEqual([]);
+  });
+
+  test('and taken, is shown once it is', async() => {
+    let take: (value?: unknown) => void;
+    const {manager, shown} = withAnswer(new Promise((resolve) => take = resolve));
+    const hiding = manager.toggleGiftHidden(input, true);
+    await Promise.resolve();
+    expect(shown()).toEqual([]);
+
+    take(true);
+    await hiding;
+    expect(shown()).toEqual([{input, unsaved: true}]);
+  });
+});
