@@ -93,16 +93,21 @@ describe('AppCallsManager call_update routing', () => {
     expect(manager.getCall(CALL_ID)).toBeUndefined();
   });
 
-  it('falls back to a cross-account notification when no tab of the account is open', () => {
-    mocks.getTabs.mockReturnValue([{source: 'other', state: {accountNumber: 2, idleStartTime: 0}}]);
+  it('falls back to a cross-account notification in one tab when no tab of the account is open', () => {
+    mocks.getTabs.mockReturnValue([
+      {source: 'idle-other', state: {accountNumber: 2, idleStartTime: 1000}},
+      {source: 'other', state: {accountNumber: 2, idleStartTime: 0}}
+    ]);
     const {dispatchEvent, manager} = makeManager();
 
     manager.saveCall(requested());
 
+    // * the least idle tab: posted to no tab in particular, it came up in every one
+    expect(mocks.invokeVoid).toHaveBeenCalledTimes(1);
     expect(mocks.invokeVoid).toHaveBeenCalledWith('callNotification', expect.objectContaining({
       callId: CALL_ID,
       accountNumber: ACCOUNT
-    }));
+    }), 'other');
     expect(dispatchEvent).not.toHaveBeenCalled();
   });
 });

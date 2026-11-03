@@ -102,11 +102,12 @@ export class AppCallsManager extends AppManager {
         accountNumber: this.getAccountNumber()
       }, tab.source);
     } else if(anyTab) {
+      // * no tab shows the account: the least idle one shows the call - to no tab in particular, every tab would
       MTProtoMessagePort.getInstance<false>().invokeVoid('callNotification', {
         callerId: call.admin_id,
         callId: call.id,
         accountNumber: this.getAccountNumber()
-      });
+      }, anyTab.source);
     }
 
     return call;

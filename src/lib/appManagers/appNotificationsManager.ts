@@ -892,8 +892,14 @@ export class AppNotificationsManager extends AppManager {
     }
 
     const tab = await this.getNotificationTab(peerId);
+    // * no tab may show it: notifications of all accounts are off, and none shows this one. Posted to no tab in
+    // * particular, it would go to every tab there is - each playing the sound and showing it
+    if(!tab) {
+      return;
+    }
+
     // * the tab that would show it is idle -> the user is elsewhere (another tab, another window)
-    const isOtherTabActive = tab ? !!tab.state.idleStartTime : true;
+    const isOtherTabActive = !!tab.state.idleStartTime;
     if(!isOtherTabActive && isInitialSync) {
       return;
     }
@@ -903,7 +909,7 @@ export class AppNotificationsManager extends AppManager {
       ...payload,
       accountNumber: this.getAccountNumber(),
       isOtherTabActive
-    } as NotificationBuildTaskPayload, tab?.source);
+    } as NotificationBuildTaskPayload, tab.source);
   }
 
   private onUpdateNotifySettings = (update: Update.updateNotifySettings) => {
