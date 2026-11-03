@@ -72,7 +72,8 @@ export function flyWalletGemIntoChat(launch: AmountSceneLaunch, randomId: string
   const land = () => {
     finish();
     canvas.remove();
-    target.land();
+    // * its motion outlives its renderer: the card's gem goes on from the pose it landed in
+    target.land(gem);
   };
 
   const frame = (now: number) => {

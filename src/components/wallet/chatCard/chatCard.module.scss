@@ -8,8 +8,10 @@
 
 // * the desktop client's gram transfer card: 272 px wide with a 4 px border of the service plate, a 16 px card in it
 $ticker: #0fddff;
-$address: #005eda;
-// * the desktop card's dark blue reads about 2:1 on its sweep: the increased contrast setting whitens it
+// * iOS's ink for the address, with a faint light edge under it: about 2.4:1 on the sweep, where the increased
+// * contrast setting whitens it
+$address: #0036b2;
+$address-edge: rgba(255, 255, 255, .06);
 $address-contrast: rgba(255, 255, 255, .92);
 $center: rgb(14, 127, 255);
 
@@ -36,10 +38,10 @@ $center: rgb(14, 127, 255);
   transform-origin: 50% 50%;
 }
 
+// * nothing clips the card itself: its ribbon reaches out over its corner (the backdrop clips the sweep)
 .card {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
   border-radius: 1rem;
   padding-bottom: .6875rem;
   display: flex;
@@ -68,6 +70,15 @@ $center: rgb(14, 127, 255);
     outline: 2px solid $ticker;
     outline-offset: 2px;
   }
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
 }
 
 // * the sweep: a conic gradient on a layer that the cursor turns (--wallet-card-angle, a composited transition)
@@ -156,12 +167,33 @@ $center: rgb(14, 127, 255);
   flex: none;
 }
 
-.markPlayer {
+// * the gem's canvas, wider than its place: room for it to sway and swell
+.gem {
   position: absolute;
-  width: 63px;
-  height: 63px;
-  left: calc(50% - 31.5px);
-  top: calc(50% - 31.5px - 8px);
+  width: 78px;
+  height: 78px;
+  left: calc(50% - 39px);
+  top: calc(50% - 39px - 8px);
+
+  // * it can be held and pulled (chatCard/gemHold): a finger on it moves the gem, not the chat
+  &.isHoldable {
+    cursor: grab;
+    touch-action: none;
+  }
+
+  // * held, the canvas grows past its place: it stays centred on it
+  canvas {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+}
+
+// * the flat gem, without WebGL2 or with the animations off: over the wallet's own colour for it, whose stylesheet
+// * comes later with the lazily loaded gem
+.gem .gemFlat {
+  color: #fff;
 }
 
 .isHidden {
@@ -190,7 +222,8 @@ $center: rgb(14, 127, 255);
 }
 
 .ticker {
-  margin-inline-start: .4375rem;
+  // * a space of the digits' size, as iOS sets the amount and its currency apart
+  margin-inline-start: .3125rem;
   font-size: 1rem;
   color: var(--ticker-color);
 }
@@ -198,7 +231,7 @@ $center: rgb(14, 127, 255);
 // * right to left the ticker reads after the digits: on their left (the line itself reads left to right)
 :global(.is-rtl) .ticker {
   order: -1;
-  margin-inline: 0 .4375rem;
+  margin-inline: 0 .3125rem;
 }
 
 // * a digit's drum while an incoming card is read: as tall as the line and aligned to its top, its glyphs sit on
@@ -243,14 +276,17 @@ $center: rgb(14, 127, 255);
   align-self: stretch;
   margin-top: .3125rem;
   font-family: var(--font-monospace);
+  font-weight: var(--font-weight-bold);
   font-size: .75rem;
   line-height: .9375rem;
   white-space: pre;
   text-align: center;
   color: transparent;
+  text-shadow: 0 1px $address-edge;
   @include address-sheen($address);
 
   :global(.high-contrast) & {
+    text-shadow: none;
     @include address-sheen($address-contrast);
   }
 
@@ -280,17 +316,18 @@ $center: rgb(14, 127, 255);
   inset: 0;
   width: 100%;
   height: 100%;
+  border-radius: inherit;
   pointer-events: none;
   z-index: 2;
 }
 
-// * the ribbon's colour by the transfer's outcome
+// * the ribbon's colour by the transfer's outcome (iOS's sent and received)
 .isSent {
-  --ribbon-color: #4ab44a;
+  --ribbon-color: #00cf00;
 }
 
 .isReceived {
-  --ribbon-color: #5ec2ff;
+  --ribbon-color: #42b0ff;
 }
 
 .isFailed {
@@ -311,31 +348,50 @@ $center: rgb(14, 127, 255);
   }
 }
 
-// * the corner ribbon (the gift badge, at the inline-end corner): its colour fills it only at rest, the reveal
-// * paints it from the clock
-.card .ribbon {
-  top: 0;
-  inset-inline-end: 0;
+// * the corner ribbon, iOS's (TransferCardRibbonGeometry): a sash over the inline-end corner, reaching 2 px past
+// * the card's edges, turned over in RTL. Its colour fills it only at rest, the reveal paints it from the clock
+.ribbon {
+  position: absolute;
+  top: -2px;
+  inset-inline-end: -2px;
+  width: 54.8px;
+  height: 54.8px;
+  z-index: 2;
+  pointer-events: none;
   background: var(--ribbon-color, #{$ticker});
+  clip-path: path("M50.115 24.659L30.142 4.686C28.413 2.957 27.548 2.092 26.539 1.474C25.644 0.925 24.669 0.521 23.648 0.276C22.497 0 21.274 0 18.828 0L4.897 0C2.474 0 1.262 0 0.701 0.479C0.214 0.895 -0.044 1.519 0.006 2.157C0.064 2.892 0.921 3.749 2.634 5.463L49.338 52.166C51.052 53.88 51.908 54.737 52.644 54.795C53.282 54.845 53.906 54.586 54.322 54.1C54.801 53.539 54.801 52.327 54.801 49.904L54.801 35.972C54.801 33.526 54.801 32.303 54.525 31.153C54.28 30.132 53.876 29.157 53.327 28.262C52.709 27.253 51.844 26.388 50.115 24.659Z");
+
+  :global(.is-rtl) & {
+    clip-path: path("M4.686 24.659L24.659 4.686C26.388 2.957 27.253 2.092 28.262 1.474C29.157 0.925 30.132 0.521 31.153 0.276C32.303 0 33.526 0 35.972 0L49.904 0C52.327 0 53.539 0 54.1 0.479C54.586 0.895 54.845 1.519 54.795 2.157C54.737 2.892 53.88 3.749 52.166 5.463L5.463 52.166C3.749 53.88 2.892 54.737 2.157 54.795C1.519 54.845 0.895 54.586 0.479 54.1C0 53.539 0 52.327 0 49.904L0 35.972C0 33.526 0 32.303 0.276 31.153C0.521 30.132 0.925 29.157 1.474 28.262C2.092 27.253 2.957 26.388 4.686 24.659Z");
+  }
 
   &.isBare {
     background: none;
   }
 }
 
+// * the word's centre in the ribbon, from its inline-start edge (iOS: the shape's centre, a point lower)
+$word-x: 33.057px;
+$word-y: 22.744px;
+
+// * iOS's 11 pt semibold, set smaller by the script when it is wider than 52 px
 .ribbonText {
-  position: relative;
+  position: absolute;
+  inset-inline-start: $word-x;
+  top: $word-y;
   z-index: 1;
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+  transform: translate(calc(-50% * var(--reflect)), -50%) rotate(calc(45deg * var(--reflect)));
 }
 
+// * the word itself: the reveal moves it up into its place
 .ribbonWord {
   display: block;
 }
-
-// * the word's centre in the badge, from its inline-start edge: the badge turns its 60 × 10 text box by 45° and
-// * moves it by (15, 10), mirrored right to left
-$word-x: 33.5px;
-$word-y: 22.7px;
 
 .ribbonFill {
   position: absolute;

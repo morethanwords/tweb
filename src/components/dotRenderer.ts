@@ -10,7 +10,7 @@ import getUnsafeRandomInt from '@helpers/number/getUnsafeRandomInt';
 import readValue, {ValueOrGetter} from '@helpers/solid/readValue';
 import {applyColorOnContext} from '@lib/lottie/lottiePlayer';
 import rootScope from '@lib/rootScope';
-import animationIntersector, {AnimationItemGroup, AnimationItemWrapper} from '@components/animationIntersector';
+import animationIntersector, {AnimationItemGroup, AnimationItemNested, AnimationItemWrapper} from '@components/animationIntersector';
 import BluffSpoilerController from '@components/bluffSpoilerController';
 import DotRendererCore, {buildDotRendererConfig, drawClippingCircle, getDefaultParticlesCount, DotRendererConfig, DotRendererShaderURLs} from '@components/dotRendererCore';
 import {drawImageFromSource} from '@components/messageSpoilerOverlay/drawImageFromSource';
@@ -44,40 +44,6 @@ const getTextSpoilerConfig = (dpr: number): Partial<DotRendererConfig> => ({
   longevity: 5.0
 });
 
-export class AnimationItemNested implements AnimationItemWrapper {
-  public autoplay = true;
-  public loop = true;
-  public paused = true;
-
-  constructor(private options: {
-    onPlay: () => void,
-    onPause: () => void,
-    onDestroy?: () => void
-  }) {}
-
-  public remove() {
-    this.pause();
-    this.options.onDestroy?.();
-  }
-
-  public play() {
-    if(!this.paused) {
-      return;
-    }
-
-    this.paused = false;
-    this.options.onPlay();
-  }
-
-  public pause() {
-    if(this.paused) {
-      return;
-    }
-
-    this.paused = true;
-    this.options.onPause();
-  }
-}
 
 export default class DotRenderer implements AnimationItemWrapper {
   private static createdIndex = -1;

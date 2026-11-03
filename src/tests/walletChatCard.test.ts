@@ -1,4 +1,4 @@
-import {bumpDuration, bumpShape, joinReadLine, READ_PRESS, READ_ROLL_DURATION, READ_ROLL_FIRST, READ_SPACING, readRollLands, readRollSteps, SETTLE_BUMP} from '@components/wallet/chatCard/motion';
+import {bumpDuration, bumpShape, GEM_COMPLETION, gemTransferPresentation, joinReadLine, READ_PRESS, READ_ROLL_DURATION, READ_ROLL_FIRST, READ_SPACING, readRollLands, readRollSteps, SETTLE_BUMP} from '@components/wallet/chatCard/motion';
 import {liftAt, LIFT_DURATION, riseAt, RISE_DURATION} from '@components/wallet/chatCard/arrival';
 import {BURST_DURATION, playWalletCardBurst} from '@components/wallet/chatCard/burst';
 
@@ -52,6 +52,23 @@ describe('wallet chat card motion', () => {
     expect(liftAt(100)).toBeGreaterThan(.5);
     expect(liftAt(400)).toBeLessThan(0);
     expect(liftAt(LIFT_DURATION)).toBe(0);
+  });
+
+  // * iOS DiamondTransferAnimation: the energy gathers in .45 s and goes in .7 s, a send starts with a hit that peaks
+  // * at .21 s, a receive without one, and the completion's blow is over in .9 s of its 1.8
+  test('the gem gathers energy while its transfer goes and lets it go when it completes', () => {
+    const start = gemTransferPresentation('sending', 0);
+    expect([start.energy, start.scale, start.offset + 0]).toEqual([0, 1, 0]);
+    expect(gemTransferPresentation('receiving', 0).scale).toBe(1);
+    expect(gemTransferPresentation('sending', .45).energy).toBe(1);
+    expect(gemTransferPresentation('receiving', 3).energy).toBe(1);
+    expect(gemTransferPresentation('sending', .21).scale).toBeGreaterThan(gemTransferPresentation('receiving', .21).scale + .25);
+    expect(gemTransferPresentation('sending', 1).scale).toBe(gemTransferPresentation('receiving', 1).scale);
+
+    expect(gemTransferPresentation('completion', 0)).toEqual({energy: 1, scale: 1, offset: 0});
+    expect(gemTransferPresentation('completion', .7).energy).toBe(0);
+    expect(gemTransferPresentation('completion', .9)).toEqual({energy: 0, scale: 1, offset: 0});
+    expect(GEM_COMPLETION).toBe(1.8);
   });
 
   test('a card that goes before its turn leaves the line, one whose turn came keeps spacing it', () => {

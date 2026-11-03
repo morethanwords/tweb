@@ -16,9 +16,10 @@
   cursor: pointer;
 }
 
-// * a gem that stands still takes no click
+// * a gem that stands still takes no click, and one whose host takes the pointer lets it through
 .still {
   cursor: auto;
+  pointer-events: none;
 }
 
 .fallback {

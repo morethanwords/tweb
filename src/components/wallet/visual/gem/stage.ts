@@ -89,7 +89,12 @@ export interface GemStyle {
   burstSize: number,
   /** The gem flew away — only the stars play out. */
   hideStone: boolean,
-  lightBackground: boolean
+  lightBackground: boolean,
+  /** Down from the canvas centre, points: the stone and its stars. */
+  verticalOffset: number,
+  /** The stone floats up and down this far, points, once in `floatPeriod` seconds. */
+  floatAmplitude: number,
+  floatPeriod: number
 }
 
 export function defaultStyle(): GemStyle {
@@ -114,7 +119,10 @@ export function defaultStyle(): GemStyle {
     starEmission: 1,
     burstSize: 1,
     hideStone: false,
-    lightBackground: false
+    lightBackground: false,
+    verticalOffset: 0,
+    floatAmplitude: 0,
+    floatPeriod: 3.2
   };
 }
 
@@ -299,6 +307,17 @@ class GemStage {
     const t = view.elapsed;
     const model = rotation(m.pitch, m.yaw + view.lean);
     const proj = projection(W / H, Math.min(2.4, Math.max(0.05, m.zoom * view.zoom() * view.grow)));
+    // Down by this many points (iOS DiamondRenderer): y in clip space goes up, by its share of the canvas.
+    let shift = s.verticalOffset;
+    if(s.floatAmplitude && s.floatPeriod > 0) {
+      shift += s.floatAmplitude * Math.sin(2 * Math.PI * t / s.floatPeriod);
+    }
+    if(shift) {
+      const dy = -2 * shift / view.cssSize;
+      for(let column = 0; column < 4; ++column) {
+        proj[column * 4 + 1] += dy * proj[column * 4 + 3];
+      }
+    }
     const sparkle = sparkleState(t);
     const ahead = 1 / 120;
     const next = m.clone();
@@ -314,7 +333,10 @@ class GemStage {
       gl.depthMask(false);
       gl.useProgram(this.star);
       const tu = this.tu;
-      gl.uniformMatrix4fv(tu.u_projection, false, starProjection(W / H, Math.max(0.2, s.starZoom)));
+      const stars = starProjection(W / H, Math.max(0.2, s.starZoom));
+      // The stars go down with the stone, but do not float with it.
+      stars[13] -= 2 * s.verticalOffset / view.cssSize;
+      gl.uniformMatrix4fv(tu.u_projection, false, stars);
       gl.uniform4f(tu.u_appearance, s.appearance, 0, 0, 0);
       gl.uniform4f(tu.u_tint, 0, Math.min(1, Math.max(0, s.starOpacity)), Math.max(0.05, s.starEmission), 0);
       gl.uniform1i(tu.u_baseInstance, STEADY_STAR_COUNT);
@@ -521,10 +543,10 @@ export class GemView {
   }
 
   /**
-   * Released. A fast throw spins the gem up; a tap (`tapDirection`: −1 the left half, 1 the right one) spins it
-   * towards the tapped side.
+   * Released. A fast throw spins the gem up, or pushes it by `releaseImpulse` rad/s when given; a tap
+   * (`tapDirection`: −1 the left half, 1 the right one) spins it towards the tapped side.
    */
-  public endDrag(velocityX: number, time: number, cancelled = false, tapDirection?: number) {
+  public endDrag(velocityX: number, time: number, cancelled = false, tapDirection?: number, releaseImpulse?: number) {
     this.updateMotion(time);
     this.motion.step(0, this.style.rotationSpeed, this.elapsed);
     this.motion.end(time, cancelled);
@@ -532,7 +554,7 @@ export class GemView {
     if(tapDirection) {
       this.tapSpin(tapDirection, time);
     } else if(Math.abs(velocityX) > 600) {
-      this.motion.fling(velocityX < 0 ? -1 : 1);
+      this.motion.fling(velocityX < 0 ? -1 : 1, releaseImpulse);
       this.burst();
     }
   }

@@ -43,6 +43,7 @@ import ListenerSetter from '@helpers/listenerSetter';
 import {bindActiveWindowListener, getAppWindow} from '@helpers/appWindow';
 import liteMode from '@helpers/liteMode';
 import bigInt, {BigInteger} from 'big-integer';
+import {GemPull} from '@components/wallet/visual/gem/pull';
 
 const MAX_PITCH = 0.20;
 const MAX_YAW = 0.30;
@@ -53,9 +54,6 @@ const HIGHLIGHT_IDLE_GAIN = 1.75;
 const MAX_LIFT_SHADOW = 0.16;
 /** The gem on the card turns by itself, slowly (iOS WalletCardComponent) */
 export const GEM_BASE_SPIN = 2 * Math.PI / 26;
-/** A press on the gem shorter and shorter than this is a tap: it spins the gem (iOS: 0.25 s, 10 pt) */
-const TAP_TIME = 0.25;
-const TAP_TRAVEL = 10;
 /** The scroll shadow under the folding card: iOS 0.12 sin²(πf) */
 const SCROLL_SHADOW = 0.12;
 
@@ -420,7 +418,7 @@ export class WalletCard {
   private bindGestures() {
     const el = this.root;
     const listen = this.listenerSetter.add(el);
-    let mode: 'gem' | 'card' = null, start: Vec2 = null, last: Vec2 = null, samples: Vec2[] = [], startTime = 0;
+    let mode: 'gem' | 'card' = null, start: Vec2 = null, pull: GemPull = null;
     listen('pointermove', (e) => {
       if(mode) return;
       el.style.cursor = liteMode.isAvailable('motion') && this.gemHit(this.designPoint(e)) ? 'grab' : '';
@@ -439,9 +437,7 @@ export class WalletCard {
       } catch{}
       const now = clock.now();
       start = [e.clientX, e.clientY];
-      last = [e.clientX, e.clientY];
-      samples = [[now, e.clientX]];
-      startTime = now;
+      pull = new GemPull(e, now);
       this.pressedGem = this.gemHit(this.designPoint(e));
       if(this.pressedGem) {
         mode = 'gem';
@@ -458,28 +454,22 @@ export class WalletCard {
       if(!mode) return;
       const now = clock.now();
       if(mode === 'gem') {
-        this.gem.drag(e.clientX - last[0], e.clientY - last[1], now);
-        samples.push([now, e.clientX]);
-        while(samples.length > 2 && now - samples[0][0] > 0.08) samples.shift();
+        const [dx, dy] = pull.move(e, now);
+        this.gem.drag(dx, dy, now);
       } else {
         const travel = 240 * Math.max(this.width / 361, 0.01);
         this.pan[1] = clamp((e.clientX - start[0]) / travel * MAX_YAW, MAX_YAW);
         this.pan[0] = clamp(-(e.clientY - start[1]) / travel * MAX_PITCH, MAX_PITCH);
       }
-      last = [e.clientX, e.clientY];
     });
     const end = (e: PointerEvent) => {
       if(!mode) return;
       const now = clock.now();
       if(mode === 'gem') {
-        const first = samples[0];
-        const velocity = first && now - first[0] > 0.005 ? (e.clientX - first[1]) / (now - first[0]) : 0;
         // * a tap spins the gem towards the tapped side (iOS: not under reduced motion)
-        const isTap = e.type !== 'pointercancel' && now - startTime < TAP_TIME &&
-          Math.hypot(e.clientX - start[0], e.clientY - start[1]) < TAP_TRAVEL;
         const gemX = this.gemCenter()[0] + this.nudge();
-        const tapDirection = isTap && liteMode.isAvailable('motion') ? (this.designPoint(e)[0] < gemX ? -1 : 1) : undefined;
-        this.gem.endDrag(velocity, now, e.type === 'pointercancel', tapDirection);
+        const tapDirection = pull.isTap(e, now) && liteMode.isAvailable('motion') ? (this.designPoint(e)[0] < gemX ? -1 : 1) : undefined;
+        this.gem.endDrag(pull.velocity(e, now), now, e.type === 'pointercancel', tapDirection);
         el.style.cursor = 'grab';
       } else {
         this.isPanning = false;

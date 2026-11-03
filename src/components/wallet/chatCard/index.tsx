@@ -4,13 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {createMemo, createSignal, For, JSX, onCleanup, onMount, Show} from 'solid-js';
+import {createMemo, createRoot, createSignal, For, JSX, onCleanup, onMount, Show} from 'solid-js';
 import type {Message, MessageAction} from '@layer';
-import type {AnimationItemGroup} from '@components/animationIntersector';
-import type LottiePlayer from '@lib/lottie/lottiePlayer';
+import type {Appearance, GemView} from '@components/wallet/visual/gem/stage';
+import type WalletGem from '@components/wallet/gem';
+import type {CardGemHold} from '@components/wallet/chatCard/gemHold';
 import type {Middleware} from '@helpers/middleware';
+import animationIntersector, {AnimationItemGroup, AnimationItemNested} from '@components/animationIntersector';
 import I18n, {i18n, LangPackKey} from '@lib/langPack';
-import lottieLoader from '@lib/lottie/lottieLoader';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {toFriendlyTonAddress} from '@lib/wallet/tonAddress';
 import {SERVICE_PEER_ID} from '@appManagers/constants';
@@ -21,7 +22,6 @@ import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 import {isWalletReleased} from '@lib/wallet/release';
 import idleController from '@helpers/idleController';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
-import {StarGiftBadge} from '@components/stargifts/stargiftBadge';
 import {absNanos, formatGrams, gramsToNumber, groupAddress} from '@components/wallet/format';
 import {trackWalletCardAngle} from '@components/wallet/chatCard/angle';
 import watchSendingTransfer from '@components/wallet/watchSendingTransfer';
@@ -31,27 +31,32 @@ import {liftCardGlyphs, riseAt, takeFreshTransfer} from '@components/wallet/chat
 import {registerWalletChatCardTarget} from '@components/wallet/chatCard/targets';
 import {observeWalletCards, WalletCardObserver} from '@components/wallet/chatCard/observe';
 import {
-  bumpDuration, bumpShape, GLARE_DURATION, GLARE_PAUSE, joinReadLine, READ_POP_AMPLITUDE, READ_PRESS,
-  READ_PRESS_DEPTH, READ_ROLL_DURATION, readRollLands, readRollProgress, readRollSteps, REVEAL_CLOCK, REVEAL_COLOR,
-  REVEAL_COLOR_DELAY, REVEAL_FILL, REVEAL_WORD, REVEAL_WORD_DELAY, sampleKeyframes, SENDING_SPEED, SETTLE_AMPLITUDE,
-  SETTLE_BUMP, SPIN_DURATION
+  bumpDuration, bumpShape, GEM_COMPLETION, gemTransferPresentation, GemTransferPhase, GLARE_DURATION, GLARE_PAUSE,
+  joinReadLine, READ_POP_AMPLITUDE, READ_PRESS, READ_PRESS_DEPTH, READ_ROLL_DURATION, readRollLands, readRollProgress,
+  readRollSteps, REVEAL_CLOCK, REVEAL_COLOR, REVEAL_COLOR_DELAY, REVEAL_FILL, REVEAL_WORD, REVEAL_WORD_DELAY,
+  sampleKeyframes, SENDING_SPEED, SETTLE_AMPLITUDE, SETTLE_BUMP, SPIN_DURATION
 } from '@components/wallet/chatCard/motion';
 import {requestWalletFrame} from '@components/wallet/frameLoop';
 import {onAppWindowChange} from '@helpers/appWindow';
 import styles from '@components/wallet/chatCard/chatCard.module.scss';
 import stylesCommon from '@components/chat/bubbles/service.module.scss';
-import {hotEffect} from '@helpers/hotModule';
+import {hotEffect, hotListen} from '@helpers/hotModule';
+import getTextWidth from '@helpers/canvas/getTextWidth';
+import {FontFamily, FontWeightBold} from '@config/font';
+import rootScope from '@lib/rootScope';
 
 /**
  * A Gram transfer in the chat — the desktop client's gram transfer card (history_view_gram_transfer.cpp): a small
- * wallet card with the white diamond, the signed amount, the counterparty and its address, and a corner ribbon
- * that says sent, received or failed. Its sweep follows the cursor with every other card in sight.
+ * wallet card with a diamond, the signed amount, the counterparty and its address, and a corner ribbon that says
+ * sent, received or failed. Its sweep follows the cursor with every other card in sight. The diamond, the ribbon and
+ * the address's ink are iOS's (ChatMessageTransferBubbleContentNode): a live gem that turns and floats, a click on
+ * either side of it spins it that way.
  *
- * While this device sends the transfer, the ribbon is a ticking clock, the sweep turns and a glare runs round the
- * border; when the transfer settles, the ribbon fills from the clock, the sweep spins back, stars fly and the
- * bubble bumps. An unread incoming card does the same when it is read, after its digits roll up from zero — one
- * card at a time when several are read at once; as iOS does it, its glyphs lift one by one as the glare crosses
- * them, and a card that came while the chat was open rises in from below.
+ * While this device sends the transfer, the ribbon is a ticking clock, the gem turns fast, the sweep turns and a
+ * glare runs round the border; when the transfer settles, the ribbon fills from the clock, the gem and the sweep
+ * spin back, stars fly and the bubble bumps. An unread incoming card does the same when it is read, after its digits
+ * roll up from zero — one card at a time when several are read at once; as iOS does it, its glyphs lift one by one
+ * as the glare crosses them, and a card that came while the chat was open rises in from below.
  *
  * A send started in the chat ends with the wallet's gem flying into this device's new card (chatCard/flight):
  * the card's own gem steps aside until it lands.
@@ -65,13 +70,33 @@ type Look = 'rest' | 'sending' | 'roll' | 'reveal';
 type BurstPlace = Omit<Parameters<typeof playWalletCardBurst>[0], 'canvas'>;
 
 const TICKER_COLOR = '#0fddff';
-const MARK_PAINT_SIZE = 63;
+/** CSS px for one of iOS's points: the card is iOS's, larger (its 18 pt digits are 22 px here) */
+const IOS_POINT = 22 / 18;
+/** the gem, CSS px: iOS's 38 pt diamond in a 64 pt view */
+const GEM_CANVAS = 78;
+const GEM_WIDTH = 46;
+/** its own turn, rad/s (iOS DiamondStyle's default), and how far it floats up and down at rest, px */
+const GEM_SPEED = 2 * Math.PI / 18 * 1.70775;
+const GEM_FLOAT = 1.5 * IOS_POINT;
+/** let go after a hold, it springs back (iOS: a downward expansion's damping and the finger's spin falling off) */
+const GEM_HOLD_STYLE = {growDamping: .62, releaseDecay: 1.1};
+/** the card takes the landed gem's hit (iOS animateDiamondLandingBump): 5 % at most, ringing 2.4 times a second */
+const HOLD_LANDING = 1000;
+const holdLanding = (power: number, elapsed: number) => {
+  const t = elapsed / 1000;
+  return elapsed >= HOLD_LANDING ? 1 : 1 - .05 * power * Math.sin(2 * Math.PI * 2.4 * t) * Math.exp(-t / .2);
+};
+/** the spin a settled or read transfer gives it, and a landed gem, rad/s; both fall off by e in .7 s */
+const GEM_RELEASE_SPIN = 11;
+const GEM_LANDING_SPIN = 4.5;
+const GEM_SPIN_DECAY = .7;
 const SPIN_TURN = 360;
 const SENDING_TURN = SPIN_TURN / SENDING_SPEED * 1000;
 const EASE_OUT_CUBIC = 'cubic-bezier(.33, 1, .68, 1)';
 const EASE_OUT_QUAD = 'cubic-bezier(.5, 1, .89, 1)';
-/** the white gem's width in its 63 px player, for the flying gem to land at the same size */
-const GEM_IN_MARK = 38 / MARK_PAINT_SIZE;
+/** the ribbon's word (iOS): 11 px, smaller when it is wider than 52 px */
+const RIBBON_FONT_SIZE = 11;
+const RIBBON_WORD_WIDTH = 52;
 /** a flight called off: the card's own gem fades back in this long, ms */
 const GEM_RETURN = 150;
 /** the hit of a landed gem, ms: the card dips and shrinks a little, rings twice and rests (iOS) */
@@ -137,8 +162,30 @@ hotEffect(import.meta.hot, () => onAppWindowChange(() => {
   cancelCardFrame = requestWalletFrame(flushCardDom);
 }));
 
+// * the ribbon's words are measured anew in another language
+const [languageChanges, setLanguageChanges] = createRoot(() => createSignal(0));
+hotListen(import.meta.hot, rootScope, 'language_change', () => setLanguageChanges((count) => count + 1));
+
+// * the gem's renderer, and what a finger does to it, come with the first card that shows: the chat's own code stays
+// * light
+type GemKit = {WalletGem: typeof WalletGem, cool: Appearance, CardGemHold: typeof CardGemHold, holdGrow: number};
+let gemKit: Promise<GemKit>;
+function loadGemKit() {
+  return gemKit ??= Promise.all([
+    import('@components/wallet/gem'),
+    import('@components/wallet/visual/gem/stage'),
+    import('@components/wallet/chatCard/gemHold')
+  ]).then(([{default: WalletGem}, {Appearance}, {CardGemHold, CARD_GEM_HOLD_GROW}]) => ({
+    WalletGem,
+    cool: Appearance.cool,
+    CardGemHold,
+    holdGrow: CARD_GEM_HOLD_GROW
+  }));
+}
+
 export default function WalletChatCard(props: {
   message: Message.messageService,
+  /** the chat's animations: the gem plays and stands with them */
   animationGroup?: AnimationItemGroup,
   middleware?: Middleware
 }) {
@@ -153,7 +200,6 @@ export default function WalletChatCard(props: {
   const animated = liteMode.isAvailable('animations');
 
   const [look, setLook] = createSignal<Look>(isSending(props.message) ? 'sending' : 'rest');
-  const [fast, setFast] = createSignal(false);
   const [bursting, setBursting] = createSignal(false);
   const [rollAt, setRollAt] = createSignal<number>();
   const [awaitingGem, setAwaitingGem] = createSignal(false);
@@ -178,12 +224,16 @@ export default function WalletChatCard(props: {
     if(isFailed(message())) return {key: 'Wallet.Card.Failed', class: styles.isFailed};
     return {key: 'Wallet.Card.Sent', class: styles.isSent};
   };
+  const ribbonFontSize = createMemo(() => {
+    languageChanges();
+    const width = getTextWidth(I18n.format(ribbon().key, true), `${FontWeightBold} ${RIBBON_FONT_SIZE}px ${FontFamily}`);
+    return width > RIBBON_WORD_WIDTH ? RIBBON_FONT_SIZE * RIBBON_WORD_WIDTH / width + 'px' : undefined;
+  });
 
-  let wrap: HTMLDivElement, card: HTMLDivElement, sweep: HTMLDivElement, mainMark: HTMLDivElement, fastMark: HTMLDivElement;
+  let wrap: HTMLDivElement, card: HTMLDivElement, sweep: HTMLDivElement, gemBox: HTMLDivElement;
   let mark: HTMLDivElement, amountLine: HTMLDivElement, tickerElement: HTMLSpanElement, identity: HTMLDivElement;
   let addressElement: HTMLDivElement;
-  let burstCanvas: HTMLCanvasElement, ribbonFill: HTMLDivElement, ribbonWord: HTMLSpanElement, clock: HTMLDivElement;
-  let mainPlayer: LottiePlayer, fastPlayer: LottiePlayer;
+  let burstCanvas: HTMLCanvasElement, ribbonFill: HTMLDivElement, ribbonWord: HTMLSpanElement, clockFace: HTMLDivElement;
   let spin: Animation, glare: Animation;
   let destroyed = false;
   const timeouts: number[] = [];
@@ -191,80 +241,85 @@ export default function WalletChatCard(props: {
     timeouts.push(window.setTimeout(() => !destroyed && callback(), Math.max(0, delay)));
   };
 
-  // * marks
-
-  const markOptions = (container: HTMLElement) => ({
-    container,
-    width: MARK_PAINT_SIZE,
-    height: MARK_PAINT_SIZE,
-    group: props.animationGroup ?? 'none',
-    middleware: props.middleware,
-    liteModeKey: 'stickers_chat' as const
-  });
+  // * the gem
 
   const awaitingRead = !out && !!props.message.pFlags.unread && animated;
   // * it came while the chat was open and looked at: hidden until its read a moment later, it rises in then; in a
   // * window nobody is using it stays in sight and pops when read, like any other card
   const rising = awaitingRead && takeFreshTransfer(props.message) && liteMode.isAvailable('motion') && !idleController.isIdle;
-  let mainPromise: Promise<LottiePlayer>;
-  const loadMain = () => mainPromise = lottieLoader.loadAnimationAsAsset({
-    ...markOptions(mainMark),
-    loop: look() === 'sending',
-    autoplay: liteMode.isAvailable('stickers_chat') && !awaitingRead
-  }, 'GramWhite').then((player) => {
-    if(destroyed) {
-      player.remove();
-      return;
-    }
 
-    mainPlayer = player;
-    return player;
+  const [gemParts, setGemParts] = createSignal<GemKit>();
+  loadGemKit().then((kit) => !destroyed && setGemParts(kit));
+
+  // * it plays and stands with the chat's other animations (animationIntersector): out of sight, while the app's
+  // * window is not in use, under a popup or a peek that holds the chat's
+  const [gemPlays, setGemPlays] = createSignal(false);
+  const gemPlayer = new AnimationItemNested({
+    onPlay: () => setGemPlays(true),
+    onPause: () => setGemPlays(false)
   });
 
-  // * the fast play stays loaded once made: it stops on its last frame by itself and hands over to the rest pose
-  const playFast = () => {
-    if(!liteMode.isAvailable('stickers_chat')) return;
-    setFast(true);
-    if(fastPlayer) {
-      fastPlayer.restart();
-      return;
-    }
+  /** the live gem, while there is one: none until its renderer comes, without WebGL2 or while it stands still */
+  let gem: GemView;
+  /** what the gem is doing with the transfer: its phase starts at the gem's next frame */
+  let gemTransfer: {phase: GemTransferPhase, start?: number} = look() === 'sending' ? {phase: 'sending'} : undefined;
+  const setGemTransfer = (phase?: GemTransferPhase) => gemTransfer = phase && {phase};
 
-    lottieLoader.loadAnimationAsAsset({...markOptions(fastMark), loop: false, autoplay: true}, 'GramWhiteFast')
-    .then((player) => {
-      if(destroyed) {
-        player.remove();
-        return;
-      }
-
-      fastPlayer = player;
-      player.addEventListener('enterFrame', (frameNo) => {
-        if(frameNo < player.maxFrame) return;
-        setFast(false);
-        mainPlayer?.stop(true);
-      });
+  // * the live gem can be held, pulled and thrown, as iOS's can — but not while its transfer goes or its card is read
+  let gemHold: CardGemHold;
+  const [holdable, setHoldable] = createSignal(false);
+  const canHoldGem = () => look() !== 'sending' && look() !== 'roll' && !awaitingGem();
+  const takeGem = (live: GemView) => {
+    gem = live;
+    gemHold = new (gemParts().CardGemHold)(live, gemBox, {
+      point: IOS_POINT,
+      restingCanvas: GEM_CANVAS,
+      amount: () => Array.from(amountLine.children) as HTMLElement[],
+      canHold: canHoldGem,
+      onLand: landHeldGem
     });
+    setHoldable(true);
+    const hold = gemHold;
+    return () => {
+      hold.destroy();
+      if(gem !== live) return;
+      gem = undefined;
+      gemHold = undefined;
+      setHoldable(false);
+    };
   };
 
-  /** the sending loop ends at its last frame, so the settle never cuts the diamond mid-turn */
-  const waitForLoopEnd = (callback: () => void) => {
-    const player = mainPlayer;
-    if(!player || player.paused || !liteMode.isAvailable('stickers_chat')) {
-      callback();
-      return;
+  // * every frame the transfer's phase speeds the gem up, swells and lifts it, by the gem's own clock; held, it
+  // * grows down over the amount and floats no more
+  const moveGem = (live: GemView) => {
+    let energy = 0, scale = 1, offset = 0;
+    if(gemTransfer) {
+      gemTransfer.start ??= live.elapsed;
+      const t = live.elapsed - gemTransfer.start;
+      ({energy, scale, offset} = gemTransferPresentation(gemTransfer.phase, t));
+      if(gemTransfer.phase === 'completion' && t >= GEM_COMPLETION) {
+        gemTransfer = undefined;
+      }
     }
 
-    player.loop = false;
-    let done = false;
-    const finish = () => {
-      if(done) return;
-      done = true;
-      player.removeEventListener('enterFrame', onFrame);
-      callback();
-    };
-    const onFrame = (frameNo: number) => frameNo >= player.maxFrame && finish();
-    player.addEventListener('enterFrame', onFrame);
-    later(finish, 1100);
+    const style = live.style;
+    style.rotationSpeed = GEM_SPEED * (1 + 5 * energy);
+    style.swayScale = 1 + 1.4 * energy;
+    style.widthPoints = GEM_WIDTH * scale;
+    style.verticalOffset = offset * IOS_POINT + (gemHold?.frame() ?? 0);
+    style.floatAmplitude = GEM_FLOAT * (1 - (gemHold?.strength ?? 0));
+  };
+
+  /** the transfer settled or was read: the energy goes, with a spin when it went through */
+  const releaseGem = (spins: boolean) => {
+    setGemTransfer('completion');
+    if(spins) gem?.kick(GEM_RELEASE_SPIN, GEM_SPIN_DECAY);
+  };
+
+  // * the held gem springs back, and as it lands the card dips and rings back, as hard as the gem had grown
+  const landHeldGem = (power: number) => {
+    if(destroyed || look() === 'sending' || !liteMode.isAvailable('motion')) return;
+    bump(HOLD_LANDING, (elapsed) => holdLanding(power, elapsed));
   };
 
   // * the sweep, the glare and the bump
@@ -359,8 +414,8 @@ export default function WalletChatCard(props: {
         width,
         height: card.offsetHeight,
         originX: width / 2,
-        originY: mark.offsetTop + mainMark.offsetTop + mainMark.offsetHeight / 2,
-        emitter: mainMark.offsetHeight * 2 / 3
+        originY: mark.offsetTop + gemBox.offsetTop + gemBox.offsetHeight / 2,
+        emitter: gemBox.offsetHeight * 2 / 3
       };
     }, () => !destroyed && then(place));
   };
@@ -389,8 +444,8 @@ export default function WalletChatCard(props: {
       easing: EASE_OUT_QUAD,
       fill: 'backwards'
     });
-    if(fromClock && clock) {
-      clock.animate({transform: ['scale(1)', 'scale(0)']}, {duration: REVEAL_CLOCK, fill: 'forwards'});
+    if(fromClock && clockFace) {
+      clockFace.animate({transform: ['scale(1)', 'scale(0)']}, {duration: REVEAL_CLOCK, fill: 'forwards'});
     }
 
     later(() => setLook('rest'), REVEAL_COLOR_DELAY + REVEAL_COLOR);
@@ -400,24 +455,23 @@ export default function WalletChatCard(props: {
 
   const settle = () => {
     if(look() !== 'sending') return;
+    const failed = isFailed(message());
     if(!animated) {
-      if(mainPlayer) mainPlayer.loop = false;
+      setGemTransfer();
       setLook('rest');
       return;
     }
 
-    waitForLoopEnd(() => {
-      // * the spin, the stars and the bump are movement: with reduced animations the ribbon fills where it stands
-      const motion = liteMode.isAvailable('motion');
-      afterBurstRead(motion && !isFailed(message()), (place) => {
-        const from = stopSendingLook();
-        reveal(true);
-        playFast();
-        if(!motion) return;
-        settleSpin(from);
-        burst(place);
-        bump(bumpDuration(SETTLE_BUMP), (elapsed) => 1 + SETTLE_AMPLITUDE * bumpShape(SETTLE_BUMP, elapsed));
-      });
+    // * the spin, the stars and the bump are movement: with reduced animations the ribbon fills where it stands
+    const motion = liteMode.isAvailable('motion');
+    afterBurstRead(motion && !failed, (place) => {
+      const from = stopSendingLook();
+      reveal(true);
+      releaseGem(!failed);
+      if(!motion) return;
+      settleSpin(from);
+      burst(place);
+      bump(bumpDuration(SETTLE_BUMP), (elapsed) => 1 + SETTLE_AMPLITUDE * bumpShape(SETTLE_BUMP, elapsed));
     });
   };
 
@@ -430,20 +484,16 @@ export default function WalletChatCard(props: {
     readTurn = joinReadLine();
     const at = readTurn.at;
     const delay = at - performance.now();
-    // * with reduced animations nothing rolls, sweeps or pops: in its turn the mark plays and the ribbon fills
+    // * with reduced animations nothing rolls, sweeps, spins or pops: in its turn the ribbon fills
     if(!liteMode.isAvailable('motion')) {
-      later(() => {
-        mainPromise?.then((player) => !destroyed && player?.restart());
-        reveal(false);
-        playFast();
-      }, delay);
+      later(() => reveal(false), delay);
       return;
     }
 
     setRollAt(at);
     setLook('roll');
     later(() => {
-      mainPromise?.then((player) => !destroyed && player?.restart());
+      setGemTransfer('receiving');
       glarePass();
       if(liteMode.isAvailable('motion')) liftGlyphs();
     }, delay);
@@ -473,7 +523,7 @@ export default function WalletChatCard(props: {
     later(() => afterBurstRead(true, (place) => {
       setRollAt(undefined);
       reveal(false);
-      playFast();
+      releaseGem(true);
       burst(place);
     }), delay + READ_ROLL_DURATION);
   };
@@ -525,9 +575,9 @@ export default function WalletChatCard(props: {
 
   const gemSlot = () => {
     if(!card.isConnected) return;
-    const rect = mainMark.getBoundingClientRect();
+    const rect = gemBox.getBoundingClientRect();
     if(!rect.width) return;
-    return {x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, width: rect.width * GEM_IN_MARK};
+    return {x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, width: rect.width * GEM_WIDTH / GEM_CANVAS};
   };
 
   const awaitGem = (awaiting: boolean) => {
@@ -539,9 +589,15 @@ export default function WalletChatCard(props: {
     }
   };
 
-  const landGem = () => {
+  // * the card's gem goes on from the flying one's pose, takes the send's hit again and whirls (iOS acceptTransferDiamond)
+  const landGem = (flying: GemView) => {
     setAwaitingGem(false);
-    mainPromise?.then((player) => !destroyed && player?.restart());
+    if(gem) {
+      gem.adopt(flying);
+      gem.kick(GEM_LANDING_SPIN, GEM_SPIN_DECAY);
+      if(gemTransfer?.phase === 'sending') setGemTransfer('sending');
+    }
+
     if(liteMode.isAvailable('motion')) {
       card.animate(sampleKeyframes(LANDING_DURATION, (elapsed) => {
         const impact = landingImpact(elapsed);
@@ -551,8 +607,15 @@ export default function WalletChatCard(props: {
   };
 
   onMount(() => {
-    loadMain();
     onCleanup(trackWalletCardAngle(card));
+    animationIntersector.addAnimation({
+      animation: gemPlayer,
+      group: props.animationGroup,
+      observeElement: gemBox,
+      controlled: props.middleware,
+      type: 'dots'
+    });
+    onCleanup(() => animationIntersector.removeAnimationByPlayer(gemPlayer));
     if(look() === 'sending') {
       startSendingLook();
     } else if(awaitingRead) {
@@ -577,8 +640,6 @@ export default function WalletChatCard(props: {
     glare?.cancel();
     readTurn?.leave();
     stopWatchingSend?.();
-    mainPlayer?.remove();
-    fastPlayer?.remove();
   });
 
   // * until the wallet's release the card only shows the transfer: its details are the wallet's
@@ -605,22 +666,43 @@ export default function WalletChatCard(props: {
     <div ref={wrap} class={classNames(stylesCommon.addon, styles.wrap)}>
       <div
         ref={card}
-        class={classNames(styles.card, ribbon().class, !released && styles.isPlain)}
+        class={classNames(styles.card, !released && styles.isPlain)}
         // * not a button till the release, but still named for assistive technology: the amount is hidden from it below
         role={released ? 'button' : 'group'}
         tabindex={released && Modes.a11y ? 0 : undefined}
         aria-label={label()}
-        onClick={released ? openDetails : undefined}
+        // * a press on the gem was the gem's
+        onClick={released ? (event: MouseEvent) => !gemHold?.tookClick(event) && openDetails() : undefined}
         onKeyDown={released ? buttonKeyDown : undefined}
       >
-        <div class={styles.sweepTurn} aria-hidden="true">
-          <div ref={sweep} class={styles.sweep} />
+        <div class={styles.backdrop} aria-hidden="true">
+          <div class={styles.sweepTurn}>
+            <div ref={sweep} class={styles.sweep} />
+          </div>
+          <div class={styles.soft} />
         </div>
-        <div class={styles.soft} aria-hidden="true" />
         <div class={styles.glare} />
         <div ref={mark} class={classNames(styles.mark, awaitingGem() && styles.isHidden)}>
-          <div ref={mainMark} class={classNames(styles.markPlayer, fast() && styles.isHidden)} />
-          <div ref={fastMark} class={classNames(styles.markPlayer, !fast() && styles.isHidden)} />
+          <div ref={gemBox} class={classNames(styles.gem, holdable() && canHoldGem() && styles.isHoldable)}>
+            <Show when={gemParts()}>{(parts) => {
+              const {WalletGem, cool, holdGrow} = parts();
+              return (
+                <WalletGem
+                  size={GEM_CANVAS}
+                  widthPoints={GEM_WIDTH}
+                  appearance={cool}
+                  // * a gem on its way in draws in its place
+                  visible={() => gemPlays() && !awaitingGem()}
+                  holdStill={() => !liteMode.isAvailable('stickers_chat')}
+                  style={{rotationSpeed: GEM_SPEED, floatAmplitude: GEM_FLOAT, lightBackground: false, dragGrow: holdGrow, ...GEM_HOLD_STYLE}}
+                  fallbackClass={styles.gemFlat}
+                  pointerByHost
+                  onGem={takeGem}
+                  beforeFrame={moveGem}
+                />
+              );
+            }}</Show>
+          </div>
         </div>
         {/* * the signed digits read left to right in either direction; the ticker reads after them (chatCard.module.scss) */}
         <div ref={amountLine} class={styles.amount} dir="ltr" aria-hidden="true">
@@ -649,28 +731,32 @@ export default function WalletChatCard(props: {
         <Show when={bursting()}>
           <canvas ref={burstCanvas} class={styles.burst} />
         </Show>
-        <StarGiftBadge
-          class={classNames(styles.ribbon, look() !== 'rest' && styles.isBare, look() === 'roll' && styles.isHidden)}
-          textClass={styles.ribbonText}
-          overlay={<>
-            <Show when={look() === 'reveal'}>
-              <div ref={ribbonFill} class={styles.ribbonFill} />
-            </Show>
-            <Show when={look() === 'sending' || (look() === 'reveal' && out)}>
-              <div ref={clock} class={classNames(styles.clock, animated && styles.isTicking)}>
-                <span class={styles.clockMinute} />
-                <span class={styles.clockHour} />
-              </div>
-            </Show>
-          </>}
+        <div
+          class={classNames(
+            styles.ribbon,
+            ribbon().class,
+            look() !== 'rest' && styles.isBare,
+            look() === 'roll' && styles.isHidden
+          )}
         >
-          <span
-            ref={ribbonWord}
-            class={classNames(styles.ribbonWord, look() === 'sending' && styles.isHidden)}
-          >
-            {i18n(ribbon().key)}
-          </span>
-        </StarGiftBadge>
+          <Show when={look() === 'reveal'}>
+            <div ref={ribbonFill} class={styles.ribbonFill} />
+          </Show>
+          <Show when={look() === 'sending' || (look() === 'reveal' && out)}>
+            <div ref={clockFace} class={classNames(styles.clock, animated && styles.isTicking)}>
+              <span class={styles.clockMinute} />
+              <span class={styles.clockHour} />
+            </div>
+          </Show>
+          <div class={styles.ribbonText} style={{'font-size': ribbonFontSize()}}>
+            <span
+              ref={ribbonWord}
+              class={classNames(styles.ribbonWord, look() === 'sending' && styles.isHidden)}
+            >
+              {i18n(ribbon().key)}
+            </span>
+          </div>
+        </div>
       </div>
       <Show when={transfer().comment || transfer().pFlags.comment_encrypted}>
         <TransferComment message={message()} out={out} />

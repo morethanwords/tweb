@@ -114,12 +114,18 @@ export class GemMotion {
     return this.swayScale * (a[0] * Math.sin(w0 * time + this.swayPhase[0]) + a[1] * Math.sin(w1 * time + this.swayPhase[1]));
   }
 
-  public fling(direction: number) {
+  /** A throw: a fast spin-up, or with `impulse` (rad/s) a plain push that falls off in .7 s (iOS DiamondMotion). */
+  public fling(direction: number, impulse?: number) {
     if(this.isDragging) return;
     const velocity = this.yawSpringVelocity;
     this.targetYaw = this.yaw;
     this.yawSpringVelocity = 0;
-    this.startRotation(direction, velocity, true);
+    if(impulse) {
+      this.yawVelocity = 0;
+      this.setSpin(direction * impulse, 0.7);
+    } else {
+      this.startRotation(direction, velocity, true);
+    }
   }
 
   public startRotation(direction: number, velocity: number, isFast: boolean) {

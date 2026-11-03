@@ -9,8 +9,6 @@ export function StarGiftBadge(props: {
   textClass?: string
   children: JSX.Element
   backdropAttr?: StarGiftAttribute.starGiftAttributeBackdrop
-  /** drawn inside the ribbon's shape under the word, not turned with it */
-  overlay?: JSX.Element
 }) {
   return (
     <div
@@ -21,7 +19,6 @@ export function StarGiftBadge(props: {
           undefined
       }}
     >
-      {props.overlay}
       <div class={classNames(styles.text, props.textClass)}>
         {props.children}
       </div>

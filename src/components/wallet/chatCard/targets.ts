@@ -10,13 +10,15 @@
  * flight itself, which brings the gem's renderer with it, so that the chat's card stays light.
  */
 
+import type {GemView} from '@components/wallet/visual/gem/stage';
+
 export type WalletChatCardTarget = {
   /** where the card's gem stands, client px, and how wide the gem is there; nothing while it cannot be seen */
   slot: () => {x: number, y: number, width: number} | undefined,
   /** a gem is on its way: the card's own gem steps aside until it lands, or comes back when the flight is off */
   await: (awaiting: boolean) => void,
-  /** the gem landed: it is the card's again, and the card takes the hit */
-  land: () => void
+  /** the gem landed: the card's own takes its pose (iOS hands the flying diamond itself over), and the card the hit */
+  land: (gem: GemView) => void
 };
 
 const targets: Map<string, WalletChatCardTarget> = new Map();

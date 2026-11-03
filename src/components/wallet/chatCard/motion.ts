@@ -10,6 +10,8 @@
  * of several cards at once is iOS's.
  */
 
+import {gemBreath, gemSendEnergy, gemSendHit} from '@components/wallet/visual/gem/send';
+
 export type BumpCurve = {
   rise: number,
   hold: number,
@@ -63,6 +65,35 @@ export function bumpShape(curve: BumpCurve, elapsed: number) {
 
   const settle = (fall - curve.fall) / curve.settle;
   return -curve.undershoot * Math.sin(Math.PI * settle);
+}
+
+/** what the card's gem is doing with its transfer */
+export type GemTransferPhase = 'sending' | 'receiving' | 'completion';
+/** the completion lets the gem go in this long, seconds */
+export const GEM_COMPLETION = 1.8;
+
+/**
+ * The card's gem while its transfer goes (iOS DiamondTransferAnimation), `t` seconds into the phase: sending or
+ * receiving it gathers energy — it turns up to six times as fast, breathes and bobs — and a send starts with a hit;
+ * the completion lets the energy go with a blow. `scale` is of its width, `offset` points down.
+ */
+export function gemTransferPresentation(phase: GemTransferPhase, t: number) {
+  t = Math.max(0, t);
+  let energy: number, hit = 0, breath = 0, blow = 0;
+  if(phase === 'completion') {
+    energy = Math.pow(1 - Math.min(t / .7, 1), 2.2);
+    blow = t < .9 ? Math.sin(2 * Math.PI * 1.6 * t) * Math.exp(-t / .2) : 0;
+  } else {
+    energy = gemSendEnergy(t);
+    hit = phase === 'sending' ? gemSendHit(t) : 0;
+    breath = gemBreath(t);
+  }
+
+  return {
+    energy,
+    scale: 1 + .32 * hit + .07 * energy * breath + blow,
+    offset: phase === 'completion' ? 0 : -1.6 * energy * gemBreath(t - .18)
+  };
 }
 
 /** Keyframes that follow a function of the time closely enough to run with a linear easing between them. */

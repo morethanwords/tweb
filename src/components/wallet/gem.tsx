@@ -23,13 +23,22 @@ type WalletGemProps = {
   visible: Accessor<boolean>,
   style?: Partial<GemStyle>,
   class?: string,
-  burst?: boolean
+  burst?: boolean,
+  /** stands still, as with reduced animations: a chat's card while the chat's stickers do not play */
+  holdStill?: Accessor<boolean>,
+  /** the live gem once it is made — again when it comes back after standing still; what it returns runs as it goes */
+  onGem?: (gem: GemView) => () => void,
+  /** before each frame of the live gem: what its host moves on it */
+  beforeFrame?: (gem: GemView, now: number) => void,
+  /** the host takes the pointer on the gem itself: the canvas takes none, and a click does not push it */
+  pointerByHost?: boolean,
+  fallbackClass?: string
 };
 
 /**
- * A live gem on its own canvas — the headers of the wallet's sheets. Without WebGL2 or with the animations off it is
- * the flat gem glyph, also when they are turned off while it shows; with reduced ones the gem stands still, drawn
- * once. A click spins it.
+ * A live gem on its own canvas — the headers of the wallet's sheets, the transfer cards in a chat. Without WebGL2 or
+ * with the animations off it is the flat gem glyph, also when they are turned off while it shows; with reduced ones
+ * the gem stands still, drawn once. A click spins it.
  */
 export default function WalletGem(props: WalletGemProps) {
   const reducedMotion = useReducedMotion();
@@ -41,7 +50,7 @@ export default function WalletGem(props: WalletGemProps) {
   });
   const still = createMemo(() => {
     reducedMotion();
-    return !liteMode.isAvailable('motion');
+    return !liteMode.isAvailable('motion') || !!props.holdStill?.();
   });
 
   return (
@@ -49,7 +58,7 @@ export default function WalletGem(props: WalletGemProps) {
       <Show
         when={!flat() && (still() ? 'still' : 'live')}
         keyed
-        fallback={<IconTsx icon="gram_filled" class={styles.fallback} style={{'font-size': props.widthPoints + 'px'}} />}
+        fallback={<IconTsx icon="gram_filled" class={classNames(styles.fallback, props.fallbackClass)} style={{'font-size': props.widthPoints + 'px'}} />}
       >
         {(mode) => <WalletGemCanvas {...props} still={mode === 'still'} onFail={() => setFailed(true)} />}
       </Show>
@@ -89,18 +98,27 @@ function WalletGemCanvas(props: WalletGemProps & {still: boolean, onFail: () => 
     }
 
     const cancelBurst = props.burst ? clock.after(0.15, () => gem.burst()) : undefined;
+    const draw = (now: number) => {
+      props.beforeFrame?.(gem, now);
+      gem.render(now);
+    };
 
     // * a gem whose screen went under another one (hidden) or out of the scroll draws nothing
     const detach = addWalletFrameClient({
-      frame: (now) => gem.render(now),
+      frame: draw,
       isVisible: props.visible,
       element: canvas,
       onHidden: () => gem.resetClock()
     });
 
     const onClick = () => gem.kick(9, 1.2);
-    canvas.addEventListener('click', onClick);
+    if(!props.pointerByHost) canvas.addEventListener('click', onClick);
+    const release = props.onGem?.(gem);
+    // * its first frame at once: its host may hold the frames back for a while (a chat's animations paused, the
+    // * app's window not in use), and the gem would not be there
+    draw(clock.now());
     onCleanup(() => {
+      release?.();
       cancelBurst?.();
       canvas.removeEventListener('click', onClick);
       detach();
@@ -111,7 +129,7 @@ function WalletGemCanvas(props: WalletGemProps & {still: boolean, onFail: () => 
   return (
     <canvas
       ref={canvas}
-      class={classNames(styles.canvas, props.still && styles.still)}
+      class={classNames(styles.canvas, (props.still || props.pointerByHost) && styles.still)}
       style={{width: props.size + 'px', height: props.size + 'px'}}
       aria-hidden="true"
     />

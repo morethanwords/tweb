@@ -10,10 +10,11 @@
 // and down into its place with a slight undershoot.
 
 import {Appearance, GemView} from '@components/wallet/visual/gem/stage';
-import {gemAssets, gemHull} from '@components/wallet/visual/gem/geometry';
+import {GEM_EXPANDED_CANVAS, GemLensSource} from '@components/wallet/visual/gem/lens';
 import {settle} from '@components/wallet/visual/motion';
 import {pixelRatio} from '@components/wallet/visual/dom';
 import {clock} from '@components/wallet/visual/clock';
+import {GEM_DRAG_SCALE, GemPull} from '@components/wallet/visual/gem/pull';
 import type {Vec2} from '@components/wallet/visual/math';
 
 const IDLE_SPIN = 2 * Math.PI / 26;
@@ -22,11 +23,8 @@ const HOLD_GROW = 2.75;
 /** the growth's spring and the damped swing back after a release, seconds */
 const GRIP_IN = 0.46;
 const RELEASE = 1.96;
-/** the gem's canvas while it is grown, and while it drops in five times its size */
-const EXPANDED_CANVAS = 220;
+/** the gem's canvas while it drops in five times its size */
 const OPENING_CANVAS = 320;
-/** a pull of this many points turns it by the drag's unit */
-const DRAG_SCALE = 220;
 /** the code through the grown gem */
 const LENS_OPACITY = 0.9;
 
@@ -45,7 +43,6 @@ function dropProgress(elapsed: number) {
 
 export class WalletQrGem {
   private gem: GemView;
-  private outline = gemAssets().outline;
   /** at rest: the gem's width and its canvas, points */
   private width = 0;
   private resting = 0;
@@ -56,11 +53,11 @@ export class WalletQrGem {
   private gripFrom = 0;
   private holdChange: number = null;
   private dropStart: number = null;
-  private drag: {last: Vec2, samples: Vec2[], pointerId: number};
+  private drag: GemPull;
   private code: {canvas: HTMLCanvasElement, center: Vec2, side: number};
   private lensCanvas: HTMLCanvasElement;
   private lensDirty = true;
-  private lensOn = false;
+  private lens: GemLensSource;
   /** without movement: the gem at rest is drawn, and stands so until something changes */
   private stillDrawn = false;
 
@@ -82,7 +79,8 @@ export class WalletQrGem {
       swayScale: options.motion ? 1 : 0,
       lightBackground: true
     });
-    this.gem.dragScale = DRAG_SCALE;
+    this.gem.dragScale = GEM_DRAG_SCALE;
+    this.lens = new GemLensSource(this.gem);
     hit.addEventListener('pointerdown', this.onDown);
     hit.addEventListener('pointermove', this.onMove);
     hit.addEventListener('pointerup', this.onUp);
@@ -139,7 +137,7 @@ export class WalletQrGem {
     }
 
     this.grip = this.gripAt(now);
-    const side = this.dropStart !== null ? OPENING_CANVAS : this.isExpanded(now) ? EXPANDED_CANVAS : this.resting;
+    const side = this.dropStart !== null ? OPENING_CANVAS : this.isExpanded(now) ? GEM_EXPANDED_CANVAS : this.resting;
     if(side !== this.canvasSide) {
       this.canvasSide = side;
       this.stillDrawn = false;
@@ -202,34 +200,21 @@ export class WalletQrGem {
 
   /** The code through the grown gem: the modules bent by its facets, inside its silhouette */
   private updateLens() {
-    const grip = this.grip;
-    if(grip <= 0.002 || !this.code || this.canvasSide !== EXPANDED_CANVAS) {
-      if(this.lensOn) {
-        this.gem.setLens(null);
-        this.lensOn = false;
-      }
-
-      return;
-    }
-
-    const half = EXPANDED_CANVAS / 2;
-    if(this.lensDirty) {
+    const grown = this.grip > 0.002 && !!this.code && this.canvasSide === GEM_EXPANDED_CANVAS;
+    const half = GEM_EXPANDED_CANVAS / 2;
+    if(grown && this.lensDirty) {
       this.lensDirty = false;
       const pr = pixelRatio();
       const canvas = this.lensCanvas ??= document.createElement('canvas');
-      canvas.width = canvas.height = Math.round(EXPANDED_CANVAS * pr);
+      canvas.width = canvas.height = Math.round(GEM_EXPANDED_CANVAS * pr);
       const ctx = canvas.getContext('2d');
       ctx.setTransform(pr, 0, 0, pr, 0, 0);
       const {canvas: code, center, side} = this.code;
       ctx.drawImage(code, 0, 0, code.width, code.height, half - center[0], half - center[1], side, side);
-      this.gem.setText(canvas);
+      this.lens.changed();
     }
 
-    const pose = this.gem.pose;
-    const hull = gemHull(this.outline, pose.yaw, pose.pitch, this.gem.style.widthPoints / 2 * 0.96)
-    .map((p): Vec2 => [half + p[0], half + p[1]]);
-    this.gem.setLens({hull, center: [half, half], strength: Math.min(1, grip), spin: pose.yaw, textScale: 1, textShift: 0, opacity: LENS_OPACITY});
-    this.lensOn = true;
+    this.lens.update(grown ? this.lensCanvas : undefined, [half, half], this.gem.style.widthPoints, this.grip, LENS_OPACITY);
   }
 
   private onDown = (e: PointerEvent) => {
@@ -240,7 +225,7 @@ export class WalletQrGem {
     } catch(err) {}
 
     const now = clock.now();
-    this.drag = {last: [e.clientX, e.clientY], samples: [[now, e.clientX]], pointerId: e.pointerId};
+    this.drag = new GemPull(e, now);
     // * a press ends the drop-in where it is: the gem is the finger's now
     this.dropStart = null;
     this.gem.beginDrag(now);
@@ -252,17 +237,15 @@ export class WalletQrGem {
     const drag = this.drag;
     if(!drag || e.pointerId !== drag.pointerId) return;
     const now = clock.now();
-    this.gem.drag(e.clientX - drag.last[0], e.clientY - drag.last[1], now);
-    drag.last = [e.clientX, e.clientY];
-    drag.samples.push([now, e.clientX]);
-    while(drag.samples.length > 2 && now - drag.samples[0][0] > 0.08) drag.samples.shift();
+    const [dx, dy] = drag.move(e, now);
+    this.gem.drag(dx, dy, now);
   };
 
   private onUp = (e: PointerEvent) => {
     const drag = this.drag;
     if(!drag || e.pointerId !== drag.pointerId) return;
-    const now = clock.now(), first = drag.samples[0];
-    const velocity = this.options.motion && now - first[0] > 0.005 ? (e.clientX - first[1]) / (now - first[0]) : 0;
+    const now = clock.now();
+    const velocity = this.options.motion ? drag.velocity(e, now) : 0;
     this.gem.endDrag(velocity, now, e.type === 'pointercancel');
     this.drag = undefined;
     this.hold(false, now);

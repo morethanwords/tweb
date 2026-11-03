@@ -45,6 +45,42 @@ export interface AnimationItemWrapper {
   // onVisibilityChange?: (visible: boolean) => boolean;
 };
 
+/** An animation that runs itself, told by the intersector when to play and when to stand */
+export class AnimationItemNested implements AnimationItemWrapper {
+  public autoplay = true;
+  public loop = true;
+  public paused = true;
+
+  constructor(private options: {
+    onPlay: () => void,
+    onPause: () => void,
+    onDestroy?: () => void
+  }) {}
+
+  public remove() {
+    this.pause();
+    this.options.onDestroy?.();
+  }
+
+  public play() {
+    if(!this.paused) {
+      return;
+    }
+
+    this.paused = false;
+    this.options.onPlay();
+  }
+
+  public pause() {
+    if(this.paused) {
+      return;
+    }
+
+    this.paused = true;
+    this.options.onPause();
+  }
+}
+
 // How long an animation whose element has never been inserted is kept before the out-of-DOM reclaim
 // takes it anyway - bounds the leak for a subtree that is built and then dropped without ever showing.
 const NEVER_SHOWN_RECLAIM_TIMEOUT = 60000;

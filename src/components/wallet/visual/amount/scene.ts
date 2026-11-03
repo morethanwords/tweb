@@ -30,6 +30,8 @@ import {SPIN} from '@components/wallet/visual/amount/roll';
 import {introLift, introScale} from '@components/wallet/visual/amount/intro';
 import type {Digits} from '@components/wallet/visual/amount/digits';
 import type {Vec2, Vec3} from '@components/wallet/visual/math';
+import {GemPull} from '@components/wallet/visual/gem/pull';
+import {gemBreath, gemSendEnergy, gemSendHit} from '@components/wallet/visual/gem/send';
 import ListenerSetter from '@helpers/listenerSetter';
 
 /** The gem's canvas — room for the growth, the burst and the swell. */
@@ -62,21 +64,18 @@ interface SendStage {
 /** The send storyboard from the press: the hit, the spin-up, the breathing. */
 function sendStage(time: number): SendStage {
   const ramp = (from: number, span: number) => Math.min(Math.max((time - from) / span, 0), 1);
-  const hitAfter = (d: number) => {
-    const t = time - d;
-    return time > 0 && t > 0 && t < 0.42 ? Math.sin(Math.PI * t / 0.42) * (1 - 0.3 * t / 0.42) : 0;
-  };
+  const hitAfter = (d: number) => time > 0 ? gemSendHit(time - d) : 0;
   return {
-    energy: Math.pow(ramp(0, 0.45), 0.65),
+    energy: gemSendEnergy(time),
     hit: hitAfter(0),
     hitAfter,
-    breath: Math.sin(2 * Math.PI * 1.1 * time),
+    breath: gemBreath(time),
     ring: 1 - Math.pow(1 - ramp(0.02, 0.7), 2.4)
   };
 }
 
-/** The glyph's bounce on every change of the amount: up for a tenth and a bit, and back. */
-const pop = (t: number) => t >= 0 && t < 0.42 ? Math.sin(Math.PI * t / 0.42) * (1 - 0.3 * t / 0.42) : 0;
+/** The glyph's bounce on every change of the amount: the send's hit, up for a tenth and a bit, and back. */
+const pop = gemSendHit;
 
 export interface AmountSceneElements {
   /** The screen: the gem layer is placed in it, and the grown gem stays inside its edge by the gem (the left one,
@@ -297,7 +296,7 @@ export class AmountScene {
     const listen = this.listenerSetter.add(line);
     // * the gem is held: it grows and covers the amount, and turns as it is pulled; a press elsewhere
     // * focuses the amount
-    let drag: {last: Vec2, samples: Vec2[]} = null;
+    let drag: GemPull = null;
     const onGem = (e: PointerEvent) => {
       const c = this.gemCenter();
       return c && Math.hypot(e.clientX - c[0], e.clientY - c[1]) <= GEM_HIT * this.lineScale * (1 + HOLD_GROW * this.grip);
@@ -309,7 +308,7 @@ export class AmountScene {
           line.setPointerCapture(e.pointerId);
         } catch{}
         const t = clock.now();
-        drag = {last: [e.clientX, e.clientY], samples: [[t, e.clientX]]};
+        drag = new GemPull(e, t);
         this.gem.beginDrag(t);
         this.hold(true);
       } else {
@@ -320,16 +319,13 @@ export class AmountScene {
       line.style.cursor = drag ? 'grabbing' : (onGem(e) && this.options.canHold() ? 'grab' : '');
       if(!drag) return;
       const t = clock.now();
-      this.gem.drag(e.clientX - drag.last[0], e.clientY - drag.last[1], t);
-      drag.last = [e.clientX, e.clientY];
-      drag.samples.push([t, e.clientX]);
-      while(drag.samples.length > 2 && t - drag.samples[0][0] > 0.08) drag.samples.shift();
+      const [dx, dy] = drag.move(e, t);
+      this.gem.drag(dx, dy, t);
     });
     const end = (e: PointerEvent) => {
       if(!drag) return;
-      const t = clock.now(), first = drag.samples[0];
-      const v = t - first[0] > 0.005 ? (e.clientX - first[1]) / (t - first[0]) : 0;
-      this.gem.endDrag(v, t, e.type === 'pointercancel');
+      const t = clock.now();
+      this.gem.endDrag(drag.velocity(e, t), t, e.type === 'pointercancel');
       drag = null;
       this.hold(false);
       this.options.onFocus();
@@ -446,7 +442,7 @@ export class AmountScene {
       let k = 1;
       if(stage) {
         const t = now - this.sendStart;
-        k = 1 + 0.1 * stage.hitAfter(0.055 * i) + 0.04 * energy * Math.sin(2 * Math.PI * 1.1 * (t - 0.11 * i));
+        k = 1 + 0.1 * stage.hitAfter(0.055 * i) + 0.04 * energy * gemBreath(t - 0.11 * i);
       } else {
         const t = pushT - 0.035 * i;
         if(t > 0 && t < 0.7) k = 1 + 0.06 * Math.sin(2 * Math.PI * 1.6 * t) * Math.exp(-t / 0.18);
