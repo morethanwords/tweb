@@ -470,6 +470,9 @@ type GetHistoryTypeOptions = {
 
 export type SearchStorageFilterKey = string;
 
+// * a local delete of a pending message: its chat is known, and a temporary id does not name one
+type LocalUpdateDeleteMessages = Update.updateDeleteMessages & {peerId?: PeerId};
+
 type GetUnreadMentionsOptions = {
   peerId: PeerId,
   threadId?: number,
@@ -733,8 +736,12 @@ export class AppMessagesManager extends AppManager {
     newId?: number;
     tempId: number;
     beforeMessageSendCallbacks: Array<() => void>;
-    messageSendCallbacks: Array<() => void>;
+    // * the messages sent to the topic while it is being made: sent once it is, failed if it cannot be
+    queuedMessages: Message.message[];
   }> = {};
+  // * a topic that could not be made, by `${peerId}_${tempId}` (temporary ids are a chat's own): a send still preparing
+  // * took it as its reply then
+  private failedBotforumTopics: Map<string, ApiError> = new Map();
 
   public sendSmthLazyLoadQueue = new LazyLoadQueueBase(10);
   private conversationPreviewLoadQueue = new LazyLoadQueueBase(4);
@@ -1110,6 +1117,7 @@ export class AppMessagesManager extends AppManager {
     this.waitingTranscriptions = new Map();
     this.transcriptionIds = new Map();
     this.pendingNewBotforumTopics = {};
+    this.failedBotforumTopics = new Map();
     this.pendingEditingMessages = new Map();
     this.ephemeralMidsByPeerId = new Map();
     this.anchoredEphemerals = new Map();
@@ -3491,6 +3499,7 @@ export class AppMessagesManager extends AppManager {
     this.beforeMessageSending(message, {
       isScheduled: !!options.scheduleDate || undefined,
       threadId: options.threadId,
+      replyToMsgId: options.replyToMsgId,
       clearDraft: options.clearDraft,
       sequential: true,
       confirmedPaymentResult: options.confirmedPaymentResult
@@ -3832,6 +3841,7 @@ export class AppMessagesManager extends AppManager {
       isGroupedItem: options.isGroupedItem,
       isScheduled: !!options.scheduleDate || undefined,
       threadId: options.threadId,
+      replyToMsgId: options.replyToMsgId,
       clearDraft: options.clearDraft,
       processAfter: options.processAfter,
       noOutgoingMessage: !!activeEphemeralContext && !ephemeralPlaceholder,
@@ -4885,6 +4895,7 @@ export class AppMessagesManager extends AppManager {
     this.beforeMessageSending(message, {
       isScheduled: !!options.scheduleDate || undefined,
       threadId: options.threadId,
+      replyToMsgId: options.replyToMsgId,
       clearDraft: options.clearDraft,
       sequential: true,
       noOutgoingMessage,
@@ -5029,7 +5040,7 @@ export class AppMessagesManager extends AppManager {
     return this.getCommonThingsForSending();
   }
 
-  public beforeMessageSending(message: Message.message, options: Pick<MessageSendingParams, 'threadId' | 'savedReaction' | 'confirmedPaymentResult'> & Partial<{
+  public beforeMessageSending(message: Message.message, options: Pick<MessageSendingParams, 'threadId' | 'replyToMsgId' | 'savedReaction' | 'confirmedPaymentResult'> & Partial<{
     isGroupedItem: boolean,
     isScheduled: boolean,
     clearDraft: boolean,
@@ -5152,10 +5163,14 @@ export class AppMessagesManager extends AppManager {
         }
         if(DO_NOT_SEND_MESSAGES) return;
 
-        if(this.pendingNewBotforumTopics[peerId] && !options.threadId) {
-          this.pendingNewBotforumTopics[peerId].messageSendCallbacks.push(() => {
-            message.send();
-          });
+        const topicError = options.replyToMsgId && this.failedBotforumTopics.get(`${peerId}_${options.replyToMsgId}`);
+        if(topicError) {
+          // * prepared for a topic that could not be made: it fails like those that waited for it, rather than being
+          // * sent as a reply to the temporary id, which comes out as the message before it
+          this.toggleError(message, topicError);
+          message.promise?.reject(topicError);
+        } else if(this.pendingNewBotforumTopics[peerId] && !options.threadId) {
+          this.pendingNewBotforumTopics[peerId].queuedMessages.push(message);
         } else if(SEND_MESSAGES_TO_PAID_QUEUE || options.confirmedPaymentResult?.canUndo) {
           this.paidMessagesQueue.add(peerId, {
             send: () => void message?.send?.(),
@@ -5694,12 +5709,15 @@ export class AppMessagesManager extends AppManager {
           pts_count: undefined
         });
       } else {
-        this.apiUpdatesManager.processLocalUpdate({
+        // * a temporary id is its chat's own, another chat may have the same one: the chat is named, not looked up by it
+        const update: LocalUpdateDeleteMessages = {
           _: 'updateDeleteMessages',
           messages: [tempId],
           pts: undefined,
-          pts_count: undefined
-        });
+          pts_count: undefined,
+          peerId
+        };
+        this.apiUpdatesManager.processLocalUpdate(update);
       }
 
       historyStorage.history.delete(tempId);
@@ -11070,12 +11088,12 @@ export class AppMessagesManager extends AppManager {
 
   private async createPendingBotforumTopic({peerId, title, tempId, randomId, message, iconColor}: CreateBotforumTopicArgs) {
     const beforeMessageSendCallbacks: Array<() => void> = [];
-    const messageSendCallbacks: Array<() => void> = [];
+    const queuedMessages: Message.message[] = [];
 
     this.pendingNewBotforumTopics[peerId] = {
       tempId,
       beforeMessageSendCallbacks,
-      messageSendCallbacks
+      queuedMessages
     };
 
     const temporaryTopic = this.generateTemporaryTopic(message);
@@ -11084,6 +11102,13 @@ export class AppMessagesManager extends AppManager {
     this.rootScope.dispatchEvent('botforum_pending_topic_created', {peerId, tempId});
 
     const pendingTopic = this.pendingNewBotforumTopics[peerId];
+    // * the temporary topic goes, and the topic stops being waited for unless a clear() put another in its place
+    const finish = () => {
+      dumpTemporaryTopic();
+      if(this.pendingNewBotforumTopics[peerId] === pendingTopic) {
+        delete this.pendingNewBotforumTopics[peerId];
+      }
+    };
 
     this.pendingByRandomId[randomId] = {
       tempId: pendingTopic.tempId,
@@ -11092,13 +11117,27 @@ export class AppMessagesManager extends AppManager {
       storage: this.getHistoryMessagesStorage(peerId)
     };
 
-    const updates = await this.apiManager.invokeApi('messages.createForumTopic', {
-      peer: this.appPeersManager.getInputPeerById(peerId),
-      title,
-      icon_color: iconColor,
-      random_id: randomId,
-      title_missing: true
-    });
+    let updates: Updates;
+    try {
+      updates = await this.apiManager.invokeApi('messages.createForumTopic', {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        title,
+        icon_color: iconColor,
+        random_id: randomId,
+        title_missing: true
+      });
+    } catch(error) {
+      // * the topic is not made: it goes, what waited for it fails (to be deleted or sent again), and the next
+      // * send makes a topic anew
+      this.log.error('botforum topic error:', error);
+      this.failedBotforumTopics.set(`${peerId}_${tempId}`, error as ApiError);
+      finish();
+      this.cancelPendingMessage(randomId);
+      this.onMessagesSendError(queuedMessages, error as ApiError);
+      this.rootScope.dispatchEvent('messages_pending');
+      this.rootScope.dispatchEvent('botforum_pending_topic_failed', {peerId, tempId});
+      return;
+    }
 
     if(updates._ === 'updates') {
       const messageIdUpdate = updates.updates.find((update) => update._ === 'updateMessageID');
@@ -11112,12 +11151,10 @@ export class AppMessagesManager extends AppManager {
     await this.dialogsStorage.getForumTopicById(peerId, pendingTopic.newId);
     this.rootScope.dispatchEvent('botforum_pending_topic_created', {peerId, tempId, newId: pendingTopic.newId});
 
-    dumpTemporaryTopic();
-
-    delete this.pendingNewBotforumTopics[peerId];
+    finish();
 
     beforeMessageSendCallbacks.forEach((callback) => callback());
-    messageSendCallbacks.forEach((callback) => callback());
+    queuedMessages.forEach((message) => message.send());
   }
 
   private generateTemporaryTopic(message: ReturnType<AppMessagesManager['generateTopicCreatedServiceMessage']> & Pick<Message.messageService, 'peerId'>): MTForumTopic.forumTopic {
@@ -12440,7 +12477,7 @@ export class AppMessagesManager extends AppManager {
   ) => {
     const channelId = (update as Update.updateDeleteChannelMessages).channel_id;
     let mids = (update as any as Update.updateDeleteChannelMessages).messages.map((id) => this.appMessagesIdsManager.generateMessageId(id, channelId));
-    const peerId: PeerId = channelId ? channelId.toPeerId(true) : this.findPeerIdByMids(mids);
+    const peerId: PeerId = channelId ? channelId.toPeerId(true) : (update as LocalUpdateDeleteMessages).peerId ?? this.findPeerIdByMids(mids);
 
     if(!peerId) {
       return new Set<number>();

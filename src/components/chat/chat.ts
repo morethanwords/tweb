@@ -886,6 +886,13 @@ export default class Chat extends EventListenerBase<{
       });
     });
 
+    // * the topic could not be made: the chat leaves it for the bot's own, where the next send makes another, or it
+    // * would follow none of the topics made after
+    this.bubbles.listenerSetter.add(rootScope)('botforum_pending_topic_failed', ({peerId, tempId}) => {
+      if(peerId !== this.peerId || this.threadId !== tempId) return;
+      this.setPeer({peerId});
+    });
+
 
     const freezeObservers = (freeze: boolean) => {
       const cb = () => {

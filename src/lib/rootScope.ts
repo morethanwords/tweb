@@ -284,6 +284,7 @@ export type BroadcastEvents = {
   'monoforum_draft_update': {dialog: MonoforumDialog},
 
   'botforum_pending_topic_created': {peerId: PeerId, tempId: number, newId?: number},
+  'botforum_pending_topic_failed': {peerId: PeerId, tempId: number},
   'promo_data_update': MyPromoData,
   'unconfirmed_authorizations_update': UnconfirmedAuthorization[],
 
