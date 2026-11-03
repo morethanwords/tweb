@@ -4639,13 +4639,21 @@ export default class ChatBubbles {
       target.dispatchEvent(event);
     };
 
+    // * the press is the download's, as one that opens the viewer is the viewer's: nothing after it may act on it
+    // * too - a web page's preview would follow its link, on a touch screen with the click that comes after the
+    // * press. A middle or right one (only a touch screen hands it here, on mousedown) has no click to come, nor has
+    // * one the app made itself (simulateClickEvent: a story link handing its activation on to the media)
+    const pressPreloader = (preloader: HTMLElement) => {
+      simulateClickEvent(preloader);
+      cancelEvent(e);
+      return !(e as MouseEvent).button && e.isTrusted;
+    };
+
     let pollViewerTarget: HTMLElement | null
     if(pollViewerTarget = target.closest('[data-poll-viewer-idx]')) {
       const preloader = pollViewerTarget.querySelector<HTMLElement>('.preloader-container');
       if(preloader && e) {
-        simulateClickEvent(preloader);
-        cancelEvent(e);
-        return;
+        return pressPreloader(preloader);
       }
 
       const bubbleContext = this.contexts.get(bubble);
@@ -4667,9 +4675,7 @@ export default class ChatBubbles {
       const groupedItem = findUpClassName(target, 'album-item') || findUpClassName(target, 'document-container');
       const preloader = (groupedItem || bubble).querySelector<HTMLElement>('.preloader-container');
       if(preloader && e) {
-        simulateClickEvent(preloader);
-        cancelEvent(e);
-        return;
+        return pressPreloader(preloader);
       }
 
       cancelEvent(e);
