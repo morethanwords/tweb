@@ -14,6 +14,7 @@ import {useAppSettings} from '@stores/appSettings';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import getDoNotTranslateLanguages from '@helpers/getDoNotTranslateLanguages';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Section 1 — translation toggles + "Do not translate" picker
@@ -23,14 +24,7 @@ const TranslateSection = () => {
   const [appSettings, setAppSettings] = useAppSettings();
   const isPremium = usePremium();
 
-  const doNotTranslate = createMemo(() => {
-    const arr = appSettings.translations.doNotTranslate;
-    if(!arr.length) {
-      return [I18n.langCodeNormalized()];
-    }
-
-    return arr;
-  });
+  const doNotTranslate = createMemo(() => getDoNotTranslateLanguages(appSettings.translations.doNotTranslate));
 
   return (
     <Section
@@ -70,7 +64,8 @@ const TranslateSection = () => {
         </RowTsx.CheckboxFieldToggle>
         <RowTsx.Title>{i18n('ShowTranslateChatButton')}</RowTsx.Title>
       </RowTsx>
-      {appSettings.translations.enabled && (<RowTsx
+      {/* the list the Translate button reads too (tdesktop shows it while either is on) */}
+      {(appSettings.translations.showInMenu || appSettings.translations.enabled) && (<RowTsx
         clickable={async() => {
           const languages = await pickLanguage(true, doNotTranslate());
           setAppSettings('translations', 'doNotTranslate', languages);

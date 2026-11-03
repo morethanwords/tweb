@@ -21,6 +21,7 @@ import {usePeer} from '@stores/peers';
 import {Chat as MTChat} from '@layer';
 import TopbarPlate, {createTopbarPlate, TopbarPlateController} from '@components/chat/topbarPlate';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {addDoNotTranslateLanguage} from '@helpers/getDoNotTranslateLanguages';
 
 export function pickLanguage<T extends boolean>(
   multi?: T,
@@ -145,7 +146,8 @@ function TranslationPlateBody(props: {
       textElement: i.element,
       onClick: () => {
         const [_, setAppSettings] = useAppSettings();
-        setAppSettings('translations', 'doNotTranslate', (arr) => [...arr, peerTranslation().peerLanguage()]);
+        const language = peerTranslation().peerLanguage();
+        setAppSettings('translations', 'doNotTranslate', (arr) => addDoNotTranslateLanguage(arr, language));
       },
       verify: isPremium,
       separatorDown: true

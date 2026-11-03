@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => {
   const messages = new Map<string, Message.message>();
   const listeners = new Map<string, Set<(payload: any) => void>>();
   return {
+    uiLanguage: 'en' as TranslatableLanguageISO,
     detectLanguage: vi.fn<(text: string) => Promise<TranslatableLanguageISO>>(),
     messages,
     addEventListener: vi.fn((event: string, callback: (payload: any) => void) => {
@@ -26,11 +27,18 @@ vi.mock('@lib/apiManagerProxy', () => ({
 }));
 vi.mock('@lib/rootScope', () => ({default: {addEventListener: mocks.addEventListener}}));
 vi.mock('@lib/tinyld/detect', () => ({default: mocks.detectLanguage}));
-vi.mock('@stores/appSettings', () => ({
-  useAppSettings: () => [{translations: {doNotTranslate: [] as TranslatableLanguageISO[]}}]
-}));
-vi.mock('@lib/langPack', () => ({default: {langCodeNormalized: () => 'en'}}));
+vi.mock('@stores/appSettings', async() => {
+  const {createStore} = await import('solid-js/store');
+  const [appSettings, setAppSettings] = createStore({translations: {doNotTranslate: [] as TranslatableLanguageISO[], showInMenu: true}});
+  return {useAppSettings: () => [appSettings, setAppSettings]};
+});
+vi.mock('@lib/langPack', () => ({default: {langCodeNormalized: () => mocks.uiLanguage}}));
+vi.mock('@stores/appState', () => ({useAppState: () => [{appConfig: {translations_manual_enabled: 'enabled'}}]}));
 
+import '@helpers/peerIdPolyfill';
+import {useAppSettings} from '@stores/appSettings';
+import getDoNotTranslateLanguages, {addDoNotTranslateLanguage} from '@helpers/getDoNotTranslateLanguages';
+import detectLanguageForTranslation from '@helpers/detectLanguageForTranslation';
 import usePeerLanguage, {
   getMessageTranslationSourceToken,
   processMessageForTranslation,
@@ -406,5 +414,77 @@ describe('peer message language accounting', () => {
     await Promise.resolve();
     expect(accessor()).toBeUndefined();
     dispose();
+  });
+});
+
+// * The browser's language is not to be translated only as part of the list the user sees and can change: an English
+// * browser with a Russian interface hid the translation of English channels for good, with no way to get it back
+describe('do not translate: the browser language', () => {
+  const navigatorLanguage = vi.spyOn(navigator, 'language', 'get');
+  const setDoNotTranslate = (languages: TranslatableLanguageISO[]) => {
+    const [, setAppSettings] = useAppSettings() as any;
+    setAppSettings('translations', 'doNotTranslate', languages);
+  };
+
+  beforeEach(() => {
+    mocks.uiLanguage = 'ru';
+    navigatorLanguage.mockReturnValue('en-US');
+    setDoNotTranslate([]);
+  });
+
+  afterEach(() => {
+    mocks.uiLanguage = 'en';
+    navigatorLanguage.mockRestore();
+    setDoNotTranslate([]);
+  });
+
+  test('is in the list shown until the user picks one, and only then', () => {
+    expect(getDoNotTranslateLanguages([])).toEqual(['ru', 'en']);
+    expect(getDoNotTranslateLanguages(['ru'])).toEqual(['ru']);
+    expect(getDoNotTranslateLanguages(['de', 'en'])).toEqual(['de', 'en']);
+
+    navigatorLanguage.mockReturnValue('ru-RU');
+    expect(getDoNotTranslateLanguages([])).toEqual(['ru']);
+    navigatorLanguage.mockReturnValue('tlh');
+    expect(getDoNotTranslateLanguages([])).toEqual(['ru']);
+  });
+
+  test('stays on the list when a chat puts another language there', () => {
+    expect(addDoNotTranslateLanguage([], 'fr')).toEqual(['ru', 'en', 'fr']);
+    expect(addDoNotTranslateLanguage(['ru'], 'fr')).toEqual(['ru', 'fr']);
+    expect(addDoNotTranslateLanguage([], 'en')).toEqual(['ru', 'en']);
+  });
+
+  test('an English channel is offered for translation once English is off the list', async() => {
+    const peerId = 801 as PeerId;
+    setPeerLanguageLoaded(peerId);
+    const {accessor, dispose} = languageAccessor(peerId, true);
+
+    mocks.detectLanguage.mockResolvedValue('en');
+    for(let mid = 1; mid <= 8; ++mid) {
+      await processMessageForTranslation(peerId, mid, saveMessage(message(peerId, mid, `english ${mid}`)));
+    }
+
+    expect(accessor()).toBeUndefined(); // * English is on the list by default
+
+    setDoNotTranslate(['ru']);
+    expect(accessor()).toBe('en');
+
+    setDoNotTranslate([]);
+    expect(accessor()).toBeUndefined();
+    dispose();
+  });
+
+  test('a message\'s menu offers no translation from the languages on the list shown, the default ones too', async() => {
+    mocks.detectLanguage.mockResolvedValue('ru');
+    expect(await detectLanguageForTranslation('привет')).toBeUndefined();
+    mocks.detectLanguage.mockResolvedValue('en');
+    expect(await detectLanguageForTranslation('hello')).toBeUndefined();
+    mocks.detectLanguage.mockResolvedValue('de');
+    expect(await detectLanguageForTranslation('hallo')).toBe('de');
+
+    setDoNotTranslate(['ru']);
+    mocks.detectLanguage.mockResolvedValue('en');
+    expect(await detectLanguageForTranslation('hello')).toBe('en');
   });
 });

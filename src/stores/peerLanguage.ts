@@ -7,6 +7,7 @@ import {flattenRichMessageContent} from '@lib/richMessage';
 import rootScope from '@lib/rootScope';
 import detectLanguage from '@lib/tinyld/detect';
 import {useAppSettings} from '@stores/appSettings';
+import getDoNotTranslateLanguages from '@helpers/getDoNotTranslateLanguages';
 
 // https://core.telegram.org/api/translation
 export const MIN_TOTAL_PROCESSED_MESSAGES = 8;
@@ -47,11 +48,9 @@ let _createStore = () => {
   createRoot(() => {
     const [appSettings] = useAppSettings();
     myLanguages = createMemo(() => {
+      // * the interface's language is what a translation goes into: never foreign
       const myLanguages = new Set(
-        appSettings.translations.doNotTranslate.concat(
-          navigator.language.split('-')[0] as TranslatableLanguageISO,
-          I18n.langCodeNormalized()
-        )
+        getDoNotTranslateLanguages(appSettings.translations.doNotTranslate).concat(I18n.langCodeNormalized())
       );
 
       return myLanguages;
