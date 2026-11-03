@@ -3831,7 +3831,7 @@ export default class ChatInput {
 
       if((this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion) &&
         this.chat.bubbles.scrollable.loadedAll.bottom) {
-        this.chat.bubbles.readAllHistory();
+        this.managers.appMessagesManager.readAllHistory(this.chat.peerId, this.chat.threadId);
       }
 
       this.onFocusChange?.(true);
@@ -5083,7 +5083,7 @@ export default class ChatInput {
 
   public onMessageSent(clearInput = true, clearReply?: boolean, skipReadHistory = false) {
     if(!skipReadHistory && !PEER_EXCEPTIONS.has(this.chat.type)) {
-      this.chat.bubbles.readAllHistory(true);
+      this.managers.appMessagesManager.readAllHistory(this.chat.peerId, this.chat.threadId, true);
     }
 
     this.resetSendingFlags();
@@ -5496,7 +5496,7 @@ export default class ChatInput {
     }
 
     if(!ephemeral && !PEER_EXCEPTIONS.has(chat.type)) {
-      chat.bubbles.readAllHistory(true);
+      this.managers.appMessagesManager.readAllHistory(chat.peerId, chat.threadId, true);
     }
 
     this.suppressDraftSyncForUnsupportedRichMessage = false;

@@ -53,7 +53,6 @@ function setup() {
     chat: {
       type: ChatType.Chat,
       peerId: 42,
-      bubbles: {readAllHistory: vi.fn()},
       getMessageSendingParams: () => ({
         peerId: 42,
         replyToMsgId: host.replyToMsgId,
@@ -67,7 +66,7 @@ function setup() {
     inputValueGeneration: 0,
     ownSends: [],
     managers: {
-      appMessagesManager: {editMessage: vi.fn(async() => {})},
+      appMessagesManager: {readAllHistory: vi.fn(), editMessage: vi.fn(async() => {})},
       appEmojiManager: {pushRecentEmoji: vi.fn()},
       // * the limits an edit is held to before it goes
       apiManager: {getConfig: vi.fn(async() => ({message_length_max: 4096})), getLimit: vi.fn(async() => 1024)}

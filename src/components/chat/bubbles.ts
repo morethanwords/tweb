@@ -228,7 +228,6 @@ import {
   shouldHideMessageLinks,
   shouldHidePeerMessageLinks
 } from '@components/chat/bubbles/hiddenLinks';
-import isSuspiciousPeer from '@appManagers/utils/peers/isSuspiciousPeer';
 import ejectBubble from '@components/chat/bubbles/ejectBubble';
 import {generateGradient, generateTail, getGuestChatViaFromId, getMid, isGuestChatMessage, isMessage, isMessageForVerificationBot, isVerificationBot} from '@components/chat/utils';
 import {advanceOutgoingMessageGradient, holdOutgoingMessageGradient, measureOutgoingMessageGradientHold} from '@helpers/outgoingMessageGradient';
@@ -1074,13 +1073,6 @@ export default class ChatBubbles {
   public changedMids: Map<number, number>;
 
   private peerSettings: PeerSettings;
-  // * the peer `peerSettings` came for: from a peer change to its cleanup they are still the previous one's
-  private peerSettingsPeerId: PeerId;
-  /**
-   * a read of the whole history that `isReadHeld` put off — in which chat, as far as it reached when it was
-   * asked for, and whether it was clearing the chat's unread mark — made once the hold goes
-   */
-  private heldRead: Pick<Chat, 'peerId' | 'threadId' | 'monoforumThreadId'> & {maxId: number, unreadMark?: boolean};
 
   private placeholderTopicIconContainer?: HTMLElement;
 
@@ -3871,8 +3863,6 @@ export default class ChatBubbles {
 
   private readUnreaded(type: 'history' | 'content') {
     if(this.chat.isPreview) return;
-    // * what was seen stays in `unreadedSeen` until the hold goes (`releaseHeldReads`)
-    if(type === 'history' && this.isReadHeld()) return;
     const readPromiseKey = type === 'history' ? 'readPromise' : 'readContentPromise';
     if(this[readPromiseKey]) return;
 
@@ -3883,13 +3873,6 @@ export default class ChatBubbles {
       // like a failed middleware, a stale unreadedChat leaves `this[readPromiseKey]` latched —
       // `cleanup()` is what resets both the promise and the sets
       if(!middleware() || this.isUnreadedChatChanged()) return;
-      // * the hold can come while the tab waits for focus, and what was seen can go with a held read meanwhile
-      // * (`releaseHeldReads`)
-      if((type === 'history' && this.isReadHeld()) || !this[unreadedSeenKey].size) {
-        this[readPromiseKey] = undefined;
-        return;
-      }
-
       const {peerId, threadId, monoforumThreadId} = this.chat;
 
       let callback: () => Promise<any>;
@@ -6536,8 +6519,6 @@ export default class ChatBubbles {
     this.emptyPlaceholderBubble = undefined;
     this.previousStickyDate = undefined;
     this.peerSettings = undefined;
-    this.peerSettingsPeerId = undefined;
-    this.heldRead = undefined;
     this.testPeerNonContactState = undefined;
     ++this.testPeerNonContactRequest;
 
@@ -6855,18 +6836,12 @@ export default class ChatBubbles {
       this.peerSettings,
       this.testPeerNonContactState
     );
-    const retainedPeerSettingsPeerId = this.peerSettingsPeerId;
-    const restoreHeldReads = samePeer && this.keepHeldReads();
     this.cleanup();
     if(samePeer) {
       this.peerSettings = retainedMessageLinkPolicy.peerSettings;
-      this.peerSettingsPeerId = retainedPeerSettingsPeerId;
-      if(restoreHeldReads) restoreHeldReads();
       this.testPeerNonContactState = retainedMessageLinkPolicy.testPeerNonContactState;
     } else {
       this.peerSettings = cachedPeerSettings;
-      // * `setPeerSettings` skips the same settings coming again, so these are the ones the reads are held by
-      if(cachedPeerSettings) this.peerSettingsPeerId = peerId;
     }
     this.refreshTestPeerNonContactState();
     const chatInner = this.chatInner = this.createChatInner();
@@ -7271,7 +7246,7 @@ export default class ChatBubbles {
         })
       ]).then(() => {
         if(!middleware()) return;
-        this.requestPeerSettingsForReads(peerId);
+        this.requestMissingPeerSettings(peerId);
         log('scrolledAllDown:', scrollable.loadedAll.bottom);
         if(scrollable.loadedAll.bottom && topMessageFullMid !== EMPTY_FULL_MID && !this.unreaded.size) {
           this.onScrolledAllDown();
@@ -7286,7 +7261,7 @@ export default class ChatBubbles {
         );
 
         if(dialog?.pFlags.unread_mark) {
-          this.readUnreadMark(dialog.top_message);
+          this.managers.appMessagesManager.markDialogUnread({peerId, monoforumThreadId: this.chat.monoforumThreadId, read: true});
         }
       }
 
@@ -7485,10 +7460,6 @@ export default class ChatBubbles {
     if(this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion) {
       const {peerId, threadId, monoforumThreadId} = this.chat;
       const historyMaxId = this.chat.getHistoryMaxId();
-      if(this.isReadHeld()) {
-        this.holdRead(historyMaxId);
-        return;
-      }
 
       this.managers.appMessagesManager.readHistory({
         peerId,
@@ -15032,7 +15003,6 @@ export default class ChatBubbles {
 
     const hadHiddenLinks = this.shouldHideCurrentPeerMessageLinks();
     this.peerSettings = peerSettings;
-    this.peerSettingsPeerId = peerId;
     this.syncCurrentMessageLinkPolicyState();
     const hasHiddenLinks = this.shouldHideCurrentPeerMessageLinks();
 
@@ -15042,127 +15012,23 @@ export default class ChatBubbles {
     }
 
     this.handleMessageLinkPolicyChange(hadHiddenLinks, hasHiddenLinks);
-
-    // * not only when these settings lift the hold: a contact made meanwhile may have lifted it before them
-    if(!this.isReadHeld()) {
-      this.releaseHeldReads();
-    }
-  }
-
-  /**
-   * Nothing in the chat of a user who may be a spammer is marked read, as a read cannot be taken back
-   * (iOS `ChatHistoryListNode.holdsReadsForSender`): not while the bar offers to report or block them,
-   * nor, for one who is not a contact, before their settings say whether it does. Every read the chat
-   * makes by itself waits here — what scrolled into view, the bottom reached, the composer focused or
-   * sent from — so a message coming in while the list stays at its bottom waits too. Marking the chat
-   * read from the chat list is not held.
-   */
-  public isReadHeld() {
-    const peerId = this.peerId;
-    if(!peerId?.isUser() || peerId === rootScope.myId) {
-      return false;
-    }
-
-    if(this.peerSettingsPeerId === peerId) {
-      return isSuspiciousPeer(peerId, this.peerSettings);
-    }
-
-    return !apiManagerProxy.getUser(peerId.toUserId())?.pFlags.contact;
-  }
-
-  // * a message that comes after it was asked for is not read with it: nobody may have seen it
-  private holdRead(maxId: number, unreadMark?: boolean) {
-    const {peerId, threadId, monoforumThreadId} = this.chat;
-    if(!this.isHeldReadOfThisChat()) {
-      this.heldRead = {peerId, threadId, monoforumThreadId, maxId: 0};
-    }
-
-    const {heldRead} = this;
-    heldRead.maxId = Math.max(heldRead.maxId, maxId || 0);
-    if(unreadMark) heldRead.unreadMark = true;
-  }
-
-  // * from a peer change to the cleanup the chat already shows the next peer, while what it held is still the previous one's
-  private isHeldReadOfThisChat() {
-    const {heldRead, chat} = this;
-    return heldRead &&
-      heldRead.peerId === chat.peerId &&
-      heldRead.threadId === chat.threadId &&
-      heldRead.monoforumThreadId === chat.monoforumThreadId;
   }
 
   // * the plate brings the settings only to the open that asked for them, and a jump within the chat before they come
-  // * cuts that off: without them the reads would stay held until the chat is opened again
-  private requestPeerSettingsForReads(peerId: PeerId) {
-    if(this.peerSettingsPeerId === peerId || !this.isReadHeld()) return;
+  // * cuts that off: without them the links of a sender who is not a contact would stay links until the chat is opened again
+  private requestMissingPeerSettings(peerId: PeerId) {
+    if(
+      this.peerSettings ||
+      !peerId.isUser() ||
+      peerId === rootScope.myId ||
+      apiManagerProxy.getUser(peerId.toUserId())?.pFlags.contact
+    ) {
+      return;
+    }
+
     this.managers.appProfileManager.getPeerSettings(peerId).then((peerSettings) => {
       this.setPeerSettings(peerId, peerSettings);
     }, noop);
-  }
-
-  // * a jump within a held chat keeps what the hold put off over the cleanup: none of it is read yet
-  private keepHeldReads() {
-    if(!this.isReadHeld()) return;
-    const {heldRead, unreadedChat} = this;
-    const seen = [...this.unreadedSeen];
-    return () => {
-      this.heldRead = heldRead;
-      // * with the chat they were seen in, which `readUnreaded` checks them against
-      this.unreadedChat = unreadedChat;
-      seen.forEach((mid) => this.unreadedSeen.add(mid));
-    };
-  }
-
-  private releaseHeldReads() {
-    const heldRead = this.isHeldReadOfThisChat() && this.heldRead;
-    if(!heldRead) {
-      this.heldRead = undefined;
-      if(this.unreadedSeen.size) {
-        this.readUnreaded('history');
-      }
-
-      return;
-    }
-
-    // * like the list's own reads it waits until the user can see the chat, which may have changed by then
-    idleController.getFocusPromise().then(() => {
-      if(this.heldRead !== heldRead || !this.isHeldReadOfThisChat() || this.isReadHeld()) return;
-      this.heldRead = undefined;
-
-      // * what was seen goes in the same read: another one while it is on its way would only be applied here,
-      // * `readHistory` takes it as covered by the one in flight and never sends it
-      const seen = this.isUnreadedChatChanged() ? [] : [...this.unreadedSeen];
-      this.unreadedSeen.clear();
-      const {peerId, threadId, monoforumThreadId} = heldRead;
-      const maxId = Math.max(heldRead.maxId, ...seen);
-      if(heldRead.unreadMark) {
-        this.managers.appMessagesManager.markDialogUnread({peerId, monoforumThreadId, read: true, maxId});
-      } else if(maxId) {
-        this.managers.appMessagesManager.readHistory({peerId, maxId, threadId, monoforumThreadId, force: true});
-      }
-    });
-  }
-
-  // * the composer's reads, held like the list's own; one that marks the whole history read is made once the hold goes
-  public readAllHistory(force?: boolean) {
-    if(this.isReadHeld()) {
-      if(force) this.holdRead(this.chat.getHistoryMaxId());
-      return;
-    }
-
-    const {peerId, threadId} = this.chat;
-    this.managers.appMessagesManager.readAllHistory(peerId, threadId, force);
-  }
-
-  // * opening a chat marked unread reads it
-  private readUnreadMark(topMessage: number) {
-    if(this.isReadHeld()) {
-      this.holdRead(topMessage, true);
-      return;
-    }
-
-    const {peerId, monoforumThreadId} = this.chat;
-    this.managers.appMessagesManager.markDialogUnread({peerId, monoforumThreadId, read: true});
   }
 
   private shouldForceHideNonContactLinks() {

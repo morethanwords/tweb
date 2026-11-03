@@ -1378,8 +1378,8 @@ export class AppProfileManager extends AppManager {
 
   /**
    * A message the account sent a suspicious user (`isSuspiciousPeer`), once the server has it, ends
-   * that state, as on iOS: only the report and block offers go, so an Add Contact one stays, and the
-   * chat may be read again.
+   * that state, as on iOS: only the report and block offers go, so an Add Contact one stays, and
+   * their links show as links again.
    */
   public endSuspiciousPeer(peerId: PeerId) {
     // * the settings still on the way were read before the send: they are ended as they come

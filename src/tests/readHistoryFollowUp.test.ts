@@ -62,6 +62,23 @@ describe('reading a chat\'s history', () => {
     expect(calls[1].params).toMatchObject({max_id: 120});
   });
 
+  test('a read made while another is on its way is sent once that one is answered', async() => {
+    const {manager, calls, histories} = setup(false);
+    const peerId = (42 as UserId).toPeerId(false);
+
+    void manager.readHistory({peerId, maxId: 100, force: true});
+    void manager.readHistory({peerId, maxId: 150, force: true});
+    expect(calls.map(({method}) => method)).toEqual(['messages.readHistory']);
+
+    // * where the second one's local apply leaves the chat
+    histories[`${peerId}_undefined`].readMaxId = 150;
+    calls[0].deferred.resolve({pts: 0, pts_count: 0});
+    await pause(0);
+
+    expect(calls.map(({method}) => method)).toEqual(['messages.readHistory', 'messages.readHistory']);
+    expect(calls[1].params).toMatchObject({max_id: 150});
+  });
+
   test('a read the server refused is sent again by the next one', async() => {
     const {manager, calls} = setup(false);
     const peerId = (42 as UserId).toPeerId(false);

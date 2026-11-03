@@ -2,8 +2,8 @@ import type {PeerSettings} from '@layer';
 
 /**
  * A user whose chat still offers to report or block them: they wrote first, and the account has
- * neither dismissed the bar nor written back. Until then their links show as plain text and the
- * chat marks nothing read (iOS `CachedUserData.isSuspiciousPeer`).
+ * neither dismissed the bar nor written back. Until then their links show as plain text
+ * (iOS `CachedUserData.isSuspiciousPeer`).
  */
 export default function isSuspiciousPeer(peerId: PeerId, peerSettings?: PeerSettings) {
   return peerId.isUser() && !!(

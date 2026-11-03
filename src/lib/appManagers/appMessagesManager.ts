@@ -500,9 +500,7 @@ type ReadHistoryArgs = {
 type MarkDialogUnreadArgs = {
   peerId: PeerId,
   read?: boolean,
-  monoforumThreadId?: PeerId,
-  /** how far `read` reads the history; the top message by default */
-  maxId?: number
+  monoforumThreadId?: PeerId
 };
 
 type FlushHistoryArgs = {
@@ -8974,7 +8972,7 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  public async markDialogUnread({peerId, read, monoforumThreadId, maxId}: MarkDialogUnreadArgs) {
+  public async markDialogUnread({peerId, read, monoforumThreadId}: MarkDialogUnreadArgs) {
     const dialog = monoforumThreadId ?
       this.monoforumDialogsStorage.getDialogByParent(peerId, monoforumThreadId) :
       this.getDialogOnly(peerId);
@@ -9005,7 +9003,7 @@ export class AppMessagesManager extends AppManager {
       const promise = this.readHistory({
         peerId,
         monoforumThreadId,
-        maxId: maxId || dialog.top_message,
+        maxId: dialog.top_message,
         force: true
       });
       if(!dialog.pFlags.unread_mark) {
