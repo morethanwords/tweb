@@ -103,6 +103,9 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
+  // * the list's first child, as tall as the list and in sight wherever it is scrolled: the browser would keep it where
+  // * it is rather than a message, and a message above the screen that grows would push the ones in sight down
+  overflow-anchor: none;
   // * the bubbles' colour under it, as a bubble paints it under its own piece
   background-color: var(--message-out-gradient-under, var(--message-out-background-color));
   @include message-out-gradient;

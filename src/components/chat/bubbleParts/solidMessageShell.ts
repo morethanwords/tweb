@@ -1,6 +1,7 @@
 import copy from '@helpers/object/copy';
 import {Message} from '@layer';
 import {hasRichMessageSpoilers} from '@lib/richMessage';
+import countEmojiOnly from '@lib/richTextProcessor/countEmojiOnly';
 
 /**
  * Legacy-shell fields that must remain compatible while a Solid message body is updated in place.
@@ -71,22 +72,7 @@ function getBigEmojiShellSignature(message: Message.message) {
   const entities = message.totalEntities || message.entities;
   if(!entities?.length) return;
 
-  let count = 0;
-  let textLength = 0;
-  for(let index = 0; index < entities.length; ++index) {
-    const entity = entities[index];
-    if(entity._ === 'messageEntityCustomEmoji') {
-      // The parsed list also contains the underlying emoji entity for a custom emoji.
-      ++index;
-    } else if(entity._ !== 'messageEntityEmoji') {
-      continue;
-    }
-
-    ++count;
-    textLength += entity.length;
-  }
-
-  return count && textLength === message.message.replace(/\s/g, '').length ? count : undefined;
+  return countEmojiOnly(message.message, entities) || undefined;
 }
 
 export function hasMessageTextSpoilers(message: Message.message) {

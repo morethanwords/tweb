@@ -94,6 +94,7 @@ import wrapWebPageTitle from '@components/wrappers/webPageTitle';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {wrapBusinessIntroLines} from '@components/chat/businessIntroPlaceholder';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
+import countEmojiOnly from '@lib/richTextProcessor/countEmojiOnly';
 import {MESSAGE_LINK_ENTITY_SELECTOR} from '@lib/richTextProcessor/filterDisabledEntities';
 import wrapMessageActionTextNew from '@components/wrappers/messageActionTextNew';
 import isMentionUnread from '@appManagers/utils/messages/isMentionUnread';
@@ -9988,22 +9989,9 @@ export default class ChatBubbles {
 
     let bigEmojis = 0, customEmojiSize: MediaSize;
     if(totalEntities && !context.messageMedia && !factCheck && !(message as Message.message).pFlags.currentlyTyping) {
-      const emojiEntities: (MessageEntity.messageEntityCustomEmoji | MessageEntity.messageEntityEmoji)[] = [];
-      for(let i = 0, length = totalEntities.length; i < length; ++i) {
-        const entity = totalEntities[i];
-        if(entity._ === 'messageEntityCustomEmoji') {
-          ++i;
-          emojiEntities.push(entity);
-        } else if(entity._ === 'messageEntityEmoji') {
-          emojiEntities.push(entity);
-        }
-      }
-
-      const strLength = context.messageMessage.replace(/\s/g, '').length;
-      const emojiStrLength = emojiEntities.reduce((acc, curr) => acc + curr.length, 0);
-
-      if(emojiStrLength === strLength /* && emojiEntities.length <= 3 *//*  && totalEntities.length === emojiEntities.length */) {
-        bigEmojis = Math.min(BIG_EMOJI_SIZES_LENGTH, emojiEntities.length);
+      const emojiCount = countEmojiOnly(context.messageMessage, totalEntities);
+      if(emojiCount) {
+        bigEmojis = Math.min(BIG_EMOJI_SIZES_LENGTH, emojiCount);
 
         customEmojiSize = mediaSizes.active.customEmoji;
 
