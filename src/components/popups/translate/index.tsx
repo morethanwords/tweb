@@ -10,7 +10,9 @@ export type TranslatePopupOptions = {
   peerId: PeerId,
   message?: Message.message,
   textWithEntities?: TextWithEntities,
-  detectedLanguage: TranslatableLanguageISO
+  detectedLanguage: TranslatableLanguageISO,
+  /** the text is of a chat or a message that forbids copying: nothing in the popup copies it, as in tdesktop */
+  noForwards?: boolean
 };
 
 function TranslatePopup(props: {options: TranslatePopupOptions}) {

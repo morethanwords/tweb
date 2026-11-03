@@ -5,6 +5,10 @@ import {Divider, Original, previewStyles} from '@components/popups/previewCard';
 import ripple from '@components/ripple';
 import Scrollable, {ScrollableContextValue} from '@components/scrollable2';
 import Space from '@components/space';
+import toastCopyRestricted from '@components/chat/toastCopyRestricted';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {getCodeBlockClickTarget} from '@helpers/dom/codeBlockClick';
+import {bindActiveWindowListener} from '@helpers/appWindow';
 import {keepMe} from '@helpers/keepMe';
 import debounce from '@helpers/schedulers/debounce';
 import {I18nTsx} from '@helpers/solid/i18n';
@@ -70,6 +74,42 @@ export function TranslatePopupBodyContent(props: {
     onCleanup(() => div.removeEventListener('click', onClick, {capture: true}));
   };
 
+  // A chat or a message that forbids copying: the texts are shown, never copied - neither a selection
+  // that takes them in (the guard of the chat's bubbles does not reach a popup), Select All's whole page
+  // included, whose copy the document gets, nor a code by its copy button or a press, as in the chat
+  const keepFromCopying = (div: HTMLDivElement) => {
+    if(!options.noForwards) return;
+    const refuse = (e: Event) => {
+      cancelEvent(e);
+      toastCopyRestricted(options.peerId);
+    };
+    // * the document the app is in (a Document PiP window's included), as the bubbles' guard does - not
+    // * the element's own yet, which is a template's until it is put in
+    const onCopy = (e: ClipboardEvent) => {
+      const selection = div.ownerDocument.getSelection();
+      for(let i = 0; i < (selection?.rangeCount ?? 0); ++i) {
+        if(selection.getRangeAt(i).intersectsNode(div)) {
+          refuse(e);
+          return;
+        }
+      }
+    };
+    const onCodeCopy = (e: MouseEvent) => {
+      const codeTarget = getCodeBlockClickTarget(e.target);
+      if(codeTarget && !codeTarget.isWrapToggle) refuse(e);
+    };
+
+    const unbind = [
+      bindActiveWindowListener((w) => w.document, 'copy', onCopy, {capture: true}),
+      bindActiveWindowListener((w) => w.document, 'cut', onCopy, {capture: true})
+    ];
+    div.addEventListener('click', onCodeCopy, {capture: true});
+    onCleanup(() => {
+      unbind.forEach((callback) => callback());
+      div.removeEventListener('click', onCodeCopy, {capture: true});
+    });
+  };
+
   const onLanguageClick = () => {
     pickLanguage(false).then((language) => {
       peerTranslation.setLanguage(language);
@@ -88,7 +128,7 @@ export function TranslatePopupBodyContent(props: {
   useObserveResize(scrollableEl, updateScrollable);
 
   return (
-    <div class={styles.bodyContent}>
+    <div class={styles.bodyContent} ref={keepFromCopying}>
       <Scrollable
         tabIndex={0}
         ref={setScrollableEl}
@@ -125,6 +165,7 @@ export function TranslatePopupBodyContent(props: {
                 textWithEntities={options.textWithEntities}
                 language={peerTranslation.language()}
                 wireCaptionClick={wireCaptionClick}
+                noCopy={options.noForwards}
                 title={
                   <I18nTsx
                     class={previewStyles.resultTitle}

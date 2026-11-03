@@ -1,5 +1,5 @@
 import {expect, Page, test} from '@playwright/test';
-import {openChat, openChatList} from './chatList.helpers';
+import {editMessageLocally, openChat, openChatList} from './chatList.helpers';
 
 /*
  * The links of a sender the client does not know (the settings bar offers to report spam) are not
@@ -64,42 +64,27 @@ const LINKS = '.message a[href]', WEBPAGES = '.webpage';
 type FakedMessage = {original: any, settings: any, peer: any};
 
 /** gives the message a link and its preview, as an edit from the server would; returns what puts it all back */
-function fakeLinkPreview(page: Page, {target, mid}: Chats) {
-  return page.evaluate(async({target, mid}): Promise<FakedMessage> => {
+async function fakeLinkPreview(page: Page, {target, mid}: Chats): Promise<FakedMessage> {
+  const faked = await page.evaluate(async({target, mid}): Promise<FakedMessage> => {
     const managers = (window as any).rootScope.managers;
     const original = await managers.appMessagesManager.getMessageByPeer(target, mid);
     const settings = await managers.appProfileManager.getPeerSettings(target);
     const peer = await managers.appPeersManager.getOutputPeer(target);
-    const url = 'https://telegram.org/';
-    await managers.apiUpdatesManager.processLocalUpdate({
-      _: 'updateEditMessage',
-      message: {
-        ...original,
-        message: url,
-        entities: [{_: 'messageEntityUrl', offset: 0, length: url.length}],
-        media: {
-          _: 'messageMediaWebPage',
-          pFlags: {},
-          webpage: {
-            _: 'webPage',
-            pFlags: {},
-            id: '' + Date.now(),
-            url,
-            display_url: 'telegram.org',
-            hash: 0,
-            type: 'article',
-            site_name: 'Telegram',
-            title: 'Telegram',
-            description: 'A link from someone unknown'
-          }
-        }
-      },
-      pts: 0,
-      pts_count: 0
-    });
-
     return {original, settings, peer};
   }, {target, mid});
+
+  await editMessageLocally(page, faked.original, {
+    url: 'https://telegram.org/',
+    webpage: {
+      display_url: 'telegram.org',
+      type: 'article',
+      site_name: 'Telegram',
+      title: 'Telegram',
+      description: 'A link from someone unknown'
+    }
+  });
+
+  return faked;
 }
 
 function setPeerSettings(page: Page, peer: any, settings: any) {
@@ -119,9 +104,7 @@ function markUnknown(page: Page, {peer}: FakedMessage) {
 }
 
 async function putBack(page: Page, {original, settings, peer}: FakedMessage) {
-  await page.evaluate((original) => {
-    return (window as any).rootScope.managers.apiUpdatesManager.processLocalUpdate({_: 'updateEditMessage', message: original, pts: 0, pts_count: 0});
-  }, original).catch(() => {});
+  await editMessageLocally(page, original).catch(() => {});
   await setPeerSettings(page, peer, settings).catch(() => {});
 }
 

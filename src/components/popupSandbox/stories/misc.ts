@@ -116,12 +116,13 @@ defineStories('Composer & bots', [
       showStickersPopup({_: 'inputStickerSetShortName', short_name: 'sandbox_stickers'});
     }
   })),
-  {
-    id: 'translate',
-    title: 'Translate a message',
+  // a chat that forbids copying shows the text with nothing to copy it by
+  ...[false, true].map((noForwards): Omit<PopupStory, 'group'> => ({
+    id: noForwards ? 'translate/noForwards' : 'translate',
+    title: noForwards ? 'Translate a message that cannot be copied' : 'Translate a message',
     managers: {
       appTranslationsManager: {
-        translateText: () => [{_: 'textWithEntities', text: 'Переведённый текст', entities: []}]
+        translateText: () => ({_: 'textWithEntities', text: 'Переведённый текст', entities: []})
       }
     },
     open: async(ctx) => {
@@ -133,10 +134,11 @@ defineStories('Composer & bots', [
       openTranslatePopup({
         peerId: ctx.peer('private'),
         message: ctx.message('private'),
-        detectedLanguage: 'en'
+        detectedLanguage: 'en',
+        noForwards
       }, HotReloadGuard);
     }
-  },
+  })),
   {
     // layer 229 in a page: rows of buttons, buttons inside the text, a folded quote, a compact
     // table. Read outside a message, only links, copying and profiles act; a callback is inert.

@@ -15,7 +15,7 @@ import {Message, RichMessage, TextWithEntities} from '@layer';
 import {flattenRichMessageContent, richMessageToPage} from '@lib/richMessage';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
-import {createEffect, createResource, createSignal, JSX, Match, Switch} from 'solid-js';
+import {createEffect, createResource, createSignal, JSX, Match, Show, Switch} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
@@ -40,6 +40,8 @@ export const Result = (props: {
   message?: Message.message;
   textWithEntities?: TextWithEntities;
   wireCaptionClick?: (div: HTMLElement) => void;
+  /** Protected text: no copy button */
+  noCopy?: boolean;
 }) => {
   const {rootScope, wrapRichText} = useHotReloadGuard();
 
@@ -100,14 +102,16 @@ export const Result = (props: {
       <div class={previewStyles.resultHeader}>
         <div class={previewStyles.resultTitleWrapper}>
           {props.title}
-          <ButtonIconTsx
-            class={previewStyles.copyButton}
-            classList={{
-              [previewStyles.hidden]: translation.state !== 'ready'
-            }}
-            icon='copy'
-            onClick={onCopyClick}
-          />
+          <Show when={!props.noCopy}>
+            <ButtonIconTsx
+              class={previewStyles.copyButton}
+              classList={{
+                [previewStyles.hidden]: translation.state !== 'ready'
+              }}
+              icon='copy'
+              onClick={onCopyClick}
+            />
+          </Show>
         </div>
       </div>
       <div class={previewStyles.resultContent}>

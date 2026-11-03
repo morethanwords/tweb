@@ -1,6 +1,6 @@
 import {expect, Locator, Page} from '@playwright/test';
 import {test} from './workerContext';
-import {fontsLoaded, openStory, preparePopupSandbox} from './popupSandbox.helpers';
+import {fontsLoaded, openStory, popupSettled, preparePopupSandbox} from './popupSandbox.helpers';
 
 /*
  * A text link held under the pointer gets a ripple that fills a rounded plate of its own colour
@@ -22,9 +22,7 @@ async function openLinkStory(page: Page) {
   await expect(link).toBeVisible();
   await keepFromActing(link);
   // the popup slides in: the link is where it is pressed only once it has stopped
-  await page.waitForFunction(() => document.querySelector('.popup')
-  .getAnimations({subtree: true})
-  .every((animation) => animation.playState !== 'running'));
+  await popupSettled(page);
   await fontsLoaded(page);
   await installPlateProbe(page);
   return link;

@@ -48,6 +48,13 @@ export async function fontsLoaded(page: Page) {
   await page.waitForFunction(() => [...document.fonts].every((face) => face.status !== 'loading'));
 }
 
+/** waits until nothing in the popup `selector` finds runs an animation: it has slid in, and what fades in has */
+export function popupSettled(page: Page, selector = '.popup') {
+  return page.waitForFunction((selector) => document.querySelector(selector)
+  .getAnimations({subtree: true})
+  .every((animation) => animation.playState !== 'running'), selector);
+}
+
 /**
  * `a11y` turns the keyboard and screen-reader layer on (`?a11y=1`) — every accessibility and
  * focus suite asks for it, since it is off by default.

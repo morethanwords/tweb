@@ -943,6 +943,11 @@ export default class ChatContextMenu {
 
     const isGif = this.getMessageDocument()?.type === 'gif';
 
+    // * copying the selected text, or anything that hands it out to be copied (the search field)
+    const canCopySelectedText = () => this.canCopyText() &&
+      !!((this.message as Message.message).message || (this.message as Message.message).rich_message) &&
+      this.isTextSelected;
+
     const verifyFavoriteSticker = async(toAdd: boolean) => {
       const doc = this.getMessageDocument();
       if(!doc?.sticker && !isGif) {
@@ -1170,9 +1175,7 @@ export default class ChatContextMenu {
       text: 'Chat.CopySelectedText',
       welcome: true,
       onClick: this.onCopyClick,
-      verify: () => this.canCopyText() &&
-        !!((this.message as Message.message).message || (this.message as Message.message).rich_message) &&
-        this.isTextSelected
+      verify: canCopySelectedText
     }, this.copyMediaButton = {
       icon: 'copy',
       text: 'MediaViewer.Context.Copy',
@@ -1194,8 +1197,8 @@ export default class ChatContextMenu {
         const selection = getAppWindow().getSelection();
         this.chat.initSearch({query: selection.toString()});
       },
-      verify: () => !!((this.message as Message.message).message || (this.message as Message.message).rich_message) &&
-        this.isTextSelected
+      // * the search field would hand protected text out to be copied
+      verify: canCopySelectedText
     }, {
       icon: 'copy',
       text: 'Message.Context.Selection.Copy',
@@ -1256,6 +1259,7 @@ export default class ChatContextMenu {
         const message = this.message;
         const messageLanguage = this.messageLanguage;
         const isTextSelected = this.isTextSelected;
+        const noForwards = !this.canCopyText();
 
         if(!this.chat.peerTranslation.canTranslate(true)) {
           hotReloadGuard.showPremiumPopup({feature: 'translations'});
@@ -1274,7 +1278,8 @@ export default class ChatContextMenu {
             peerId: textWithEntities ? peerId : message.peerId,
             textWithEntities,
             message: textWithEntities ? undefined : message as Message.message,
-            detectedLanguage: messageLanguage
+            detectedLanguage: messageLanguage,
+            noForwards
           }, SolidJSHotReloadGuardProvider);
         }
       },

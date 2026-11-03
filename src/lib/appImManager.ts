@@ -97,6 +97,7 @@ import sameInputGroupCall from '@lib/calls/helpers/sameInputGroupCall';
 import getFilesFromEvent from '@helpers/files/getFilesFromEvent';
 import getFileMimeType from '@helpers/files/getFileMimeType';
 import apiManagerProxy from '@lib/apiManagerProxy';
+import toastCopyRestricted from '@components/chat/toastCopyRestricted';
 import getChatMigratedTo from '@appManagers/utils/peers/getChatMigratedTo';
 import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
 import findUpClassName from '@helpers/dom/findUpClassName';
@@ -1968,18 +1969,7 @@ export class AppImManager extends EventListenerBase<{
 
       if(foundRestrictedNode) {
         e.preventDefault();
-
-        let langPackKey: LangPackKey;
-        if(peerId.isUser()) {
-          langPackKey = 'CopyRestricted.User';
-        } else {
-          const chat = apiManagerProxy.getChat(peerId.toChatId());
-          langPackKey = (chat as MTChat.channel).pFlags.broadcast ?
-            'CopyRestricted.Channel' :
-            'CopyRestricted.Group';
-        }
-
-        toastNew({langPackKey});
+        toastCopyRestricted(peerId);
       }
     });
   }
