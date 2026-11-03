@@ -166,6 +166,7 @@ import splitStringByLength from '@helpers/string/splitStringByLength';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import asyncThrottle from '@helpers/schedulers/asyncThrottle';
 import focusInput from '@helpers/dom/focusInput';
+import {setDirection} from '@helpers/dom/setInnerHTML';
 import showChecklistPopup from '@components/popups/checklist';
 import assumeType from '@helpers/assumeType';
 import {formatFullSentTime} from '@helpers/date';
@@ -1240,6 +1241,8 @@ export default class ChatInput {
 
     this.botCommandsView = document.createElement('div');
     this.botCommandsView.classList.add('new-message-bot-commands-view');
+    // * the bot's own words: cut at their own end, whatever the interface's direction
+    setDirection(this.botCommandsView);
     this.botCommandsToggle.append(scaler, this.botCommandsView);
 
     let webViewTempId = 0, waitingForWebView = false;
@@ -3494,9 +3497,10 @@ export default class ChatInput {
     const useRafs = botCommandsToggle.parentElement ? 0 : 2;
 
     if(botMenuButton && isInputEmpty) {
-      // padding + icon size + icon margin
-      const width = getTextWidth(botMenuButton.text, FontFull) + 24 + 20 + 6;
-      this.newMessageWrapper.style.setProperty('--commands-size', `${Math.ceil(width)}px`);
+      // the text, which iOS keeps to half the panel less 60pt so the field stays usable on a phone, then the padding,
+      // the icon and its margin
+      const width = Math.ceil(getTextWidth(botMenuButton.text, FontFull));
+      this.newMessageWrapper.style.setProperty('--commands-size', `calc(min(${width}px, 50vw - 60px) + ${24 + 20 + 6}px)`);
     } else {
       // this.newMessageWrapper.style.setProperty('--commands-size', `38px`);
       this.newMessageWrapper.style.removeProperty('--commands-size');

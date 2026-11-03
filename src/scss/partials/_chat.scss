@@ -1114,9 +1114,7 @@
       }
 
       &-view {
-        white-space: nowrap;
-        overflow: hidden;
-        // @include text-overflow();
+        @include text-overflow();
       }
 
       &-icon-scale {
