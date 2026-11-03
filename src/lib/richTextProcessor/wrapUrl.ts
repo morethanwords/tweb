@@ -4,6 +4,9 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import {normalizeUrlProtocol} from '@lib/richTextProcessor/matchUrlProtocol';
 import matchTelegramUrlHost, {matchUrlHost, TELESCOPE_LINK_HOST} from '@lib/richTextProcessor/matchTelegramUrlHost';
 
+/** The links that ask to connect through a proxy: a browser cannot, so no handler opens them */
+export const PROXY_LINK_TYPES = ['proxy', 'socks'] as const;
+
 export default function wrapUrl(url: string, safe?: boolean) {
   url = normalizeUrlProtocol(url);
 
@@ -30,6 +33,8 @@ export default function wrapUrl(url: string, safe?: boolean) {
 
     const fullPath = parsedUrl.pathname.slice(1);
     const path = fullPath.split('/');
+    // * t.me/<name> or t.me/<name>/, with no username prefix: a link of its own, its parameters in the query
+    const isOneSegment = !prefix && (path.length === 1 || (path.length === 2 && !path[1]));
 
     if(path[0] && path[0][0] === '$' && path[0].length > 1) {
       onclick = 'invoice';
@@ -41,9 +46,16 @@ export default function wrapUrl(url: string, safe?: boolean) {
     } else if(
       // * the wallet's handler is there only once it is released (lib/wallet/release): a username link till then
       (window as any).sendgrams &&
-      path[0].toLowerCase() === 'sendgrams' && (path.length === 1 || (path.length === 2 && !path[1])) && !prefix
+      path[0].toLowerCase() === 'sendgrams' && isOneSegment
     ) { // t.me/sendgrams/?to=…&amount=…
       onclick = 'sendgrams';
+    } else if(
+      // * a proxy to connect to, t.me/proxy?server=… as tdesktop reads it (`^proxy/?\?(.+)`), not @proxy
+      (PROXY_LINK_TYPES as readonly string[]).includes(path[0].toLowerCase()) &&
+      isOneSegment &&
+      parsedUrl.search.length > 1
+    ) {
+      onclick = path[0].toLowerCase() as typeof PROXY_LINK_TYPES[number];
     } else if(path[0]) switch(path[0]) {
       case 'm':
       case 'addlist':

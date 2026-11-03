@@ -10,6 +10,7 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
 import {CONFERENCE_CALL_SLUG_REGEXP} from '@lib/calls/constants';
 import addAnchorListener, {listenForMaskedAnchorAuxClicks} from '@helpers/addAnchorListener';
+import {PROXY_LINK_TYPES} from '@lib/richTextProcessor/wrapUrl';
 import assumeType from '@helpers/assumeType';
 import findUpAttribute from '@helpers/dom/findUpAttribute';
 import findUpClassName from '@helpers/dom/findUpClassName';
@@ -146,6 +147,13 @@ export class InternalLinkProcessor {
       noPathnameParams: true,
       noUriParams: true,
       callback: ({element}) => this.processUnknownDeepLink(element)
+    });
+
+    // * a proxy to connect to (t.me/proxy?…, t.me/socks?…, tg://proxy?…, tg://socks?…): a browser cannot
+    // * reach Telegram through one, so it is a link this client does not open, never the profile @proxy
+    PROXY_LINK_TYPES.forEach((name) => {
+      addAnchorListener({name, noPathnameParams: true, noUriParams: true, callback: showUnsupportedLinkToast});
+      addAnchorListener({name, protocol: 'tg', noPathnameParams: true, noUriParams: true, callback: showUnsupportedLinkToast});
     });
 
     // a bank card number in a text (wrapRichText) is a link to its menu, not to anywhere

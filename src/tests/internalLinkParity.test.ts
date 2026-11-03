@@ -135,6 +135,36 @@ describe('contact token links', () => {
   });
 });
 
+// * a proxy link asks to connect through a proxy (tdesktop's `^proxy/?\?(.+)`), which a browser cannot
+// * do: it says so, and never opens the profile @proxy the path spells
+describe('proxy links', () => {
+  test.each([
+    ['https://t.me/proxy?server=1.2.3.4&port=443&secret=ee00', 'proxy'],
+    ['https://t.me/proxy/?server=1.2.3.4&port=443&secret=ee00', 'proxy'],
+    ['https://telegram.me/Proxy?server=1.2.3.4&port=443&secret=ee00', 'proxy'],
+    ['https://t.me/socks?server=1.2.3.4&port=1080&user=a&pass=b', 'socks'],
+    ['tg://proxy?server=1.2.3.4&port=443&secret=ee00', 'tg_proxy'],
+    ['tg://socks?server=1.2.3.4&port=1080', 'tg_socks']
+  ])('say %s is not for the web, not resolve a username', async(href, handler) => {
+    const {default: wrapUrl} = await import('@lib/richTextProcessor/wrapUrl');
+    expect(wrapUrl(href).onclick).toBe(handler);
+
+    await click(handler, href);
+    expect(mocks.toastNew).toHaveBeenCalledWith({langPackKey: 'Link.NotSupported'});
+    expect(mocks.openUsername).not.toHaveBeenCalled();
+    expect(mocks.getDeepLinkInfo).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    'https://t.me/proxy',
+    'https://t.me/proxy/123',
+    'https://t.me/socks/1?server=1.2.3.4'
+  ])('leave %s, which names no proxy, to the username', async(href) => {
+    const {default: wrapUrl} = await import('@lib/richTextProcessor/wrapUrl');
+    expect(wrapUrl(href).onclick).toBe('im');
+  });
+});
+
 describe('unknown tg:// links', () => {
   test('show what the server says about them', async() => {
     mocks.getDeepLinkInfo.mockResolvedValue({

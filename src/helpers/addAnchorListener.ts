@@ -37,6 +37,8 @@ type InternalLinkAnchorType =
   | 'chats'
   | 'addstyle'
   | 'contact'
+  | 'proxy'
+  | 'socks'
   | 'unknownDeepLink'
   | 'sendgrams'
   | 'transfer'
