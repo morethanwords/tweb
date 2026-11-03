@@ -184,5 +184,133 @@ describe('reading the messages seen', () => {
     await manager.readMessages(peerId, [mid]);
     expect(methods(invokeApi)).toEqual(['messages.readMessageContents', 'messages.readReactions']);
   });
+
+  /** A mention to us that is not read, the chat counting `unreadMentionsCount`, the server `serverUnreadIds` */
+  function makeMentionHarness(unreadMentionsCount: number, serverUnreadIds: number[]) {
+    const harness = makeHarness(0);
+    const {manager, message, dialog, invokeApi} = harness;
+    message.pFlags = {mentioned: true, media_unread: true};
+    message.reactions = undefined;
+    dialog.unread_mentions_count = unreadMentionsCount;
+
+    const readContents = invokeApi.getMockImplementation();
+    invokeApi.mockImplementation((method: string, params?: any) => {
+      if(method === 'messages.getUnreadMentions') {
+        return Promise.resolve({_: 'messages.messages', messages: serverUnreadIds.map((id) => ({...message, id, mid: id})), chats: [], users: []});
+      }
+
+      return readContents(method, params);
+    });
+
+    Object.assign(manager, {
+      getChannelAvailableMinIdGeneration: () => 0,
+      saveApiResult: vi.fn(),
+      reloadConversationOrTopic: vi.fn()
+    });
+    manager.apiManager.invokeApiSingleProcess = ({method, params, processResult}: any) => invokeApi(method, params).then(processResult);
+
+    return harness;
+  }
+
+  test('a mention seen out of several reads that message alone', async() => {
+    const {manager, invokeApi} = makeMentionHarness(3, [mid, 20, 30]);
+    await manager.readMessages(peerId, [mid]);
+    expect(methods(invokeApi)).toEqual(['messages.readMessageContents']);
+  });
+
+  test('the last unread mention seen reads the chat\'s mentions once the server has no other', async() => {
+    const {manager, invokeApi} = makeMentionHarness(1, []);
+    await manager.readMessages(peerId, [mid]);
+    expect(methods(invokeApi)).toEqual(['messages.readMessageContents', 'messages.getUnreadMentions', 'messages.readMentions']);
+  });
+
+  test('the last mention by the count here, while the server has another unread, reads nothing more and takes the server\'s count', async() => {
+    const {manager, invokeApi} = makeMentionHarness(1, [20]);
+    await manager.readMessages(peerId, [mid]);
+    expect(methods(invokeApi)).toEqual(['messages.readMessageContents', 'messages.getUnreadMentions']);
+    expect(manager.reloadConversationOrTopic).toHaveBeenCalledWith(peerId, undefined);
+  });
+
+  test('a forum topic\'s mentions seen one at a time come off the topic, and the last one reads the topic\'s', async() => {
+    const channelId = 5 as ChatId;
+    const forumPeerId = channelId.toPeerId(true);
+    const topicId = 100;
+    const messages = new Map([11, 12].map((id) => [id, {
+      _: 'message',
+      pFlags: {mentioned: true, media_unread: true},
+      id,
+      mid: id,
+      peerId: forumPeerId,
+      peer_id: {_: 'peerChannel', channel_id: channelId},
+      reply_to: {_: 'messageReplyHeader', pFlags: {forum_topic: true}, reply_to_msg_id: topicId},
+      date: 1,
+      message: 'hi'
+    } as any as Message.message]));
+    const parent = {_: 'dialog', pFlags: {}, peerId: forumPeerId, unread_mentions_count: 2} as any;
+    const topic = {_: 'forumTopic', pFlags: {}, id: topicId, peerId: forumPeerId, unread_mentions_count: 2} as any;
+    const invokeApi = vi.fn((method: string, _params?: any): Promise<any> => {
+      switch(method) {
+        case 'channels.readMessageContents': return Promise.resolve(true);
+        case 'messages.getUnreadMentions': return Promise.resolve({_: 'messages.messages', messages: [], chats: [], users: []});
+        case 'messages.readMentions': return Promise.resolve({_: 'messages.affectedHistory', pts: 2, pts_count: 1, offset: 0});
+      }
+
+      return Promise.reject(new Error('unexpected ' + method));
+    });
+    const manager = new AppMessagesManager() as any;
+    Object.assign(manager, {
+      unreadMentions: {},
+      appMessagesIdsManager: {generateMessageId: (id: number) => id},
+      appPeersManager: {
+        getInputPeerById: () => ({_: 'inputPeerChannel', channel_id: channelId, access_hash: '0'}),
+        isForum: () => true,
+        isBotforum: () => false,
+        isChannel: () => true
+      },
+      appChatsManager: {getChannelInput: () => ({_: 'inputChannel', channel_id: channelId, access_hash: '0'})},
+      getMessageByPeer: (_peerId: PeerId, mid: number) => messages.get(mid),
+      getDialogOnly: () => parent,
+      modifyMessage: (message: any, callback: (message: any) => void) => {
+        callback(message);
+        return message;
+      },
+      dialogsStorage: {
+        getAnyDialog: (_peerId: PeerId, threadId?: number) => threadId ? topic : parent,
+        prepareDialogUnreadCountModifying: () => () => {},
+        setDialogToState: vi.fn()
+      },
+      rootScope: {dispatchEvent: vi.fn()},
+      apiManager: {
+        invokeApi,
+        invokeApiSingleProcess: ({method, params, processResult}: any) => invokeApi(method, params).then(processResult)
+      },
+      apiUpdatesManager: {
+        processLocalUpdate: (update: Update) => {
+          if(update._ === 'updateChannelReadMessagesContents') manager.onUpdateReadMessagesContents(update);
+        }
+      },
+      getChannelAvailableMinIdGeneration: () => 0,
+      saveApiResult: vi.fn(),
+      reloadConversationOrTopic: vi.fn()
+    });
+
+    // * the jump-to-mention lists of the topic and of the forum viewed as messages
+    const cached = [`${forumPeerId}_${topicId}`, `${forumPeerId}`].map((key) => {
+      const slicedArray = manager.unreadMentions[key] = new SlicedArray<number>();
+      slicedArray.insertSlice([12, 11]);
+      slicedArray.first.setEnd(SliceEnd.Both);
+      return slicedArray;
+    });
+
+    await manager.readMessages(forumPeerId, [11]);
+    expect(methods(invokeApi)).toEqual(['channels.readMessageContents']);
+    expect([topic.unread_mentions_count, parent.unread_mentions_count]).toEqual([1, 1]);
+    expect(cached.map((slicedArray) => [...slicedArray.slice])).toEqual([[12], [12]]);
+
+    await manager.readMessages(forumPeerId, [12]);
+    expect(methods(invokeApi)).toEqual(['channels.readMessageContents', 'channels.readMessageContents', 'messages.getUnreadMentions', 'messages.readMentions']);
+    expect(invokeApi).toHaveBeenLastCalledWith('messages.readMentions', expect.objectContaining({top_msg_id: topicId}));
+    expect([topic.unread_mentions_count, parent.unread_mentions_count]).toEqual([0, 0]);
+  });
 });
 

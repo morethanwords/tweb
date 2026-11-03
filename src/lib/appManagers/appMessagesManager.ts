@@ -10438,17 +10438,13 @@ export class AppMessagesManager extends AppManager {
     }
 
     // Inspect the messages BEFORE we strip the local-form mids: we need to
-    // know whether any of them are mentions or carry unread reactions, so we
-    // can issue the dedicated server-side "mark mentions/reactions as read"
-    // calls. `messages.readMessageContents` only clears `media_unread` for
-    // specific mids — it does NOT decrement the chat's `unread_mentions_count`
-    // / `unread_reactions_count` counters on the server (those are tracked
-    // separately and are reset only by `messages.readMentions` /
-    // `messages.readReactions`). Without that, after reload the server keeps
-    // reporting the old badge — exactly what issue #380 describes.
+    // know how many of them are mentions or carry unread reactions.
+    // * `messages.readMessageContents` reads the mention or the reactions of each message seen (tdlib counts a
+    // * mention off on it). `messages.readMentions` / `readReactions` read EVERY one of the chat (topic) on every
+    // * device - "when the last unread mention is read" (core.telegram.org/api/mentions), never before
     const isForum = this.appPeersManager.isForum(peerId);
     const isBotforum = this.appPeersManager.isBotforum(peerId);
-    let hasMention = false;
+    let mentionsRead = 0;
     let reactionsRead = 0;
     // For a forum/botforum these reads happen inside a single topic; derive its
     // id from the messages so the server-side reset is scoped to that topic.
@@ -10456,7 +10452,7 @@ export class AppMessagesManager extends AppManager {
     for(const mid of msgIds) {
       const message = this.getMessageByPeer(peerId, mid) as MyMessage;
       if(!message) continue;
-      if(isMentionUnread(message)) hasMention = true;
+      if(isMentionUnread(message)) ++mentionsRead;
       if(getUnreadReactions(message)) ++reactionsRead;
       if((isForum || isBotforum) && !threadId) {
         threadId = getMessageThreadId(message as Message.message, {isForum, isBotforum});
@@ -10469,13 +10465,13 @@ export class AppMessagesManager extends AppManager {
     // forum topic the mention/reaction counters live on the TOPIC dialog (the
     // parent channel dialog tracks them per-topic, not aggregated), so read the
     // badge from the topic — otherwise reactions in topics never get reset.
-    // * `readReactions` reads EVERY reaction of the chat (topic), on every device: only once these messages
-    // * are all the badge has left, as Android does (ChatActivity reads the chat's reactions once its count
-    // * of unseen ones reaches 0) — one reaction seen out of thousands read them all before
+    // * The chat's all are read only once these messages are all the badge has left, as Android does for
+    // * reactions (ChatActivity reads the chat's reactions once its count of unseen ones reaches 0) — one
+    // * reaction or mention seen out of thousands read them all before
     const dialog = this.dialogsStorage.getAnyDialog(peerId, threadId) as Dialog | ForumTopic | undefined;
-    const hadUnreadMentions = !!dialog?.unread_mentions_count;
-    const unreadReactions = dialog?.unread_reactions_count || 0;
-    const readsAllReactions = !!reactionsRead && !!unreadReactions && reactionsRead >= unreadReactions;
+    const readsAll = (read: number, unread: number) => !!read && !!unread && read >= unread;
+    const readsAllMentions = readsAll(mentionsRead, dialog?.unread_mentions_count);
+    const readsAllReactions = readsAll(reactionsRead, dialog?.unread_reactions_count);
 
     msgIds = msgIds.map((mid) => getServerMessageId(mid));
     let promise: Promise<any>, update: Update.updateChannelReadMessagesContents | Update.updateReadMessagesContents;
@@ -10511,10 +10507,10 @@ export class AppMessagesManager extends AppManager {
 
     this.apiUpdatesManager.processLocalUpdate(update);
 
-    if(hasMention || readsAllReactions) {
+    if(readsAllMentions || readsAllReactions) {
       const followUps: Promise<any>[] = [promise];
-      if(hasMention && hadUnreadMentions) {
-        followUps.push(this.readMentions(peerId, threadId).catch(noop));
+      if(readsAllMentions) {
+        followUps.push(promise.then(() => this.readLastMentions(peerId, threadId, msgIds)).catch(noop));
       }
       if(readsAllReactions) {
         followUps.push(this.readMentions(peerId, threadId, true).catch(noop));
@@ -10523,6 +10519,28 @@ export class AppMessagesManager extends AppManager {
     }
 
     return promise;
+  }
+
+  /**
+   * The mentions just read were the last ones by the count kept here, which drifts from the server's (a voice mention
+   * is not counted as it comes, a read of the history counts one off too): the server is asked first. A mention it
+   * still has unread and that is not among them is left for the user to see, and the count is taken from the server
+   */
+  private async readLastMentions(peerId: PeerId, threadId: number, readIds: number[]) {
+    const {messages} = await this.getUnreadMentions({
+      peerId,
+      threadId,
+      offsetId: 0,
+      addOffset: 0,
+      limit: readIds.length + 1
+    }, true);
+
+    if(messages.some((message) => !readIds.includes(message.id))) {
+      this.reloadConversationOrTopic(peerId, threadId);
+      return;
+    }
+
+    return this.readMentions(peerId, threadId);
   }
 
   public async readMentions(peerId: PeerId, threadId?: number, isReaction?: boolean, isPollVote?: boolean): Promise<boolean> {
@@ -11974,12 +11992,19 @@ export class AppMessagesManager extends AppManager {
           });
 
           if(wasMentionUnread) {
-            this.modifyCachedMentionsAndSave({peerId, mid, threadId, addMention: false});
+            // * a read made here (readMessages) names no topic: the mention comes off the message's own, or the topic's
+            // * count would stay up while the parent's came down
+            const mentionThreadId = threadId ?? (isForum || isBotforum ?
+              getMessageThreadId(message as Message.message, {isForum, isBotforum}) :
+              undefined);
+            this.modifyCachedMentionsAndSave({peerId, mid, threadId: mentionThreadId, addMention: false});
 
             // Forum / botforum: also bring down the parent forum dialog's
             // aggregate mention badge (mirrors the Bug-4 propagation in
             // onUpdateReadHistory).
-            if(threadId && (isForum || isBotforum)) {
+            if(mentionThreadId && (isForum || isBotforum)) {
+              // * the forum viewed as messages jumps through the mentions of every topic
+              this.modifyCachedMentions({peerId, mid, add: false});
               const parentDialog = this.getDialogOnly(peerId);
               if(parentDialog && parentDialog.unread_mentions_count > 0) {
                 const releaseParent = this.dialogsStorage.prepareDialogUnreadCountModifying(parentDialog);
