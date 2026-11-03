@@ -1,10 +1,12 @@
 import {describe, expect, it, vi} from 'vitest';
-import FiltersStorage from '@lib/storages/filters';
-import makeDialogFilter from '@/tests/helpers/dialogFilter';
+import type {DialogFilter} from '@layer';
+import FiltersStorage, {MyDialogFilter} from '@lib/storages/filters';
+import makeDialogFilter, {inputPeerUser} from '@/tests/helpers/dialogFilter';
 import {fitFolderTags} from '@components/folderTags/layout';
 import {getDialogFolderTags, getFolderTagColor} from '@stores/folderTags';
 import {getSortableDragStep} from '@helpers/dom/sortable';
 import pause from '@helpers/schedulers/pause';
+import deferred from '@/tests/helpers/deferred';
 
 const folder = (id: number, localId: number, color?: number) => makeDialogFilter(id, localId, color === undefined ? undefined : {color});
 
@@ -157,14 +159,259 @@ describe('FiltersStorage folder tags', () => {
     const storage = makeStorage(true);
     // * a state from before the switch was thrown on another device
     (storage as any).tagsEnabled = false;
+    (storage as any).stateLoaded = Promise.resolve();
 
-    (storage as any).requestTagsEnabled();
-    (storage as any).requestTagsEnabled();
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    storage.syncDialogFilters();
+    storage.syncDialogFilters();
+    await pause(0);
 
     expect(storage.apiManager.invokeApiSingle).toHaveBeenCalledTimes(1);
     expect(tagsEnabled(storage)).toBe(true);
     expect(tagsPushes(storage)).toEqual([true]);
+  });
+
+  it('takes the folders the server has once a session, over the ones the state kept', async() => {
+    // * on another device, while this one was closed: folder 2 renamed, folder 3 removed, folder 4 made
+    const storage = makeStorage(false, [
+      {...folder(4, undefined), title: {_: 'textWithEntities', text: 'Made', entities: []}},
+      {...folder(2, undefined), title: {_: 'textWithEntities', text: 'Renamed', entities: []}}
+    ]);
+    const stateLoaded = deferred();
+    (storage as any).stateLoaded = stateLoaded.promise;
+
+    storage.syncDialogFilters();
+    await pause(0);
+    // * nothing is asked before the state's folders are in place, for them not to go over the server's
+    expect(storage.apiManager.invokeApiSingle).not.toHaveBeenCalled();
+
+    [folder(2, undefined), folder(3, undefined)].forEach((filter) => storage.saveDialogFilter(filter, false, true));
+    stateLoaded.resolve();
+    await pause(0);
+
+    expect(storage.apiManager.invokeApiSingle).toHaveBeenCalledTimes(1);
+    expect(storage.getFilter(2).title.text).toBe('Renamed');
+    expect(storage.getFilter(3)).toBeUndefined();
+    expect(storage.getFilter(4).title.text).toBe('Made');
+    expect((storage as any).rootScope.dispatchEvent).toHaveBeenCalledWith('filter_order', [0, 1, 4, 2]);
+  });
+
+  // * the folders a state keeps, put in place as after() does: the real ones with them
+  const loadState = (storage: ReturnType<typeof makeStorage>, filters: MyDialogFilter[]) => {
+    (storage as any).prependFilters(filters).forEach((filter: MyDialogFilter) => storage.saveDialogFilter(filter, false, true));
+    (storage as any).stateLoaded = Promise.resolve();
+  };
+
+  // * the folder events the storage has told the screen
+  const folderEvents = (storage: ReturnType<typeof makeStorage>) => (storage as any).rootScope.dispatchEvent.mock.calls
+  .map(([event]: [string]) => event)
+  .filter((event: string) => event.startsWith('filter_'));
+
+  it('tells the screen nothing on a start with nothing changed elsewhere', async() => {
+    const storage = makeStorage(false, [folder(2, undefined), folder(3, undefined)]);
+    loadState(storage, [folder(2, undefined), folder(3, undefined)]);
+
+    storage.syncDialogFilters();
+    await pause(0);
+
+    expect(storage.apiManager.invokeApiSingle).toHaveBeenCalledTimes(1);
+    expect(folderEvents(storage)).toEqual([]);
+  });
+
+  // * folder 2 as the server has it, by its title
+  const titled = (text: string) => makeDialogFilter(2, undefined, {title: {_: 'textWithEntities', text, entities: []}});
+
+  // * a start whose state kept folder 2, with the server's answers to the sync and an edit's held back until a test
+  // * gives them - `answer(n, title)` answers the n-th time the folders were asked for, with folder 2 so titled (and
+  // * the folders `more` after it), and `fail(n)` fails it
+  const holdSync = () => {
+    const storage = makeStorage();
+    loadState(storage, [folder(2, undefined)]);
+    const answers: Array<ReturnType<typeof deferred<any>>> = [];
+    storage.apiManager.invokeApiSingle.mockImplementation(() => {
+      const answer = deferred<any>();
+      answers.push(answer);
+      return answer.promise;
+    });
+    const edit = deferred<boolean>();
+    storage.apiManager.invokeApi.mockImplementation(() => edit.promise);
+    const answer = (index: number, text: string, pFlags: object = {}, more: MyDialogFilter[] = []) => {
+      answers[index].resolve({_: 'messages.dialogFilters', pFlags, filters: [{_: 'dialogFilterDefault'}, titled(text), ...more]});
+    };
+
+    const fail = (index: number) => answers[index].reject(new Error('FLOOD_WAIT'));
+
+    return {storage, edit, answer, fail};
+  };
+
+  it('tells the screen nothing on a start whose folder pins chats, which the kept one includes as well', async() => {
+    // * as the server lists it: the pinned chat in pinned_peers only
+    const pinning = () => makeDialogFilter(2, undefined, {pinned_peers: [inputPeerUser(5)], include_peers: [inputPeerUser(6)]});
+    const storage = makeStorage(false, [pinning()]);
+    loadState(storage, [pinning()]);
+    expect(storage.getFilter(2).includePeerIds).toEqual([5, 6]);
+
+    storage.syncDialogFilters();
+    await pause(0);
+
+    expect(folderEvents(storage)).toEqual([]);
+  });
+
+  it('does not take an answer that crossed an edit of a folder, and asks again once the edit is done', async() => {
+    const {storage, edit, answer} = holdSync();
+
+    storage.syncDialogFilters();
+    await pause(0);
+    const editing = storage.updateDialogFilter(titled('Edited'));
+    answer(0, 'Before the edit');
+    await pause(0);
+    expect(storage.getFilter(2).title.text).toBe('Folder 2');
+
+    edit.resolve(true);
+    await editing;
+    expect(storage.getFilter(2).title.text).toBe('Edited');
+    answer(1, 'Edited');
+    await pause(0);
+    expect(storage.apiManager.invokeApiSingle).toHaveBeenCalledTimes(2);
+    expect(storage.getFilter(2).title.text).toBe('Edited');
+  });
+
+  it('does not take an answer asked for while an edit was on its way, and asks again once it is done', async() => {
+    const {storage, edit, answer} = holdSync();
+
+    const editing = storage.updateDialogFilter(titled('Edited'));
+    storage.syncDialogFilters();
+    await pause(0);
+    answer(0, 'Before the edit');
+    await pause(0);
+    expect(storage.getFilter(2).title.text).toBe('Folder 2');
+    expect(storage.apiManager.invokeApiSingle).toHaveBeenCalledTimes(1);
+
+    edit.resolve(true);
+    await editing;
+    await pause(0);
+    expect(storage.apiManager.invokeApiSingle).toHaveBeenCalledTimes(2);
+    answer(1, 'Edited');
+    await pause(0);
+    expect(storage.getFilter(2).title.text).toBe('Edited');
+  });
+
+  it('asks again on the next start of the sync when the one after the edits failed', async() => {
+    const {storage, edit, answer, fail} = holdSync();
+
+    const editing = storage.updateDialogFilter(titled('Edited'));
+    storage.syncDialogFilters();
+    await pause(0);
+    answer(0, 'Before the edit');
+    await pause(0);
+    edit.resolve(true);
+    await editing;
+    fail(1);
+    await pause(0);
+
+    storage.syncDialogFilters();
+    await pause(0);
+    expect(storage.apiManager.invokeApiSingle).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not take an answer that an edit begun before it and done meanwhile has made old', async() => {
+    const {storage, edit, answer} = holdSync();
+
+    const editing = storage.updateDialogFilter(titled('Edited'));
+    storage.syncDialogFilters();
+    await pause(0);
+    edit.resolve(true);
+    await editing;
+    answer(0, 'Before the edit');
+    await pause(0);
+    expect(storage.getFilter(2).title.text).toBe('Edited');
+    expect(storage.apiManager.invokeApiSingle).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not take an answer that a folder update coming meanwhile has made old', async() => {
+    const {storage, answer} = holdSync();
+
+    storage.syncDialogFilters();
+    await pause(0);
+    // * a shared folder joined meanwhile, as joinChatlistInvite hands it over
+    (storage as any).onUpdateDialogFilter({_: 'updateDialogFilter', id: 9, filter: folder(9, undefined)});
+    answer(0, 'Folder 2');
+    await pause(0);
+    expect(storage.getFilter(9)).toBeDefined();
+    expect(storage.apiManager.invokeApiSingle).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not take an answer that a folder made shared meanwhile has made old', async() => {
+    const {storage, answer} = holdSync();
+    const shared = {...titled('Folder 2'), _: 'dialogFilterChatlist'} as DialogFilter.dialogFilterChatlist;
+    (storage.apiManager as any).invokeApiSingleProcess = vi.fn(({processResult}) => Promise.resolve(processResult({
+      _: 'chatlists.exportedChatlistInvite',
+      filter: shared,
+      invite: {}
+    })));
+
+    storage.syncDialogFilters();
+    await pause(0);
+    await storage.exportChatlistInvite(shared);
+    // * the server's folders from before it was shared
+    answer(0, 'Folder 2');
+    await pause(0);
+    expect(storage.getFilter(2)._).toBe('dialogFilterChatlist');
+    expect(storage.apiManager.invokeApiSingle).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not take an answer that a folder removed meanwhile has made old', async() => {
+    const {storage, answer} = holdSync();
+
+    storage.syncDialogFilters();
+    await pause(0);
+    (storage as any).onUpdateDialogFilter({_: 'updateDialogFilter', id: 2});
+    // * the server's folders from before it was removed
+    answer(0, 'Folder 2');
+    await pause(0);
+    expect(storage.getFilter(2)).toBeUndefined();
+    expect(storage.apiManager.invokeApiSingle).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not take an answer that the removal of a folder this client never had has made old', async() => {
+    const {storage, answer} = holdSync();
+
+    storage.syncDialogFilters();
+    await pause(0);
+    // * folder 7 was made elsewhere while this client was closed, and is removed now
+    (storage as any).onUpdateDialogFilter({_: 'updateDialogFilter', id: 7});
+    answer(0, 'Folder 2', {}, [folder(7, undefined)]);
+    await pause(0);
+    expect(storage.getFilter(7)).toBeUndefined();
+    expect(storage.apiManager.invokeApiSingle).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not take an answer that word of the folders changed, coming meanwhile, has made old', async() => {
+    const {storage, answer} = holdSync();
+
+    storage.syncDialogFilters();
+    await pause(0);
+    (storage as any).onUpdateDialogFilters({_: 'updateDialogFilters'});
+    answer(0, 'Before the change');
+    await pause(0);
+    expect(storage.getFilter(2).title.text).toBe('Folder 2');
+    // * the reload the word asks for, and the sync's again
+    expect(storage.apiManager.invokeApiSingle).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not take the tags\' switch from an answer that the switch thrown meanwhile has made old', async() => {
+    const {storage, edit, answer} = holdSync();
+    (storage as any).tagsEnabled = true;
+
+    storage.syncDialogFilters();
+    await pause(0);
+    const toggling = storage.toggleDialogFilterTags(false);
+    edit.resolve(true);
+    await toggling;
+    // * the server's folders from before the switch
+    answer(0, 'Folder 2', {tags_enabled: true});
+    await pause(0);
+    expect(tagsEnabled(storage)).toBe(false);
+    expect(storage.apiManager.invokeApiSingle).toHaveBeenCalledTimes(2);
   });
 
   it('does not keep a switch the server did not take', async() => {

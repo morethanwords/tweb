@@ -1131,6 +1131,9 @@ export class AppDialogsManager {
       this.initedListeners = true;
     }
 
+    // * the folders came from the state: now that their events are listened to, the server's are taken
+    managers.filtersStorage.syncDialogFilters();
+
     haveFilters && this.showFiltersPromise && await wrapPromiseWithMiddleware(this.showFiltersPromise);
 
     managers.appNotificationsManager.getNotifyPeerTypeSettings();
