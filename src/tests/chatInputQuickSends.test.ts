@@ -321,7 +321,9 @@ describe('the draft of a chat while a message that left its field is on its way'
   function field(chat: {threadId?: number, monoforumThreadId?: PeerId, isMonoforum?: boolean}, clears = 1) {
     return Object.assign(Object.create(ChatInput.prototype), {
       chat: {peerId: 42, ...chat},
-      ownSends: [{clears, until: Date.now() + 1e4}]
+      ownSends: [{clears, until: Date.now() + 1e4}],
+      // * the field the send emptied
+      getCurrentInputAsDraft: (): undefined => undefined
     }) as any;
   }
 

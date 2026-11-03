@@ -255,7 +255,8 @@ type ChatSendBtnIcon = 'send' | 'record' | 'record-video' | 'edit' | 'schedule' 
 /** what one send goes with, besides the field: Send Without Sound, Schedule Message */
 type SendingFlags = Pick<ChatInput, 'scheduleDate' | 'scheduleRepeatPeriod' | 'sendSilent'>;
 /** a message that left the field as it went, until the draft clears its send asks for are back (`takeOwnDraftUpdate`) */
-type OwnSend = {clears: number, until: number};
+// * `saveRevision`: the field's saves as the send left it - a save after it is of the next message, not of the clear
+type OwnSend = {clears: number, until: number, saveRevision: number};
 /** how long an own send's draft clears are waited for */
 const OWN_DRAFT_CLEAR_TIMEOUT = 30e3;
 type ChatInputAttachMenuButton = ButtonMenuItemOptionsVerifiable & {
@@ -477,7 +478,14 @@ export default class ChatInput {
   private sendingMessage: Promise<void>;
   /** messages that left the field whose draft clears have not come back yet */
   private ownSends: OwnSend[] = [];
+  /**
+   * The field's draft as the server has it, as far as the field knows: set as a draft from there fills the field and
+   * as a save of the field's own goes through, dropped as one goes out. A draft from elsewhere takes only a field that
+   * still holds it (`canTakeDraftFromElsewhere`)
+   */
   private appliedInputDraft?: {value?: DraftMessage.draftMessage};
+  /** counts the field's saves: one gone out while a draft from elsewhere waited is newer than that draft */
+  private draftSaveRevision = 0;
   private noWebPage: true;
   public scheduleDate: number;
   public scheduleRepeatPeriod: number;
@@ -1788,7 +1796,11 @@ export default class ChatInput {
       withEffects: () => this.chat.peerId.isUser() && this.chat.peerId !== rootScope.myId,
       effectsWithinMenu: () => mediaSizes.isLessThanFloatingLeftSidebar,
       effect: this.effect,
-      onEffect: this.setEffect
+      // * the effect is the draft's as much as its text: chosen, it is saved the same way
+      onEffect: (effect) => {
+        this.setEffect(effect);
+        this.saveDraftDebounced();
+      }
     });
 
     // Move the morphing send/record button into the input row as the last button.
@@ -2027,14 +2039,10 @@ export default class ChatInput {
       }
 
       if(this.chat.threadId !== threadId || this.chat.monoforumThreadId !== monoforumThreadId || this.chat.peerId !== peerId || PEER_EXCEPTIONS.has(this.chat.type)) return;
-      if(!draft) {
-        // a pending local save means the user is actively typing newer content —
-        // let it win and sync normally instead of clobbering it with the remote clear.
-        // but a forced clear is our OWN send completing (clearDraft: true), so always
-        // honour it — otherwise the input never clears after sending while typing.
-        if(!force && this.saveDraftDebounced.isDebounced()) return;
-        this.saveDraftDebounced.clearTimeout();
-      }
+      // a forced clear is our OWN send completing (clearDraft: true): what was still to be saved went with it, and
+      // it clears the field whatever it holds - otherwise the input never clears after sending while typing. Any
+      // other draft takes the field only while it holds what the server has (`canTakeDraftFromElsewhere`)
+      if(!draft && force) this.saveDraftDebounced.clearTimeout();
       this.setDraft(draft, true, force);
     });
 
@@ -2780,14 +2788,24 @@ export default class ChatInput {
     // Hydration and leaving a chat must not publish the received draft back to
     // the server. The UI representation may differ from the server's flags.
     if(this.appliedInputDraft && draftsAreEqual(draft, this.appliedInputDraft.value)) return;
+    // * until it is through, the field is ahead of the server
     this.appliedInputDraft = undefined;
-    this.managers.appDraftsManager.syncDraft({
+    const revision = ++this.draftSaveRevision;
+    const generation = this.inputValueGeneration;
+    const middleware = this.getMiddleware();
+    Promise.resolve(this.managers.appDraftsManager.syncDraft({
       peerId: this.chat.peerId,
       threadId: this.chat.threadId,
       monoforumThreadId: this.chat.monoforumThreadId,
       localDraft: draft,
       inputRichMessage: richMessage?.input
-    });
+    })).then((saved) => {
+      // * the field's last save is the server's draft now, and the field holds what the server has while it holds
+      // * what that save carried
+      if(saved && middleware() && revision === this.draftSaveRevision && generation === this.inputValueGeneration) {
+        this.appliedInputDraft = {value: draft};
+      }
+    }, noop);
   }
 
   public mentionUser(peerId: PeerId, isHelper?: boolean) {
@@ -2876,11 +2894,30 @@ export default class ChatInput {
     }
   }
 
+  /**
+   * Whether a draft from elsewhere (the server's, another session's or tab's) may take the field: only while the field
+   * holds what the server has (`appliedInputDraft`) - nothing of its own unsaved or on its way there - and no save of
+   * its own has gone out since the draft came (`saveRevision`, taken then), as tdesktop takes a cloud draft only
+   * over a local one no newer. Kept, the field's older text would be saved over the newer draft on the way out. A
+   * message being edited is no draft at all, and messages picked to forward or a post being suggested (its price and
+   * schedule) are no part of one: the draft's text coming would take them along
+   */
+  private canTakeDraftFromElsewhere(saveRevision: number, currentDraft = this.getCurrentInputAsDraft()) {
+    const applied = this.appliedInputDraft;
+    return saveRevision === this.draftSaveRevision &&
+      !!applied && draftsAreEqual(currentDraft, applied.value) &&
+      !this.editMsgId && !this.forwarding && !this.suggestedPost;
+  }
+
   public async setDraft(draft?: MyDraftMessage, fromUpdate = true, force = false) {
     if(PEER_EXCEPTIONS.has(this.chat.type)) return false;
 
     const middleware = this.getMiddleware();
     const generation = this.inputValueGeneration;
+    const saveRevision = this.draftSaveRevision;
+    // * a draft from elsewhere is measured against the field as it comes: a save of the field's own ending while it
+    // * waits says nothing of a draft that came before it ended
+    const inStepOnArrival = fromUpdate && this.canTakeDraftFromElsewhere(saveRevision);
     // the field settles on the schema rich posting calls for first: an editor replaced while the
     // draft is fetched would drop it as stale, and an untouched rich draft would be converted
     await this.richMessageInput?.richReady;
@@ -2913,17 +2950,21 @@ export default class ChatInput {
               this.onMessageSent(true, undefined, true);
             });
           });
-        } else if(fromUpdate && !this.saveDraftDebounced.isDebounced()) {
-          // A composer that holds no draft has nothing to clear — most often
-          // the cleared draft is its own save of the emptied field coming
-          // back, and resetting the field would drop its undo history.
-          if(!this.getCurrentInputAsDraft()) return fromUpdate;
-          // This is an authoritative clear, not a local edit or a request to
-          // restore the draft again while another remote update is arriving.
-          this.clearInput(false, false);
-          this.clearHelper();
-          this.onMessageInput(undefined, true);
-          this.appliedInputDraft = {value: this.getCurrentInputAsDraft()};
+        } else if(!fromUpdate) {
+          // * restored with nothing there: the field holds what the server has while it holds nothing
+          if(!this.getCurrentInputAsDraft()) this.appliedInputDraft = {value: undefined};
+        } else {
+          // A composer that holds no draft has nothing to clear, and
+          // resetting the field would drop its undo history.
+          const currentDraft = this.getCurrentInputAsDraft();
+          if(currentDraft && inStepOnArrival && this.canTakeDraftFromElsewhere(saveRevision, currentDraft)) {
+            // This is an authoritative clear, not a local edit or a request to
+            // restore the draft again while another remote update is arriving.
+            this.clearInput(false, false);
+            this.clearHelper();
+            this.onMessageInput(undefined, true);
+            this.appliedInputDraft = {value: this.getCurrentInputAsDraft()};
+          }
         }
 
         return fromUpdate;
@@ -2933,7 +2974,12 @@ export default class ChatInput {
     const currentDraft = this.getCurrentInputAsDraft();
     const receivedDraftIsUnchanged = this.appliedInputDraft &&
       draftsAreEqual(currentDraft, this.appliedInputDraft.value);
-    if(!force && !isInputEmpty(this.messageInput) && !receivedDraftIsUnchanged) return false;
+    // * a restore leaves what the user wrote meanwhile; a draft from elsewhere takes the field only while it is in step
+    // * with the server, which a save of the field's own coming back never finds: the field is ahead of it till it is through
+    if(!force && (fromUpdate ?
+      !(inStepOnArrival && this.canTakeDraftFromElsewhere(saveRevision, currentDraft)) :
+      !isInputEmpty(this.messageInput) && !receivedDraftIsUnchanged
+    )) return false;
 
     const replyTo = draft.reply_to as InputReplyTo.inputReplyToMessage;
     const draftReplyToMsgId = replyTo?.reply_to_msg_id;
@@ -2942,10 +2988,17 @@ export default class ChatInput {
       return false;
     }
 
+    // * a draft the field does not show leaves it holding nothing of its own: in step for the next one from
+    // * elsewhere, while the one not shown stays the server's (`suppressDraftSyncForUnsupportedRichMessage`)
+    const keepInStep = () => {
+      if(!force) this.appliedInputDraft = {value: this.getCurrentInputAsDraft()};
+    };
+
     // as Android has it: where rich text may not be written, a rich draft is not shown, and it stays
     // on the server until something of the field's own replaces it
     if(draft.rich_message && this.richMessageInput && !this.richMessageInput.canWriteRich) {
       this.suppressDraftSyncForUnsupportedRichMessage = true;
+      keepInStep();
       return false;
     }
 
@@ -2955,6 +3008,7 @@ export default class ChatInput {
     )) {
       toastNew({langPackKey: 'RichMessage.Error.UnsupportedContent'});
       this.suppressDraftSyncForUnsupportedRichMessage = !!draft.rich_message;
+      keepInStep();
       return false;
     }
 
@@ -2984,11 +3038,12 @@ export default class ChatInput {
     );
     this.suppressDraftSyncForUnsupportedRichMessage = !inputSet && !!draft.rich_message;
     if(!inputSet) {
+      keepInStep();
       return inputSet;
     }
 
     // the field holds the received draft now: a save the resets before it asked for (`clearHelper`) has nothing
-    // of the user's to keep, and pending, it would hold off the draft's next clear and then publish it back
+    // of the user's to keep
     this.saveDraftDebounced.clearTimeout();
 
     // its reply is set once its message is read, after the text: what counts as applied takes the reply in then,
@@ -5481,7 +5536,7 @@ export default class ChatInput {
         this.sendingMessage = undefined;
         // the draft clears its text asks for come back after the field moved on to the next message
         if(textMessages && clearDraft && !ephemeral && !PEER_EXCEPTIONS.has(chat.type)) {
-          this.ownSends.push({clears: textMessages, until: Date.now() + OWN_DRAFT_CLEAR_TIMEOUT});
+          this.ownSends.push({clears: textMessages, until: Date.now() + OWN_DRAFT_CLEAR_TIMEOUT, saveRevision: this.draftSaveRevision});
         }
 
         this.forgetWebPage();
@@ -5559,6 +5614,11 @@ export default class ChatInput {
       this.forgetOwnSend(ownSend);
     }
 
+    // * the server's draft is cleared as the field was: holding nothing of its own yet, and having saved nothing since
+    // * (the next message, begun and saved and then erased, has its erasing still to save), the field is in step with it
+    if(ownSend.saveRevision === this.draftSaveRevision && !this.getCurrentInputAsDraft()) {
+      this.appliedInputDraft = {value: undefined};
+    }
     return true;
   }
 

@@ -5,7 +5,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {MessageEntity, DraftMessage, MessagesSaveDraft, InputReplyTo, InputRichMessage, Update} from '@layer';
+import {MessageEntity, DraftMessage, MessagesSaveDraft, InputReplyTo, InputRichMessage, Update, Updates} from '@layer';
 import type {ReferenceContext} from '@lib/storages/references';
 import tsNow from '@helpers/tsNow';
 import assumeType from '@helpers/assumeType';
@@ -18,6 +18,7 @@ import getPeerId from '@appManagers/utils/peers/getPeerId';
 import createSerializedQueue, {SerializedQueue} from '@helpers/createSerializedQueue';
 import ctx from '@environment/ctx';
 import forgetFailedRequest from '@helpers/forgetFailedRequest';
+import noop from '@helpers/noop';
 
 export type MyDraftMessage = DraftMessage.draftMessage;
 
@@ -41,17 +42,45 @@ type DraftSyncState = {
   id: number;
   status: 'failed' | 'pending';
   queue: SerializedQueue;
+  /** whether the save under way goes through: `syncDraft`'s answer, for the same draft given again meanwhile too */
+  saved?: Promise<boolean>;
+  /**
+   * ends the save's hold on what the server gives of the draft while its request has not gone yet: a newer save taking
+   * its place, or a clear calling it off, means it never will (a preparation of its rich message may never end)
+   */
+  release?: () => void;
 };
 
-const DRAFT_SYNC_UPDATE_GRACE = 2000;
+/**
+ * What this session did with a draft, which what the server gives of it is measured against (tdesktop's
+ * History::skipCloudDraftUpdate): while a save is under way the server's copy may predate it, once it has ended one
+ * dated before that is older than it, and a read asked for before the draft last changed here may predate the change
+ */
+type DraftSaves = {
+  /** saves under way */
+  pending: number;
+  /** `draftsClock` as the draft last changed here (a save ended, a draft of the server's was taken) */
+  changed: number;
+  /** server time: a copy of the server's dated before it is no newer than the last save */
+  acceptAfter: number;
+};
+
+/** seconds a save's end is given for the clocks: a copy of the server's dated within them is older (tdesktop's kSkipCloudDraftsFor) */
+const CLOUD_DRAFT_SKIP_FOR = 2;
+/** how long a re-read of the drafts waits, for the drafts left out meanwhile to go in one */
+const DRAFT_SYNC_RECONCILE_DELAY = 2000;
 
 export class AppDraftsManager extends AppManager {
   private drafts: {[peerIdAndThreadId: string]: MyDraftMessage};
   private draftSyncId = 0;
   private draftSyncStates = new Map<string, DraftSyncState>();
-  private draftSyncProtectedUntil = new Map<string, number>();
-  private draftSyncProtectionTimeouts = new Map<string, number>();
-  private draftSyncReconcileKeys = new Set<string>();
+  private draftSaves = new Map<string, DraftSaves>();
+  /** ticks as a draft changes here: a read of what holds drafts notes it as it is asked for (`getDraftsClock`) */
+  private draftsClock = 0;
+  /** the drafts a read of them brought, with the tick it was asked for at */
+  private draftReads = new WeakMap<Update.updateDraftMessage, number>();
+  /** the drafts left out, whose chats to ask for again once no save of them is under way */
+  private draftSyncReconcileKeys = new Map<string, ClearDraftArgs>();
   private draftSyncReconcileTimeout: number;
   private getAllDraftPromise: Promise<void>;
   private getAllDraftsResolved = false;
@@ -75,11 +104,10 @@ export class AppDraftsManager extends AppManager {
         }
 
         const key = this.getKey(peerId, monoforumThreadId || threadId);
-        if(this.isDraftSyncProtected(key)) {
-          // Another session may have written this draft while our own save was
-          // in flight. Dropping the update keeps the local text, but the server
-          // state is then unknown — re-read it once the window closes.
-          this.scheduleDraftSyncReconcile(key);
+        const askedAt = this.draftReads.get(update);
+        if(this.skipCloudDraft(key, draft, askedAt)) {
+          // * another session may have written it in the same moment as this one saved, after the save
+          this.scheduleDraftSyncReconcile(key, {peerId, threadId, monoforumThreadId});
           return;
         }
 
@@ -88,7 +116,8 @@ export class AppDraftsManager extends AppManager {
           threadId,
           monoforumThreadId,
           draft,
-          notify: true
+          notify: true,
+          askedAt
         });
       }
     });
@@ -104,9 +133,7 @@ export class AppDraftsManager extends AppManager {
 
   public clear = (init?: boolean) => {
     this.draftSyncStates.clear();
-    this.draftSyncProtectedUntil.clear();
-    this.draftSyncProtectionTimeouts.forEach((timeout) => clearTimeout(timeout));
-    this.draftSyncProtectionTimeouts.clear();
+    this.draftSaves.clear();
     this.draftSyncReconcileKeys.clear();
     if(this.draftSyncReconcileTimeout !== undefined) {
       clearTimeout(this.draftSyncReconcileTimeout);
@@ -132,7 +159,13 @@ export class AppDraftsManager extends AppManager {
     const monoforumThreadId = peerId !== this.rootScope.myId && update.saved_peer_id ?
       this.appPeersManager.getPeerId(update.saved_peer_id) :
       undefined;
-    return {peerId, threadId: update.threadId || update.top_msg_id, monoforumThreadId};
+    // * a channel's topic by its id here, as its saves, its dialog and its field have it
+    const {top_msg_id} = update;
+    const threadId = update.threadId || (top_msg_id && this.appMessagesIdsManager.generateMessageId(
+      top_msg_id,
+      this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined
+    ));
+    return {peerId, threadId, monoforumThreadId};
   }
 
   /** Where a draft's media came from, for its file references to be renewed from there */
@@ -140,45 +173,54 @@ export class AppDraftsManager extends AppManager {
     return {type: 'draft', peerId, threadId: threadId || undefined};
   }
 
-  private isDraftSyncProtected(key: string) {
-    if(this.draftSyncStates.get(key)?.status === 'pending') return true;
+  /**
+   * The drafts clock's tick: read before asking the server for what holds drafts (the drafts, the dialogs), and
+   * handed back with what that brings, which is older than a change of the draft here after it (`skipCloudDraft`)
+   */
+  public getDraftsClock() {
+    return this.draftsClock;
+  }
 
-    const protectedUntil = this.draftSyncProtectedUntil.get(key);
-    if(!protectedUntil) return false;
-    if(protectedUntil > Date.now()) return true;
+  private getDraftSaves(key: string) {
+    let saves = this.draftSaves.get(key);
+    if(!saves) this.draftSaves.set(key, saves = {pending: 0, changed: 0, acceptAfter: 0});
+    return saves;
+  }
 
-    // A throttled worker can run the expiry timer late.
-    this.releaseDraftSyncProtection(key);
-    return false;
+  private startDraftSave(key: string) {
+    const saves = this.getDraftSaves(key);
+    ++saves.pending;
+    return saves;
+  }
+
+  /** a save has ended, gone through or not: what the server gives of the draft from now on is measured against it */
+  private endDraftSave(saves: DraftSaves) {
+    --saves.pending;
+    saves.changed = ++this.draftsClock;
+    saves.acceptAfter = Math.max(saves.acceptAfter, this.timeManager.getServerTime() + CLOUD_DRAFT_SKIP_FOR);
   }
 
   /**
-   * Holds off incoming draft updates for a moment after our own write, so the
-   * server echoing it back cannot overwrite what is being typed. Every entry
-   * expires on its own — the map must not grow with one record per chat.
+   * Whether a draft the server gives is older than what this session has of it, and is to be left out: while a save
+   * is under way, the server may have taken the save after it; once the saves have ended, one dated before the last
+   * ended is older; and one a read brought (`askedAt`, the drafts clock's tick it was asked for at) is older when the
+   * draft changed here after the read was asked for - a save ended, or a draft pushed was taken - whatever its date
+   * (the server may have answered the read before). A read asked for after that is the server's draft as it stands,
+   * its absence included
    */
-  private protectDraftSync(key: string) {
-    this.draftSyncProtectedUntil.set(key, Date.now() + DRAFT_SYNC_UPDATE_GRACE);
-
-    const pendingTimeout = this.draftSyncProtectionTimeouts.get(key);
-    if(pendingTimeout !== undefined) clearTimeout(pendingTimeout);
-    this.draftSyncProtectionTimeouts.set(key, ctx.setTimeout(() => {
-      this.releaseDraftSyncProtection(key);
-    }, DRAFT_SYNC_UPDATE_GRACE));
+  private skipCloudDraft(key: string, draft: DraftMessage, askedAt?: number) {
+    const saves = this.draftSaves.get(key);
+    if(!saves) return false;
+    if(saves.pending) return true;
+    if(askedAt !== undefined) return askedAt < saves.changed;
+    return (draft?.date || 0) < saves.acceptAfter;
   }
 
-  private releaseDraftSyncProtection(key: string) {
-    const pendingTimeout = this.draftSyncProtectionTimeouts.get(key);
-    if(pendingTimeout !== undefined) clearTimeout(pendingTimeout);
-    this.draftSyncProtectionTimeouts.delete(key);
-    this.draftSyncProtectedUntil.delete(key);
-  }
-
-  private scheduleDraftSyncReconcile(key: string) {
-    this.draftSyncReconcileKeys.add(key);
+  private scheduleDraftSyncReconcile(key: string, target: ClearDraftArgs) {
+    this.draftSyncReconcileKeys.set(key, target);
     this.draftSyncReconcileTimeout ??= ctx.setTimeout(
       this.reconcileDroppedDrafts,
-      DRAFT_SYNC_UPDATE_GRACE
+      DRAFT_SYNC_RECONCILE_DELAY
     );
   }
 
@@ -186,18 +228,18 @@ export class AppDraftsManager extends AppManager {
     this.draftSyncReconcileTimeout = undefined;
     if(!this.draftSyncReconcileKeys.size) return;
 
-    // Still typing: a newer save re-armed the protection and the refetched
-    // update would be dropped again. Wait it out instead of asking twice.
-    if([...this.draftSyncReconcileKeys].some((key) => this.isDraftSyncProtected(key))) {
+    // * a save still under way would leave out what the read brings of its draft: it is waited out
+    if([...this.draftSyncReconcileKeys.keys()].some((key) => this.draftSaves.get(key)?.pending)) {
       this.draftSyncReconcileTimeout = ctx.setTimeout(
         this.reconcileDroppedDrafts,
-        DRAFT_SYNC_UPDATE_GRACE
+        DRAFT_SYNC_RECONCILE_DELAY
       );
       return;
     }
 
+    const targets = new Map(this.draftSyncReconcileKeys);
     this.draftSyncReconcileKeys.clear();
-    this.requestAllDrafts().catch(() => {});
+    this.requestAllDrafts(targets).catch(noop);
   };
 
   public getDraft(peerId: PeerId, threadId?: number) {
@@ -239,12 +281,36 @@ export class AppDraftsManager extends AppManager {
     });
   }
 
-  private requestAllDrafts() {
+  /** `asked`: the drafts asked for again (`reconcileDroppedDrafts`), which the read says are gone by leaving them out */
+  private requestAllDrafts(asked?: Map<string, ClearDraftArgs>) {
+    const askedAt = this.draftsClock;
     return this.apiManager.invokeApi('messages.getAllDrafts')
     .then((updates) => {
+      const held = new Set<string>();
+      // * what it brings is measured against the changes of each draft after it was asked for (`skipCloudDraft`)
+      (updates as Updates.updates).updates?.forEach((update) => {
+        if(update._ !== 'updateDraftMessage') return;
+        this.draftReads.set(update, askedAt);
+        const {peerId, threadId, monoforumThreadId} = this.getUpdateDraftTarget(update);
+        held.add(this.getKey(peerId, monoforumThreadId || threadId));
+      });
       const p = this.apiUpdatesManager.updatesState.syncLoading || Promise.resolve();
       return p.then(() => {
         this.apiUpdatesManager.processUpdateMessage(updates);
+
+        // * it holds every draft there is: one asked for again that it leaves out was cleared (another session sent
+        // * it, or emptied it), as a clear pushed then would say
+        asked?.forEach((target, key) => {
+          // * a draft whose save failed is here only: the server not having it says nothing of it, and it is saved again
+          if(held.has(key) || !this.drafts[key] || this.draftSyncStates.get(key)?.status === 'failed') return;
+          const draft: DraftMessage.draftMessageEmpty = {_: 'draftMessageEmpty'};
+          if(this.skipCloudDraft(key, draft, askedAt)) {
+            this.scheduleDraftSyncReconcile(key, target);
+            return;
+          }
+
+          this.saveDraft({...target, draft, notify: true, askedAt});
+        });
       });
     });
   }
@@ -259,18 +325,35 @@ export class AppDraftsManager extends AppManager {
     monoforumThreadId,
     draft: apiDraft,
     notify,
-    force
+    force,
+    cloud,
+    askedAt
   }: {
     peerId: PeerId,
     threadId?: number,
     monoforumThreadId?: PeerId,
     draft: DraftMessage,
     notify?: boolean,
-    force?: boolean
+    force?: boolean,
+    /** the server's, as a dialog brings it: left out when older than what this session has (`skipCloudDraft`) */
+    cloud?: boolean,
+    /** the drafts clock's tick the read that brought it was asked for at (`getDraftsClock`) */
+    askedAt?: number
   }) {
-    const draft = this.processApiDraft(apiDraft, peerId, this.getReferenceContext(peerId, monoforumThreadId || threadId));
-
     const key = this.getKey(peerId, monoforumThreadId || threadId);
+    if(cloud && this.skipCloudDraft(key, apiDraft, askedAt)) {
+      // * one of another session's may have come with it
+      if(apiDraft?._ === 'draftMessage' || this.drafts[key]) {
+        this.scheduleDraftSyncReconcile(key, {peerId, threadId, monoforumThreadId});
+      }
+
+      return this.drafts[key];
+    }
+
+    const draft = this.processApiDraft(apiDraft, peerId, this.getReferenceContext(peerId, monoforumThreadId || threadId));
+    // * a change here, a draft pushed or this session's own: a read asked for before it predates it (`skipCloudDraft`).
+    // * Of two reads, neither is known to be the newer
+    if(askedAt === undefined && (draft || this.drafts[key])) this.getDraftSaves(key).changed = ++this.draftsClock;
     if(draft) {
       this.drafts[key] = draft;
     } else {
@@ -369,12 +452,14 @@ export class AppDraftsManager extends AppManager {
     // console.warn(dT(), 'sync draft', peerID)
     const key = this.getKey(peerId, monoforumThreadId || threadId);
     const serverDraft = this.drafts[key];
+    const syncState = this.draftSyncStates.get(key);
     if(
       draftsAreEqual(serverDraft, localDraft) &&
-      (!saveOnServer || this.draftSyncStates.get(key)?.status !== 'failed')
+      (!saveOnServer || syncState?.status !== 'failed')
     ) {
       // console.warn(dT(), 'equal drafts', localDraft, serverDraft)
-      return true;
+      // * the same draft on its way to the server: it is the server's once that save goes through
+      return (saveOnServer && syncState?.saved) || true;
     }
 
     // console.warn(dT(), 'changed draft', localDraft, serverDraft)
@@ -446,6 +531,11 @@ export class AppDraftsManager extends AppManager {
         params.media = localDraft.media;
       }
 
+      // * the message effect chosen goes with the draft too: left out, the server's copy came back without it
+      if(localDraft.effect) {
+        params.effect = localDraft.effect;
+      }
+
       params.message = message;
     }
 
@@ -472,8 +562,18 @@ export class AppDraftsManager extends AppManager {
 
     if(saveOnServer) {
       const syncId = ++this.draftSyncId;
-      const queue = this.draftSyncStates.get(key)?.queue || createSerializedQueue();
-      this.draftSyncStates.set(key, {id: syncId, status: 'pending', queue});
+      const previousSync = this.draftSyncStates.get(key);
+      const queue = previousSync?.queue || createSerializedQueue();
+      const saves = this.startDraftSave(key);
+      let holds = true;
+      const endSave = () => {
+        if(!holds) return;
+        holds = false;
+        this.endDraftSave(saves);
+      };
+      const pendingState: DraftSyncState = {id: syncId, status: 'pending', queue, release: endSave};
+      previousSync?.release?.();
+      this.draftSyncStates.set(key, pendingState);
 
       let promise: Promise<unknown>;
       try {
@@ -487,7 +587,17 @@ export class AppDraftsManager extends AppManager {
         // dispatch time, and serialize requests already sent for this draft key.
         const invoke = () => queue.enqueue(() => {
           if(this.draftSyncStates.get(key)?.id !== syncId) return;
-          return this.apiManager.invokeApi('messages.saveDraft', params);
+          // * its request goes: the hold lasts while it does, whatever comes meanwhile - between its tries (a file
+          // * reference refreshed) a newer save or a clear lets go of it again
+          pendingState.release = undefined;
+          const request = this.apiManager.invokeApi('messages.saveDraft', params);
+          // * a try ended: a save a newer one took the place of meanwhile lets go at once, any other may be let go of again
+          const tryEnded = () => {
+            if(this.draftSyncStates.get(key)?.id !== syncId) endSave();
+            else pendingState.release = endSave;
+          };
+          request.then(tryEnded, tryEnded);
+          return request;
         });
         promise = resolvedInputRichMessage ?
           this.appMessagesManager.assertRichMessage(resolvedInputRichMessage, {draft: true}).then(() => {
@@ -501,29 +611,32 @@ export class AppDraftsManager extends AppManager {
         promise = Promise.reject(error);
       }
 
-      promise = promise.then((result) => {
+      // * whether this draft is the server's now: a newer one of the draft may have gone instead
+      const saved = promise.then((result) => {
+        endSave();
         if(this.draftSyncStates.get(key)?.id === syncId) {
           this.draftSyncStates.delete(key);
-          this.protectDraftSync(key);
         }
 
-        return result;
+        return result === true;
       }, (error) => {
+        endSave();
         if(this.draftSyncStates.get(key)?.id === syncId) {
           this.draftSyncStates.set(key, {id: syncId, status: 'failed', queue});
         }
 
         throw error;
       });
+      pendingState.saved = saved;
 
       const dialog = this.dialogsStorage.getDialogOnly(peerId); // * create or delete dialog when draft changes
       if(!dialog || !getServerMessageId(dialog.top_message)) {
-        return promise.then(() => {
-          return this.appMessagesManager.reloadConversation(peerId);
+        return saved.then((isSaved) => {
+          return this.appMessagesManager.reloadConversation(peerId).then(() => isSaved);
         });
       }
 
-      return promise;
+      return saved;
     }
 
     this.cancelDraftSync(key);
@@ -539,13 +652,13 @@ export class AppDraftsManager extends AppManager {
   private cancelDraftSync(key: string) {
     const previousSync = this.draftSyncStates.get(key);
     if(previousSync) {
+      previousSync.release?.();
       const id = ++this.draftSyncId;
       const {queue} = previousSync;
       this.draftSyncStates.set(key, {id, status: 'pending', queue});
       void queue.enqueue(() => {
         if(this.draftSyncStates.get(key)?.id !== id) return;
         this.draftSyncStates.delete(key);
-        this.protectDraftSync(key);
       });
     }
   }

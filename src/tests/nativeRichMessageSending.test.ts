@@ -1,6 +1,7 @@
 import {describe, expect, test, vi} from 'vitest';
 import '@helpers/peerIdPolyfill';
 import deferredPromise from '@helpers/cancellablePromise';
+import tsNow from '@helpers/tsNow';
 import {AppMessagesManager, RichMessagePayload} from '@appManagers/appMessagesManager';
 import {inputPeer, makeMessagesManager, makeUpdates, peerId} from '@/tests/helpers/messageSending';
 import {AppDraftsManager} from '@appManagers/appDraftsManager';
@@ -894,12 +895,20 @@ describe('native rich-message manager plumbing', () => {
       });
       expect(manager.getDraft(peerId)).toBe(localDraft);
 
-      vi.advanceTimersByTime(2001);
+      // * older than the save however late it comes; one dated after the save is newer
+      vi.advanceTimersByTime(60e3);
       updateDraftMessage!({
         peer: inputPeer,
         draft: staleDraft
       });
-      expect(manager.getDraft(peerId)).toBe(staleDraft);
+      expect(manager.getDraft(peerId)).toBe(localDraft);
+
+      const newerDraft: DraftMessage.draftMessage = {...staleDraft, date: tsNow(true), message: 'newer'};
+      updateDraftMessage!({
+        peer: inputPeer,
+        draft: newerDraft
+      });
+      expect(manager.getDraft(peerId)).toBe(newerDraft);
     } finally {
       vi.useRealTimers();
     }

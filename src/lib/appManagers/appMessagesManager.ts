@@ -6011,8 +6011,9 @@ export class AppMessagesManager extends AppManager {
     const cutoffGeneration = filterType === FilterType.Saved ?
       undefined :
       this.getChannelAvailableMinIdGeneration();
-    // * read before the request: the dialogs' notification settings are older than what changed since
+    // * read before the request: the dialogs' notification settings and drafts are older than what changed since
     const settingsAskedAt = this.appNotificationsManager.getSettingsClock();
+    const draftsAskedAt = this.appDraftsManager.getDraftsClock();
 
     const processResult = (result: MessagesDialogs | MessagesForumTopics | MessagesSavedDialogs) => {
       if(!middleware()) {
@@ -6095,7 +6096,8 @@ export class AppMessagesManager extends AppManager {
           dialog,
           ignoreOffsetDate: !isSearch,
           saveGlobalOffset,
-          settingsAskedAt
+          settingsAskedAt,
+          draftsAskedAt
         });
 
         if(dialog.peerId === undefined) {
@@ -7157,6 +7159,7 @@ export class AppMessagesManager extends AppManager {
               generation !== this.getChannelAvailableMinIdGeneration(peerId)
             ));
           const settingsAskedAt = this.appNotificationsManager.getSettingsClock();
+          const draftsAskedAt = this.appDraftsManager.getDraftsClock();
           const result = await this.apiManager.invokeApi(
             'messages.getPeerDialogs',
             {peers: inputDialogPeers},
@@ -7185,7 +7188,7 @@ export class AppMessagesManager extends AppManager {
             }
           }
 
-          this.dialogsStorage.applyDialogs(result, undefined, settingsAskedAt);
+          this.dialogsStorage.applyDialogs(result, undefined, settingsAskedAt, draftsAskedAt);
 
           result.dialogs.forEach((dialog) => {
             if(dialog._ !== 'dialog') {

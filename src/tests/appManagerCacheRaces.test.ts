@@ -1998,6 +1998,7 @@ describe('manager cache race guards', () => {
           getFolderDialogs: (): any[] => []
         },
         appNotificationsManager: {getSettingsClock: () => 0},
+        appDraftsManager: {getDraftsClock: () => 0},
         appPeersManager: {getInputPeerById: () => ({_: 'inputPeerEmpty'})},
         saveApiResult
       });
@@ -2053,6 +2054,7 @@ describe('manager cache race guards', () => {
           updateForumTopicsPaginationOffsets
         },
         appNotificationsManager: {getSettingsClock: () => 0},
+        appDraftsManager: {getDraftsClock: () => 0},
         appPeersManager: {
           getInputPeerById: () => ({_: 'inputPeerEmpty'}),
           isChannel: () => true
