@@ -195,6 +195,50 @@ defineStories('Confirmations', [
       const {default: showConvertToGigagroupPopup} = await import('@components/popups/convertToGigagroup');
       showConvertToGigagroupPopup(ctx.peer('group').toChatId()).catch(noop);
     }
+  },
+  {
+    id: 'requestPeer/confirm/plain',
+    title: 'Send a group to a bot',
+    open: async(ctx) => {
+      const {showRequestPeerConfirmation} = await import('@components/popups/requestPeer');
+      showRequestPeerConfirmation({
+        peerType: {_: 'requestPeerTypeChat', pFlags: {}},
+        requestingPeerId: ctx.peer('bot'),
+        requestedPeerIds: [ctx.peer('supergroup')]
+      }).catch(noop);
+    }
+  },
+  {
+    id: 'requestPeer/confirm/addBot',
+    title: 'Send groups to a bot — the bot joins the one it is not in',
+    open: async(ctx) => {
+      const {showRequestPeerConfirmation} = await import('@components/popups/requestPeer');
+      showRequestPeerConfirmation({
+        peerType: {_: 'requestPeerTypeChat', pFlags: {bot_participant: true}},
+        requestingPeerId: ctx.peer('bot'),
+        requestedPeerIds: [ctx.peer('group'), ctx.peer('supergroup')],
+        botChatIds: [ctx.peer('group').toChatId()]
+      }).catch(noop);
+    }
+  },
+  {
+    id: 'requestPeer/confirm/adminRights',
+    title: 'Send a channel to a bot — the bot becomes its admin',
+    open: async(ctx) => {
+      const {showRequestPeerConfirmation} = await import('@components/popups/requestPeer');
+      showRequestPeerConfirmation({
+        peerType: {
+          _: 'requestPeerTypeBroadcast',
+          pFlags: {},
+          bot_admin_rights: {
+            _: 'chatAdminRights',
+            pFlags: {change_info: true, post_messages: true, delete_messages: true, other: true, add_admins: true}
+          }
+        },
+        requestingPeerId: ctx.peer('bot'),
+        requestedPeerIds: [ctx.peer('channel')]
+      }).catch(noop);
+    }
   }
 ]);
 

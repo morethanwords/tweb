@@ -5147,6 +5147,7 @@ const lang = {
   'ConferenceCall.Media.ScreenError': 'Could not change screen sharing. Try again.',
   'Chat.Service.PeerRequest.Confirm.Plain': 'Are you sure you want to send %1$@ to %2$@?',
   'Chat.Service.PeerRequest.Confirm.Permission': 'Are you sure you want to send %1$@ to %2$@? This will also add %3$@ to %4$@ with the following rights: %5$@',
+  'Chat.Service.PeerRequest.Confirm.Add': 'Are you sure you want to send %1$@ to %2$@? This will also add %3$@ to %4$@.',
   'Chat.Service.PeerRequest.Confirm.Ok': 'Send',
   'ChatService.UserJoinedGroupByRequest': '%@ was accepted to the group',
   'ChatService.UserJoinedChannelByRequest': '%@ joined the channel by request',

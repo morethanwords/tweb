@@ -54,7 +54,7 @@ import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 const ROW_WITH_CHECKBOX_CLASS = 'selector-row-with-checkbox';
 
 export type SelectSearchPeerType = 'contacts' | 'dialogs' | 'channelParticipants' | 'custom';
-export type FilterPeerTypeByFunc = (peer: ReturnType<AppPeersManager['getPeer']>) => boolean;
+export type FilterPeerTypeByFunc = (peer: ReturnType<AppPeersManager['getPeer']>) => MaybePromise<boolean>;
 
 // TODO: правильная сортировка для addMembers, т.е. для peerType: 'contacts', потому что там идут сначала контакты - потом неконтакты, а должно всё сортироваться по имени
 
