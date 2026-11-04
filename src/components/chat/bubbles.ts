@@ -3881,7 +3881,7 @@ export default class ChatBubbles {
     const unreadedSeenKey = type === 'history' ? 'unreadedSeen' : 'unreadedContentSeen';
 
     const middleware = this.getMiddleware();
-    this[readPromiseKey] = idleController.getFocusPromise().then(async() => {
+    const readPromise: Promise<void> = idleController.getFocusPromise().then(async() => {
       // like a failed middleware, a stale unreadedChat leaves `this[readPromiseKey]` latched —
       // `cleanup()` is what resets both the promise and the sets
       if(!middleware() || this.isUnreadedChatChanged()) return;
@@ -3893,8 +3893,9 @@ export default class ChatBubbles {
 
         // ? if message with maxId is not rendered ?
         if(this.scrollable.loadedAll.bottom) {
+          // * no message of the chat's own left in the list (the one seen was deleted meanwhile): -1
           const rendered = this.getRenderedHistory('desc', true);
-          const bubblesMaxId = rendered ? splitFullMid(rendered[0]).mid : -1;
+          const bubblesMaxId = rendered.length ? splitFullMid(rendered[0]).mid : -1;
           if(maxId >= bubblesMaxId) {
             maxId = Math.max(this.chat.getHistoryMaxId() || 0, maxId);
             if(!middleware()) return;
@@ -3944,7 +3945,15 @@ export default class ChatBubbles {
           this.readUnreaded(type);
         }
       });
+    }).catch((err) => {
+      // * a throw before the read went out must not keep this chat's reads latched until the chat changes: the
+      // * next message seen tries again, with what this attempt held (not at once, which would throw the same way)
+      this.log.error('read unreaded err:', type, err);
+      if(middleware() && this[readPromiseKey] === readPromise) {
+        this[readPromiseKey] = undefined;
+      }
     });
+    this[readPromiseKey] = readPromise;
   }
 
   public onBubblesClick = async(e: Event) => {
@@ -8592,6 +8601,16 @@ export default class ChatBubbles {
     (type === 'history' ? this.unreaded : this.unreadedContent).set(element, mid);
   }
 
+  // * a mention or the reactions of a message, once seen, read that very message: `readUnreaded('content')` checks it
+  // * under this mid. A service message without reactions has a mention all the same; an ephemeral message is never
+  // * read on the server (`readMessages` drops it)
+  private observeUnreadContent(bubble: HTMLElement, message: Message.message | Message.messageService) {
+    if(!this.observer || isEphemeralMessage(message)) return;
+    if(isMentionUnread(message) || getUnreadReactions(message)) {
+      this.setUnreadObserver('content', bubble, message.mid);
+    }
+  }
+
   // Re-arm the unread-content (mention/reaction) observer for a freshly-focused
   // message. Jumping to a mention/reaction via the corner buttons scrolls the
   // bubble into view, but the actual read is driven solely by the intersection
@@ -9245,9 +9264,6 @@ export default class ChatBubbles {
     context.isInUnread = !isEphemeral && !previewOnly && !our &&
       !message.pFlags.out &&
       !!message.pFlags.unread;
-
-    const unreadMention = isMentionUnread(message);
-    const unreadReactions = getUnreadReactions(message);
 
     // A group/channel message loaded without its dialog carries no `unread` flag, so fall
     // back to the peer's inbox read cursor — only a message ABOVE it is still unread. Our
@@ -9945,8 +9961,8 @@ export default class ChatBubbles {
       if(!previewOnly && hasReactions && this.chat.type !== ChatType.Logs) {
         this.appendReactionsElementToBubble(bubble, message, reactionsMessage, undefined, loadPromises);
       }
-      if(!previewOnly && this.observer && (unreadMention || unreadReactions)) {
-        this.setUnreadObserver('content', bubble, reactionsMessage.mid);
+      if(!previewOnly) {
+        this.observeUnreadContent(bubble, message);
       }
       return ret;
     }
@@ -9955,8 +9971,8 @@ export default class ChatBubbles {
       setUnreadObserver?.();
     }
 
-    if(!previewOnly && this.observer && (unreadMention || unreadReactions)) {
-      this.setUnreadObserver('content', bubble, reactionsMessage.mid);
+    if(!previewOnly) {
+      this.observeUnreadContent(bubble, message);
     }
 
     const isSponsored = (message as Message.message).pFlags.sponsored;
@@ -15273,10 +15289,8 @@ export default class ChatBubbles {
         this.setUnreadObserver('history', bubble, message.mid);
       }
     }
-    if(this.observer && !this.unreadedContent.has(bubble) && (
-      isMentionUnread(message) || getUnreadReactions(message)
-    )) {
-      this.setUnreadObserver('content', bubble, message.mid);
+    if(this.observer && !this.unreadedContent.has(bubble)) {
+      this.observeUnreadContent(bubble, message);
     }
 
     const isCurrent = () => this.isSolidMessageBodyRegistered(bubble, entry) &&
