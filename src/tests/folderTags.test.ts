@@ -206,6 +206,33 @@ describe('FiltersStorage folder tags', () => {
   .map(([event]: [string]) => event)
   .filter((event: string) => event.startsWith('filter_'));
 
+  it('starts with the folders kept when the server refuses them, and takes its own when asked again', async() => {
+    // * an account whose state keeps no folders of its own: the chat list asks the server for them as it starts
+    const storage = makeStorage(false, [folder(2, undefined)]);
+    loadState(storage, []);
+    storage.apiManager.invokeApiSingle.mockRejectedValueOnce(new Error('INTERNAL'));
+
+    const filters = await storage.getDialogFiltersToStart();
+    expect(filters.map((filter) => filter.id)).toEqual([0, 1]);
+    expect(folderEvents(storage)).toEqual([]);
+
+    // * the sync the chat list starts once it is up asks again
+    storage.syncDialogFilters();
+    await pause(0);
+    expect(storage.apiManager.invokeApiSingle).toHaveBeenCalledTimes(2);
+    expect(storage.getFilter(2)).toBeDefined();
+    expect((storage as any).rootScope.dispatchEvent).toHaveBeenCalledWith('filter_order', [0, 1, 2]);
+  });
+
+  it('does not take the folders kept for the server\'s when they are asked for after the start', async() => {
+    // * a folder made now would take the id of one the server has
+    const storage = makeStorage(false, [folder(2, undefined)]);
+    loadState(storage, []);
+    storage.apiManager.invokeApiSingle.mockRejectedValueOnce(new Error('INTERNAL'));
+
+    await expect(storage.getDialogFilters()).rejects.toThrow('INTERNAL');
+  });
+
   it('tells the screen nothing on a start with nothing changed elsewhere', async() => {
     const storage = makeStorage(false, [folder(2, undefined), folder(3, undefined)]);
     loadState(storage, [folder(2, undefined), folder(3, undefined)]);

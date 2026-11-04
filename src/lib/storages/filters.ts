@@ -585,22 +585,34 @@ export default class FiltersStorage extends AppManager {
     return reloadPromise;
   }
 
+  /** The kept folders, in their order */
+  private getKeptFilters() {
+    return Object.values(this.filters).sort((a, b) => a.localId - b.localId);
+  }
+
   /** The kept folders' ids, in their order */
   private getOrderedFilterIds() {
-    return Object.values(this.filters)
-    .sort((a, b) => a.localId - b.localId)
-    .map((filter) => filter.id);
+    return this.getKeptFilters().map((filter) => filter.id);
   }
 
   public async getDialogFilters(overwrite = false, fetched?: MessagesDialogFilters): Promise<MyDialogFilter[]> {
-    const keys = Object.keys(this.filters);
-    if(keys.length > PREPENDED_FILTERS && !overwrite) {
-      return keys.map((filterId) => this.filters[filterId]).sort((a, b) => a.localId - b.localId);
+    if(Object.keys(this.filters).length > PREPENDED_FILTERS && !overwrite) {
+      return this.getKeptFilters();
     }
 
     const messagesDialogFilters = fetched ?? await this.fetchDialogFilters();
     const prepended = this.prependFilters(messagesDialogFilters.filters);
     return prepended.map((filter) => this.saveDialogFilter(filter, overwrite)).filter(Boolean);
+  }
+
+  /**
+   * The folders the chat list starts with: `getDialogFilters()`, and the kept ones when the server refuses them (an
+   * error, the network), as tdesktop's load keeps its list - the start goes on, and the sync the chat list starts
+   * once it is up asks again. Only for the start: a list taken for the server's elsewhere could lack folders it has,
+   * and a folder made then could take the id of one of them
+   */
+  public getDialogFiltersToStart() {
+    return this.getDialogFilters().catch(() => this.getKeptFilters());
   }
 
   /** The folders as the server has them - and with them whether their tags are on */

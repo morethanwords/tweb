@@ -972,14 +972,18 @@ export class AppDialogsManager {
       // this.log('peer_changed total time:', performance.now() - perf);
     });
 
-    rootScope.addEventListener('filter_update', async(filter) => {
-      if(REAL_FOLDERS.has(filter.id)) {
-        return;
-      }
+    // * a folder found by an ask after the start (one made elsewhere that this client had no word of, or every
+    // * folder when the start's ask was refused) comes as a new one rather than an update: its list is made all the same
+    (['filter_update', 'filter_new'] as const).forEach((type) => {
+      rootScope.addEventListener(type, (filter) => {
+        if(REAL_FOLDERS.has(filter.id)) {
+          return;
+        }
 
-      if(!this.filtersRendered[filter.id]) {
-        this.addFilter(filter);
-      }
+        if(!this.filtersRendered[filter.id]) {
+          this.addFilter(filter);
+        }
+      });
     });
 
     // * the folders a chat is in are read off its dialog, which a row only gets anew with an update
@@ -1100,7 +1104,7 @@ export class AppDialogsManager {
     if(haveFilters) {
       await addFilters(filtersArr);
     } else {
-      addFiltersPromise = managers.filtersStorage.getDialogFilters().then(addFilters);
+      addFiltersPromise = managers.filtersStorage.getDialogFiltersToStart().then(addFilters);
     }
 
     this.doNotRenderChatList = true;
