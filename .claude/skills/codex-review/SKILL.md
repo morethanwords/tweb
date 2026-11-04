@@ -138,14 +138,26 @@ noticed in passing. No findings from either pass means the review is done.
     fixes since the round before: a round over the fixes alone misses what they
     broke elsewhere in the change, and a clean one of them does not end the
     review. `--since` is for a user who asks for a review of the fixes alone.
-    - A change still uncommitted: the same target as round 1.
-    - A change that is a commit (or a branch), with the fixes uncommitted on top:
-      in a worktree only you work in, `--base <the change's base>` (`--base
-      <sha>^` for one commit, `--base master` for a branch), which takes the
-      uncommitted fixes too. In a checkout other sessions share, `--base` would
-      take their work as well: make a detached worktree at the change's base
-      (`git worktree add --detach .claude/worktrees/<name> <sha>^`), copy the
-      change's files into it as they are now, and review `--paths` there.
+    - A change still uncommitted: the target of round 1, brought up to date —
+      `--paths` with every file the fixes added too, a `--patch` written again
+      from the tree as it is now (an old one is the change before the fixes).
+    - A change that is a commit (or a branch), with the fixes uncommitted on top,
+      in a worktree only you work in and with the change's last commit at HEAD:
+      `--base <the change's base>` (`--base <sha>^` for one commit, `--base
+      master` for a branch), which takes the uncommitted fixes too.
+    - Any other committed change with fixes on top — in a checkout other
+      sessions share (`--base` would take their work too), or with commits
+      after it (`--base` would take those too): rebuild it in a worktree of its
+      own. `git worktree add --detach .claude/worktrees/<name> <base>`; apply the
+      change to it (`git diff --binary <base> <its last commit> | git -C
+      <worktree> apply`), then your fixes alone the same way: `git diff --binary
+      HEAD -- <files>` without the other sessions' hunks, as step 1 says for
+      `--patch`, and each file the fixes added, which that leaves out while it
+      is untracked, as `git diff --binary --no-index /dev/null <file>`. Review
+      it there with `--uncommitted`, which no one else's work reaches, and
+      which takes deletions and renames along. If a patch does not apply, tell
+      the user instead of reviewing something else. Remove the worktree after
+      with `git worktree remove --force <path>` (never `git worktree prune`).
   - A fix of any level, a P3 included, gets another round: only a round that
     confirms nothing to fix ends the review.
   - **Five reviews at most.** Stop and ask the user, showing what is still open,
