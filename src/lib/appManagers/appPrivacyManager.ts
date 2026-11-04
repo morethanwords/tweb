@@ -7,6 +7,20 @@ import noop from '@helpers/noop';
 import {IgnoredRestrictionReasons, makeIgnoredRestrictionReasons, SENSITIVE_RESTRICTION_REASON} from '@helpers/restrictions';
 import forgetFailedRequest from '@helpers/forgetFailedRequest';
 
+/**
+ * The answer to a request kept for whoever asks next takes its place only while the place still keeps that request:
+ * what an update or a save put there while it was on its way is newer than the answer - it stays, and is what the
+ * caller gets.
+ */
+function keepAnswer<T>(request: Promise<T>, kept: T | Promise<T>, answer: T, keep: (answer: T) => void): T | Promise<T> {
+  if(kept && kept !== request) {
+    return kept;
+  }
+
+  keep(answer);
+  return answer;
+}
+
 export class AppPrivacyManager extends AppManager {
   private privacy: Partial<{
     [key in PrivacyKey['_']]: PrivacyRule[] | Promise<PrivacyRule[]>
@@ -92,7 +106,7 @@ export class AppPrivacyManager extends AppManager {
       return Promise.resolve(rules);
     }
 
-    return this.privacy[privacyKey] = forgetFailedRequest(this.apiManager.invokeApi('account.getPrivacy', {
+    const promise: Promise<PrivacyRule[]> = this.privacy[privacyKey] = forgetFailedRequest(this.apiManager.invokeApi('account.getPrivacy', {
       key: {
         _: inputKey
       }
@@ -102,8 +116,11 @@ export class AppPrivacyManager extends AppManager {
 
       // console.log('privacy rules', inputKey, privacyRules, privacyRules.rules);
 
-      return this.privacy[privacyKey] = privacyRules.rules;
+      // * an update may bring newer rules meanwhile: a change on another device, or a save of this one
+      return keepAnswer(promise, this.privacy[privacyKey], privacyRules.rules, (rules) => this.privacy[privacyKey] = rules);
     }), () => this.privacy[privacyKey], () => delete this.privacy[privacyKey]);
+
+    return promise;
   }
 
   private globalPrivacy: GlobalPrivacySettings | Promise<GlobalPrivacySettings>;
@@ -118,9 +135,12 @@ export class AppPrivacyManager extends AppManager {
       return this.globalPrivacy;
     }
     if(this.globalPrivacy) return this.globalPrivacy;
-    return this.globalPrivacy = forgetFailedRequest(this.apiManager.invokeApi('account.getGlobalPrivacySettings').then((settings) => {
-      return this.globalPrivacy = settings;
+    const promise: Promise<GlobalPrivacySettings> = this.globalPrivacy = forgetFailedRequest(this.apiManager.invokeApi('account.getGlobalPrivacySettings').then((settings) => {
+      // * a save may bring newer settings meanwhile (tdesktop's GlobalPrivacy::update calls off the request on its way)
+      return keepAnswer(promise, this.globalPrivacy, settings, (answer) => this.globalPrivacy = answer);
     }), () => this.globalPrivacy, () => this.globalPrivacy = undefined);
+
+    return promise;
   }
 
   public setGlobalPrivacySettings(settings: GlobalPrivacySettings) {
