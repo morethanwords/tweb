@@ -22,7 +22,7 @@ import {
   instantViewStyles
 } from '@components/instantViewFormatting';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
-import {handleMarkdownShortcut, isMonospaceShortcut} from '@helpers/dom/markdown';
+import {handleMarkdownShortcut, isEditorShortcutModifier} from '@helpers/dom/markdown';
 import type {MarkdownType} from '@helpers/dom/getRichElementValue';
 import classNames from '@helpers/string/classNames';
 import type {Document, MessageEntity, PageBlock, Photo, RichMessage, RichText} from '@layer';
@@ -1591,30 +1591,6 @@ class TiptapChatInputEditor implements ChatInputEditor {
     .run();
   }
 
-  private applyMonospaceShortcut() {
-    if(!this.supportsMarkup('monospace')) return false;
-    const {selection} = this.editor.state;
-    const {$from, $to} = selection;
-    for(let depth = $from.depth; depth > 0; --depth) {
-      if($from.node(depth).type.name !== 'codeBlock') continue;
-      return this.editor.chain().focus().toggleCodeBlock().run();
-    }
-
-    const currentBlock = $from.parent;
-    if(
-      $from.sameParent($to) &&
-      (currentBlock.type.name === 'paragraph' || currentBlock.type.name === 'heading')
-    ) {
-      // a one-line field has no code block to turn the line into
-      if(this.getMarkupState('monospace').fully || !this.editor.schema.nodes.codeBlock) {
-        return this.applyMarkup({type: 'monospace'});
-      }
-      return this.editor.chain().focus().setCodeBlock().run();
-    }
-
-    return this.applyMarkup({type: 'monospace'});
-  }
-
   constructor(
     input: HTMLElement,
     private options: ChatInputEditorOptions = {},
@@ -1904,42 +1880,14 @@ class TiptapChatInputEditor implements ChatInputEditor {
               this.remappingNewLineShortcut = false;
             }
           }
-          const mod = event.ctrlKey || event.metaKey;
-          if(mod && event.altKey && !event.shiftKey) {
-            const level = event.code === 'Digit1' ? 1 :
-              event.code === 'Digit2' ? 2 :
-              undefined;
-            if(level) {
-              event.preventDefault();
-              return this.toggleHeading(level as 1 | 2);
-            }
+          // The browser's and the system's keys stay theirs: what is taken here is Ctrl (Cmd on a Mac) and a
+          // letter alone, and only where it does something — a field without links leaves Ctrl+K to the
+          // browser's search
+          if(event.code === 'KeyK' && isEditorShortcutModifier(event) && this.requestLinkEditor()) {
+            event.preventDefault();
+            return true;
           }
-          if(mod && !event.altKey) {
-            const code = event.code;
-            if(!event.shiftKey && code === 'KeyK') {
-              event.preventDefault();
-              return this.requestLinkEditor();
-            }
-            if(event.shiftKey && code === 'KeyH') {
-              event.preventDefault();
-              return this.toggleHeading(2);
-            }
-            if(event.shiftKey && code === 'KeyT') {
-              event.preventDefault();
-              return this.insertTable();
-            }
-            if(event.shiftKey && code === 'KeyB') {
-              event.preventDefault();
-              return this.setBodyText();
-            }
-            if(code === 'KeyM' && isMonospaceShortcut(event)) {
-              event.preventDefault();
-              return this.applyMonospaceShortcut();
-            }
-          }
-          if(event.ctrlKey || event.metaKey) {
-            handleMarkdownShortcut(input, event);
-          }
+          handleMarkdownShortcut(input, event);
           return event.defaultPrevented;
         },
         handlePaste: (view, event, slice) => {

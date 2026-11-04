@@ -192,7 +192,7 @@ for(const {style, mark} of [{style: 'sub', mark: 'subscript'}, {style: 'super', 
 
 for(const {shortcut, mark} of [
   {shortcut: 'b', mark: 'bold'}, {shortcut: 'i', mark: 'italic'},
-  {shortcut: 'u', mark: 'underline'}, {shortcut: 'Shift+s', mark: 'strike'}
+  {shortcut: 'u', mark: 'underline'}, {shortcut: 's', mark: 'strike'}
 ]) test(`native ${shortcut} toggles ${mark} twice without moving the selected text`, async({page}) => {
   await page.evaluate(() => window.chatInputEditorHarness.pasteHTML('<p>abc</p>'));
   await page.evaluate(() => window.chatInputEditorHarness.setTextSelection(1, 4));

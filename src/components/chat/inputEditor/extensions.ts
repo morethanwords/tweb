@@ -1,9 +1,7 @@
 import {Document} from '@tiptap/extension-document';
 import {HardBreak} from '@tiptap/extension-hard-break';
 import {BulletList, OrderedList} from '@tiptap/extension-list';
-import {Strike} from '@tiptap/extension-strike';
 import {Text} from '@tiptap/extension-text';
-import {Underline} from '@tiptap/extension-underline';
 import {UndoRedo} from '@tiptap/extensions';
 import {getSchema, type AnyExtension} from '@tiptap/core';
 import type {Schema} from '@tiptap/pm/model';
@@ -54,8 +52,10 @@ import {
   ChatFormattedDate,
   ChatLink,
   ChatMentionName,
+  ChatStrike,
   ChatSubscript,
-  ChatSuperscript
+  ChatSuperscript,
+  ChatUnderline
 } from '@components/chat/inputEditor/extensions/marks';
 import {ChatInlineRichAnchor, ChatRichAnchor} from '@components/chat/inputEditor/extensions/anchors';
 import {ChatInlineMath, ChatBlockMath} from '@components/chat/inputEditor/extensions/math';
@@ -98,9 +98,9 @@ export const TIPTAP_BASE_EXTENSIONS = [
   ChatItalic,
   ChatLink,
   OrderedList.configure({HTMLAttributes: LIST_HTML_ATTRIBUTES(true), keepMarks: true}),
-  Strike,
+  ChatStrike,
   Text,
-  Underline
+  ChatUnderline
 ];
 
 // what a list pasted into a field without lists is read with (ChatPlainListPaste)

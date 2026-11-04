@@ -51,7 +51,7 @@ describe('chat input editor tdesktop parity', () => {
       cancelable: true,
       code: 'KeyK',
       key: 'k',
-      metaKey: true
+      ctrlKey: true
     }));
     expect(onLinkEditor).toHaveBeenCalledOnce();
     expect(onLinkEditor).toHaveBeenCalledWith({from: 10, to: 10});
@@ -503,47 +503,32 @@ describe('chat input editor tdesktop parity', () => {
     expect(output.items[1].type).toBe('lower-latin');
   });
 
-  test('routes the tdesktop block shortcuts through structural editor commands', () => {
-    const {editor, input, tiptap} = mountEditor();
+  // tdesktop binds these to ctrl+shift+h / b / t; a browser has those keys for itself, so here they are the
+  // toolbar's commands only (chatInputEditorBrowserShortcuts.test.ts)
+  test('runs the tdesktop block commands through structural editor commands', () => {
+    const {editor, tiptap} = mountEditor();
     Object.defineProperty(tiptap.view, 'scrollToSelection', {
       configurable: true,
       value: vi.fn()
     });
     editor.setTextWithEntities('Body');
     editor.focusAtEnd(false);
-    const shortcut = (code: string, shiftKey = false, altKey = false) => {
-      const event = new KeyboardEvent('keydown', {
-        altKey,
-        bubbles: true,
-        cancelable: true,
-        code,
-        key: code.slice(3),
-        metaKey: true,
-        shiftKey
-      });
-      input.dispatchEvent(event);
-      expect(event.defaultPrevented).toBe(true);
-    };
 
-    shortcut('Digit1', false, true);
+    expect(editor.toggleHeading(1)).toBe(true);
     expect(editor.getDocument().content?.[0]).toMatchObject({
       type: 'heading',
       attrs: {level: 1}
     });
-    shortcut('KeyB', true);
+    expect(editor.setBodyText()).toBe(true);
     expect(editor.getDocument().content?.[0]?.type).toBe('paragraph');
 
-    shortcut('KeyH', true);
+    expect(editor.toggleHeading(2)).toBe(true);
     expect(editor.getDocument().content?.[0]).toMatchObject({
       type: 'heading',
       attrs: {level: 2}
     });
-    shortcut('KeyM');
-    expect(editor.getDocument().content?.[0]?.type).toBe('codeBlock');
-    shortcut('KeyM');
-    expect(editor.getDocument().content?.[0]?.type).toBe('paragraph');
 
-    shortcut('KeyT', true);
+    expect(editor.insertTable()).toBe(true);
     expect(editor.getDocument().content?.some((node) => (
       node.type === 'chatTableWrapper' &&
       node.content?.[0]?.type === 'chatTableTitle' &&
