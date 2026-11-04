@@ -110,6 +110,51 @@ describe('wrapUrl unknown tg:// links', () => {
   });
 });
 
+describe('wrapUrl handlers are the app\'s own', () => {
+  const shown: string[] = [];
+  // * what a browser's window shows of the document by name - an element of that id, a frame, a form - lives
+  // * on its prototype chain (jsdom has none of it), never on the window itself
+  const showByName = (name: string, value: any) => {
+    Object.defineProperty(Object.getPrototypeOf(window), name, {value, configurable: true});
+    shown.push(name);
+  };
+  afterEach(() => {
+    shown.splice(0).forEach((name) => delete Object.getPrototypeOf(window)[name]);
+  });
+
+  test.each([
+    ['tg://x=alert(1)', 'tg_x=alert(1)'],
+    ['tg:x=alert(document.domain)', 'tg_x=alert(document.domain)'],
+    ['tg://a=fetch(1)//b', 'tg_a=fetch(1)']
+  ])('never takes an element named as %s spells for its handler', (url, name) => {
+    showByName(name, document.createElement('span'));
+    expect(wrapUrl(url).onclick).toBeUndefined();
+
+    vi.stubGlobal('unknownDeepLink', vi.fn());
+    expect(wrapUrl(url).onclick).toBe('unknownDeepLink');
+  });
+
+  test('takes a handler only as a function set on the window itself', () => {
+    // * an `<embed>` or `<object>` was callable in some engines
+    showByName('tg_resolve', () => {});
+    expect(wrapUrl('tg://resolve?domain=durov').onclick).toBeUndefined();
+
+    vi.stubGlobal('tg_resolve', {});
+    expect(wrapUrl('tg://resolve?domain=durov').onclick).toBeUndefined();
+  });
+
+  test('keeps t.me/sendgrams a username link with only an element of that id there', () => {
+    vi.stubGlobal('im', vi.fn());
+    showByName('sendgrams', document.createElement('span'));
+    expect(wrapUrl('https://t.me/sendgrams?to=@durov&amount=1').onclick).toBe('im');
+  });
+
+  test('asks no element named unknownDeepLink about a tg:// link', () => {
+    showByName('unknownDeepLink', document.createElement('span'));
+    expect(wrapUrl('tg://nothing_like_it?x=1').onclick).toBeUndefined();
+  });
+});
+
 describe('wrapUrl wallet links', () => {
   test('sends t.me/sendgrams to the wallet and leaves the other one-segment links alone', () => {
     vi.stubGlobal('im', vi.fn());

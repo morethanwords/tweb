@@ -7,6 +7,15 @@ import matchTelegramUrlHost, {matchUrlHost, TELESCOPE_LINK_HOST} from '@lib/rich
 /** The links that ask to connect through a proxy: a browser cannot, so no handler opens them */
 export const PROXY_LINK_TYPES = ['proxy', 'socks'] as const;
 
+/**
+ * Whether a link handler of this name is there: a function the app set on the window itself. The window also
+ * shows the document's elements by their ids, and a `tg:` link spells the name, which goes into an inline
+ * `onclick` as code: `tg_x=alert(1)(this)` - an element with that id, a rich text's anchor say, is no handler
+ */
+function hasAnchorHandler(name: string) {
+  return Object.prototype.hasOwnProperty.call(window, name) && typeof (window as any)[name] === 'function';
+}
+
 export default function wrapUrl(url: string, safe?: boolean) {
   url = normalizeUrlProtocol(url);
 
@@ -45,7 +54,7 @@ export default function wrapUrl(url: string, safe?: boolean) {
       onclick = 'joinchat';
     } else if(
       // * the wallet's handler is there only once it is released (lib/wallet/release): a username link till then
-      (window as any).sendgrams &&
+      hasAnchorHandler('sendgrams') &&
       path[0].toLowerCase() === 'sendgrams' && isOneSegment
     ) { // t.me/sendgrams/?to=…&amount=…
       onclick = 'sendgrams';
@@ -118,10 +127,10 @@ export default function wrapUrl(url: string, safe?: boolean) {
     url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
   } */
 
-  if(!(window as any)[onclick]) {
+  if(!onclick || !hasAnchorHandler(onclick)) {
     // * a tg:// link no handler here knows is the server's to explain (`help.getDeepLinkInfo`); an
     // * `iv` link refused above stays a plain one
-    onclick = tgMatch && onclick && (window as any).unknownDeepLink ? 'unknownDeepLink' : undefined;
+    onclick = tgMatch && onclick && hasAnchorHandler('unknownDeepLink') ? 'unknownDeepLink' : undefined;
   }
 
   out.onclick = onclick;
