@@ -22,6 +22,7 @@ import {
 } from '@components/communities/communityDialog';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
 import namedPromises from '@helpers/namedPromises';
+import mediaSizes from '@helpers/mediaSizes';
 import noop from '@helpers/noop';
 import {Chat, Message} from '@layer';
 import apiManagerProxy from '@lib/apiManagerProxy';
@@ -404,6 +405,9 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
       requestItemForIdx: this.requestItemForIdx,
       onListShrinked: this.onListShrinked,
       itemSize: 72,
+      // The virtual list owns its height, so only its own bottom space can let
+      // the final dialog scroll clear of the floating mobile navigation.
+      extraPaddingBottom: mediaSizes.isMobile ? 72 : undefined,
       folderTagsFilterId: filterId,
       onListLengthChange: () => {
         scrollable.onSizeChange();

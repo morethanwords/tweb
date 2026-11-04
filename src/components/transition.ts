@@ -25,8 +25,9 @@ const slideNavigation = makeTransitionFunction({
     const width = prevTabContent.getBoundingClientRect().width;
     const elements = [tabContent, prevTabContent];
     if(toRight) elements.reverse();
-    elements[0].style.filter = `brightness(80%)`;
-    elements[0].style.transform = makeTranslate(-width * .25, 0);
+    const push = prevTabContent.closest('#column-left')?.classList.contains('mobile-root-switching');
+    if(!push) elements[0].style.filter = `brightness(80%)`;
+    elements[0].style.transform = makeTranslate(-width * (push ? 1 : .25), 0);
     elements[1].style.transform = makeTranslate(width, 0);
 
     tabContent.classList.add('active');
@@ -396,6 +397,7 @@ const TransitionSlider = (options: TransitionSliderOptions) => {
   selectTab.prevId = () => from ? whichChild(from) : -1;
   selectTab.getFrom = () => from;
   selectTab.setFrom = (_from: HTMLElement) => from = _from;
+  selectTab.setTransitionTime = (milliseconds: number) => transitionTime = milliseconds;
 
   return selectTab;
 };

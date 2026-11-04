@@ -12,6 +12,7 @@ import type ContactsSelection from '@components/contactsSelection';
 import type {DialogsSelectionList} from '@components/dialogsSelectionBase';
 import getUserStatusString from '@components/wrappers/getUserStatusString';
 import liteMode from '@helpers/liteMode';
+import mediaSizes from '@helpers/mediaSizes';
 import Transitions from '@config/transitions';
 import fastSmoothScroll from '@helpers/fastSmoothScroll';
 import {cancelAnimationByKey} from '@helpers/animation';
@@ -38,7 +39,7 @@ const SORT_BY_ONLINE_THROTTLE = 3000;
 /** How often the "last seen" lines are brought up to date - "5 minutes ago" does not stay true */
 const STATUS_REFRESH_INTERVAL = 30e3;
 /** The space under the last row, as the chat list leaves it */
-const PADDING_BOTTOM = 8;
+const PADDING_BOTTOM = mediaSizes.isMobile ? 72 : 8;
 /** How long the rows glide to their new places - Android's `DefaultItemAnimator` moves list items so */
 const REORDER_TIME = 250;
 /** How long a deleted row fades out while the rows under it close the gap - Android's remove */
