@@ -54,12 +54,13 @@ Follow `.claude/skills/codex-review/SKILL.md`, steps 1–5:
   existing code instead of the copy. Keep the reason for each rejected one, for
   the report.
 - Review and fix in rounds, as step 6 of the codex-review skill says:
-  - 3 rounds on the whole change, with fixes after each;
-  - then, while a round still confirms a P0–P2 finding that gets fixed, rounds 4
-    and 5 on only the fixes since the round before;
-  - five reviews at most. If round 5 still confirms a P0–P2 finding, the commit
-    waits and the user decides, as with a question (see the top);
-  - P3 fixes after the last round go unreviewed, and the report says so.
+  - every round on the whole change, with fixes after each — never one on only
+    the fixes since the round before (`--since`);
+  - a fix of any level, a P3 included, gets another round; the first round that
+    confirms nothing to fix ends the review, and only then does the commit go;
+  - five reviews at most. If round 5 still confirms a finding, fix it, and the
+    commit waits: the user decides, as with a question (see the top), whether
+    more full rounds run or the fix goes in unreviewed.
 - A finding that needs a redesign, or whose fix could go more than one way with
   nothing in the code or the rules to choose between them: a question for the
   user, so the commit waits (see the top). Every other fix is made right away.

@@ -133,27 +133,28 @@ noticed in passing. No findings from either pass means the review is done.
   - Then review again, but only if the round's fixes changed the code. A round
     that confirmed nothing, or only findings about untouched code, ends the
     review.
-    - **Rounds 2 and 3:** the whole fixed change, with the same `--about`, and
-      `--fast` if it was asked for. A change reviewed as `--commit <sha>`
-      stays as it was, with the fixes uncommitted on top: from round 2, review
-      the fixes, since round 1 reviewed the commit. Use `--paths <the fixed
-      files>`, or `--patch` with only your hunks when other sessions changed
-      those files too (step 1).
-    - **Rounds 4 and 5,** only while the round before them confirmed a P0–P2
-      finding that you fixed: only the fixes since that round. Add
-      `--since <sha>` to the same target, where `<sha>` is the commit the round
-      before reviewed (its output names it "(as <sha>)"). If the script refuses
-      because HEAD, or the merge base for `--base`, has moved, review the whole
-      change.
-  - If round 3 or later confirmed only P3 findings, fix them without another
-    round, and say in the report that those fixes went unreviewed.
+  - **Every round reviews the whole fixed change**, with the same `--about`
+    (plus what the fixes did), and `--fast` if it was asked for. Never only the
+    fixes since the round before: a round over the fixes alone misses what they
+    broke elsewhere in the change, and a clean one of them does not end the
+    review. `--since` is for a user who asks for a review of the fixes alone.
+    - A change still uncommitted: the same target as round 1.
+    - A change that is a commit (or a branch), with the fixes uncommitted on top:
+      in a worktree only you work in, `--base <the change's base>` (`--base
+      <sha>^` for one commit, `--base master` for a branch), which takes the
+      uncommitted fixes too. In a checkout other sessions share, `--base` would
+      take their work as well: make a detached worktree at the change's base
+      (`git worktree add --detach .claude/worktrees/<name> <sha>^`), copy the
+      change's files into it as they are now, and review `--paths` there.
+  - A fix of any level, a P3 included, gets another round: only a round that
+    confirms nothing to fix ends the review.
   - **Five reviews at most.** Stop and ask the user, showing what is still open,
     when any of these happens:
-    - round 5 still confirms a P0–P2 finding;
+    - round 5 still confirms a finding;
     - a finding comes back after its fix;
     - the fixes go in circles.
 
-    More rounds will not settle these.
+    More rounds will not settle these. The user may ask for more full rounds.
 
 Tests stay with this session: the files Codex ran to check its findings are not the
 tests the change needs. Run what AGENTS.md's final review calls for.
