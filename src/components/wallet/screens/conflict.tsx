@@ -90,7 +90,7 @@ export default function WalletConflictScreen(props: {params?: {onSwitched?: () =
             <ParkedAddressRow item={item} />
             <Row clickable={() => wallet.router.push('phrase', {parked: item.record})}>
               <Row.Icon icon="key" />
-              <Row.Title>{i18n('Wallet.Keys.ShowPhrase')}</Row.Title>
+              <Row.Title>{i18n('WalletRecoveryPhraseLearnButton')}</Row.Title>
             </Row>
             <Row clickable={() => switchNow(item)} color="danger" disabled={busy()}>
               <Row.Icon icon="delete" />
@@ -132,7 +132,7 @@ function ParkedAddressRow(props: {item: WalletParkedWallet}) {
         <WalletAddressGroups address={address()} perLine={6} class={conflictStyles.address} />
       </Row.Title>
       <Row.Subtitle>
-        {i18n('Wallet.Conflict.LastUsed', [amount(), formatFullSentTimeRaw(Math.floor(record.date / 1000)).dateEl])}
+        {i18n('WalletPreviousWalletLastUsed', [amount(), formatFullSentTimeRaw(Math.floor(record.date / 1000)).dateEl])}
       </Row.Subtitle>
     </Row>
   );

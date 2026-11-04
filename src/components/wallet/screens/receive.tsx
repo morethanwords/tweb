@@ -341,7 +341,7 @@ export default function WalletReceiveScreen(props: {params?: {face?: Face}}) {
     const value = address();
     if(!value || leaving()) return;
     copyTextToClipboard(value);
-    setAnnouncement(I18n.format('Wallet.Receive.AddressCopied', true));
+    setAnnouncement(I18n.format('WalletAddressCopiedShort', true));
     turn('address');
   };
 
@@ -391,7 +391,7 @@ export default function WalletReceiveScreen(props: {params?: {face?: Face}}) {
   return (
     // * a short window scrolls the sheet, with no bar on the blue (the app's scrollers hide theirs too)
     <div ref={root} class={classNames(styles.root, 'no-scrollbar', layout().small && styles.small)}>
-      <h2 class="sr-only">{i18n('Wallet.AddFunds')}</h2>
+      <h2 class="sr-only">{i18n('WalletAddFunds')}</h2>
       <button
         type="button"
         class={styles.close}
@@ -454,7 +454,7 @@ export default function WalletReceiveScreen(props: {params?: {face?: Face}}) {
               </div>
               <button type="button" class={styles.pill} disabled={!address()} onClick={copyAddress}>
                 <IconTsx icon="copy" class={styles.pillIcon} />
-                {i18n('Wallet.Receive.CopyAddress')}
+                {i18n('WalletCopyAddress')}
               </button>
               <div ref={(element) => shades.qr = element} class={styles.shade} />
             </div>
@@ -475,10 +475,10 @@ export default function WalletReceiveScreen(props: {params?: {face?: Face}}) {
                 style={{'top': `${(layout().small ? 34 + 8 : 54 + 16) + Math.ceil(groups().length / 3) * 26}px`}}
               >
                 <span class={styles.check} aria-hidden="true">✓</span>
-                {i18n('Wallet.Receive.AddressCopied')}
+                {i18n('WalletAddressCopiedShort')}
               </div>
               <button type="button" class={styles.pill} onClick={showQr}>
-                {i18n('Wallet.Receive.ShowQR')}
+                {i18n('WalletShowMyQR')}
               </button>
               <div ref={(element) => shades.address = element} class={styles.shade} />
             </div>
@@ -486,7 +486,7 @@ export default function WalletReceiveScreen(props: {params?: {face?: Face}}) {
         </div>
       </div>
 
-      <div class={styles.text}>{i18n('Wallet.Receive.Text')}</div>
+      <div class={styles.text}>{i18n('WalletReceiveInfo')}</div>
 
       <button
         type="button"
@@ -497,7 +497,7 @@ export default function WalletReceiveScreen(props: {params?: {face?: Face}}) {
       >
         <span class={styles.buyContent}>
           <IconTsx icon="dollar_circle" class={styles.buyIcon} />
-          {i18n('Wallet.Receive.Buy')}
+          {i18n('WalletBuyWithCashOrCrypto')}
         </span>
         <Show when={opening()}>
           <PreloaderTsx class={styles.buySpinner} />

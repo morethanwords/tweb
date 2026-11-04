@@ -93,7 +93,7 @@ export default function WalletCurrencyScreen() {
 
   return (
     <>
-      <WalletHeader title="Wallet.Menu.Currency" back />
+      <WalletHeader title="WalletCurrency" back />
       <WalletPicker ref={(value) => selector = value} options={options} />
     </>
   );

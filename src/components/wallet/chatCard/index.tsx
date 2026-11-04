@@ -220,9 +220,9 @@ export default function WalletChatCard(props: {
 
   // * the ribbon's colours live in the stylesheet: the increased contrast setting darkens them
   const ribbon = (): {key: LangPackKey, class: string} => {
-    if(!out) return {key: 'Wallet.Card.Received', class: styles.isReceived};
-    if(isFailed(message())) return {key: 'Wallet.Card.Failed', class: styles.isFailed};
-    return {key: 'Wallet.Card.Sent', class: styles.isSent};
+    if(!out) return {key: 'WalletTransferStatusReceived', class: styles.isReceived};
+    if(isFailed(message())) return {key: 'WalletTransferStatusFailed', class: styles.isFailed};
+    return {key: 'WalletTransferStatusSent', class: styles.isSent};
   };
   const ribbonFontSize = createMemo(() => {
     languageChanges();
@@ -660,7 +660,7 @@ export default function WalletChatCard(props: {
     });
   };
 
-  const label = () => `${sign}${whole()}${fraction() ? '.' + fraction() : ''} ${ticker()}, ${I18n.format(look() === 'sending' ? 'Wallet.Row.Sending' : ribbon().key, true)}`;
+  const label = () => `${sign}${whole()}${fraction() ? '.' + fraction() : ''} ${ticker()}, ${I18n.format(look() === 'sending' ? 'WalletSending' : ribbon().key, true)}`;
 
   return (
     <div ref={wrap} class={classNames(stylesCommon.addon, styles.wrap)}>
@@ -720,7 +720,7 @@ export default function WalletChatCard(props: {
         <div ref={identity} class={styles.identity}>
           <Show
             when={counterpartyId}
-            fallback={i18n(anonymous ? 'Wallet.Card.Anonymous' : (out ? 'Wallet.Details.Recipient' : 'Wallet.Details.Sender'))}
+            fallback={i18n(anonymous ? 'Wallet.Card.Anonymous' : (out ? 'WalletRecipient' : 'WalletSender'))}
           >
             <PeerTitleTsx peerId={counterpartyId} class={styles.name} />
           </Show>

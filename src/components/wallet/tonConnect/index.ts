@@ -156,7 +156,7 @@ async function prepare(quiet?: boolean): Promise<{status: WalletStatus, canSign:
   session.ui ??= createWalletSessionUi();
   const status = await session.managers.appWalletManager.getStatus();
   if(status.presence !== 'ready' || !status.state) {
-    if(!quiet) toastNew({langPackKey: 'Wallet.Connect.Unavailable'});
+    if(!quiet) toastNew({langPackKey: 'WalletTonConnectRequestUnavailable'});
     return;
   }
 
@@ -392,7 +392,7 @@ async function openRequest(lookup: Parameters<typeof findTonConnectRequest>[0], 
     await retryTonConnectReplies().catch(() => {});
     const found = await findTonConnectRequest(lookup);
     if(!found) {
-      if(!auto) toastNew({langPackKey: 'Wallet.Connect.Unavailable'});
+      if(!auto) toastNew({langPackKey: 'WalletTonConnectRequestUnavailable'});
       return;
     }
 
@@ -419,7 +419,7 @@ async function openRequest(lookup: Parameters<typeof findTonConnectRequest>[0], 
     if(!isSilent(err) && !auto) {
       const failure = tonConnectFailure(err);
       // * an expired request or one answered elsewhere says so; a failure to read it says it is unavailable
-      toastNew({langPackKey: failure ? getTonConnectFailureText(failure) : 'Wallet.Connect.Unavailable'});
+      toastNew({langPackKey: failure ? getTonConnectFailureText(failure) : 'WalletTonConnectRequestUnavailable'});
     }
   } finally {
     if(!shown) setIdle();
@@ -448,7 +448,7 @@ function showRequest(status: WalletStatus, loaded: TonConnectLoadedRequest, now:
   const onSession = (value: TonConnectSession) => {
     if(!answered && !answering && String(value.id) === String(session.id) && (value.pFlags.closed || value.pFlags.closing)) {
       answered = true;
-      toastNew({langPackKey: 'Wallet.Connect.Unavailable'});
+      toastNew({langPackKey: 'WalletTonConnectRequestUnavailable'});
       popup.close();
     }
   };

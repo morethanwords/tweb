@@ -222,7 +222,7 @@ function serveRequest(msgId: number, expires: number) {
 }
 
 const lookedUp = () => fake.lib.findTonConnectRequest.mock.calls.map(([lookup]) => lookup.msgId);
-const signButton = () => document.querySelector<HTMLButtonElement>('button[data-lang-key="Wallet.Sign.Sign"]');
+const signButton = () => document.querySelector<HTMLButtonElement>('button[data-lang-key="WalletSign"]');
 const arrive = (msgId: number, expires: number) => controller.queueTonConnectRequest({sessionId: '77', msgId, expires, accepted: false, declined: false});
 
 beforeEach(() => {
@@ -262,7 +262,7 @@ describe('TON Connect request sheet', () => {
     await tick();
     expect(fake.lib.answerTonConnectRequest).toHaveBeenCalledTimes(1);
     // * the decline waits too: one answer at a time
-    expect(document.querySelector<HTMLButtonElement>('button[data-lang-key="Wallet.Request.Decline"]').disabled).toBe(true);
+    expect(document.querySelector<HTMLButtonElement>('button[data-lang-key="WalletDecline"]').disabled).toBe(true);
 
     // * another request arrives and the time runs out while the answer goes
     await arrive(4, fake.NOW + 300);

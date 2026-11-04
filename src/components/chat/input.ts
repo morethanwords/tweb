@@ -1552,7 +1552,7 @@ export default class ChatInput {
       // * Grams to the person this chat is with, like the desktop client's attach menu
       icon: 'wallet',
       richMessageAction: 'sendMoney',
-      text: 'Wallet.Menu',
+      text: 'WalletAttachMoney',
       onClick: () => {
         const userId = this.chat.peerId.toUserId();
         import('@components/wallet').then(({default: showWalletPopup}) => showWalletPopup({send: {userId}, fromChat: true}));

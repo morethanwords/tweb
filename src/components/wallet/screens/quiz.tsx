@@ -92,11 +92,11 @@ export default function WalletQuizScreen(props: {params: {
 
   return (
     <>
-      <WalletHeader title="Wallet.Quiz.Title" back />
+      <WalletHeader title="WalletTestPhrase" back />
       <div class={styles.body}>
         <MediaHeader>
           <MediaHeader.Sticker name="WalletWordCheck" size={100} restartOnClick={false} />
-          <MediaHeader.Subtitle>{i18n('Wallet.Quiz.Text', numbers.map(String))}</MediaHeader.Subtitle>
+          <MediaHeader.Subtitle>{i18n('WalletTestPhraseInfo', numbers.map(String))}</MediaHeader.Subtitle>
         </MediaHeader>
         <WalletWordFields
           numbers={numbers}
@@ -112,7 +112,7 @@ export default function WalletQuizScreen(props: {params: {
         />
       </div>
       <PopupElement.Footer>
-        <PopupElement.FooterButton langKey="Wallet.Continue" disabled={!filled() || asking()} callback={() => {
+        <PopupElement.FooterButton langKey="WalletContinue" disabled={!filled() || asking()} callback={() => {
           submit();
           return false;
         }} />

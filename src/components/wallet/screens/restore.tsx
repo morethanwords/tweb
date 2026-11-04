@@ -52,7 +52,7 @@ async function expectedPhraseLength(store: WalletStore): Promise<12 | 24> {
  * "Wrong Secret Phrase": the words are another wallet's — with the address of the one they should open (iOS)
  */
 export function showWalletWrongPhrase(address: string) {
-  return showWalletAlert({title: 'Wallet.Import.WrongPhraseTitle', text: 'Wallet.Import.WrongPhraseText'}, {
+  return showWalletAlert({title: 'WalletWrongSecretPhrase', text: 'WalletWrongSecretPhraseInfo'}, {
     content: address && <WalletAddressPlate address={address} />
   });
 }
@@ -125,9 +125,9 @@ export default function WalletRestoreScreen(props: {params?: {mode?: WalletResto
   const alertPhraseLength = (length: number, index?: number) => {
     if(index !== undefined) fields?.shake(index);
     showWalletAlert({
-      title: 'Wallet.Import.InvalidPhraseTitle',
+      title: 'WalletInvalidRecoveryPhrase',
       text: mode === 'enableBackup' ? 'Wallet.Import.InvalidCurrentPhraseLength' : 'Wallet.Import.InvalidPhraseLength',
-      textArgs: [i18n('Wallet.Restore.Words', [length])]
+      textArgs: [i18n('WalletPhraseWords', [length])]
     });
   };
 
@@ -173,7 +173,7 @@ export default function WalletRestoreScreen(props: {params?: {mode?: WalletResto
 
     const engine = await store.session.getEngine();
     if(!(await engine.detectMnemonicSchemes(list)).includes('rotation')) {
-      showWalletAlert({title: 'Wallet.Import.InvalidPhraseTitle', text: 'Wallet.Import.InvalidPhraseText'});
+      showWalletAlert({title: 'WalletInvalidRecoveryPhrase', text: 'WalletInvalidRecoveryPhraseInfo'});
       return;
     }
 
@@ -213,7 +213,7 @@ export default function WalletRestoreScreen(props: {params?: {mode?: WalletResto
     }
 
     if(type === 'WALLET_PHRASE_INVALID' || type === 'WALLET_PHRASE_FOREIGN') {
-      showWalletAlert({title: 'Wallet.Import.InvalidPhraseTitle', text: 'Wallet.Import.InvalidPhraseText'});
+      showWalletAlert({title: 'WalletInvalidRecoveryPhrase', text: 'WalletInvalidRecoveryPhraseInfo'});
       return;
     }
 
@@ -258,7 +258,7 @@ export default function WalletRestoreScreen(props: {params?: {mode?: WalletResto
         await store.refreshStatus(true);
         await store.refreshDeviceMode();
         wallet.router.pop('main');
-        toastWalletAfterBack('Wallet.Replace.ImportedTitle', 'Wallet.Replace.ImportedText');
+        toastWalletAfterBack('WalletImported', 'WalletImportedInfo');
         return;
       }
 
@@ -270,7 +270,7 @@ export default function WalletRestoreScreen(props: {params?: {mode?: WalletResto
       }
 
       wallet.router.pop();
-      toastWalletAfterBack('Wallet.Replace.ImportedTitle', 'Wallet.Replace.ImportedText');
+      toastWalletAfterBack('WalletImported', 'WalletImportedInfo');
     } catch(err) {
       if(!isUserCancel(err)) showFailure(err);
     } finally {
@@ -278,10 +278,10 @@ export default function WalletRestoreScreen(props: {params?: {mode?: WalletResto
     }
   };
 
-  const title: LangPackKey = importing ? 'Wallet.Import.Title' : mode === 'enableBackup' ? 'Wallet.Keys.BackupEnable' : 'Wallet.Restore.Title';
-  const action: LangPackKey = importing ? 'Wallet.Import.Action' : mode === 'enableBackup' ? 'Wallet.Keys.BackupEnable' : 'Wallet.Phrase.Done';
+  const title: LangPackKey = importing ? 'WalletImport' : mode === 'enableBackup' ? 'WalletEnableBackup' : 'WalletSecretPhrase';
+  const action: LangPackKey = importing ? 'WalletImportButton' : mode === 'enableBackup' ? 'WalletEnableBackup' : 'WalletDone';
   // * why the phrase is asked for (iOS's "Why?")
-  const why = anchorCallback(() => showWalletAlert({title: 'Wallet.Restore.Title', text: 'Wallet.Import.RecoveryExplanation'}));
+  const why = anchorCallback(() => showWalletAlert({title: 'WalletSecretPhrase', text: 'WalletEnterSecretPhraseInfo'}));
 
   return (
     <>
@@ -291,10 +291,10 @@ export default function WalletRestoreScreen(props: {params?: {mode?: WalletResto
           <MediaHeader.Sticker name={importing ? 'WalletWordList' : 'WalletWordCheck'} size={100} restartOnClick={false} />
           <MediaHeader.Subtitle>
             {importing ?
-              i18n('Wallet.Import.Text') :
+              <I18nTsx key="WalletImportPhraseInfo" args={['' + count()]} /> :
               mode === 'enableBackup' ? i18n('Wallet.Import.EnableBackupText') :
               // * "Why?" only when there is no backup to restore from: then every new session needs the phrase
-              store.status().state?.pFlags.can_export_phrase ? i18n('Wallet.Restore.TextBackup') : i18n('Wallet.Restore.Text', [why])}
+              store.status().state?.pFlags.can_export_phrase ? i18n('Wallet.Restore.TextBackup') : i18n('WalletEnterSecretPhrase', [why])}
           </MediaHeader.Subtitle>
         </MediaHeader>
         <ChipTabs
@@ -304,8 +304,8 @@ export default function WalletRestoreScreen(props: {params?: {mode?: WalletResto
           view="primary"
           onChange={(value) => resize(+value)}
         >
-          <ChipTab value="12"><I18nTsx key="Wallet.Restore.Words" args={['12']} /></ChipTab>
-          <ChipTab value="24"><I18nTsx key="Wallet.Restore.Words" args={['24']} /></ChipTab>
+          <ChipTab value="12"><I18nTsx key="WalletPhraseWords" args={['12']} /></ChipTab>
+          <ChipTab value="24"><I18nTsx key="WalletPhraseWords" args={['24']} /></ChipTab>
         </ChipTabs>
         <WalletWordFields
           numbers={numbers()}

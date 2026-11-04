@@ -36,7 +36,7 @@ export function TonConnectAppIcon(props: {icon?: WebDocument, name?: string, siz
 }
 
 const FAILURE_TEXTS: {[failure in TonConnectFailure | 'failed']?: LangPackKey} = {
-  unavailable: 'Wallet.Connect.Unavailable',
+  unavailable: 'WalletTonConnectRequestUnavailable',
   invalidLink: 'Wallet.Connect.InvalidLink',
   invalidManifest: 'Wallet.Connect.ManifestInvalid',
   wrongNetwork: 'Wallet.Connect.WrongNetwork',

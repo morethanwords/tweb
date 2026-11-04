@@ -634,7 +634,7 @@ export default class ChatTopbar {
       ) && !(this.chat.type === ChatType.Logs)
     }, {
       icon: 'wallet',
-      text: 'Wallet.SendMoney',
+      text: 'WalletSendMoney',
       onClick: () => {
         const peerId = this.peerId;
         import('@components/wallet').then(({default: showWalletPopup}) => {

@@ -28,9 +28,9 @@ const LOCK_CHECK_INTERVAL = 1000;
 
 /** what iOS's recovery info warns of, each with its own icon */
 const WARNINGS: {icon: Icon, text: LangPackKey}[] = [
-  {icon: 'eyecross', text: 'Wallet.Phrase.WarnShare'},
-  {icon: 'warning_filled', text: 'Wallet.Phrase.WarnSteal'},
-  {icon: 'shield', text: 'Wallet.Phrase.WarnSupport'}
+  {icon: 'eyecross', text: 'WalletRecoveryPhraseNeverShare'},
+  {icon: 'warning_filled', text: 'WalletRecoveryPhraseFundsWarning'},
+  {icon: 'shield', text: 'WalletRecoveryPhraseSupportWarning'}
 ];
 
 type WakeLockSentinelLike = {release: () => Promise<void>, addEventListener: (type: 'release', listener: () => void) => void};
@@ -188,8 +188,8 @@ export default function WalletPhraseScreen(props: {params?: {
     }
   });
 
-  const title: LangPackKey = rotation ? 'Wallet.Backup.NewPhraseTitle' : 'Wallet.Phrase.Title';
-  const text: LangPackKey = rotation ? 'Wallet.Backup.NewPhraseText' : 'Wallet.Phrase.Info';
+  const title: LangPackKey = rotation ? 'WalletNewSecretPhrase' : 'WalletYourRecoveryPhrase';
+  const text: LangPackKey = rotation ? 'WalletNewSecretPhraseInfo' : 'WalletRecoveryPhraseInfo';
 
   // * the words are text only: with the a11y layer the region they scroll in takes focus itself, so the keyboard
   // * can scroll it (also under a question over it, which leaves nothing in it focusable)
@@ -206,8 +206,8 @@ export default function WalletPhraseScreen(props: {params?: {
             <Show when={!given}>
               <MediaHeader>
                 <MediaHeader.Sticker name="WalletWordList" size={100} restartOnClick={false} />
-                <MediaHeader.Title>{i18n('Wallet.Phrase.Warning')}</MediaHeader.Title>
-                <MediaHeader.Subtitle>{i18n('Wallet.Phrase.Info')}</MediaHeader.Subtitle>
+                <MediaHeader.Title>{i18n('WalletRecoveryPhraseLearnTitle')}</MediaHeader.Title>
+                <MediaHeader.Subtitle>{i18n('WalletRecoveryPhraseInfo')}</MediaHeader.Subtitle>
               </MediaHeader>
               <div class={phraseStyles.warnings}>
                 <For each={WARNINGS}>{(warning) => (
@@ -233,13 +233,13 @@ export default function WalletPhraseScreen(props: {params?: {
       <PopupElement.Footer>
         <Show
           when={words()}
-          fallback={<PopupElement.FooterButton langKey="Wallet.Phrase.Show" disabled={busy()} callback={() => {
+          fallback={<PopupElement.FooterButton langKey="WalletRecoveryPhraseLearnButton" disabled={busy()} callback={() => {
             reveal();
             return false;
           }} />}
         >
           <PopupElement.FooterButton
-            langKey={writeDown ? 'Wallet.Continue' : 'Wallet.Phrase.Done'}
+            langKey={writeDown ? 'WalletContinue' : 'WalletDone'}
             disabled={covered()}
             callback={() => {
               if(!writeDown) {

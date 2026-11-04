@@ -79,7 +79,7 @@ export default function showTonConnectConnectPopup(options: TonConnectConnectPop
               )}
             />
             <MediaHeader.Title tag="h2">
-              {phase() === 'loading' ? i18n('Loading') : appName() ? i18n('Wallet.Connect.Title', [appNameText()]) : i18n('Wallet.Connect.TitleUnknown')}
+              {phase() === 'loading' ? i18n('Loading') : appName() ? i18n('WalletConnectToApp', [appNameText()]) : i18n('WalletConnectToDApp')}
             </MediaHeader.Title>
             <Show when={options.info()?.domain}>
               <MediaHeader.Subtitle class={styles.domain}><span dir="ltr">{options.info().domain}</span></MediaHeader.Subtitle>
@@ -93,7 +93,7 @@ export default function showTonConnectConnectPopup(options: TonConnectConnectPop
               <TonConnectText>{i18n('Wallet.Connect.Restore')}</TonConnectText>
             </Match>
             <Match when={true}>
-              <TonConnectText>{i18n('Wallet.Connect.Permissions')}</TonConnectText>
+              <TonConnectText>{i18n('WalletConnectInfo')}</TonConnectText>
               <Show when={options.proof && options.info()}>
                 <TonConnectText>{i18n('Wallet.Connect.Proof', [<span dir="ltr">{options.info().domain}</span> as HTMLElement])}</TonConnectText>
               </Show>
@@ -110,7 +110,7 @@ export default function showTonConnectConnectPopup(options: TonConnectConnectPop
                   />
                 </div>
               </Show>
-              <div class={styles.caption}>{appName() ? i18n('Wallet.Connect.Disclaimer', [appNameText()]) : i18n('Wallet.Connect.DisclaimerUnknown')}</div>
+              <div class={styles.caption}>{i18n('WalletConnectPermissionInfo')}</div>
               <Show when={options.error?.()}>
                 <div class={styles.error} role="alert">{i18n(options.error())}</div>
               </Show>
@@ -129,7 +129,7 @@ export default function showTonConnectConnectPopup(options: TonConnectConnectPop
             <Match when={true}>
               <PopupElement.FooterButton color="secondary" langKey="Cancel" />
               <PopupElement.FooterButton
-                langKey="Wallet.Connect.Action"
+                langKey="WalletConnect"
                 disabled={phase() !== 'confirm'}
                 preloader
                 callback={() => options.onConnect().then(() => true, () => false)}

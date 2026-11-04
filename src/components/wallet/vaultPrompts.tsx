@@ -148,7 +148,7 @@ export function showWalletVaultCreatePopup(vault: WalletVault): Promise<void> {
       await confirmationPopup({
         titleLangKey: 'Wallet.Vault.SkipPasscode',
         descriptionLangKey: 'Wallet.Vault.SkipWarning',
-        button: {langKey: 'Wallet.Continue', isDanger: true}
+        button: {langKey: 'WalletContinue', isDanger: true}
       });
     } catch(err) {
       return;
@@ -168,7 +168,7 @@ export function showWalletVaultCreatePopup(vault: WalletVault): Promise<void> {
     title: 'Wallet.Vault.CreateTitle',
     text: 'Wallet.Vault.CreateText',
     fields: ['Wallet.Vault.Passcode', 'Wallet.Vault.PasscodeRepeat'],
-    button: 'Wallet.Continue',
+    button: 'WalletContinue',
     submit: async([passcode, repeat]) => {
       if(!checkNewPasscode(passcode, repeat)) return false;
       await vault.create({kind: 'passcode', passcode: passcode.value}).catch((err) => {
@@ -269,7 +269,7 @@ export function showWalletVaultUnlockPopup(vault: WalletVault): Promise<void> {
     title: 'Wallet.Vault.UnlockTitle',
     text: 'Wallet.Vault.UnlockText',
     fields: ['Wallet.Vault.Passcode'],
-    button: 'Wallet.Vault.Unlock',
+    button: 'Unlock',
     submit: async([passcode]) => {
       if(await tryPasscode(vault, passcode, () => vault.unlock(passcode.value))) return true;
       setForgot(true);
@@ -290,7 +290,7 @@ export function showWalletPasscodeSettings(vault: WalletVault) {
     title: 'Wallet.Vault.Change',
     text: 'Wallet.Vault.ChangeText',
     fields: ['Wallet.Vault.Current', 'Wallet.Vault.New', 'Wallet.Vault.PasscodeRepeat'],
-    button: 'Wallet.Continue',
+    button: 'WalletContinue',
     submit: async([current, passcode, repeat]) => {
       if(!checkNewPasscode(passcode, repeat)) return false;
       return tryPasscode(vault, current, () => vault.changePasscode(current.value, passcode.value));
@@ -311,7 +311,7 @@ export function showWalletPasscodeSettings(vault: WalletVault) {
     title: 'Wallet.Vault.Set',
     text: 'Wallet.Vault.SetText',
     fields: ['Wallet.Vault.New', 'Wallet.Vault.PasscodeRepeat'],
-    button: 'Wallet.Continue',
+    button: 'WalletContinue',
     submit: async([passcode, repeat]) => {
       if(!checkNewPasscode(passcode, repeat)) return false;
       return vault.addPasscode(passcode.value);

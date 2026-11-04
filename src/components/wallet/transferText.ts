@@ -6,7 +6,7 @@
 
 import type {MessageAction} from '@layer';
 import I18n, {LangPackKey} from '@lib/langPack';
-import {formatGramsCut} from '@components/wallet/format';
+import {formatGrams, formatGramsCut, gramsToNumber} from '@components/wallet/format';
 
 /**
  * The words of a Gram transfer where its card is not: under a sender's name (a chat list row, a notification) and
@@ -17,6 +17,11 @@ type GramTransfer = MessageAction.messageActionGramTransfer;
 
 /** iOS: a transfer's amount outside the wallet has at most three decimals, cut, never rounded up */
 const DECIMALS = 3;
+
+/** `12.5 Grams`, `1 Gram`: an amount written as `text`, with the ticker in the plural of `nanos` */
+export function formatGramsWithUnit(nanos: string | number, text = formatGrams(nanos)) {
+  return I18n.format('Wallet.GramsAmount', true, [text, I18n.format('Wallet.Card.Ticker', true, [gramsToNumber(nanos)])]);
+}
 
 /** `1.5 Grams`, unsigned: the unit agrees with the number written — 1.0004 reads "1 Gram", as iOS writes it */
 export function formatTransferGrams(nanos: string | number) {
@@ -51,11 +56,14 @@ export function wrapGramTransferCompactText(options: {
   return comment ? I18n.format('Wallet.Action.WithComment', true, [text, comment]) : text;
 }
 
-/** "❤ to your 1.5 Grams transfer: For the coffee" (Android PushReactGramTransfer, iOS REACT_GRAM_TRANSFER) */
+/**
+ * "❤ to your 1.5 Grams transfer: For the coffee" (Android PushReactGramTransfer, iOS REACT_GRAM_TRANSFER). Android's
+ * strings leave their first argument, the one who reacted, to the notification's title
+ */
 export function wrapGramTransferReactionText(reaction: string, transfer: GramTransfer) {
   const amount = formatTransferGrams(transfer.amount);
   const comment = getTransferPublicComment(transfer);
   return comment ?
-    I18n.format('Wallet.Notification.ReactedComment', true, [reaction, amount, comment]) :
-    I18n.format('Wallet.Notification.Reacted', true, [reaction, amount]);
+    I18n.format('PushReactGramTransferComment', true, ['', reaction, amount, comment]) :
+    I18n.format('PushReactGramTransfer', true, ['', reaction, amount]);
 }

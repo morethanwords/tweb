@@ -163,7 +163,7 @@ export default function WalletCollectibleSendScreen(props: {params: {recipient: 
           handleRef={(handle) => commentField = handle}
         />
         <Show when={comment().trim()}>
-          <div class={styles.caption}>{i18n('Wallet.CommentPublic')}</div>
+          <div class={styles.caption}>{i18n('WalletPublicCommentInfo')}</div>
         </Show>
         <Show when={insufficient()}>
           <div class={classNames(styles.caption, styles.captionError)} role="alert">
@@ -179,7 +179,7 @@ export default function WalletCollectibleSendScreen(props: {params: {recipient: 
           when={insufficient()}
           fallback={
             <PopupElement.FooterButton
-              langKey="Wallet.Collectible.Send"
+              langKey="WalletSendAmount"
               langArgs={[name]}
               disabled={busy() || !quote() || blocked() || tooLong()}
               callback={() => {
@@ -190,7 +190,7 @@ export default function WalletCollectibleSendScreen(props: {params: {recipient: 
           }
         >
           <PopupElement.FooterButton
-            langKey="Wallet.Backup.TopUp"
+            langKey="WalletTopUp"
             callback={() => {
               wallet.router.push('receive');
               return false;

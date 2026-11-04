@@ -27,16 +27,16 @@ const GEM_WIDTH = 78;
 export function walletAboutRows(gaslessDaily = WALLET_GASLESS_DAILY_DEFAULT): FeatureRow[] {
   return [{
     icon: 'send_filled',
-    title: i18n('Wallet.About.InstantTitle'),
-    subtitle: i18n('Wallet.About.InstantText')
+    title: i18n('WalletSendInstantly'),
+    subtitle: i18n('WalletSendInstantlyInfo')
   }, {
     icon: 'gram_filled',
-    title: i18n('Wallet.About.FeesTitle'),
+    title: i18n('WalletNoFees'),
     subtitle: i18n('Wallet.About.FeesText', [gaslessDaily])
   }, {
     icon: 'lock_filled',
-    title: i18n('Wallet.About.ChainTitle'),
-    subtitle: i18n('Wallet.About.ChainText')
+    title: i18n('WalletBlockchainVerified'),
+    subtitle: i18n('WalletBlockchainVerifiedInfo')
   }];
 }
 
@@ -75,11 +75,11 @@ export default async function showWalletHowItWorksPopup() {
   const [appConfig, sticker] = await Promise.all([apiManagerProxy.getAppConfig(), loadWalletGemSticker()]);
   showFeatureDetailsPopup({
     sticker,
-    title: i18n('Wallet.How.Title'),
-    subtitle: i18n('Wallet.How.Subtitle'),
+    title: i18n('WalletHowItWorks'),
+    subtitle: i18n('WalletHowItWorksInfo'),
     rows: walletAboutRows(appConfig.wallet_gasless_daily_transfers),
-    caption: {subtitle: i18n('Wallet.Terms')},
-    buttons: [{text: i18n('Wallet.GotIt')}]
+    caption: {subtitle: i18n('WalletTermsOfService')},
+    buttons: [{text: i18n('WalletGotIt')}]
   });
 }
 
@@ -110,6 +110,6 @@ export async function showWalletGramInfoPopup() {
       title: i18n('Wallet.Gram.UsefulTitle'),
       subtitle: i18n('Wallet.Gram.UsefulText')
     }],
-    buttons: [{text: i18n('Wallet.GotIt')}]
+    buttons: [{text: i18n('WalletGotIt')}]
   });
 }

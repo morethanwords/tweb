@@ -721,7 +721,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         const asks = state === 'Pending' && name && (action.topic === 'signData' || action.topic === 'disconnect') ? action.topic : '';
         langPackKey = (asks ?
           (asks === 'signData' ? 'Wallet.Action.TonConnectAppSignData' : 'Wallet.Action.TonConnectAppDisconnect') :
-          name ? 'Wallet.Action.TonConnectApp' + state : 'Wallet.Action.TonConnect' + state) as LangPackKey;
+          name ? 'WalletTonConnectRequestApp' + state : 'WalletTonConnectRequest' + state) as LangPackKey;
         args = name ? [wrapSomeText(name, plain, [{_: 'messageEntityBold', offset: 0, length: name.length}])] : [];
         break;
       }
@@ -745,7 +745,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         const withFiat = (rate: WalletFiatRate) => {
           // * "(2 308,64 €)" stays on one line
           const fiat = rate && formatFiat(nanos, rate.perGram, rate.currency).replace(/ /g, '\u00a0');
-          return fiat ? I18n.format('Wallet.Action.AmountFiat', true, [grams, fiat]) : grams;
+          return fiat ? I18n.format('WalletTransferWorth', true, [grams, fiat]) : grams;
         };
         const rate = getWalletFiatRate();
         let amount: FormatterArgument = withFiat(rate);

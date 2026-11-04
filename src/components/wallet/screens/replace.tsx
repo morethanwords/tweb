@@ -31,7 +31,7 @@ export default function WalletReplaceScreen() {
       await store.refreshStatus(true);
       await store.refreshDeviceMode();
       wallet.router.pop('main');
-      toastWalletAfterBack('Wallet.Replace.CreatedTitle', 'Wallet.Replace.CreatedText');
+      toastWalletAfterBack('WalletCreated', 'WalletCreatedInfo');
     } catch(err) {
       if(!isUserCancel(err)) showWalletError(err, 'Wallet.Replace.ErrorTitle');
     } finally {
@@ -43,16 +43,16 @@ export default function WalletReplaceScreen() {
     <>
       <WalletHeader title="Wallet.Replace.Title" back />
       <div class={styles.body}>
-        <div class={styles.caption}>{i18n('Wallet.Replace.Text')}</div>
+        <div class={styles.caption}>{i18n('WalletReplaceWalletTitle')}</div>
         <Section>
           <Row clickable={createNew} disabled={busy()}>
             <Row.Icon icon="add" />
-            <Row.Title>{i18n('Wallet.Replace.Create')}</Row.Title>
+            <Row.Title>{i18n('WalletCreateNew')}</Row.Title>
             <Row.Subtitle>{i18n('Wallet.Replace.CreateText')}</Row.Subtitle>
           </Row>
           <Row clickable={() => wallet.router.push('restore', {mode: 'import'})} disabled={busy()}>
             <Row.Icon icon="key" />
-            <Row.Title>{i18n('Wallet.Replace.Import')}</Row.Title>
+            <Row.Title>{i18n('WalletImportExisting')}</Row.Title>
             <Row.Subtitle>{i18n('Wallet.Replace.ImportText')}</Row.Subtitle>
           </Row>
         </Section>

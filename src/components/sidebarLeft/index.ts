@@ -787,7 +787,7 @@ export class AppSidebarLeft extends SidebarSlider {
       onClick: onContactsClick
     }, {
       icon: 'wallet',
-      text: 'Wallet.Menu',
+      text: 'WalletAttachMoney',
       new: true,
       onClick: () => {
         import('@components/wallet').then(({default: showWalletPopup}) => showWalletPopup());

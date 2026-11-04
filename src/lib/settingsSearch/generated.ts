@@ -453,7 +453,7 @@ const generated: GeneratedSettingsSearchData = {
     {id: 'AppSettingsTab:QRCode.Title', sectionId: 'AppSettingsTab', kind: 'menu', titleLangKey: 'QRCode.Title'},
     {id: 'AppSettingsTab:TelegramBusiness', sectionId: 'AppSettingsTab', kind: 'row', titleLangKey: 'TelegramBusiness'},
     {id: 'AppSettingsTab:TelegramFaq', sectionId: 'AppSettingsTab', kind: 'row', titleLangKey: 'TelegramFaq'},
-    {id: 'AppSettingsTab:Wallet.Menu', sectionId: 'AppSettingsTab', kind: 'row', titleLangKey: 'Wallet.Menu'},
+    {id: 'AppSettingsTab:WalletAttachMoney', sectionId: 'AppSettingsTab', kind: 'row', titleLangKey: 'WalletAttachMoney'},
     {id: 'AppSharedFolderTab:BotWebViewCloseAnyway', sectionId: 'AppSharedFolderTab', kind: 'row', titleLangKey: 'BotWebViewCloseAnyway'},
     {id: 'AppSharedFolderTab:CopyLink', sectionId: 'AppSharedFolderTab', kind: 'option', titleLangKey: 'CopyLink'},
     {id: 'AppSharedFolderTab:DeleteLink', sectionId: 'AppSharedFolderTab', kind: 'option', titleLangKey: 'DeleteLink'},

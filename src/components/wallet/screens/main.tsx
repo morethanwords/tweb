@@ -13,7 +13,6 @@ import createHistoryMotion from '@components/wallet/historyMotion';
 import watchWalletListEnd from '@components/wallet/listEnd';
 import useStars from '@stores/stars';
 import A11yButton from '@components/a11yButton';
-import Icon from '@components/icon';
 import {ButtonMenuToggleTsx} from '@components/buttonMenuToggleTsx';
 import Button from '@components/buttonTsx';
 import Section from '@components/section';
@@ -26,7 +25,7 @@ import I18n, {i18n} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import getPeerTitle from '@components/wrappers/getPeerTitle';
 import {useWallet} from '@components/wallet/context';
-import {openWalletTransaction, WalletHeader, WalletHistoryRow, WalletHistorySkeletonRow} from '@components/wallet/parts';
+import {openWalletTransaction, WalletHeader, WalletHistoryRow, WalletHistorySkeletonRow, WalletTonAmount} from '@components/wallet/parts';
 import {prepareWalletSendKey} from '@components/wallet/send';
 import {WalletCollectibles} from '@components/wallet/collectibles';
 import {ChipTab, ChipTabs} from '@components/chipTabs';
@@ -34,7 +33,8 @@ import {I18nTsx} from '@helpers/solid/i18n';
 import WalletCardView, {formatWalletBalanceFiat, WALLET_NO_FIAT, WalletCardHandle} from '@components/wallet/card';
 import type {WalletCardScrollHeader} from '@components/wallet/cardScroll';
 import type {WalletHistoryItem} from '@components/wallet/store';
-import {absNanos, compareNanos, formatGrams, gramsToNumber, splitGrams} from '@components/wallet/format';
+import {absNanos, compareNanos, gramsToNumber, splitGrams} from '@components/wallet/format';
+import {formatGramsWithUnit} from '@components/wallet/transferText';
 import classNames from '@helpers/string/classNames';
 import {canShowWalletGramTooltip, showWalletGramTooltip, WalletGramTooltip} from '@components/wallet/gramTooltip';
 import styles from '@components/wallet/wallet.module.scss';
@@ -98,18 +98,18 @@ export default function WalletMainScreen(props: {active: Accessor<boolean>}) {
       const subtitle = document.createElement('span');
       subtitle.classList.add('btn-menu-item-subtitle');
       subtitle.textContent = store.currency();
-      text.append(i18n('Wallet.Menu.Currency'), subtitle);
+      text.append(i18n('WalletCurrency'), subtitle);
       return text;
     },
     onClick: () => wallet.router.push('currency')
   }, {
     icon: 'key' as Icon,
-    text: 'Wallet.Menu.Keys' as const,
+    text: 'WalletKeysAndBackup' as const,
     onClick: () => wallet.router.push('keys')
   }, {
     // * while an app is connected (iOS, Android)
     icon: 'apps' as Icon,
-    text: 'Wallet.Menu.Apps' as const,
+    text: 'WalletConnectedApps' as const,
     onClick: () => wallet.router.push('apps'),
     verify: () => hasApps()
   }, {
@@ -125,7 +125,7 @@ export default function WalletMainScreen(props: {active: Accessor<boolean>}) {
     verify: async() => !!(await store.session.vault.getKind().catch((): undefined => undefined))
   }, {
     icon: 'info' as Icon,
-    text: 'Wallet.Menu.What' as const,
+    text: 'WalletWhatIsWallet' as const,
     separator: true,
     onClick: () => import('@components/wallet/howItWorks').then(({default: showWalletHowItWorksPopup}) => showWalletHowItWorksPopup())
   }];
@@ -193,18 +193,20 @@ export default function WalletMainScreen(props: {active: Accessor<boolean>}) {
   const openEarnings = () => {
     import('@components/popups/stars').then(({default: showStarsPopup}) => showStarsPopup({ton: true}));
   };
-  const earningsText = () => {
-    const amount = document.createElement('span');
-    amount.classList.add(styles.earningsAmount);
-    amount.append(Icon('gram_filled'), formatGrams(earnings()));
-    return i18n('Wallet.EarningsBalance', [amount]);
-  };
+  // * an amount in a line of text: the gem and the number (Android), read out with its unit
+  const gemAmount = (nanos: string | number) => (
+    <span class={styles.earningsAmount}>
+      <span aria-hidden="true"><WalletTonAmount nanos={nanos} /></span>
+      <span class="sr-only">{formatGramsWithUnit(nanos)}</span>
+    </span>
+  ) as HTMLElement;
+  const earningsText = () => i18n('WalletGramEarningsBalance', [gemAmount(earnings())]);
 
   // * the key of a wallet used before on this device: what it holds, when the chain said. Its own screen comes
   // * first, and the read-only notice waits for it, as in tdesktop
   const parkedText = () => {
     const nanos = store.parked().nanos;
-    return nanos && nanos !== '0' ? i18n('Wallet.Conflict.Existing', [formatGrams(nanos)]) : i18n('Wallet.Conflict.Bar');
+    return nanos && nanos !== '0' ? i18n('WalletOldWalletsBalance', [gemAmount(nanos)]) : i18n('Wallet.Conflict.Bar');
   };
 
   // * the tabs show up only for a wallet that holds collectibles, the way the desktop client does it; once the
@@ -243,7 +245,7 @@ export default function WalletMainScreen(props: {active: Accessor<boolean>}) {
   const historyMotion = createHistoryMotion({items: store.history.items, scroller});
 
   // * under the list: transfers below the minimum are not listed (iOS: always said)
-  const historyCaption = () => i18n('Wallet.HiddenBelow', [formatGrams(store.config().minNanos)]);
+  const historyCaption = () => i18n('WalletHiddenTransactions', [formatGramsWithUnit(store.config().minNanos)]);
 
   const ready = () => store.status().presence === 'ready';
   // * what the wallet is shows while it has nothing — no transfer, and no collectible either (Android)
@@ -314,7 +316,7 @@ export default function WalletMainScreen(props: {active: Accessor<boolean>}) {
   return (
     <>
       <div ref={top} class={styles.top}>
-        <WalletHeader title="Wallet.Title">
+        <WalletHeader title="WalletTitle">
           <ButtonMenuToggleTsx
             buttonOptions={{ariaLabel: 'MultiAccount.More'}}
             direction="bottom-left"
@@ -388,11 +390,11 @@ export default function WalletMainScreen(props: {active: Accessor<boolean>}) {
 
               {/* * the footer's buttons, side by side under the card */}
               <div class={styles.actions}>
-                <PopupElement.FooterButton langKey="Wallet.AddFunds" callback={() => {
+                <PopupElement.FooterButton langKey="WalletAddFunds" callback={() => {
                   wallet.router.push('receive');
                   return false;
                 }} />
-                <PopupElement.FooterButton langKey="Wallet.Send" preloader callback={async() => {
+                <PopupElement.FooterButton langKey="WalletSend" preloader callback={async() => {
                   // * a device that cannot sign gets the key first, before the recipient (iOS, Android)
                   if(await prepareWalletSendKey(wallet) && isCurrent()) wallet.router.push('recipient');
                   return false;
@@ -417,7 +419,7 @@ export default function WalletMainScreen(props: {active: Accessor<boolean>}) {
                   <Section>
                     <Row clickable={openWalt}>
                       <Row.Icon icon="wallet" />
-                      <Row.Title>{i18n('Wallet.Walt')}</Row.Title>
+                      <Row.Title>{i18n('WalletWaltFunds')}</Row.Title>
                     </Row>
                   </Section>
                 </Show>
@@ -437,7 +439,7 @@ export default function WalletMainScreen(props: {active: Accessor<boolean>}) {
               <WalletFade>
                 {/* * while there is something to lose: a balance or a history (tdesktop) */}
                 <Show when={noPassword() && (balance() !== '0' || store.history.items().length)}>
-                  <Section caption="Wallet.ProtectAccount">
+                  <Section caption="WalletProtectAccount">
                     <Row clickable={openTwoStep}>
                       <Row.Icon icon="lock" />
                       <Row.Title>{i18n('TwoStepVerification')}</Row.Title>
@@ -461,8 +463,8 @@ export default function WalletMainScreen(props: {active: Accessor<boolean>}) {
                 <ChipTabs center class={styles.tabs} value={tab()} view="surface" onChange={(value) => {
                   setTab(value as 'transactions' | 'collectibles');
                 }}>
-                  <ChipTab value="transactions"><I18nTsx key="Wallet.Tab.Transactions" /></ChipTab>
-                  <ChipTab value="collectibles"><I18nTsx key="Wallet.Tab.Collectibles" /></ChipTab>
+                  <ChipTab value="transactions"><I18nTsx key="WalletTransactions" /></ChipTab>
+                  <ChipTab value="collectibles"><I18nTsx key="WalletCollectibles" /></ChipTab>
                 </ChipTabs>
               </Show>
 
@@ -496,7 +498,7 @@ export default function WalletMainScreen(props: {active: Accessor<boolean>}) {
                       when={!historyEmpty()}
                       fallback={
                         // * nothing yet: what the wallet is, and the terms that come with it (iOS)
-                        <Section caption="Wallet.Terms">
+                        <Section caption="WalletTermsOfService">
                           <FeatureRows rows={walletAboutRows(store.config().gaslessDaily)} />
                         </Section>
                       }
@@ -554,7 +556,7 @@ let awaitingTwoStep = false;
 function showPasswordSetToast() {
   import('@components/toast').then(({toast}) => {
     const content = document.createElement('span'), title = document.createElement('b');
-    title.append(i18n('Wallet.PasswordSetTitle'));
+    title.append(i18n('TwoStepVerificationPasswordSet'));
     content.append(title, document.createElement('br'), i18n('Wallet.PasswordSetText'));
     toast(content);
   });

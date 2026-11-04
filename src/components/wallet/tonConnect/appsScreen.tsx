@@ -82,12 +82,12 @@ export function showTonConnectAppPopup(options: {session: TonConnectSession, sta
             <MediaHeader.Subtitle class={styles.domain}><span dir="ltr">{info.domain}</span></MediaHeader.Subtitle>
           </Show>
         </MediaHeader>
-        <TonConnectText>{i18n('Wallet.Apps.Permissions')}</TonConnectText>
+        <TonConnectText>{i18n('WalletConnectedAppInfo')}</TonConnectText>
       </PopupElement.Body>
       <PopupElement.Footer>
         <PopupElement.FooterButton
           color="danger"
-          langKey="Wallet.Apps.Disconnect"
+          langKey="WalletDisconnect"
           preloader
           callback={() => disconnect(options.status, [options.session]).then(() => {
             options.onDisconnected?.();
@@ -130,13 +130,13 @@ export default function WalletAppsScreen() {
 
   return (
     <>
-      <WalletHeader title="Wallet.Apps.Title" back />
+      <WalletHeader title="WalletConnectedApps" back />
       <div class={walletStyles.body}>
         <Show
           when={sessions().length}
           fallback={<div class={styles.empty}>{i18n('Wallet.Apps.Empty')}</div>}
         >
-          <Section name="Wallet.Apps.ActiveConnections">
+          <Section name="WalletActiveConnections">
             <For each={sessions()}>
               {(session) => {
                 const info = getTonConnectManifestInfo(session);
@@ -154,7 +154,7 @@ export default function WalletAppsScreen() {
               }}
             </For>
           </Section>
-          <Section caption="Wallet.Apps.AllPermissions">
+          <Section caption="WalletConnectedAppsInfo">
             <Row clickable={disconnectAll} color="danger">
               <Row.Icon icon="delete" />
               <Row.Title>{i18n('Wallet.Apps.DisconnectAll')}</Row.Title>

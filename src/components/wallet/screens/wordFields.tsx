@@ -399,7 +399,7 @@ export default function WalletWordFields(props: {
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => props.paste.onClick()}
             >
-              {i18n('Wallet.Import.Paste')}
+              {i18n('WalletPaste')}
             </button>
           </Show>
         </label>

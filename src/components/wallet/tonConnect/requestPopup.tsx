@@ -58,8 +58,8 @@ export type TonConnectPreviewItem = {
 };
 
 const KIND_TITLES: {[kind in TonConnectPreviewKind]: LangPackKey} = {
-  transfer: 'Wallet.Request.Transfer',
-  callContract: 'Wallet.Request.CallContract',
+  transfer: 'WalletTransfer',
+  callContract: 'WalletContractCall',
   deployContract: 'Wallet.Request.DeployContract',
   excess: 'Wallet.Request.Excess',
   unknown: 'Wallet.Request.UnknownOperation'
@@ -168,8 +168,8 @@ export default function showTonConnectRequestPopup(options: TonConnectRequestPop
     // * the app's name in a sentence reads in its own direction, apart from the words around it
     const nameText = () => <span dir="auto">{name}</span> as HTMLElement;
     const title = () => request.kind === 'signData' ?
-      (name ? i18n('Wallet.Sign.Title', [nameText()]) : i18n('Wallet.Sign.SignData')) :
-      (name ? i18n('Wallet.Request.Title', [nameText()]) : i18n('Wallet.Request.TitleUnknown'));
+      (name ? i18n('WalletAppRequestsSignature', [nameText()]) : i18n('WalletSignData')) :
+      (name ? i18n('WalletAppRequestsTransfer', [nameText()]) : i18n('Wallet.Request.TitleUnknown'));
 
     return (
       <PopupElement
@@ -208,12 +208,12 @@ export default function showTonConnectRequestPopup(options: TonConnectRequestPop
         <PopupElement.Footer class={styles.footer}>
           <PopupElement.FooterButton
             color="secondary"
-            langKey="Wallet.Request.Decline"
+            langKey="WalletDecline"
             disabled={answering()}
             callback={() => answer(options.onDecline)}
           />
           <PopupElement.FooterButton
-            langKey={request.kind === 'signData' ? 'Wallet.Sign.Sign' : 'Wallet.Request.Confirm'}
+            langKey={request.kind === 'signData' ? 'WalletSign' : 'WalletConfirm'}
             disabled={answering() || !canConfirm()}
             preloader
             callback={() => answer(options.onConfirm)}
@@ -256,8 +256,8 @@ function TransferContent(props: {
     if(nanos === undefined) return i18n('Wallet.Request.FeeLoading');
     const grams = formatGramsCut(nanos, 5) + ' GRAM';
     return props.fiatPerGram ?
-      i18n('Wallet.Request.FeeWithFiat', [grams, formatFiat(nanos, props.fiatPerGram, props.currency, 4)]) :
-      i18n('Wallet.Request.Fee', [grams]);
+      i18n('WalletFeeAmountWithCurrency', [grams, formatFiat(nanos, props.fiatPerGram, props.currency, 4)]) :
+      i18n('WalletFeeAmount', [grams]);
   };
 
   return (
@@ -272,11 +272,11 @@ function TransferContent(props: {
         </Show>
         <div class={styles.recipient}>
           {recipients.length > 1 ?
-            i18n('Wallet.Request.ToMultiple', [firstText(), recipients.length - 1]) :
-            i18n('Wallet.Request.To', [firstText()])}
+            i18n('WalletTransferToMultiple', [firstText(), recipients.length - 1]) :
+            i18n('WalletTransferTo', [firstText()])}
         </div>
       </MediaHeader>
-      <Section name="Wallet.Request.Preview" class={styles.section}>
+      <Section name="WalletPreview" class={styles.section}>
         <For each={items()}>
           {(item) => (
             <Row>
@@ -284,7 +284,7 @@ function TransferContent(props: {
               <Row.Subtitle>
                 <span dir="ltr">{friendlyShort(item.address)}</span>
                 {item.comment && <>{' · '}<span dir="auto">{item.comment}</span></>}
-                {!item.succeeded && <span class={styles.actionFailed}>{' · '}{i18n('Wallet.Request.Failed')}</span>}
+                {!item.succeeded && <span class={styles.actionFailed}>{' · '}{i18n('WalletFailed')}</span>}
               </Row.Subtitle>
               <Show when={item.amount}>
                 <Row.RightContent>
@@ -327,22 +327,22 @@ function SignDataContent(props: {request: SignDataRequest, onReadToEnd: () => vo
       when={props.request.payload.type === 'text' && props.request.json.text !== undefined}
       fallback={
         <div class={styles.blind} role="alert">
-          <div class={styles.blindTitle}><IconTsx icon="info" />{i18n('Wallet.Sign.BinaryContent')}</div>
-          {i18n('Wallet.Sign.BinaryWarning')}
+          <div class={styles.blindTitle}><IconTsx icon="info" />{i18n('WalletBinaryData')}</div>
+          {i18n('WalletBinaryDataWarning')}
         </div>
       }
     >
-      <div class={styles.dataTitle}>{i18n('Wallet.Sign.Data')}</div>
+      <div class={styles.dataTitle}>{i18n('WalletSigningData')}</div>
       <div
         ref={data}
         class={styles.data}
         role="region"
-        aria-label={I18n.format('Wallet.Sign.Data', true)}
+        aria-label={I18n.format('WalletSigningData', true)}
         tabindex={Modes.a11y ? 0 : undefined}
         onScroll={checkEnd}
         dir="auto"
       >{props.request.json.text}</div>
-      <TonConnectText>{i18n('Wallet.Sign.TextExplanation')}</TonConnectText>
+      <TonConnectText>{i18n('WalletReviewSigningData')}</TonConnectText>
     </Show>
   );
 }

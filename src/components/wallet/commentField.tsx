@@ -53,7 +53,7 @@ export default function WalletCommentField(props: {
     >
       <InputFieldTsx
         class={styles.input}
-        placeholder="Wallet.Comment"
+        placeholder="WalletOptionalComment"
         withLinebreaks
         value={props.value}
         onRawInput={props.onInput}
@@ -80,7 +80,7 @@ export default function WalletCommentField(props: {
         <button
           type="button"
           class={classNames('btn-icon', styles.lock, props.lock.encrypted && styles.locked)}
-          aria-label={I18n.format('Wallet.CommentMakePublic', true)}
+          aria-label={I18n.format('WalletMakeCommentPublic', true)}
           aria-pressed={!props.lock.encrypted}
           disabled={props.disabled}
           onClick={() => props.lock.onToggle()}

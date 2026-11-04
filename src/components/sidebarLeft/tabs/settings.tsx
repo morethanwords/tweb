@@ -437,7 +437,7 @@ const Settings = () => {
               </>}
               titleRightSecondary
             >
-              {i18n('Wallet.Menu')}
+              {i18n('WalletAttachMoney')}
               <Show when={walletNew()}><span class="row-title-badge">{i18n('New')}</span></Show>
             </Row.Title>
           </Row>

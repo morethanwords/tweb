@@ -46,7 +46,7 @@ export function WalletRecipientRow(props: {recipient: WalletRecipient}) {
           <For each={lines()}>{(line, index) => <>{index() ? '\n' : ''}<span dir="ltr">{line}</span></>}</For>
         </span>
       </Row.Title>
-      <Row.Subtitle>{i18n('Wallet.Details.Recipient')}</Row.Subtitle>
+      <Row.Subtitle>{i18n('WalletRecipient')}</Row.Subtitle>
     </Row>
   );
 }
@@ -57,14 +57,14 @@ export function WalletFeeRow(props: {fee: string | undefined}) {
     <Row clickable={showWalletFeesInfo}>
       <Row.Title>
         <Show when={props.fee !== undefined} fallback={<span class="preloader" />}>
-          <Show when={props.fee !== 'free'} fallback={i18n('Wallet.Details.FeeFree')}>
+          <Show when={props.fee !== 'free'} fallback={i18n('WalletFeePaidByTelegram')}>
             <Show when={props.fee} fallback="—">
               <>≈ <WalletTonAmount nanos={props.fee} /></>
             </Show>
           </Show>
         </Show>
       </Row.Title>
-      <Row.Subtitle>{i18n('Wallet.Details.Fee')}</Row.Subtitle>
+      <Row.Subtitle>{i18n('WalletFee')}</Row.Subtitle>
     </Row>
   );
 }
@@ -228,13 +228,13 @@ export default function WalletConfirmScreen(props: {params: WalletConfirmParams}
           handleRef={(handle) => commentField = handle}
         />
         <Show when={comment().trim() && (canEncrypt() !== undefined || !encrypt())}>
-          <div class={styles.caption}>{i18n(encrypting() ? 'Wallet.CommentPrivate' : 'Wallet.CommentPublic')}</div>
+          <div class={styles.caption}>{i18n(encrypting() ? 'WalletPrivateCommentInfo' : 'WalletPublicCommentInfo')}</div>
         </Show>
       </div>
       <PopupElement.Footer>
         <PopupElement.FooterButton
           ref={(element) => button = element}
-          langKey="Wallet.Send.Amount"
+          langKey="WalletSendAmount"
           langArgs={[amountText()]}
           disabled={busy() || waitsForFee() || tooLong()}
           callback={() => {

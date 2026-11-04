@@ -118,13 +118,13 @@ export default function WalletCollectibleScreen(props: {params: {item: WalletNft
 
   return (
     <>
-      <WalletHeader title="Wallet.Collectible.Title" back>
+      <WalletHeader title="WalletCollectible" back>
         <ButtonMenuToggleTsx
           buttonOptions={{ariaLabel: 'MultiAccount.More'}}
           direction="bottom-left"
           buttons={[{
             icon: 'link',
-            text: 'Wallet.Menu.Explorer',
+            text: 'WalletViewInExplorer',
             onClick: () => safeWindowOpen(explorerUrl())
           }]}
         />
@@ -155,7 +155,7 @@ export default function WalletCollectibleScreen(props: {params: {item: WalletNft
           </Show>
           <Row clickable={() => copyWalletAddress(item.address)}>
             <Row.Title><span class={detailsStyles.address} dir="ltr">{groupAddress(item.address, 6).join('\n')}</span></Row.Title>
-            <Row.Subtitle>{i18n('Wallet.Collectible.Address')}</Row.Subtitle>
+            <Row.Subtitle>{i18n('WalletAddress')}</Row.Subtitle>
           </Row>
         </Section>
       </div>
@@ -164,7 +164,7 @@ export default function WalletCollectibleScreen(props: {params: {item: WalletNft
         <PopupElement.Footer>
           <Show when={canSend()}>
             <PopupElement.FooterButton
-              langKey={sellUrl() ? 'Wallet.Send' : 'Wallet.Collectible.Send'}
+              langKey={sellUrl() ? 'WalletSend' : 'WalletSendAmount'}
               langArgs={sellUrl() ? undefined : [walletNftName(item)]}
               callback={() => {
                 wallet.router.push('recipient', {nft: item});
@@ -174,7 +174,7 @@ export default function WalletCollectibleScreen(props: {params: {item: WalletNft
           </Show>
           <Show when={sellUrl()}>
             <PopupElement.FooterButton
-              langKey="Wallet.Collectible.Sell"
+              langKey="WalletSell"
               callback={() => {
                 safeWindowOpen(sellUrl());
                 return false;

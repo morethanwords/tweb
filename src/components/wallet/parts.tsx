@@ -115,12 +115,12 @@ function Badge(props: {icon: Icon, outgoing?: boolean, children?: JSX.Element}) 
 
 /** `incoming`: the way the row shows it went, a transfer to oneself reads as incoming (iOS) */
 export function getTransactionKind(transaction: WalletTransaction, incoming = isIncoming(transaction)): LangPackKey {
-  if(transaction.pFlags.key_change) return 'Wallet.Row.KeyChange';
-  if(transaction.nft) return incoming ? 'Wallet.Row.CollectibleIn' : 'Wallet.Row.CollectibleOut';
+  if(transaction.pFlags.key_change) return 'WalletKeyUpdate';
+  if(transaction.nft) return incoming ? 'WalletIncomingTransferNft' : 'WalletOutgoingTransferNft';
   const peer = transaction.peer;
-  if(peer._ === 'walletTransactionPeerOnramp') return isCryptoTopUp(peer.provider_name) ? 'Wallet.Row.CryptoTopUp' : 'Wallet.Row.CardTopUp';
+  if(peer._ === 'walletTransactionPeerOnramp') return isCryptoTopUp(peer.provider_name) ? 'WalletTransactionTopUpCrypto' : 'WalletTransactionTopUp';
   if(peer._ === 'walletTransactionPeerAddress') return incoming ? 'Wallet.Row.Deposit' : 'Wallet.Row.Withdrawal';
-  return incoming ? 'Wallet.Row.Incoming' : 'Wallet.Row.Outgoing';
+  return incoming ? 'WalletIncomingTransfer' : 'WalletOutgoingTransfer';
 }
 
 export function isIncoming(transaction: WalletTransaction) {
@@ -205,7 +205,7 @@ export function TransactionTitle(props: {
         if(p?._ === 'walletTransactionPeerOnramp') return i18n(getTransactionKind(props.transaction));
         if(p && 'address' in p) return p.domain || addressTitle(p.address, props.chips);
         if(props.pending) return addressTitle(props.pending.address, props.chips);
-        return i18n(props.transaction?.pFlags.key_change ? 'Wallet.Row.KeyChange' : 'Wallet.Row.Withdrawal');
+        return i18n(props.transaction?.pFlags.key_change ? 'WalletKeyUpdate' : 'Wallet.Row.Withdrawal');
       })()}
     >
       {/* * the name loads as a resource: its own boundary waits for it, not the screen's — that one would take the whole
@@ -219,7 +219,7 @@ export function TransactionTitle(props: {
 function ItemsChange(props: {incoming?: boolean, color?: AmountColor}) {
   return (
     <CurrencyAmount
-      amount={<span>{props.incoming ? '+' : '\u2013'}{i18n('Wallet.Row.Items', [1])}</span>}
+      amount={i18n(props.incoming ? 'WalletIncomingCollectibleAmount' : 'WalletOutgoingCollectibleAmount')}
       color={props.color}
     />
   );
@@ -256,8 +256,8 @@ export function WalletHistoryRow(props: {
   const animated = liteMode.isAvailable('animations');
   const sending = () => !!pending() && !pending().failed;
   const kind = (): JSX.Element => {
-    if(failed()) return i18n('Wallet.Row.Failed');
-    if(pending()) return i18n(pending().nft ? 'Wallet.Row.CollectibleOut' : pending().userId ? 'Wallet.Row.Outgoing' : 'Wallet.Row.Withdrawal');
+    if(failed()) return i18n('WalletFailed');
+    if(pending()) return i18n(pending().nft ? 'WalletOutgoingTransferNft' : pending().userId ? 'WalletOutgoingTransfer' : 'Wallet.Row.Withdrawal');
     const peer = transaction().peer;
     if(peer._ === 'walletTransactionPeerOnramp') return walletProviderName(peer.provider_name);
     return i18n(getTransactionKind(transaction(), incoming()));
@@ -291,7 +291,7 @@ export function WalletHistoryRow(props: {
         <Show when={sending() && animated} fallback={date()}>
           <span class={styles.rowStatus}>
             <span data-wallet-row-date style={{opacity: 0}} aria-hidden="true">{date()}</span>
-            <span data-wallet-row-sending>{i18n('Wallet.Row.Sending')}</span>
+            <span data-wallet-row-sending>{i18n('WalletSending')}</span>
           </span>
         </Show>
         <Show when={nft()}>{(item) => <WalletNftChip item={item()} />}</Show>
@@ -452,7 +452,7 @@ export async function openWalletTransaction(
 /**
  * An address onto the clipboard, with the toast that says so
  */
-export function copyWalletAddress(address: string, langPackKey: LangPackKey = 'Wallet.AddressCopied') {
+export function copyWalletAddress(address: string, langPackKey: LangPackKey = 'WalletAddressCopiedBulletin') {
   copyTextToClipboard(address);
   toastNew({langPackKey});
 }
@@ -462,7 +462,7 @@ export function copyWalletAddress(address: string, langPackKey: LangPackKey = 'W
  */
 export function showWalletFeesInfo() {
   import('@components/confirmationPopup').then(({default: confirmationPopup}) => confirmationPopup({
-    titleLangKey: 'Wallet.FeesTitle',
+    titleLangKey: 'WalletNetworkFee',
     descriptionLangKey: 'Wallet.FeesText',
     button: {langKey: 'OK'}
   })).catch(() => {});

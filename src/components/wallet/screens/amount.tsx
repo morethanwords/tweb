@@ -44,7 +44,8 @@ import {
 } from '@components/wallet/send';
 import type {WalletTransferLink} from '@components/wallet/recipient';
 import type {WalletConfirmParams} from '@components/wallet/screens/confirm';
-import {compareNanos, formatGramsCut, gramsToNumber, groupAddress} from '@components/wallet/format';
+import {compareNanos, formatGramsCut, groupAddress} from '@components/wallet/format';
+import {formatGramsWithUnit} from '@components/wallet/transferText';
 import {fiatToNanos, nanosToFiat} from '@components/wallet/fiatAmount';
 import {runWalletSendFlight} from '@components/wallet/sendAnimation';
 import {clock} from '@components/wallet/visual/clock';
@@ -105,11 +106,6 @@ function displayDecimal(text: string) {
   const [whole, tail = ''] = text.split('.');
   const fraction = tail.replace(/0+$/, '');
   return grouped(whole) + (fraction ? '.' + fraction : '');
-}
-
-/** `12.5 Grams`, `1 Gram`: an amount with the ticker in its plural */
-function gramsText(nanos: string, text: string) {
-  return I18n.format('Wallet.GramsAmount', true, [text, I18n.format('Wallet.Card.Ticker', true, [gramsToNumber(nanos)])]);
 }
 
 function errorType(error: any): string {
@@ -173,7 +169,7 @@ function Collapse(props: {open: boolean, class?: string, children: JSX.Element})
 function DepositLink(props: {onClick: () => void}) {
   return (
     <A11yButton as="span" class={styles.deposit} onClick={props.onClick}>
-      {i18n('Wallet.Send.DepositFunds')}
+      {i18n('WalletDepositFunds')}
       <IconTsx icon="next" class={styles.depositArrow} />
     </A11yButton>
   );
@@ -340,7 +336,7 @@ export default function WalletAmountScreen(props: {
       setChipReady(true);
     }, () => setChipReady(true));
   } else {
-    setTitle(recipient.domain || I18n.format('Wallet.Recipient.Address', true));
+    setTitle(recipient.domain || I18n.format('WalletGramWalletAddress', true));
   }
 
   let encryptionCheck: Promise<boolean>;
@@ -368,7 +364,7 @@ export default function WalletAmountScreen(props: {
     hotReloadGuard.appImManager.setInnerPeer({peerId});
   };
 
-  const copyAddress = () => copyWalletAddress(recipient.address, 'Wallet.TonAddressCopied');
+  const copyAddress = () => copyWalletAddress(recipient.address, 'WalletAddressCopiedBulletin');
 
   /** ⓘ: whose wallet this is — a Telegram user's, linked to their account, or an address of nobody known (iOS) */
   const showRecipientInfo = async() => {
@@ -386,14 +382,14 @@ export default function WalletAmountScreen(props: {
       link.classList.add(styles.recipientLink);
       link.textContent = nick() || title();
       link.addEventListener('click', then(openChat));
-      description = i18n('Wallet.Recipient.LinkedAddress', [link]);
+      description = i18n('WalletAddressLinkedToUser', [link]);
     } else {
-      description = i18n('Wallet.Recipient.UnlinkedAddress');
+      description = i18n('WalletAddressNoLinkedAccount');
     }
 
     confirmationPopup({
       title: peerId ?
-        I18n.format('Wallet.Send.RecipientWallet', true, [firstName() || title()]) :
+        I18n.format('WalletUserWallet', true, [firstName() || title()]) :
         I18n.format('Wallet.Send.UnlinkedWallet', true),
       description,
       content: <RecipientAddressCard address={recipient.address} onCopy={then(copyAddress)} />,
@@ -1026,11 +1022,11 @@ export default function WalletAmountScreen(props: {
    * The Grams to the last digit: what the button says is what goes (fiat typed is in whole hundredths of a Gram)
    */
   const sendTitle = (): string => {
-    if(confirms) return I18n.format('Wallet.Continue', true);
+    if(confirms) return I18n.format('WalletContinue', true);
     const amount = hasAmount() ?
-      gramsText(nanos(), formatNanoton(nanos(), GRAM_DECIMALS, true)) :
+      formatGramsWithUnit(nanos(), formatNanoton(nanos(), GRAM_DECIMALS, true)) :
       I18n.format('Wallet.Card.Ticker', true, [0]);
-    return I18n.format('Wallet.Send.Amount', true, [amount]);
+    return I18n.format('WalletSendAmount', true, [amount]);
   };
 
   const sendSubtitle = (): string => {
@@ -1047,7 +1043,7 @@ export default function WalletAmountScreen(props: {
 
   return (
     <div ref={root} class={styles.root}>
-      <WalletHeader title="Wallet.SendTitle" back>
+      <WalletHeader title="WalletSendGrams" back>
         <WalletHeaderBalance nanos={balance()} />
       </WalletHeader>
 
@@ -1096,7 +1092,7 @@ export default function WalletAmountScreen(props: {
           <button
             type="button"
             class={classNames('btn-icon', styles.chipHelp)}
-            aria-label={I18n.format(peerId ? 'Wallet.Send.RecipientWallet' : 'Wallet.Send.UnlinkedWallet', true, [firstName() || title()])}
+            aria-label={I18n.format(peerId ? 'WalletUserWallet' : 'Wallet.Send.UnlinkedWallet', true, [firstName() || title()])}
             onClick={showRecipientInfo}
           >
             <IconTsx icon="info" />
@@ -1154,13 +1150,13 @@ export default function WalletAmountScreen(props: {
 
           <Collapse open={insufficient()}>
             <div class={styles.status}>
-              <span class={styles.insufficient}>{i18n('Wallet.Send.InsufficientFunds')}</span>
+              <span class={styles.insufficient}>{i18n('WalletInsufficientFunds')}</span>
               <Show when={depositInline()}>
                 <DepositLink onClick={() => wallet.router.push('receive')} />
               </Show>
             </div>
           </Collapse>
-          <span class="sr-only" role="alert">{insufficient() && i18n('Wallet.Send.InsufficientFunds')}</span>
+          <span class="sr-only" role="alert">{insufficient() && i18n('WalletInsufficientFunds')}</span>
         </div>
 
         {/* * faded out while the gem is sent, it is out of reach too */}
@@ -1177,12 +1173,12 @@ export default function WalletAmountScreen(props: {
                 <Row.CheckboxField>
                   <CheckboxFieldTsx checked={makePublic()} onChange={setMakePublic} />
                 </Row.CheckboxField>
-                <Row.Title>{i18n('Wallet.CommentMakePublic')}</Row.Title>
+                <Row.Title>{i18n('WalletMakeCommentPublic')}</Row.Title>
               </Row>
             </Show>
             {/* * nothing is claimed while it is not known whether the recipient can read a private one */}
             <Show when={canEncrypt() !== undefined || makePublic()}>
-              <div class={styles.commentCaption}>{i18n(encrypting() ? 'Wallet.CommentPrivate' : 'Wallet.CommentPublic')}</div>
+              <div class={styles.commentCaption}>{i18n(encrypting() ? 'WalletPrivateCommentInfo' : 'WalletPublicCommentInfo')}</div>
             </Show>
           </Show>
         </div>
@@ -1190,7 +1186,7 @@ export default function WalletAmountScreen(props: {
         <div ref={summary} class={styles.summary}>
           <div class={styles.balanceSlot}>
             <div ref={inertWhen(() => !showBalance())} class={classNames(styles.summaryLine, !showBalance() && styles.faded)}>
-              {i18n('Wallet.Send.Balance', [gramsText(balance(), formatGramsCut(balance(), 2))])}
+              {i18n('WalletBalanceAmount', [formatGramsWithUnit(balance(), formatGramsCut(balance(), 2))])}
             </div>
             <div
               ref={inertWhen(() => !(showDeposit() && !depositInline()))}
@@ -1208,7 +1204,7 @@ export default function WalletAmountScreen(props: {
                   <span class={classNames('shimmer', styles.feePlaceholder)} aria-hidden="true" />
                 </Match>
                 <Match when={feeShown().kind === 'value' && (feeShown() as {nanos: string}).nanos} keyed>
-                  {(fee) => gramsText(fee, formatGramsCut(fee, FEE_DECIMALS))}
+                  {(fee) => formatGramsWithUnit(fee, formatGramsCut(fee, FEE_DECIMALS))}
                 </Match>
               </Switch>
             </div>

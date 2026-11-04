@@ -34,25 +34,25 @@ export async function showWalletFirstGramsPopup(sticker?: Awaited<ReturnType<typ
   return new Promise<void>((resolve) => {
     showFeatureDetailsPopup({
       sticker,
-      title: i18n('Wallet.First.Title'),
+      title: i18n('WalletFirstGrams'),
       get subtitle() {
         const value = rate();
-        return value ? i18n('Wallet.First.Rate', [value]) : i18n('Wallet.First.RateNone');
+        return value ? i18n('Wallet.First.Rate', [value]) : i18n('WalletFirstGramsActions');
       },
       rows: [{
         icon: 'send2',
-        title: i18n('Wallet.First.SendTitle'),
-        subtitle: i18n('Wallet.First.SendText', [controlIcon('attach', 'Chat.Input.Attach'), i18n('Wallet.Menu')])
+        title: i18n('WalletSend'),
+        subtitle: i18n('Wallet.First.SendText', [controlIcon('attach', 'Chat.Input.Attach'), i18n('WalletAttachMoney')])
       }, {
         icon: 'dollar_circle',
-        title: i18n('Wallet.First.TradeTitle'),
-        subtitle: i18n('Wallet.First.TradeText')
+        title: i18n('WalletTrade'),
+        subtitle: i18n('WalletFirstGramsTradeInfo')
       }, {
         icon: 'wallet',
-        title: i18n('Wallet.First.StoreTitle'),
-        subtitle: i18n('Wallet.First.StoreText', [controlIcon('menu', 'MultiAccount.More'), i18n('Wallet.Menu')])
+        title: i18n('WalletStore'),
+        subtitle: i18n('Wallet.First.StoreText', [controlIcon('menu', 'MultiAccount.More'), i18n('WalletAttachMoney')])
       }],
-      buttons: [{text: i18n('Wallet.GotIt')}],
+      buttons: [{text: i18n('WalletGotIt')}],
       onClose: () => {
         rootScope.managers.appPromoManager.dismissSuggestion(WALLET_FIRST_GRAMS_SUGGESTION);
         resolve();

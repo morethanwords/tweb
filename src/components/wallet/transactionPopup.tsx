@@ -218,10 +218,10 @@ function watchSendingEarly(message: Message.messageService) {
  */
 function showGaslessInfo(feeFiat: string, daily: number) {
   import('@components/confirmationPopup').then(({default: confirmationPopup}) => confirmationPopup({
-    titleLangKey: 'Wallet.FeesTitle',
+    titleLangKey: 'WalletNetworkFee',
     descriptionLangKey: 'Wallet.Details.FeesText',
     descriptionLangArgs: [feeFiat ? ` (${feeFiat})` : '', i18n('Wallet.Details.Transfers', [daily])],
-    button: {langKey: 'Wallet.GotIt', isCancel: true}
+    button: {langKey: 'WalletGotIt', isCancel: true}
   })).catch(() => {});
 }
 
@@ -382,7 +382,7 @@ export default async function showWalletTransactionPopup(options: WalletTransact
           class={styles.address}
           role="button"
           tabindex={Modes.a11y ? 0 : undefined}
-          onClick={() => copyWalletAddress(address, 'Wallet.TonAddressCopied')}
+          onClick={() => copyWalletAddress(address, 'WalletAddressCopiedBulletin')}
           onKeyDown={buttonKeyDown}
         >
           <WalletAddressGroups address={address} />
@@ -398,7 +398,7 @@ export default async function showWalletTransactionPopup(options: WalletTransact
       }
 
       if(!('address' in peer)) {
-        return i18n('Wallet.Details.UnknownAddress');
+        return i18n('WalletUnknownAddress');
       }
 
       const name = peer._ === 'walletTransactionPeerOnramp' ? walletProviderName(peer.provider_name) : peer.domain;
@@ -418,7 +418,7 @@ export default async function showWalletTransactionPopup(options: WalletTransact
               <Show when={!props.alone}>
                 <span class={styles.statusDot} aria-hidden="true">•</span>
               </Show>
-              {i18n(value === 'failed' ? 'Wallet.Details.Failed' : 'Wallet.Details.Processing')}
+              {i18n(value === 'failed' ? 'WalletFailed' : 'WalletSending')}
             </span>
           )}</Show>
         </Animated>
@@ -453,9 +453,9 @@ export default async function showWalletTransactionPopup(options: WalletTransact
         const daily = appConfig.wallet_gasless_daily_transfers ?? WALLET_GASLESS_DAILY_DEFAULT;
         return (
           <>
-            {i18n('Wallet.Details.FeeFree')}
+            {i18n('WalletFeePaidByTelegram')}
             <TableButton
-              aria-label={I18n.format('Wallet.FeesTitle', true)}
+              aria-label={I18n.format('WalletNetworkFee', true)}
               onClick={() => showGaslessInfo(+feeNanos ? fiat(feeNanos, FEE_FIAT_DECIMALS) : '', daily)}
             >
               ?
@@ -470,36 +470,36 @@ export default async function showWalletTransactionPopup(options: WalletTransact
     const tableContent = (): TableRow[] => {
       const rows: TableRow[] = [];
       const peer = shownPeer();
-      const counterpartyKey: LangPackKey = incoming() ? 'Wallet.Details.Sender' : 'Wallet.Details.Recipient';
+      const counterpartyKey: LangPackKey = incoming() ? 'WalletSender' : 'WalletRecipient';
       const target = sendTarget();
       const value = counterparty();
       rows.push([counterpartyKey, target ? (
         <>
           {value}
           <span class={classNames(!target.userId && !target.domain && styles.sendTop)}>
-            <TableButton text="Wallet.Send" onClick={() => sendTo(target)} />
+            <TableButton text="WalletSend" onClick={() => sendTo(target)} />
           </span>
         </>
       ) : value]);
 
       // * the name the user's address was sent to by (Android)
       if(peer._ === 'walletTransactionPeerUser' && peer.domain) {
-        rows.push(['Wallet.Details.Domain', <span dir="ltr">{peer.domain}</span>]);
+        rows.push(['WalletDomain', <span dir="ltr">{peer.domain}</span>]);
       }
 
       // * a name says who; the address under it says where
       const address = peerAddress();
       if(address && peer._ !== 'walletTransactionPeerUnsupported' && (peer._ !== 'walletTransactionPeerAddress' || peer.domain)) {
-        rows.push(['Wallet.Details.Address', <AddressValue address={address} />]);
+        rows.push(['WalletAddress', <AddressValue address={address} />]);
       }
 
       const feeValue = feeContent();
       if(feeValue) {
-        rows.push(['Wallet.Details.Fee', feeValue]);
+        rows.push(['WalletFee', feeValue]);
       }
 
       if(transaction().date) {
-        rows.push(['Wallet.Details.Date', formatFullSentTime(transaction().date, undefined, true)]);
+        rows.push(['WalletDate', formatFullSentTime(transaction().date, undefined, true)]);
       }
 
       return rows;
@@ -524,12 +524,12 @@ export default async function showWalletTransactionPopup(options: WalletTransact
             direction="bottom-left"
             buttons={[{
               icon: 'search',
-              text: 'Wallet.Menu.Explorer',
+              text: 'WalletViewInExplorer',
               onClick: () => safeWindowOpen(explorerUrl()),
               verify: () => !!explorerUrl()
             }, {
               icon: 'help',
-              text: 'Wallet.Menu.WhatGram',
+              text: 'WalletWhatIsGram',
               onClick: showWalletGramInfoPopup,
               verify: () => !nft
             }]}
@@ -552,7 +552,7 @@ export default async function showWalletTransactionPopup(options: WalletTransact
                     size={KEY_CIRCLE_SIZE}
                     element={<div class={styles.keyCircle} aria-hidden="true"><IconTsx icon="key_filled" /></div>}
                   />
-                  <MediaHeader.Title>{i18n('Wallet.Details.KeyUpdate')}</MediaHeader.Title>
+                  <MediaHeader.Title>{i18n('WalletKeyUpdate')}</MediaHeader.Title>
                 </Match>
                 <Match when={true}>
                   <MediaHeader.Sticker name="Gram" size={STICKER_SIZE} />
@@ -605,7 +605,7 @@ export default async function showWalletTransactionPopup(options: WalletTransact
                   onClick={showWalletGramInfoPopup}
                   onKeyDown={buttonKeyDown}
                 >
-                  {i18n('Wallet.Details.GramInfo')}
+                  {i18n('WalletWhatIsGram')}
                 </span>
               </div>
             </Show>
@@ -613,7 +613,7 @@ export default async function showWalletTransactionPopup(options: WalletTransact
         </PopupElement.Scrollable>
         <PopupElement.Footer>
           <PopupElement.FooterButton callback={() => options.openWallet?.()}>
-            {i18n(options.openWallet ? 'Wallet.Details.OpenWallet' : 'OK')}
+            {i18n(options.openWallet ? 'WalletOpenMyWallet' : 'OK')}
           </PopupElement.FooterButton>
         </PopupElement.Footer>
       </PopupElement>
@@ -709,7 +709,7 @@ function CommentText(props: {text: string}) {
     // * read once, after the popup laid it out: only a box that scrolls takes a tab stop
     requestWalletFrame(() => {
       if(scrollable.scrollHeight > scrollable.clientHeight) {
-        updateScrollRegionFocusable(scrollable, I18n.format('Wallet.Details.Comment', true));
+        updateScrollRegionFocusable(scrollable, I18n.format('Comment', true));
       }
     });
   });

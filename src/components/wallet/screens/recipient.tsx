@@ -32,7 +32,7 @@ import {
   WalletRecipientInput,
   WalletTransferLink
 } from '@components/wallet/recipient';
-import {shortAddress, walletNftName} from '@components/wallet/format';
+import {shortAddress} from '@components/wallet/format';
 import {getWalletErrorLangKey, toastWalletError} from '@components/wallet/send';
 import styles from '@components/wallet/screens/recipient.module.scss';
 
@@ -149,15 +149,15 @@ export default function WalletRecipientScreen(props: {params?: {nft?: WalletNftI
   return (
     <>
       <WalletHeader
-        titleElement={nft ? i18n('Wallet.Collectible.TransferTitle', [walletNftName(nft)]) : i18n('Wallet.SendTitle')}
+        titleElement={nft ? i18n('WalletTransferCollectible') : i18n('WalletSendGrams')}
         back
       >
         <Show when={canPaste && !search()}>
           <button
             type="button"
             class={classNames('btn-icon', styles.paste)}
-            aria-label={I18n.format('Wallet.Recipient.Paste', true)}
-            title={I18n.format('Wallet.Recipient.Paste', true)}
+            aria-label={I18n.format('WalletPaste', true)}
+            title={I18n.format('WalletPaste', true)}
             onClick={paste}
           >
             <IconTsx icon="clipboard" />
@@ -205,7 +205,7 @@ function fadeClass() {
 function RecipientResult(props: {link: WalletTransferLink, onClick: () => void}) {
   const recipient = props.link.recipient;
   const peerId = recipient.userId?.toPeerId(false);
-  const subtitle = (): JSX.Element => recipient.domain ? <span dir="ltr">{recipient.domain}</span> : i18n('Wallet.Recipient.Address');
+  const subtitle = (): JSX.Element => recipient.domain ? <span dir="ltr">{recipient.domain}</span> : i18n('WalletGramWalletAddress');
   return (
     <Section class={fadeClass()}>
       <Row clickable={props.onClick}>
@@ -234,7 +234,7 @@ function RecipientFailure(props: {input: WalletRecipientInput, error: any}) {
   const description = (): JSX.Element => {
     const type: string = props.error?.type;
     if(type === 'WALLET_ADDRESS_INVALID') return i18n('Wallet.Recipient.InvalidAddressText');
-    if(type === 'WALLET_NAME_NOT_FOUND') return i18n('Wallet.Recipient.NoResultsText', [wrapEmojiText(props.input.value)]);
+    if(type === 'WALLET_NAME_NOT_FOUND') return i18n('WalletSearchNoResults', [wrapEmojiText(props.input.value)]);
     return i18n(getWalletErrorLangKey(props.error));
   };
 

@@ -178,7 +178,7 @@ export function guardWalletBackupDisable(wallet: WalletContextValue, flow?: Wall
       titleLangKey: 'Wallet.Backup.CancelTitle',
       descriptionLangKey: 'Wallet.Backup.CancelText',
       button: {langKey: 'Wallet.Backup.CancelDisabling'},
-      cancelButton: {langKey: 'Wallet.Continue'}
+      cancelButton: {langKey: 'WalletContinue'}
     });
   });
 }
@@ -195,7 +195,7 @@ async function disableBackupErrorMessage(store: WalletFiat, error: any): Promise
     case 'ROTATION_PENDING': return {title: 'Wallet.Backup.PhraseUpdatePendingTitle', text: 'Wallet.Backup.DisablePhraseUpdatePendingText'};
     case 'ROTATION_FEES': {
       const [text, textArgs] = rotationFeeLang(store, error.fee, true);
-      return {title: 'Wallet.Backup.InsufficientFundsTitle', text, textArgs};
+      return {title: 'WalletNotEnoughGram', text, textArgs};
     }
   }
 
@@ -307,7 +307,7 @@ export function confirmWalletBackupDisable(options: WalletBackupDisableOptions) 
 
     const button: PopupPeerButton = {
       get langKey() {
-        return topUp() ? 'Wallet.Backup.TopUp' : 'Wallet.Backup.Disable';
+        return topUp() ? 'WalletTopUp' : 'WalletDisable';
       },
       get isDanger() {
         return !topUp();
@@ -318,14 +318,14 @@ export function confirmWalletBackupDisable(options: WalletBackupDisableOptions) 
 
     try {
       await confirmationPopup({
-        titleLangKey: 'Wallet.Backup.DisableTitle',
-        descriptionLangKey: 'Wallet.Keys.BackupDisableText',
+        titleLangKey: 'WalletDisableBackupTitle',
+        descriptionLangKey: 'WalletDisableBackupInfo',
         onPopup: (popup) => options.flow && (options.flow.popup = popup),
         content: (
           <div>
             <Show when={offered}>
               <Row class="popup-peer-checkbox-row">
-                <Row.Title>{i18n('Wallet.Backup.UpdateCheck')}</Row.Title>
+                <Row.Title>{i18n('WalletUpdateSecretPhrase')}</Row.Title>
                 <Row.CheckboxField>
                   <CheckboxFieldTsx
                     signal={[update, setUpdate]}
@@ -343,7 +343,7 @@ export function confirmWalletBackupDisable(options: WalletBackupDisableOptions) 
                     </Match>
                     <Match when={quoted()}>
                       <p class={`${styles.plate} ${styles.plateCenter}`}>
-                        {i18n('Wallet.Backup.UpdateText')}
+                        {i18n('WalletUpdateSecretPhraseInfo')}
                         {'\n\n'}
                         {i18n(...rotationFeeLang(fiat, quoted().fee))}
                       </p>
@@ -502,7 +502,7 @@ export async function confirmWalletBackupDisableDone(wallet: WalletContextValue,
     try {
       await store.session.disableBackup(store.status());
       await store.refreshStatus(true);
-      toastWallet('Wallet.Backup.DisabledTitle', 'Wallet.Keys.BackupDisabled');
+      toastWallet('WalletBackupDisabled', 'WalletBackupDisabledInfo');
     } catch(err) {
       // * the watch goes on between the presses: the key the flow's own update installed is known to it, a wallet
       // * replaced meanwhile is not, and the quiz checked the phrase of this one only
@@ -518,10 +518,10 @@ export async function confirmWalletBackupDisableDone(wallet: WalletContextValue,
 
   try {
     await confirmationPopup({
-      titleLangKey: 'Wallet.Backup.DisableTitle',
-      descriptionLangKey: rotation ? 'Wallet.Backup.DisableWithNewPhraseText' : 'Wallet.Backup.DisableConfirmationText',
+      titleLangKey: 'WalletDisableBackupTitle',
+      descriptionLangKey: rotation ? 'WalletDisableBackupConfirmInfo' : 'WalletDisableBackupExistingPhraseInfo',
       onPopup: (popup) => flow.popup = popup,
-      button: {langKey: 'Wallet.Backup.Disable', isDanger: true, preloader: true, callback: disable}
+      button: {langKey: 'WalletDisable', isDanger: true, preloader: true, callback: disable}
     });
   } catch(err) {
   } finally {
@@ -550,7 +550,7 @@ async function enableBackupErrorMessage(error: any): Promise<WalletMessage & {re
       return {title: 'Wallet.Auth.VerificationExpiredTitle', text: 'Wallet.Backup.EnableVerificationExpiredText', retry: true};
     case 'WALLET_PHRASE_INVALID':
     case 'WALLET_PHRASE_FOREIGN':
-      return {title: 'Wallet.Import.InvalidPhraseTitle', text: 'Wallet.Backup.InvalidPhraseText', enterPhrase: true};
+      return {title: 'WalletInvalidRecoveryPhrase', text: 'Wallet.Backup.InvalidPhraseText', enterPhrase: true};
   }
 
   if(isWalletNetworkError(error)) {
@@ -574,7 +574,7 @@ export async function enableWalletBackup(wallet: WalletContextValue, handlers: {
     await ensureWalletKey(store, 'Wallet.Phrase.PasswordText');
     await store.session.enableBackup(store.status());
     await store.refreshStatus(true);
-    toastWallet('Wallet.Backup.EnabledTitle', 'Wallet.Keys.BackupEnabled');
+    toastWallet('WalletBackupEnabled', 'WalletBackupEnabledInfo');
     return true;
   } catch(err) {
     if((err as any)?.type === 'WALLET_KEY_MISSING') {

@@ -1293,7 +1293,7 @@ export default class ChatContextMenu {
     }, {
       // * a transfer in a chat with someone: Grams back to them, as iOS offers it on the transfer itself
       icon: 'wallet',
-      text: 'Wallet.SendMoney',
+      text: 'WalletSendMoney',
       onClick: () => {
         const userId = this.peerId.toUserId();
         import('@components/wallet').then(({default: showWalletPopup}) => showWalletPopup({send: {userId}, fromChat: true}));

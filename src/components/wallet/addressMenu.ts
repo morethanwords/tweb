@@ -112,7 +112,7 @@ export default async function openTonAddressMenu(options: {
   if(valid && isWalletAvailable(appConfig)) {
     buttons.push({
       icon: 'wallet',
-      text: 'Wallet.SendMoney',
+      text: 'WalletSendMoney',
       // * the address as written: the send flow finds its owner again and sends to it as to them
       onClick: () => import('@components/wallet').then(({default: showWalletPopup}) => showWalletPopup({send: {to: address}}))
     });
@@ -120,11 +120,11 @@ export default async function openTonAddressMenu(options: {
 
   buttons.push({
     icon: 'copy',
-    text: 'Wallet.CopyAddress',
+    text: 'WalletCopyAddress',
     onClick: () => copyWalletAddress(address)
   }, {
     icon: 'search',
-    text: 'Wallet.Menu.Explorer',
+    text: 'WalletViewInExplorer',
     onClick: () => safeWindowOpen(getExplorerUrl(appConfig.ton_blockchain_explorer_url, address))
   });
 
@@ -140,7 +140,7 @@ export default async function openTonAddressMenu(options: {
     // * in the owner's place, that there is none (Android didPressTonAddress): a label, not an action
     buttons.push({
       className: styles.note,
-      text: 'Wallet.UnlinkedAddress',
+      text: 'WalletAddressNoLinkedAccount',
       separator: createGap(),
       onClick: undefined
     });

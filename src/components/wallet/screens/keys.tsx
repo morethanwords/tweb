@@ -95,9 +95,9 @@ export default function WalletKeysScreen() {
   const deleteWallet = async() => {
     try {
       await confirmationPopup({
-        titleLangKey: 'Wallet.Keys.Delete',
+        titleLangKey: 'WalletDeleteWallet',
         descriptionLangKey: 'Wallet.Keys.DeleteText',
-        button: {langKey: 'Wallet.Keys.DeleteAnyway', isDanger: true}
+        button: {langKey: 'WalletDeleteAnyway', isDanger: true}
       });
     } catch(err) {
       return;
@@ -120,11 +120,11 @@ export default function WalletKeysScreen() {
 
   return (
     <>
-      <WalletHeader title="Wallet.Keys.Title" back />
+      <WalletHeader title="WalletKeysAndBackup" back />
       <div class={classNames(styles.body, keysStyles.body)}>
         <Show when={canReveal() || canEnter()}>
           <Section
-            name="Wallet.Keys.PhraseSection"
+            name="WalletRecoveryPhraseLearnTitle"
             caption={canEnter() ? 'Wallet.Keys.RestoreCaption' : 'Wallet.Keys.PhraseCaption'}
             class={keysStyles.section}
           >
@@ -133,7 +133,7 @@ export default function WalletKeysScreen() {
               fallback={
                 <Row clickable={() => wallet.router.push('phrase', {})}>
                   <Row.Icon icon="key" />
-                  <Row.Title>{i18n('Wallet.Keys.ShowPhrase')}</Row.Title>
+                  <Row.Title>{i18n('WalletRecoveryPhraseLearnButton')}</Row.Title>
                 </Row>
               }
             >
@@ -147,8 +147,8 @@ export default function WalletKeysScreen() {
 
         <Show when={state()?.pFlags.backup_enabled || state()?.pFlags.can_enable_backup}>
           <Section
-            name="Wallet.Keys.BackupSection"
-            caption={state()?.pFlags.backup_enabled ? 'Wallet.Keys.BackupOn' : 'Wallet.Keys.BackupOff'}
+            name="WalletEncryptedBackup"
+            caption={state()?.pFlags.backup_enabled ? 'WalletBackupEnabledDescription' : 'WalletBackupDisabledDescription'}
             class={keysStyles.section}
           >
             <Show
@@ -163,14 +163,14 @@ export default function WalletKeysScreen() {
                       </span>
                     )}
                   >
-                    {i18n('Wallet.Keys.BackupEnable')}
+                    {i18n('WalletEnableBackup')}
                   </Row.Title>
                 </Row>
               }
             >
               <Row clickable={disableBackup} color="danger">
                 <Row.Icon icon="lockoff" />
-                <Row.Title>{i18n('Wallet.Keys.BackupDisable')}</Row.Title>
+                <Row.Title>{i18n('WalletDisableBackup')}</Row.Title>
               </Row>
             </Show>
           </Section>
@@ -179,7 +179,7 @@ export default function WalletKeysScreen() {
         <Section caption="Wallet.Keys.DeleteText" class={keysStyles.section}>
           <Row clickable={deleteWallet} color="danger">
             <Row.Icon icon="delete" />
-            <Row.Title>{i18n('Wallet.Keys.Delete')}</Row.Title>
+            <Row.Title>{i18n('WalletDeleteWallet')}</Row.Title>
           </Row>
         </Section>
 

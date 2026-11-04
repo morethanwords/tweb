@@ -157,9 +157,9 @@ export async function ensureWalletKey(
 
   const {passwordPopup} = await import('@components/popups/password');
   const words = await session.fetchPhraseFromBackup((exportWith) => !stillWanted() ? Promise.reject('closed') : passwordPopup({
-    titleLangKey: 'Wallet.Phrase.PasswordTitle',
+    titleLangKey: 'TwoStepVerification',
     descriptionLangKey: passwordDescription,
-    button: {langKey: 'Wallet.Continue'},
+    button: {langKey: 'WalletContinue'},
     callback: exportWith,
     ...WALLET_PASSWORD_PROMPT
   }));
@@ -238,9 +238,9 @@ export async function withWalletPassword<T>(description: LangPackKey, action: (p
 
   const {passwordPopup} = await import('@components/popups/password');
   return passwordPopup({
-    titleLangKey: 'Wallet.Phrase.PasswordTitle',
+    titleLangKey: 'TwoStepVerification',
     descriptionLangKey: description,
-    button: {langKey: 'Wallet.Continue'},
+    button: {langKey: 'WalletContinue'},
     callback: action,
     ...WALLET_PASSWORD_PROMPT
   });
@@ -518,10 +518,10 @@ export function getWalletErrorLangKey(error: any) {
     case 'ROTATION_PENDING':
     case 'WALLET_ROTATION_NOT_FOUND': return 'Wallet.Backup.KeyChanging';
     case 'WALLET_PHRASE_OUTDATED': return 'Wallet.Restore.Outdated';
-    case 'WALLET_PHRASE_OTHER_WALLET': return 'Wallet.Restore.OtherWallet';
+    case 'WALLET_PHRASE_OTHER_WALLET': return 'WalletWrongSecretPhraseInfo';
     case 'WALLET_PHRASE_FOREIGN': return 'Wallet.Restore.Foreign';
     case 'WALLET_PHRASE_INVALID': return 'Wallet.Restore.Invalid';
-    case 'WALLET_USER_UNAVAILABLE': return 'Wallet.Error.UserUnavailable';
+    case 'WALLET_USER_UNAVAILABLE': return 'WalletRecipientUnavailable';
     case 'WALLET_NAME_NOT_FOUND': return 'Wallet.Error.NameNotFound';
     case 'WALLET_LINK_EXPIRED': return 'Wallet.Error.LinkExpired';
     case 'WALLET_LINK_INVALID': return 'Link.Invalid';

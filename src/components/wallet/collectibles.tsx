@@ -82,11 +82,11 @@ export function WalletNftName(props: {item: {name?: string, address: string}}) {
  */
 export function walletNftKindText(item: WalletNftItem): JSX.Element {
   const {kind} = classifyWalletNft(item);
-  if(kind === 'username') return i18n('Wallet.Collectible.Kind.Username');
-  if(kind === 'number') return i18n('Wallet.Collectible.Kind.Number');
+  if(kind === 'username') return i18n('WalletCollectibleUsername');
+  if(kind === 'number') return i18n('WalletCollectibleNumber');
   const look = kind === 'gift' && getWalletNftGiftLook(item);
-  if(look) return i18n('Wallet.Collectible.GiftAttributes', [look.model, look.backdrop]);
-  return getWalletNftCollection(item).name || i18n('Wallet.Collectible.Title');
+  if(look) return i18n('WalletCollectibleModelBackdrop', [look.model, look.backdrop]);
+  return getWalletNftCollection(item).name || i18n('WalletCollectible');
 }
 
 export function WalletCollectibles(props: {items: WalletNftItem[], onOpen: (item: WalletNftItem) => void}) {
