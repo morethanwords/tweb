@@ -7,7 +7,18 @@ describe('the registry of the app\'s top level, filled before the app is up', ()
     vi.doUnmock('@lib/solidjs/hotReloadGuardValue');
     vi.doUnmock('@/pages/appTopLevel');
     vi.doUnmock('@/pages/mountAuthFlow');
+    vi.doUnmock('@/pages/deactivatedScreen');
   });
+
+  // * what bootstrapIm imports beside the top level: the sign-in screens it takes down, and the start's failure
+  const mockAuthAndFailure = () => {
+    vi.doMock('@/pages/mountAuthFlow', () => ({disposeActiveAuthFlow: () => {}}));
+    vi.doMock('@/pages/deactivatedScreen', () => ({
+      onStartImportFailed: (err: unknown) => {
+        throw err;
+      }
+    }));
+  };
 
   // * two graphs imported one after the other fetch the second only once the first has run: a whole round of
   // * requests more on the way to the chat list, seconds on a slow link
@@ -15,7 +26,7 @@ describe('the registry of the app\'s top level, filled before the app is up', ()
     vi.resetModules();
     const separate: string[] = [];
     const appDialogsManager = {};
-    vi.doMock('@/pages/mountAuthFlow', () => ({disposeActiveAuthFlow: () => {}}));
+    mockAuthAndFailure();
     vi.doMock('@/pages/appTopLevel', () => ({default: appDialogsManager}));
     vi.doMock('@lib/appDialogsManager', () => {
       separate.push('appDialogsManager');
@@ -47,7 +58,7 @@ describe('the registry of the app\'s top level, filled before the app is up', ()
     vi.resetModules();
     const order: string[] = [];
     let fail = true;
-    vi.doMock('@/pages/mountAuthFlow', () => ({disposeActiveAuthFlow: () => {}}));
+    mockAuthAndFailure();
     vi.doMock('@lib/appDialogsManager', () => {
       order.push('appDialogsManager');
       return {default: {}};

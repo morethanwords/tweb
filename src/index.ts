@@ -19,7 +19,7 @@ import setWorkerProxy from '@helpers/setWorkerProxy';
 import toggleAttributePolyfill from '@helpers/dom/toggleAttributePolyfill';
 import rootScope from '@lib/rootScope';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
-import I18n, {checkLangPackForUpdates, i18n, LangPackKey} from '@lib/langPack';
+import I18n, {checkLangPackForUpdates} from '@lib/langPack';
 import '@helpers/peerIdPolyfill';
 import '@lib/polyfill';
 import '@lib/debug/mountLogExport'; // main-thread-only: wires window.downloadLogs / collectLogs
@@ -55,7 +55,7 @@ import replaceChildrenPolyfill from '@helpers/dom/replaceChildrenPolyfill';
 import listenForWindowPrint from '@helpers/dom/windowPrint';
 import cancelImageEvents from '@helpers/dom/cancelImageEvents';
 import listenForLinkPress from '@helpers/dom/linkPress';
-import PopupElement, {createPopup} from '@components/popups/indexTsx';
+import {DeactivatedScreen, onStartImportFailed, showDeactivatedScreen} from '@/pages/deactivatedScreen';
 import PasscodeLockScreenController from '@components/passcodeLock/passcodeLockScreenController'; PasscodeLockScreenController;
 import commonStateStorage from '@lib/commonStateStorage';
 import {useAppSettings, setAppSettingsSilent} from '@stores/appSettings';
@@ -365,11 +365,7 @@ function onInstanceDeactivated(reason: InstanceDeactivateReason) {
 
   const onOtherClientClick = onTabsClick;
 
-  const map: {[key in InstanceDeactivateReason]: {
-    title: LangPackKey,
-    subtitle: LangPackKey,
-    onClick: () => void
-  }} = {
+  const map: {[key in InstanceDeactivateReason]: DeactivatedScreen} = {
     version: {
       title: 'Deactivated.Version.Title',
       subtitle: 'Deactivated.Version.Subtitle',
@@ -387,24 +383,7 @@ function onInstanceDeactivated(reason: InstanceDeactivateReason) {
     }
   };
 
-  document.body.classList.add('deactivated');
-
-  const header = document.createElement('div');
-  header.classList.add('header');
-  header.append(i18n(map[reason].title));
-
-  const subtitle = document.createElement('div');
-  subtitle.classList.add('subtitle');
-  subtitle.append(i18n(map[reason].subtitle));
-
-  // the entry file is plain .ts, so the popup is composed by calling the component
-  createPopup(() => PopupElement({
-    class: 'popup-instance-deactivated',
-    containerClass: 'instance-deactivated-container',
-    closable: true,
-    onClose: map[reason].onClick,
-    children: [header, subtitle]
-  }));
+  showDeactivatedScreen(map[reason]);
 };
 
 const TIME_LABEL = 'Elapsed time since unlocked';
@@ -686,7 +665,7 @@ if(import.meta.env.DEV || import.meta.env.VITE_PREVIEW) {
 
     }
 
-    const {mountAuthFlow} = await import('./pages/mountAuthFlow');
+    const {mountAuthFlow} = await import('./pages/mountAuthFlow').catch(onStartImportFailed);
     const accountNumber = getCurrentAccount();
     mountAuthFlow(authState, {
       accountNumber,
@@ -699,7 +678,7 @@ if(import.meta.env.DEV || import.meta.env.VITE_PREVIEW) {
         await host.leave();
         changeAccount(previousAccount);
       } : undefined,
-      toIm: () => import('./pages/bootstrapIm').then(({bootstrapIm}) => bootstrapIm()),
+      toIm: () => import('./pages/bootstrapIm').catch(onStartImportFailed).then(({bootstrapIm}) => bootstrapIm()),
       openAccount: (accountNumber) => changeAccount(accountNumber)
     });
   } else {
@@ -709,7 +688,7 @@ if(import.meta.env.DEV || import.meta.env.VITE_PREVIEW) {
     fadeInWhenFontsReady(document.getElementById('main-columns'), fontsPromise);
 
     const [{bootstrapIm}, shouldAnimate] = await Promise.all([
-      import('./pages/bootstrapIm'),
+      import('./pages/bootstrapIm').catch(onStartImportFailed),
       sessionStorage.get('should_animate_main')
     ]);
 

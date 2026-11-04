@@ -5,6 +5,7 @@ import isNativeVoiceRecorderSupported from '@helpers/voiceRecorder/isNativeSuppo
 import rootScope from '@lib/rootScope';
 
 import {disposeActiveAuthFlow} from '@/pages/mountAuthFlow';
+import {onStartImportFailed} from '@/pages/deactivatedScreen';
 
 let bootstrapped = false;
 
@@ -43,7 +44,7 @@ export async function bootstrapIm(): Promise<void> {
     'requestVideoFrameCallback' in HTMLVideoElement.prototype ?
       Promise.resolve() :
       import('@helpers/dom/requestVideoFrameCallbackPolyfill')
-  ]);
+  ]).catch(onStartImportFailed);
 
   if(recorder) {
     (window as any).Recorder = recorder.default;
