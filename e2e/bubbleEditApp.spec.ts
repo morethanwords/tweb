@@ -705,4 +705,81 @@ test.describe('a message edited where it stands', () => {
     expect(after, 'put back as it is').toEqual({text, reactions: 0, edited: false, pinned: false, buttons: false, panel: false});
     expect(errors.filter((error) => !/no sticker/.test(error))).toEqual([]);
   });
+
+  // * its first reactions make a message taller, and the bubble changes as they come: the stripe that lights it as the
+  // * menu's target goes with it, and its spoilers stay masked by the colour of the bubble, which the change hides
+  // * while it draws the background itself
+  test('a lit message with a spoiler gets its first reactions', async({page}) => {
+    await openSavedMessages(page);
+    const mid = await sendText(page, `spoiler ${Date.now()}`);
+    await page.evaluate(async(mid) => {
+      const w = window as any;
+      // * what the spoilers are masked with, as handed to the worker that draws them
+      // * the app's own class, as it puts it on the window (a bundled preview serves no source modules)
+      const DotRenderer = w.DotRenderer;
+      const attach = DotRenderer.attachTextSpoilerOverlay;
+      w.__masks = [];
+      DotRenderer.attachTextSpoilerOverlay = (...args: any[]) => {
+        const result = attach.apply(DotRenderer, args);
+        const update = result.overlay.update;
+        result.overlay.update = (state: any) => {
+          w.__masks.push(state.rects.map((rect: any) => rect.color || state.backgroundColor));
+          return update(state);
+        };
+        return result;
+      };
+      await w.showBubbleSandbox();
+      w.bubbleSandbox.select([document.querySelector(`#column-center .bubble[data-mid="${mid}"]`)]);
+      w.bubbleSandbox.apply({text: 'formatted', reactions: 'none'});
+    }, mid);
+    await page.waitForFunction((mid) => {
+      const bubble = document.querySelector(`#column-center .bubble[data-mid="${mid}"]`);
+      return bubble?.querySelector('.message-spoiler-overlay') && !bubble.querySelector('[class*="_layer_"]');
+    }, mid, {timeout: 5000});
+    await page.waitForTimeout(800);
+
+    const stripes = await page.evaluate(async(mid) => {
+      const w = window as any;
+      const bubble = document.querySelector<HTMLElement>(`#column-center .bubble[data-mid="${mid}"]`);
+      w.appImManager.chat.bubbles.toggleActiveBubble(bubble, true);
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      // * where the stripe is drawn in a frame: its box, as its transform moves and stretches it about its middle
+      const stripe = () => {
+        const rect = bubble.getBoundingClientRect();
+        const style = getComputedStyle(bubble, '::after');
+        const [top, bottom] = [rect.top + parseFloat(style.top), rect.bottom - parseFloat(style.bottom)];
+        const matrix = new DOMMatrix(style.transform === 'none' ? undefined : style.transform);
+        const middle = (top + bottom) / 2 + matrix.f;
+        const height = (bottom - top) * matrix.d;
+        // * and where the message is laid out
+        return {top: middle - height / 2, bottom: middle + height / 2, laidOut: rect.top};
+      };
+      const frames = [stripe()];
+      const started = performance.now();
+      w.bubbleSandbox.apply({reactions: 'one'});
+      while(performance.now() - started < 1000) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        frames.push(stripe());
+      }
+
+      w.appImManager.chat.bubbles.toggleActiveBubble(bubble, false);
+      return frames;
+    }, mid);
+    const [before, after] = [stripes[0], stripes[stripes.length - 1]];
+    expect(after.top, 'the message got taller').toBeLessThan(before.top - 10);
+    // * laid out as tall as it ends at once, the stripe is not: it goes there, from where it was, and its bottom stays
+    const laidOut = stripes.filter((frame) => Math.abs(frame.laidOut - after.laidOut) < .5);
+    expect(laidOut.some((frame) => frame.top > after.top + 5), 'the stripe goes from where it was').toBe(true);
+    expect(stripes.every((frame) => frame.top <= before.top + .5 && frame.top >= after.top - .5), 'nor beyond').toBe(true);
+    expect(stripes.every((frame) => Math.abs(frame.bottom - before.bottom) < 1.5), 'its bottom stays').toBe(true);
+
+    // * once the change is over, what they are masked with is the bubble's colour
+    await page.waitForTimeout(1000);
+    const masks: string[][] = await page.evaluate(() => (window as any).__masks);
+    expect(masks.length, 'the spoilers were measured').toBeGreaterThan(0);
+    const opaque = (color: string) => !!color && !/^rgba\(.*,\s*0\)$|^transparent$/.test(color);
+    expect(masks[masks.length - 1].every(opaque), `masked with ${masks[masks.length - 1].join(', ')}`).toBe(true);
+
+    await page.evaluate(() => (window as any).bubbleSandbox.close());
+  });
 });

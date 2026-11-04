@@ -211,7 +211,9 @@ import generatePhotoForExtendedMediaPreview from '@appManagers/utils/photos/gene
 import icon from '@components/icon';
 import {MediaSearchContext} from '@components/appMediaPlaybackController';
 import {wrapRoundVideoBubble} from '@components/chat/bubbleParts/roundVideoBubble';
-import {createMessageSpoilerOverlay} from '@components/messageSpoilerOverlay';
+import {createMessageSpoilerOverlay, updateMessageSpoilerOverlays} from '@components/messageSpoilerOverlay';
+import {getReplyQuote} from '@lib/richQuote';
+import {getRichQuoteTextOffset} from '@components/chat/richQuoteSelection';
 import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
 import {Sparkles} from '@components/sparkles';
@@ -4584,16 +4586,17 @@ export default class ChatBubbles {
           }
         }
 
+        const replyQuote = replyTo.pFlags.quote && getReplyQuote(replyTo);
         this.chat.appImManager.setInnerPeer({
           ...additionalSetPeerProps,
           peerId: replyToPeerId,
           lastMsgId: replyToMid,
           pollOption: replyTo.poll_option,
           // * only a manual quote points at a specific part of the message
-          highlight: replyTo.pFlags.quote && replyTo.quote_text ? {
+          highlight: replyQuote ? {
             type: 'quote',
-            text: replyTo.quote_text,
-            offset: replyTo.quote_offset
+            text: replyQuote.text,
+            offset: replyQuote.offset
           } : undefined,
           type: this.chat.type === ChatType.Logs ? undefined : this.chat.type,
           threadId: this.chat.threadId,
@@ -6194,7 +6197,13 @@ export default class ChatBubbles {
 
     // * `.message` is positioned and paints below `.bubble-content` background — full line boxes,
     // * appearing iOS-style: the whole text selected, then narrowing down onto the match
-    const highlight = highlightText({container, match, skip: BUBBLE_TEXT_HIGHLIGHT_SKIP, lineBoxes: true, animateIn: true});
+    const highlight = highlightText({
+      container,
+      match: this.getBubbleTextMatch(container, match),
+      skip: BUBBLE_TEXT_HIGHLIGHT_SKIP,
+      lineBoxes: true,
+      animateIn: true
+    });
     if(!highlight.found) {
       highlight.dispose();
       return;
@@ -6209,6 +6218,13 @@ export default class ChatBubbles {
       clearTimeout(timeout);
       highlight.dispose();
     });
+  }
+
+  /** a match as the text it is looked for in counts: a rich message's quote counts its offset in its texts */
+  private getBubbleTextMatch(container: HTMLElement, match: TextHighlightMatch): TextHighlightMatch {
+    return match?.type === 'quote' && match.offset !== undefined ?
+      {...match, offset: getRichQuoteTextOffset(container, match.offset, BUBBLE_TEXT_HIGHLIGHT_SKIP)} :
+      match;
   }
 
   /** the text a highlight applies to — `element` is either the bubble or an album/document item inside it */
@@ -6243,7 +6259,7 @@ export default class ChatBubbles {
       rect = focusOn.element.getBoundingClientRect();
     } else {
       const container = this.getBubbleTextContainer(element);
-      rect = container && findTextRect(container, focusOn.textHighlight, BUBBLE_TEXT_HIGHLIGHT_SKIP);
+      rect = container && findTextRect(container, this.getBubbleTextMatch(container, focusOn.textHighlight), BUBBLE_TEXT_HIGHLIGHT_SKIP);
     }
 
     if(!rect) {
@@ -8681,6 +8697,9 @@ export default class ChatBubbles {
       this.bubbleTransition = transition;
       this.bubbleTransitionPromise = promise;
       promise.then(() => {
+        // a spoiler measured as the bubble changed (its first reactions make it taller) is masked by the colour under
+        // it: the bubble's own is back only now
+        transition.bubbles.forEach(updateMessageSpoilerOverlays);
         if(this.bubbleTransitionPromise !== promise) return;
         this.bubbleTransitionPromise = this.bubbleTransition = undefined;
       });

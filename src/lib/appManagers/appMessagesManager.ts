@@ -14,7 +14,7 @@ import LazyLoadQueueBase from '@components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import tsNow from '@helpers/tsNow';
 import {nextRandomUint, randomLong} from '@helpers/random';
-import {BotCommand, Chat, ChatFull, Dialog as MTDialog, DocumentAttribute, EphemeralMessage, EphemeralSendMessage, InputMedia, InputMessage, InputMessageReadMetric, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesBotCallbackAnswer, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, PageBlock, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, WebPage, GeoPoint, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, MessagesAffectedMessages, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood, MessagesDeleteSavedHistory, ChannelsDeleteParticipantHistory, MessagesDeleteHistory, MessagesDeleteTopicHistory, RichMessage} from '@layer';
+import {BotCommand, Chat, ChatFull, Dialog as MTDialog, DocumentAttribute, EphemeralMessage, EphemeralSendMessage, InputMedia, InputMessage, InputMessageReadMetric, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesBotCallbackAnswer, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, PageBlock, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, WebPage, GeoPoint, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, MessagesAffectedMessages, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood, MessagesDeleteSavedHistory, ChannelsDeleteParticipantHistory, MessagesDeleteHistory, MessagesDeleteTopicHistory, RichMessage, RichText} from '@layer';
 import type {InputRichMessage} from '@layer';
 import {ArgumentTypes, InvokeApiOptions, Modify} from '@types';
 import {LogTypes} from '@lib/logger';
@@ -65,6 +65,7 @@ import getDocumentInput from '@appManagers/utils/docs/getDocumentInput';
 import collectInputRichMessageReferences from '@appManagers/utils/richMessage/collectInputRichMessageReferences';
 import toggleRichMessageChecklist from '@appManagers/utils/richMessage/toggleChecklist';
 import toInputRichMessage from '@appManagers/utils/richMessage/toInputRichMessage';
+import {getInputReplyQuote} from '@lib/richMessage';
 import {
   RichMessageValidationOptions,
   resolveRichMessageLimits,
@@ -386,7 +387,8 @@ export type MessageSendingParams = Partial<{
   threadId: number,
   replyToMsgId: number,
   replyToStoryId: number,
-  replyToQuote: {text: string, entities?: MessageEntity[], offset?: number},
+  // * a quote of a rich message is its fragments (`rich`), `text` and `entities` what they read
+  replyToQuote: {text: string, entities?: MessageEntity[], offset?: number, rich?: RichText[]},
   replyToPollOption: Uint8Array,
   replyToPeerId: PeerId,
   replyTo: InputReplyTo,
@@ -1801,6 +1803,7 @@ export class AppMessagesManager extends AppManager {
       replyTo.quote_text === undefined &&
       replyTo.quote_entities === undefined &&
       replyTo.quote_offset === undefined &&
+      replyTo.quote_rich === undefined &&
       replyTo.todo_item_id === undefined &&
       replyTo.poll_option === undefined &&
       replyTo.reply_to_msg_deleted === undefined
@@ -4951,11 +4954,7 @@ export class AppMessagesManager extends AppManager {
         reply_to_peer_id: options.replyToPeerId && this.appPeersManager.getInputPeerById(options.replyToPeerId),
         top_msg_id: options.threadId ? getServerMessageId(options.threadId) : undefined,
         poll_option: options.replyToPollOption,
-        ...(options.replyToQuote && {
-          quote_text: options.replyToQuote.text,
-          quote_entities: options.replyToQuote.entities,
-          quote_offset: options.replyToQuote.offset
-        })
+        ...(options.replyToQuote && getInputReplyQuote(options.replyToQuote))
       };
     } else if(this.appPeersManager.canManageDirectMessages(options.peerId) && options.replyToMonoforumPeerId) {
       return {
@@ -5400,7 +5399,11 @@ export class AppMessagesManager extends AppManager {
       header.reply_to_top_id = replyToTopId;
     }
 
-    if(replyTo.quote_text) {
+    if(replyTo.quote_rich?.length) {
+      header.quote_rich = replyTo.quote_rich;
+      header.quote_offset = replyTo.quote_offset;
+      header.pFlags.quote = true;
+    } else if(replyTo.quote_text) {
       header.quote_text = replyTo.quote_text;
       header.quote_entities = replyTo.quote_entities;
       header.quote_offset = replyTo.quote_offset;
@@ -5410,7 +5413,7 @@ export class AppMessagesManager extends AppManager {
     if(replyToPeerId) {
       if(replyToPeerId.isUser() || !this.appPeersManager.isPeerPublic(replyToPeerId)) {
         delete header.reply_to_msg_id;
-        header.quote_text ??= (originalMessage as Message.message).message;
+        if(!header.quote_rich) header.quote_text ??= (originalMessage as Message.message).message;
       } else {
         header.reply_to_peer_id = this.appPeersManager.getOutputPeer(replyToPeerId);
       }

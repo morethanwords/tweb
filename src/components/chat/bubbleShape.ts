@@ -17,7 +17,14 @@ export type Point = {x: number, y: number};
 export type Radii = {topLeft: number, topRight: number, bottomRight: number, bottomLeft: number};
 /** an animation of a part: its keyframes over the whole way, and the curve between them */
 /** a way of an element; `add`: on top of a way it is already going (the list keeping up with a growing message) */
-export type Track = {element: HTMLElement, keyframes: Keyframe[], easing: string, composite?: CompositeOperation};
+export type Track = {
+  element: HTMLElement,
+  keyframes: Keyframe[],
+  easing: string,
+  composite?: CompositeOperation,
+  // what of the element goes this way: a pseudo-element of it, or itself
+  pseudoElement?: '::before' | '::after'
+};
 /** a part that moves across in a wrapper, and up in itself */
 export type Axes = {across: HTMLElement, part: HTMLElement};
 /** how a way goes: its curve across and its curve up, and how long it lasts */
@@ -150,8 +157,8 @@ export type Tracks = ReturnType<typeof createTracks>;
  * wait again each time it is planned anew.
  */
 export function animateTracks(tracks: Track[], duration: number) {
-  const animations = tracks.map(({element, keyframes, easing, composite}) => {
-    return element.animate(keyframes, {duration, easing, fill: 'forwards', composite});
+  const animations = tracks.map(({element, keyframes, easing, composite, pseudoElement}) => {
+    return element.animate(keyframes, {duration, easing, fill: 'forwards', composite, pseudoElement});
   });
   startOnNextFrame(animations);
   return animations;

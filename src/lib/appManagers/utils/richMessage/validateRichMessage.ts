@@ -1,4 +1,5 @@
 import hasRichTextContent from '@lib/richTextProcessor/hasRichTextContent';
+import {getRichTextFlatText} from '@lib/richMessage';
 import type {InlineButtonType, InputRichMessage, PageBlock, PageCaption, PageTableCell, PageTableRow, RichText} from '@layer';
 import {MESSAGES_ALBUM_MAX_SIZE} from '@appManagers/constants';
 import {TLSerialization} from '@lib/mtproto/tl_utils';
@@ -336,25 +337,7 @@ const DATE_FORMAT_FLAGS = new Set([
 ]);
 
 function richTextContentLength(text?: RichText): number {
-  if(!text) return 0;
-  switch(text._) {
-    case 'textEmpty':
-      return 0;
-    case 'textPlain':
-      return text.text.length;
-    case 'textMath':
-      return text.source.length;
-    case 'textCustomEmoji':
-      return text.alt.length;
-    case 'textImage':
-      return 0;
-    case 'textConcat':
-      return text.texts.reduce((length, child) => length + richTextContentLength(child), 0);
-    case 'textDiff':
-      return richTextContentLength(text.text);
-    default:
-      return richTextContentLength(text.text);
-  }
+  return getRichTextFlatText(text).length;
 }
 
 function validTextUrl(url: string) {

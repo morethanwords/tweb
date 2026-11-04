@@ -1,4 +1,5 @@
 import {MessageEntity, Page, PageBlock, PageCaption, PageListOrderedItem, RichMessage, RichText, TextWithEntities} from '@layer';
+import type {MessageSendingParams} from '@appManagers/appMessagesManager';
 import wrapTelegramRichText from '@lib/richTextProcessor/wrapTelegramRichText';
 import sortEntities from '@lib/richTextProcessor/sortEntities';
 import {formatListItemMarker} from '@lib/richTextProcessor/orderedList';
@@ -7,6 +8,41 @@ import {MATH_MARKER_RE, decodeInlineMath} from '@helpers/math/mathMarker';
 const emptyRichText: RichText = {_: 'textEmpty'};
 
 type Summary = TextWithEntities.textWithEntities;
+
+/** What a text of a rich message reads: what its length is checked by, and a quote of it counted in (`@lib/richQuote`) */
+export function getRichTextFlatText(text: RichText): string {
+  if(!text) return '';
+  switch(text._) {
+    case 'textEmpty':
+    case 'textImage':
+      return '';
+    case 'textPlain':
+      return text.text;
+    case 'textMath':
+      return text.source;
+    case 'textCustomEmoji':
+      return text.alt;
+    case 'textConcat':
+      return text.texts.map(getRichTextFlatText).join('');
+    default:
+      return getRichTextFlatText(text.text);
+  }
+}
+
+/**
+ * What a reply asks for of its quote: a quote of a rich message (`rich`, `@lib/richQuote`) goes by itself, its
+ * fragments and where it starts — with a text beside it the server takes it for a quote of a text
+ */
+export function getInputReplyQuote(quote: MessageSendingParams['replyToQuote']) {
+  return quote.rich ? {
+    quote_rich: quote.rich,
+    quote_offset: quote.offset
+  } : {
+    quote_text: quote.text,
+    quote_entities: quote.entities,
+    quote_offset: quote.offset
+  };
+}
 
 export function richMessageToPage(richMessage: RichMessage): Page.page {
   // A streamed draft is rendered from every revision the sender pushes, so this runs on
@@ -381,7 +417,7 @@ function appendEntities(summary: Summary, entities: MessageEntity[], offset: num
   }
 }
 
-function joinRichTexts(texts: RichText[], separator: string): TextWithEntities {
+export function joinRichTexts(texts: RichText[], separator: string): TextWithEntities {
   return joinTexts(texts.map(wrapSummaryRichText), separator);
 }
 

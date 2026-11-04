@@ -1,6 +1,6 @@
 import type {ChatInputReplyTo} from '@components/chat/input';
-import {MessageEntity} from '@layer';
 import cancelSelection from '@helpers/dom/cancelSelection';
+import {QUOTE_ENTITY_TYPES} from '@lib/richQuote';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 
@@ -54,23 +54,13 @@ export default function getRichSelection(target: HTMLElement) {
   else endContainer.nodeValue = endValue;
 
   // * have to fix entities
-  const SUPPORTED_ENTITIES = new Set<MessageEntity['_']>([
-    'messageEntityBold',
-    'messageEntityItalic',
-    'messageEntityUnderline',
-    'messageEntityStrike',
-    'messageEntitySpoiler',
-    'messageEntityCustomEmoji',
-    'messageEntityEmoji',
-    'messageEntityFormattedDate'
-  ]);
   const {value: valueAfter, entities} = getRichValueWithCaret(container, true);
   const value = valueAfter.slice(startIndex, endIndex);
   for(let i = 0; i < entities.length; ++i) {
     const entity = entities[i];
     const startOffset = entity.offset;
     const endOffset = startOffset + entity.length;
-    if(endOffset < startIndex || startOffset >= endIndex || !SUPPORTED_ENTITIES.has(entity._)) {
+    if(endOffset < startIndex || startOffset >= endIndex || !QUOTE_ENTITY_TYPES.has(entity._)) {
       entities.splice(i--, 1);
       continue;
     }

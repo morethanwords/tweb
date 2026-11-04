@@ -103,6 +103,8 @@ import {
 } from '@components/wrappers/urlButtonAnchor';
 import {getRichTextButton, RICH_TEXT_BUTTON_SELECTOR} from '@lib/richTextProcessor/richTextButtons';
 import type Chat from '@components/chat/chat';
+import {setRichQuoteSource} from '@components/chat/richQuoteSources';
+import {getRichQuoteNodeId} from '@lib/richQuote';
 import type wrapVideo from '@components/wrappers/video';
 
 export type ReactiveInstantViewValue<T> = T | Accessor<T>;
@@ -668,18 +670,18 @@ function PageDocument(props: {documentId: Long}) {
   );
 }
 
-function Caption(props: {caption: PageCaption}) {
+function Caption(props: {caption: PageCaption, quote?: (part: string) => () => string}) {
   return (
     <Show when={!isRichTextEmpty(props.caption.text) || !isRichTextEmpty(props.caption.credit)}>
       <div class={classNames(styles.Padding, styles.Caption)}>
         <Show when={!isRichTextEmpty(props.caption.text)}>
           <div class={styles.CaptionText}>
-            <RichTextRenderer text={props.caption.text} />
+            <RichTextRenderer text={props.caption.text} quote={props.quote?.('caption')} />
           </div>
         </Show>
         <Show when={!isRichTextEmpty(props.caption.credit)}>
           <div class={styles.CaptionCredit}>
-            <RichTextRenderer text={props.caption.credit} />
+            <RichTextRenderer text={props.caption.credit} quote={props.quote?.('credit')} />
           </div>
         </Show>
       </div>
@@ -1244,6 +1246,8 @@ function Block(props: {
   const block = props.block;
 
   const CaptionC: typeof Caption = props.noCaption ? (...args: any[]) => false : Caption;
+  // * which text of the message a part of the block is, for a quote of a selection in it (`getRichQuoteNodes`)
+  const quote = (part: string) => props.path ? () => getRichQuoteNodeId(props.path, part) : undefined;
   // if(block._ !== 'pageBlockRelatedArticles' && Math.random() !== undefined) {
   //   return;
   // }
@@ -1272,7 +1276,7 @@ function Block(props: {
       const presentation = getInstantViewHeadingPresentation(level);
       return (
         <Dynamic component={presentation.tag} class={presentation.class}>
-          <RichTextRenderer text={block.text} />
+          <RichTextRenderer text={block.text} quote={quote('text')} />
         </Dynamic>
       );
     }
@@ -1280,7 +1284,7 @@ function Block(props: {
       const context = useContext(InstantViewContext);
       return (
         <p class={classNames(styles.Padding, styles.Paragraph)}>
-          <RichTextRenderer text={block.text} />
+          <RichTextRenderer text={block.text} quote={quote('text')} />
           {/* in a message an empty paragraph is an empty line, as the other apps draw it */}
           {context.message && isRichTextEmpty(block.text) && <br />}
         </p>
@@ -1292,9 +1296,12 @@ function Block(props: {
       return (
         <Show
           when={block.language === 'math'}
-          fallback={<PreformattedCode text={block.text} language={block.language} />}
+          fallback={<PreformattedCode text={block.text} language={block.language} quote={quote('text')} />}
         >
-          <div class={classNames(styles.Padding, styles.MathBlockWrapper)}>
+          <div
+            ref={(element) => props.path && setRichQuoteSource(element, quote('text'))}
+            class={classNames(styles.Padding, styles.MathBlockWrapper)}
+          >
             <BlockLatex source={richTextToString(block.text)} />
           </div>
         </Show>
@@ -1304,12 +1311,15 @@ function Block(props: {
       // Server-sent `pageBlockMath` (rich messages) — render as a display formula through the same
       // Temml path master uses for markdown `$$…$$` blocks, instead of dumping the raw LaTeX source.
       return (
-        <div class={classNames(styles.Padding, styles.MathBlockWrapper)}>
+        <div
+          ref={(element) => props.path && setRichQuoteSource(element, quote('text'))}
+          class={classNames(styles.Padding, styles.MathBlockWrapper)}
+        >
           <BlockLatex source={block.source} />
         </div>
       );
     case 'pageBlockFooter':
-      return <footer class={classNames(styles.Padding, styles.Footer, 'secondary')}><RichTextRenderer text={block.text} /></footer>;
+      return <footer class={classNames(styles.Padding, styles.Footer, 'secondary')}><RichTextRenderer text={block.text} quote={quote('text')} /></footer>;
     case 'pageBlockDivider':
       return <div class={styles.Divider} />;
     case 'pageBlockOrderedList':
@@ -1391,7 +1401,10 @@ function Block(props: {
                 </Show>
                 <div class={styles.ListItemContent}>
                   {item._ === 'pageListItemText' || item._ === 'pageListOrderedItemText' ? (
-                    <RichTextRenderer text={item.text} />
+                    <RichTextRenderer
+                      text={item.text}
+                      quote={props.path && (() => getRichQuoteNodeId([...props.path, idx()], 'text'))}
+                    />
                   ) : (
                     <StablePageBlocks
                       blocks={item.blocks}
@@ -1413,10 +1426,10 @@ function Block(props: {
         <div class={classNames(styles.Padding, styles.BlockquoteWrapper)}>
           {/* reuse the app-standard quote styling (left accent bar + tinted bg + quote glyph) */}
           <CollapsableBlockquote collapsed={block.pFlags.collapsed}>
-            <RichTextRenderer text={block.text} />
+            <RichTextRenderer text={block.text} quote={quote('text')} />
             <Show when={!isRichTextEmpty(block.caption)}>
               <div class={styles.BlockquoteCaption}>
-                <RichTextRenderer text={block.caption} />
+                <RichTextRenderer text={block.caption} quote={quote('caption')} />
               </div>
             </Show>
           </CollapsableBlockquote>
@@ -1431,7 +1444,7 @@ function Block(props: {
             <StablePageBlocks path={props.path} blocks={block.blocks} paddings={props.paddings + 1} />
             <Show when={!isRichTextEmpty(block.caption)}>
               <div class={styles.BlockquoteCaption}>
-                <RichTextRenderer text={block.caption} />
+                <RichTextRenderer text={block.caption} quote={quote('caption')} />
               </div>
             </Show>
           </blockquote>
@@ -1472,7 +1485,7 @@ function Block(props: {
             }}
             onClick={() => onClick()}
           />
-          <CaptionC caption={block.caption} />
+          <CaptionC caption={block.caption} quote={quote} />
         </>
       );
     }
@@ -1500,7 +1513,7 @@ function Block(props: {
             }}
             onClick={() => onClick()}
           />
-          <CaptionC caption={block.caption} />
+          <CaptionC caption={block.caption} quote={quote} />
         </>
       );
     }
@@ -1511,7 +1524,8 @@ function Block(props: {
       return (
         <>
           <PageDocument documentId={getDocumentRowBlockId(block)} />
-          <CaptionC caption={block.caption} />
+          {/* a file's caption is no text of the message a quote takes, an audio's is */}
+          <CaptionC caption={block.caption} quote={block._ === 'pageBlockAudio' ? quote : undefined} />
         </>
       );
     case 'pageBlockChannel': {
@@ -1574,7 +1588,15 @@ function Block(props: {
           // A function child is mounted by GenericTable's stable cell owner.
           // Its RichTextRenderer therefore survives source changes instead of
           // being recreated by the rows mapping computation.
-          renderContent: () => cell.text ? <RichTextRenderer text={cell.text} /> : undefined,
+          renderContent: () => cell.text ? (
+            <RichTextRenderer
+              text={cell.text}
+              quote={props.path && (() => {
+                const row = block.rows.findIndex((row) => row.cells.includes(cell));
+                return getRichQuoteNodeId(props.path, `cell:${row},${block.rows[row]?.cells.indexOf(cell)}`);
+              })}
+            />
+          ) : undefined,
           get header() {
             return cell.pFlags.header;
           },
@@ -1617,7 +1639,7 @@ function Block(props: {
         <div class={styles.TableWrapper}>
           <Show when={!isRichTextEmpty(block.title)}>
             <div class={classNames(styles.TableName, 'text-bold')}>
-              <RichTextRenderer text={block.title} />
+              <RichTextRenderer text={block.title} quote={quote('title')} />
             </div>
           </Show>
           <div class={classNames(styles.Table, block.pFlags.compact && styles.TableCompact)}>
@@ -1796,6 +1818,7 @@ function Block(props: {
               <Block
                 block={item.block}
                 paddings={0}
+                path={props.path && [...props.path, idx]}
                 noCaption
                 grouped
                 onSize={(size) => {
@@ -1812,7 +1835,7 @@ function Block(props: {
               />
             )}
           </Slideshow>
-          <CaptionC caption={block.caption} />
+          <CaptionC caption={block.caption} quote={quote} />
         </>
       );
     }
@@ -1861,7 +1884,7 @@ function Block(props: {
             />
             <GeoPin />
           </a>
-          <CaptionC caption={block.caption} />
+          <CaptionC caption={block.caption} quote={quote} />
         </>
       );
     }
@@ -1874,7 +1897,7 @@ function Block(props: {
     case 'pageBlockThinking':
       return (
         <p class={classNames(styles.Padding, styles.Paragraph, styles.Thinking)}>
-          <RichTextRenderer text={block.text} />
+          <RichTextRenderer text={block.text} quote={quote('text')} />
         </p>
       );
     // the data attributes are the composer's own markup for a pullquote, so a copied one pastes
@@ -1883,11 +1906,11 @@ function Block(props: {
       return (
         <div class={classNames(styles.Pullquote, 'quote-like')} data-pullquote="">
           <div class={classNames(styles.PullquoteText, 'text-italic')} data-pullquote-text="">
-            <RichTextRenderer text={block.text} />
+            <RichTextRenderer text={block.text} quote={quote('text')} />
           </div>
           <Show when={!isRichTextEmpty(block.caption)}>
             <div class={classNames(styles.BlockquoteCaption, styles.PullquoteAuthor, 'text-bold')} data-pullquote-caption="">
-              <RichTextRenderer text={block.caption} />
+              <RichTextRenderer text={block.caption} quote={quote('caption')} />
             </div>
           </Show>
         </div>
@@ -1927,7 +1950,7 @@ function Block(props: {
               class={classNames(styles.DetailsIcon, open() && styles.DetailsIconOpen)}
             />
             <div class={classNames(styles.DetailsTitle, 'text-bold')}>
-              <RichTextRenderer text={block.title} />
+              <RichTextRenderer text={block.title} quote={quote('title')} />
             </div>
           </button>
           <div
@@ -1958,7 +1981,7 @@ function Block(props: {
           ref={ref}
           class={classNames(styles.Collage, styles.Media, styles.MediaFrame)}
         >
-          <For each={items()}>{(item) => {
+          <For each={items()}>{(item, index) => {
             let ref: HTMLDivElement;
             onCleanup(() => {
               map.delete(ref);
@@ -1972,6 +1995,7 @@ function Block(props: {
                 <Block
                   block={item.block}
                   paddings={props.paddings}
+                  path={props.path && [...props.path, index()]}
                   grouped
                   onSize={(size) => {
                     map.set(ref, size);
@@ -2018,7 +2042,7 @@ function Block(props: {
       return (
         <>
           {ret}
-          <CaptionC caption={block.caption} />
+          <CaptionC caption={block.caption} quote={quote} />
         </>
       );
     }
@@ -2308,7 +2332,8 @@ function wireInlinePageButtons(context: InstantViewContextValue, fragment: Docum
   });
 }
 
-function RichTextRenderer(props: {text: RichText, customEmojiRenderer?: () => CustomEmojiRendererElement}) {
+/** @param quote which text of a rich message it is (`getRichQuoteNodeId`), when a quote can take it */
+function RichTextRenderer(props: {text: RichText, customEmojiRenderer?: () => CustomEmojiRendererElement, quote?: () => string}) {
   const context = useContext(InstantViewContext);
   const blockEmojiRenderer = useContext(BlockEmojiRendererContext);
   const value = createMemo(() => {
@@ -2383,11 +2408,12 @@ function RichTextRenderer(props: {text: RichText, customEmojiRenderer?: () => Cu
       processFragment={selectedProcessFragment()}
       processFragmentMode="chunk"
       onLayout={context.onTextLayout}
+      onElement={(element) => props.quote && setRichQuoteSource(element, () => props.quote())}
     />
   );
 }
 
-function PreformattedCode(props: {text: RichText, language: string}) {
+function PreformattedCode(props: {text: RichText, language: string, quote?: () => string}) {
   const context = useContext(InstantViewContext);
   const value = createMemo(() => {
     const code = richTextToString(props.text);
@@ -2415,6 +2441,7 @@ function PreformattedCode(props: {text: RichText, language: string}) {
       inline={false}
       class={classNames(styles.Padding, styles.PreformattedWrapper)}
       onLayout={context.onTextLayout}
+      onElement={(element) => props.quote && setRichQuoteSource(element, () => props.quote())}
     />
   );
 }

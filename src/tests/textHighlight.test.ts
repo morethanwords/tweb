@@ -111,6 +111,17 @@ describe('findQuoteSpan', () => {
     expect(findQuoteSpan('a  b', 'a b')).toEqual([0, 4]);
   });
 
+  it('retries ignoring variation selectors, an emoji completed in one and not the other', () => {
+    expect(findQuoteSpan('a ❤ b', '❤\ufe0f b')).toEqual([2, 5]);
+  });
+
+  it('takes the nearer of an exact quote and one that differs by a variation selector', () => {
+    // * a paragraph completes its emoji, a code block after it does not: the offset says which was quoted
+    const text = '❤\ufe0f example\n❤ example';
+    expect(findQuoteSpan(text, '❤\ufe0f example', 11)).toEqual([11, 20]);
+    expect(findQuoteSpan(text, '❤\ufe0f example', 0)).toEqual([0, 10]);
+  });
+
   it('gives up when the text is not there', () => {
     expect(findQuoteSpan(text, 'four', 0)).toBeUndefined();
     expect(findQuoteSpan(text, '', 0)).toBeUndefined();
@@ -151,6 +162,12 @@ describe('computeRanges', () => {
     expect(range.startContainer).toBe(element);
     expect(range.startOffset).toBe(1);
     expect(range.toString()).toBe(' b');
+  });
+
+  it('finds a quote in what a formula stands for, not in what it draws', () => {
+    const element = html('a <span data-inline-math="" data-source="x^2"><math><mi>x</mi><mn>2</mn></math></span> b');
+    const [range] = computeRanges(element, {type: 'quote', text: 'a x^2 b'});
+    expect(range.toString()).toBe('a x2 b');
   });
 
   it('never reaches into skipped subtrees', () => {

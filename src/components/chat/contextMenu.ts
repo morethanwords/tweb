@@ -65,6 +65,8 @@ import InputField from '@components/inputField';
 import getMainGroupedMessage from '@appManagers/utils/messages/getMainGroupedMessage';
 import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import getRichSelection from '@helpers/dom/getRichSelection';
+import cancelSelection from '@helpers/dom/cancelSelection';
+import {getRichQuoteSelection, makeRichQuoteOfSelection} from '@components/chat/richQuoteSelection';
 import detectLanguageForTranslation from '@helpers/detectLanguageForTranslation';
 import {getMessageSourceText} from '@stores/peerLanguage';
 import {showAdReport, showMessageReport} from '@components/popups/reportAd';
@@ -1061,15 +1063,19 @@ export default class ChatContextMenu {
         !isAnchoredEphemeralMessage(this.message) &&
         !this.message.pFlags.is_outgoing &&
         !!this.chat.input.messageInput &&
-        !!(this.message as Message.message).message &&
+        !!((this.message as Message.message).message || (this.message as Message.message).rich_message) &&
         this.isTextSelected &&
         !this.isTextFromMultipleMessagesSelected &&
         (!this.chat.peerTranslation.enabled() || this.message.pFlags.out) &&
         (this.chat.bubbles.canForward(this.message) || this.chat.canSend()) &&
-        (() => {
+        // * a rich message's quote takes a date or a formula whole by itself
+        ((this.message as Message.message).rich_message ? (() => {
+          const selected = getRichQuoteSelection(getAppWindow().getSelection().getRangeAt(0));
+          return !!selected && !!makeRichQuoteOfSelection(selected, Infinity);
+        })() : (() => {
           const {date} = getMarkupInSelection(['date'], true);
           return !date.elements[0] || isNodeFullyInsideRange(getAppWindow().getSelection().getRangeAt(0), getLinkFirstChild(date.elements[0]));
-        })()
+        })())
     }, {
       icon: 'reply',
       text: 'Reply',
@@ -2684,7 +2690,19 @@ export default class ChatContextMenu {
 
   private onQuoteClick = async() => {
     const messageWithText = this.getMessageWithText();
-    const {peerId} = messageWithText;
+    if((messageWithText as Message.message).rich_message) {
+      // * what the selection takes of the message as it is drawn, read before anything can change either
+      const selected = getRichQuoteSelection(getAppWindow().getSelection().getRangeAt(0));
+      cancelSelection();
+      const appConfig = await this.managers.apiManager.getAppConfig();
+      const quote = selected && makeRichQuoteOfSelection(selected, appConfig.quote_length_max ?? 1024);
+      if(quote) {
+        await this.replyWithQuote(messageWithText, quote);
+      }
+
+      return;
+    }
+
     let {text: value, entities = [], offset: startIndex} = this.getQuotedText();
 
     const appConfig = await this.managers.apiManager.getAppConfig();
@@ -2706,22 +2724,24 @@ export default class ChatContextMenu {
       });
     }
 
-    const quote: ChatInputReplyTo['replyToQuote'] = {
+    await this.replyWithQuote(messageWithText, {
       text: value,
       entities: entities.length ? entities : undefined,
       offset: startIndex
-    };
+    });
+  };
 
-    const replyTo = this.chat.input.getChatInputReplyToFromMessage(messageWithText, quote);
+  private async replyWithQuote(message: MyMessage, quote: ChatInputReplyTo['replyToQuote']) {
+    const replyTo = this.chat.input.getChatInputReplyToFromMessage(message, quote);
 
     if(!await this.chat.canSend()) {
-      replyTo.replyToPeerId = peerId;
+      replyTo.replyToPeerId = message.peerId;
       this.chat.input.createReplyPicker(replyTo);
       return;
     }
 
     this.chat.input.initMessageReply(replyTo);
-  };
+  }
 
   private onStatisticsClick = () => {
     this.chat.topbar.appSidebarRight.createTab(AppStatisticsTab).open(this.messagePeerId.toChatId(), this.mid);

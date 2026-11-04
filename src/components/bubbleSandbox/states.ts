@@ -3,7 +3,7 @@
  * message as it is, and an option left at `as is` leaves that part alone.
  */
 
-import {Message, MessageEntity, MessageMedia, MessageReactions, ReactionCount} from '@layer';
+import {Message, MessageEntity, MessageMedia, MessageReactions, ReactionCount, RichMessage, RichText} from '@layer';
 import copy from '@helpers/object/copy';
 import parseMarkdown from '@lib/richTextProcessor/parseMarkdown';
 import wrapMessageEntities from '@lib/richTextProcessor/wrapMessageEntities';
@@ -73,7 +73,32 @@ function setText(message: Message.message, text: string, entities: MessageEntity
   message.message = wrapped.message;
   message.entities = entities;
   message.totalEntities = wrapped.totalEntities;
+  delete message.rich_message;
 }
+
+const plain = (text: string): RichText => ({_: 'textPlain', text});
+
+// a rich message: a heading, a paragraph of formatting, a list (one to quote across, or in, by a selection)
+const RICH_MESSAGE: RichMessage = {
+  _: 'richMessage',
+  pFlags: {},
+  blocks: [
+    {_: 'pageBlockHeading2', text: plain('Plans for the weekend')},
+    {_: 'pageBlockParagraph', text: {_: 'textConcat', texts: [
+      plain('Meet at the '),
+      {_: 'textBold', text: plain('station')},
+      plain(' at seven, '),
+      {_: 'textItalic', text: plain('the train leaves at a quarter past')}
+    ]}},
+    {_: 'pageBlockList', items: [
+      {_: 'pageListItemText', pFlags: {}, text: plain('Tickets')},
+      {_: 'pageListItemText', pFlags: {}, text: plain('A charger')},
+      {_: 'pageListItemText', pFlags: {}, text: plain('Something to eat on the way')}
+    ]}
+  ],
+  photos: [],
+  documents: []
+};
 
 function setMarkdown(message: Message.message, raw: string) {
   const [text, entities] = parseMarkdown(raw, [], true);
@@ -125,6 +150,14 @@ const getTextOptions = (): StateOption[] => [
     ])
   },
   text('emoji', 'Big emoji', '👍🔥'),
+  {
+    id: 'rich',
+    label: 'Rich',
+    apply: (message) => {
+      setText(message, '');
+      message.rich_message = copy(RICH_MESSAGE);
+    }
+  },
   {
     id: 'custom',
     label: 'Own',
@@ -315,6 +348,22 @@ export const getDimensions = (): Dimension[] => [{
         pFlags: {quote: true},
         reply_to_msg_id: context.previousMid,
         quote_text: 'A part of it'
+      };
+      message.reply_to_mid = context.previousMid;
+    },
+    isDisabled: (context) => !context.previousMid
+  }, {
+    // a part of a rich message quoted (the one of the Rich text, made the one above): the end of its paragraph and
+    // the first point of its list, one under another (`quote_rich`)
+    id: 'rich-quote',
+    label: 'Quoting it, rich',
+    apply: (message, context) => {
+      message.reply_to = {
+        _: 'messageReplyHeader',
+        pFlags: {quote: true},
+        reply_to_msg_id: context.previousMid,
+        quote_rich: [{_: 'textConcat', texts: [{_: 'textItalic', text: plain('a quarter past')}]}, plain('Tickets')],
+        quote_offset: 72
       };
       message.reply_to_mid = context.previousMid;
     },

@@ -191,7 +191,8 @@ import {getChatInputEditor} from './inputEditor/registry';
 import canSafelyEditRichMessage from './inputEditor/richMessageEditability';
 import {getAttachRichMediaTarget, RichMediaItemInsertAction} from '@components/chat/inputEditor/mediaPaste';
 import {entitiesFittingPlainMessage} from '@components/chat/inputEditor/model';
-import {richMessageToPlainMessage} from '@lib/richMessage';
+import {getInputReplyQuote, richMessageToPlainMessage} from '@lib/richMessage';
+import {getReplyQuote} from '@lib/richQuote';
 import {canShowAttachMenuAction} from '@components/chat/inputEditor/attachMenuPolicy';
 import type {RichMessageAttachMenuAction} from '@components/chat/inputEditor/attachMenuPolicy';
 import {getRichMessageMediaRequiredRight} from '@helpers/files/richMessageMediaInsertPolicy';
@@ -2736,11 +2737,7 @@ export default class ChatInput {
           reply_to_peer_id: replyTo.replyToPeerId,
           monoforum_peer_id: replyTo.replyToMonoforumPeerId,
           poll_option: replyTo.replyToPollOption,
-          ...(replyTo.replyToQuote && {
-            quote_text: replyTo.replyToQuote.text,
-            quote_entities: replyTo.replyToQuote.entities,
-            quote_offset: replyTo.replyToQuote.offset
-          })
+          ...(replyTo.replyToQuote && getInputReplyQuote(replyTo.replyToQuote))
         } : undefined,
         media: !richMessage && webPage ? {
           _: 'inputMediaWebPage',
@@ -3020,11 +3017,7 @@ export default class ChatInput {
     const replySet = draftReplyToMsgId && this.initMessageReply({
       replyToMsgId: draftReplyToMsgId,
       replyToPeerId: replyTo.reply_to_peer_id && getPeerId(replyTo.reply_to_peer_id),
-      replyToQuote: replyTo.quote_text && {
-        text: replyTo.quote_text,
-        entities: replyTo.quote_entities,
-        offset: replyTo.quote_offset
-      },
+      replyToQuote: getReplyQuote(replyTo),
       replyToPollOption: replyTo.poll_option,
       replyToMonoforumPeerId: replyTo.monoforum_peer_id && getPeerId(replyTo.monoforum_peer_id)
     });

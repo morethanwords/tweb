@@ -18,7 +18,7 @@ const NOT_TEXT = '.time';
  * edge of a block (a quote, a code block) is in the text only, a code block's header and the time
  * in the drawing only. Nothing when the two part: a translation shown in place of the text, say.
  */
-function alignDrawnText(element: HTMLElement, text: string) {
+export function alignDrawnText(element: HTMLElement, text: string) {
   const drawn = extractText(element, getTextSkip(`.code-header, ${NOT_TEXT}`), {sourceText: true});
   const pieces: TextSegment[] = [];
   let position = 0;
@@ -35,7 +35,7 @@ function alignDrawnText(element: HTMLElement, text: string) {
 }
 
 /** The offset in the text of a selection's boundary: one between pieces goes to the side it bounds */
-function getTextOffset(pieces: TextSegment[], node: Node, offset: number, isEnd: boolean) {
+export function getTextOffset(pieces: TextSegment[], node: Node, offset: number, isEnd: boolean) {
   const point = node.ownerDocument.createRange();
   point.setStart(node, offset);
   let previous: TextSegment;

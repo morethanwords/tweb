@@ -75,6 +75,8 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
   const controls: MessageSpoilerOverlayControls = {
     update() {
       update();
+      // * the canvas drawn here is cleared by being sized: it is drawn again at once, as on a resize
+      if(!useWorker) draw();
     }
   };
 
@@ -471,19 +473,30 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
   return <>{canvas}</>;
 }
 
+const overlayControls = new WeakMap<Element, MessageSpoilerOverlayControls>();
+
+/**
+ * The overlays in `root` measure their spoilers and the colours under them again: what they read while something
+ * painted the message's background for it (a bubble changing, `bubbleTransitions`) was not the message's
+ */
+export function updateMessageSpoilerOverlays(root: ParentNode) {
+  root.querySelectorAll('.message-spoiler-overlay').forEach((element) => overlayControls.get(element)?.update());
+}
+
 export function createMessageSpoilerOverlay(props: MessageSpoilerOverlayProps, HotReloadGuardProvider: typeof SolidJSHotReloadGuardProvider) {
   const element = document.createElement('div');
   element.classList.add('message-spoiler-overlay');
 
   let controls: MessageSpoilerOverlayControls;
 
-  const dispose = render(
+  const disposeRender = render(
     () => (
       <HotReloadGuardProvider>
         <MessageSpoilerOverlay
           parentElement={element}
           controlsRef={(value) => {
             controls = value;
+            overlayControls.set(element, value);
           }}
           {...props}
         />
@@ -497,6 +510,9 @@ export function createMessageSpoilerOverlay(props: MessageSpoilerOverlayProps, H
     get controls() {
       return controls;
     },
-    dispose
+    dispose: () => {
+      overlayControls.delete(element);
+      disposeRender();
+    }
   };
 }

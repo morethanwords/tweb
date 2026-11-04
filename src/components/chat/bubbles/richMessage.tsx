@@ -12,6 +12,7 @@ import applyRichMessageChecklist from '@appManagers/utils/richMessage/toggleChec
 import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {isRichMessageFullWidth, isRichMessagePart, richMessageToPage} from '@lib/richMessage';
+import {setRichQuotePage} from '@components/chat/richQuoteSources';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import type Chat from '@components/chat/chat';
@@ -244,7 +245,11 @@ export function RichMessageBubble(props: {
 
   return (
     <div
-      ref={element}
+      ref={(div) => {
+        element = div;
+        // * a quote is of what is shown: the whole message once it is loaded for a part
+        setRichQuotePage(div, () => displayedPage().blocks);
+      }}
       class={styles.RichMessageWrapper}
       classList={{[styles.RichMessageWrapperFull]: isRichMessageFullWidth(displayedPage().blocks)}}
     >

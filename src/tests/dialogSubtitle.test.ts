@@ -224,4 +224,63 @@ describe('renderDialogSubtitleParts', () => {
     expect(parts.map((part) => part.textContent))
     .toEqual(['Sender: ', 'body']);
   });
+
+  it('names the business bot that wrote in a private chat', async() => {
+    const peerTitleRenderer = vi.fn(async() => {
+      const title = document.createElement('span');
+      title.textContent = 'Bot';
+      return title;
+    });
+    const message = {
+      _: 'message',
+      pFlags: {out: true},
+      peerId: (2) as PeerId,
+      fromId: (1) as PeerId,
+      via_business_bot_id: 3,
+      mid: 1,
+      date: 1,
+      message: 'body'
+    } as any;
+
+    const parts = await renderDialogSubtitleParts({
+      peerId: message.peerId,
+      isSaved: false,
+      lastMessage: message,
+      middleware: (value) => value,
+      peerTitleRenderer,
+      textColor: 'secondary-text-color'
+    });
+
+    expect(peerTitleRenderer).toHaveBeenCalledWith({
+      peerId: (3) as PeerId,
+      onlyFirstName: true
+    });
+    expect(parts.map((part) => part.textContent))
+    .toEqual(['Bot: ', 'body']);
+  });
+
+  it('names no one in a private chat without a business bot', async() => {
+    const peerTitleRenderer = vi.fn();
+    const message = {
+      _: 'message',
+      pFlags: {out: true},
+      peerId: (2) as PeerId,
+      fromId: (1) as PeerId,
+      mid: 1,
+      date: 1,
+      message: 'body'
+    } as any;
+
+    const parts = await renderDialogSubtitleParts({
+      peerId: message.peerId,
+      isSaved: false,
+      lastMessage: message,
+      middleware: (value) => value,
+      peerTitleRenderer,
+      textColor: 'secondary-text-color'
+    });
+
+    expect(peerTitleRenderer).not.toHaveBeenCalled();
+    expect(parts.map((part) => part.textContent)).toEqual(['body']);
+  });
 });

@@ -83,6 +83,8 @@ export default async function renderDialogSubtitleParts(options: {
   const names: (Promise<HTMLElement> | HTMLElement)[] = [];
   const withChatName = !!options.prependPeerId;
   let draftLabel: HTMLElement;
+  // * a business bot writes in a private chat for its owner: it is named, as anyone writing in a group is
+  const businessBotId = lastMessage?._ === 'message' && lastMessage.via_business_bot_id;
 
   if(draftMessage) {
     const span = document.createElement('span');
@@ -91,15 +93,14 @@ export default async function renderDialogSubtitleParts(options: {
     // * not a name — it labels the message and stays right in front of it
     draftLabel = span;
   } else if(
-    lastMessage &&
-    peerId.isAnyChat() &&
-    peerId !== lastMessage.fromId &&
-    lastMessage._ === 'message'
+    lastMessage?._ === 'message' &&
+    (businessBotId || (peerId.isAnyChat() && peerId !== lastMessage.fromId))
   ) {
     const span = document.createElement('span');
     span.classList.add('primary-text');
+    const senderPeerId = businessBotId ? (businessBotId as UserId).toPeerId(false) : lastMessage.fromId;
 
-    if(lastMessage.fromId === rootScope.myId) {
+    if(senderPeerId === rootScope.myId) {
       span.append(i18n('FromYou'));
       names.push(span);
     } else {
@@ -110,7 +111,7 @@ export default async function renderDialogSubtitleParts(options: {
       })
       .then((wrapPeerTitle) => {
         return middleware(wrapPeerTitle({
-          peerId: lastMessage.fromId,
+          peerId: senderPeerId,
           onlyFirstName: true
         }));
       })

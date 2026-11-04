@@ -133,6 +133,12 @@ export function getTextSkip(skip?: string) {
   return skip ? `${DEFAULT_SKIP}, ${skip}` : DEFAULT_SKIP;
 }
 
+// a formula, drawn as MathML, stands for its source (`Latex`)
+const getMathSource = (element: HTMLElement) => {
+  const {dataset} = element;
+  return ('inlineMath' in dataset || 'blockMath' in dataset) && dataset.source;
+};
+
 /**
  * collects the visible text of `root` together with the DOM positions it came from; `sourceText`
  * reads an element drawn otherwise than the text it stands for (a date in local time) as that text
@@ -166,8 +172,8 @@ export function extractText(root: HTMLElement, skip = DEFAULT_SKIP, {sourceText}
     }
 
     // * emoji images and custom emoji carry their text as `alt` / `data-sticker-emoji`
-    // * (same convention as `getRichElementValue`)
-    const alt = (sourceText && element.dataset.originalText) ||
+    // * (same convention as `getRichElementValue`), a formula its source as `data-source`
+    const alt = (sourceText && (element.dataset.originalText || getMathSource(element))) ||
       element.dataset.stickerEmoji ||
       (element as HTMLImageElement).alt;
     if(alt) {
@@ -264,8 +270,8 @@ function findNearest(text: string, needle: string, hint: number): TextSpan | und
 /**
  * The quote is a verbatim slice of the message text, `offset` is where it started there. The
  * rendered text may differ slightly (dropped line breaks around block quotes, media captions
- * preceded by a file name …), hence the nearest occurrence to the offset and a
- * whitespace-insensitive retry.
+ * preceded by a file name, an emoji completed by its variation selector …), hence the occurrence
+ * nearest to the offset, of the exact text or of the text whitespace and variation selectors aside.
  */
 export function findQuoteSpan(text: string, quote: string, offset = 0): TextSpan | undefined {
   if(!quote || !text) {
@@ -273,16 +279,18 @@ export function findQuoteSpan(text: string, quote: string, offset = 0): TextSpan
   }
 
   const exact = findNearest(text, quote, offset);
-  if(exact) {
-    return exact;
-  }
+  const loose = findLooseQuoteSpan(text, quote, offset);
+  // * the one nearer to where the quote started: an exact one elsewhere is another place of the same text
+  return exact && loose && Math.abs(loose[0] - offset) < Math.abs(exact[0] - offset) ? loose : exact ?? loose;
+}
 
-  const needle = quote.replace(/\s+/g, '');
+function findLooseQuoteSpan(text: string, quote: string, offset: number): TextSpan | undefined {
+  const needle = quote.replace(/[\s\ufe0f]+/g, '');
   if(!needle) {
     return;
   }
 
-  // * strip all whitespace, remembering where every kept character came from
+  // * strip all whitespace and variation selectors, remembering where every kept character came from
   const map: number[] = [];
   let stripped = '';
   let strippedHint = 0;
@@ -291,7 +299,7 @@ export function findQuoteSpan(text: string, quote: string, offset = 0): TextSpan
       strippedHint = stripped.length;
     }
 
-    if(!/\s/.test(text[i])) {
+    if(!/[\s\ufe0f]/.test(text[i])) {
       map.push(i);
       stripped += text[i];
     }
@@ -316,7 +324,9 @@ export function findSpans(text: string, match: TextHighlightMatch): TextSpan[] {
 
 /** turns text spans into DOM ranges over the container's text */
 export function computeRanges(container: HTMLElement, match: TextHighlightMatch, skip?: string) {
-  const {text, segments} = extractText(container, getTextSkip(skip));
+  // * a quote is a slice of the message's text: what is drawn otherwise (a date in local time, a formula) is found as
+  // * the text it stands for
+  const {text, segments} = extractText(container, getTextSkip(skip), {sourceText: match.type === 'quote'});
   const ranges: Range[] = [];
   if(!segments.length) {
     return ranges;
