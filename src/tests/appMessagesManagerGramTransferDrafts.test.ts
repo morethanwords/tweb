@@ -11,6 +11,7 @@ import {AppMessagesManager, MessagesStorage} from '@appManagers/appMessagesManag
 import {AppMessagesIdsManager} from '@appManagers/appMessagesIdsManager';
 import createHistoryStorage from '@appManagers/utils/messages/createHistoryStorage';
 import type {Message, MessageAction} from '@layer';
+import dispatchedEvents from '@/tests/helpers/dispatchedEvents';
 
 const SELF_ID = 999 as UserId;
 const USER_ID = 42 as UserId;
@@ -79,7 +80,7 @@ function makeManager() {
     handleReleasingMessage: vi.fn()
   });
 
-  const events = (name: string) => dispatchEvent.mock.calls.filter(([event]) => event === name).map(([, payload]) => payload);
+  const events = (name: string) => dispatchedEvents(dispatchEvent, name);
   return {manager: manager as any, storage, history, events, processLocalUpdate, invalidateSuggestion};
 }
 

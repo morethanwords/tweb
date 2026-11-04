@@ -4,6 +4,10 @@ import type {MyDocument} from '@appManagers/appDocsManager';
 import {setEnvironment} from '@environment/utils';
 import createStickersSearch from '@components/emoticonsDropdown/stickersSearch';
 import {ReferenceContext, ReferencesStorage} from '@lib/storages/references';
+import collectUnhandledRejections from '@/tests/helpers/collectUnhandledRejections';
+import deferred from '@/tests/helpers/deferred';
+import lastItem from '@helpers/array/lastItem';
+import dispatchedEvents from '@/tests/helpers/dispatchedEvents';
 
 const doc = (id: string) => ({_: 'document', id} as any as MyDocument);
 
@@ -14,21 +18,171 @@ const found = (ids: string[], nextOffset?: number) => ({
   stickers: ids.map(doc)
 });
 
+const stickers = (ids: string[]) => ({_: 'messages.stickers', hash: 0, stickers: ids.map(doc)});
+
 function createManager(language = 'ru') {
   const invokeApi = vi.fn();
   const invokeApiHashable = vi.fn();
   const saveDoc = vi.fn((document: MyDocument, _context?: ReferenceContext) => document);
+  const dispatchEvent = vi.fn();
   const manager = new AppStickersManager();
   Object.assign(manager as any, {
     apiManager: {invokeApi, invokeApiHashable},
     apiFileManager: {downloadMedia: vi.fn()},
     appDocsManager: {saveDoc},
     networkerFactory: {language},
-    rootScope: {premium: false}
+    rootScope: {premium: false, dispatchEvent}
   });
   manager.clear(true);
-  return {manager, invokeApi, invokeApiHashable, saveDoc};
+  return {manager, invokeApi, invokeApiHashable, saveDoc, dispatchEvent};
 }
+
+/**
+ * A search by emoji (`messages.getStickers` and the user's own stickers: the suggestions over the composer, the
+ * media editor's emoji groups, the premium stickers) is kept for the session. One that failed was kept as well, and
+ * every later ask for the same emoji got that failure until the page was reloaded.
+ */
+describe('AppStickersManager.getStickersByEmoticon', () => {
+  const search = (manager: AppStickersManager) => manager.getStickersByEmoticon({emoticon: '🐱', includeServerStickers: true});
+
+  it('forgets a failed search, so the next one asks the server again, and keeps one that came', async() => {
+    const {manager, invokeApiHashable} = createManager();
+    invokeApiHashable.mockRejectedValueOnce({type: 'NETWORK_BAD_REQUEST'}).mockResolvedValue(stickers(['1']));
+
+    await expect(search(manager)).rejects.toMatchObject({type: 'NETWORK_BAD_REQUEST'});
+    expect((await search(manager)).map((doc) => doc.id)).toEqual(['1']);
+    expect((await search(manager)).map((doc) => doc.id)).toEqual(['1']);
+    expect(invokeApiHashable).toHaveBeenCalledTimes(2);
+  });
+
+  it('leaves no failure unhandled when a used sticker reorders a search still on its way', async() => {
+    const {manager, invokeApi, invokeApiHashable} = createManager();
+    const used = Object.assign(doc('1'), {stickerEmojiRaw: '🐱'});
+    Object.assign(manager as any, {recentStickers: []});
+    Object.assign((manager as any).appDocsManager, {getDoc: () => used});
+    invokeApi.mockResolvedValue(true);
+    const request = deferred<never>();
+    invokeApiHashable.mockReturnValueOnce(request.promise);
+
+    const unhandled = await collectUnhandledRejections(async() => {
+      const searching = search(manager);
+      await manager.saveRecentSticker(used.id);
+      request.reject({type: 'NETWORK_BAD_REQUEST'});
+      await expect(searching).rejects.toMatchObject({type: 'NETWORK_BAD_REQUEST'});
+    });
+
+    expect(unhandled).toEqual([]);
+  });
+});
+
+describe('AppStickersManager.getAnimatedEmojiSounds', () => {
+  it('forgets a failed load, so the next ask goes to the server again', async() => {
+    const {manager} = createManager();
+    const getAppConfig = vi.fn().mockRejectedValueOnce({type: 'NETWORK_BAD_REQUEST'}).mockResolvedValue({emojies_sounds: {}});
+    Object.assign((manager as any).apiManager, {getAppConfig, getConfig: vi.fn().mockResolvedValue({this_dc: 2})});
+
+    await expect(manager.getAnimatedEmojiSounds()).rejects.toMatchObject({type: 'NETWORK_BAD_REQUEST'});
+    await expect(manager.getAnimatedEmojiSounds()).resolves.toBeUndefined();
+    expect(getAppConfig).toHaveBeenCalledTimes(2);
+  });
+});
+
+/**
+ * Faving or unfaving a sticker changes the list at once and tells the panel and the toast (`sticker_updated`). When the
+ * server did not take it, the sticker stayed (un)faved here until a reload.
+ */
+describe('AppStickersManager.faveSticker', () => {
+  const ids = (docs: MyDocument[]) => docs.map((doc) => doc.id);
+
+  function createFaving(faved: string[], limit = 5) {
+    const created = createManager();
+    const docs: {[id: string]: MyDocument} = {};
+    const getDoc = (id: string) => docs[id] ??= doc(id);
+    Object.assign(created.manager as any, {favedStickers: faved.map(getDoc)});
+    Object.assign((created.manager as any).appDocsManager, {getDoc});
+    Object.assign((created.manager as any).apiManager, {getLimit: vi.fn().mockResolvedValue(limit)});
+    const getFaved = () => ids((created.manager as any).favedStickers);
+    const events = (name: string) => dispatchedEvents(created.dispatchEvent, name);
+    return {...created, getDoc, getFaved, events};
+  }
+
+  it.each([
+    ['a fave', ['1', '2'], '3', false, 5, ['3', '1', '2']],
+    ['a fave of one faved already', ['1', '2'], '2', false, 5, ['2', '1']],
+    ['a fave past the limit', ['1', '2'], '3', false, 2, ['3', '1']],
+    ['an unfave', ['1', '2', '3'], '2', true, 5, ['1', '3']]
+  ])('%s the server did not take puts the list back, telling the panel with no toast', async(_, faved, docId, unfave, limit, changed) => {
+    const {manager, invokeApi, getFaved, events} = createFaving(faved, limit);
+    const request = deferred<never>();
+    invokeApi.mockReturnValueOnce(request.promise);
+
+    const faving = manager.faveSticker(docId, unfave);
+    await vi.waitFor(() => expect(invokeApi).toHaveBeenCalledWith('messages.faveSticker', expect.objectContaining({unfave})));
+    expect(getFaved()).toEqual(changed);
+
+    request.reject({type: 'STICKER_ID_INVALID'});
+    await expect(faving).rejects.toMatchObject({type: 'STICKER_ID_INVALID'});
+
+    expect(getFaved()).toEqual(faved);
+    // * the toast follows sticker_updated: the change was told once, and its undoing is not
+    expect(events('sticker_updated')).toEqual([expect.objectContaining({type: 'faved', faved: !unfave})]);
+    expect(events('stickers_updated')).toEqual([{type: 'faved', stickers: (manager as any).favedStickers, reverted: true}]);
+    expect(ids(events('stickers_updated')[0].stickers)).toEqual(faved);
+  });
+
+  it('leaves a list that came from the server meanwhile as it is', async() => {
+    const {manager, invokeApi, getDoc, getFaved, events} = createFaving(['1']);
+    const request = deferred<never>();
+    invokeApi.mockReturnValueOnce(request.promise);
+
+    const faving = manager.faveSticker('2');
+    await vi.waitFor(() => expect(invokeApi).toHaveBeenCalled());
+    (manager as any).favedStickers = [getDoc('5')];
+
+    request.reject({type: 'STICKER_ID_INVALID'});
+    await expect(faving).rejects.toBeDefined();
+
+    expect(getFaved()).toEqual(['5']);
+    expect(events('stickers_updated')).toEqual([]);
+  });
+
+  it.each([
+    ['two faves, the first failing', ['1'], 5, [['2', false], ['3', false]], [0], ['3', '1']],
+    ['two faves, both failing', ['1'], 5, [['2', false], ['3', false]], [0, 1], ['1']],
+    ['two faves, the second failing first', ['1'], 5, [['2', false], ['3', false]], [1, 0], ['1']],
+    ['two faves past the limit, the first failing', ['1', '2'], 2, [['3', false], ['4', false]], [0], ['4', '1']]
+  ] as const)('%s: takes out only what failed, keeping the changes made since', async(_, faved, limit, changes, failing, after) => {
+    const {manager, invokeApi, invokeApiHashable, getFaved, events} = createFaving([...faved], limit);
+    const requests = changes.map(() => deferred<boolean>());
+    requests.forEach((request) => invokeApi.mockReturnValueOnce(request.promise));
+
+    const faving = changes.map(([docId, unfave]) => manager.faveSticker(docId, unfave).catch((err) => err));
+    await vi.waitFor(() => expect(invokeApi).toHaveBeenCalledTimes(changes.length));
+    for(const index of failing) {
+      requests[index].reject({type: 'STICKER_ID_INVALID'});
+      await faving[index];
+    }
+
+    requests.forEach((request) => request.resolve(true));
+    await Promise.all(faving);
+
+    expect(getFaved()).toEqual(after);
+    expect(ids(lastItem(events('stickers_updated')).stickers)).toEqual(after);
+    expect(events('stickers_updated').every(({reverted}) => reverted)).toBe(true);
+    expect(events('stickers_updated')).toHaveLength(failing.length);
+    expect(invokeApiHashable).not.toHaveBeenCalled();
+  });
+
+  it('keeps a fave the server took', async() => {
+    const {manager, invokeApi, getFaved, events} = createFaving(['1']);
+    invokeApi.mockResolvedValueOnce(true);
+
+    await manager.faveSticker('2');
+
+    expect(getFaved()).toEqual(['2', '1']);
+    expect(events('stickers_updated')).toEqual([]);
+  });
+});
 
 /**
  * The sticker an empty private chat greets with (`getGreetingSticker`, the placeholder of `renderEmptyPlaceholder`)
@@ -37,8 +191,6 @@ function createManager(language = 'ru') {
  * placeholder failed with it, and was not shown, until the page was reloaded.
  */
 describe('AppStickersManager.getGreetingSticker', () => {
-  const stickers = (ids: string[]) => ({_: 'messages.stickers', hash: 0, stickers: ids.map(doc)});
-
   it.each([
     ['the search failed', false, () => Promise.reject({type: 'NETWORK_BAD_REQUEST'})],
     ['nothing was found', false, () => Promise.resolve(stickers([]))],

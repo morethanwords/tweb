@@ -40,6 +40,15 @@ const ARCHIVED_STICKERS_LIMIT = 15;
 // * kReadFeaturedSetsTimeout in tdesktop's apiwrap.cpp: the trending sets seen meanwhile are read together
 const READ_FEATURED_STICKERS_DELAY = 1000;
 
+// * a change faveSticker made to the faved list, and the list as it was before it
+type FavedStickersChange = {
+  document: MyDocument,
+  unfave: boolean,
+  limit: number,
+  before: MyDocument[],
+  answered?: boolean
+};
+
 export type FoundStickersPage = {
   stickers: MyDocument[],
   // * undefined once the server has nothing more
@@ -60,6 +69,8 @@ export class AppStickersManager extends AppManager {
   private getAnimatedEmojiSoundsPromise: Promise<void>;
 
   private favedStickers: MyDocument[];
+  // * the changes faveSticker made to the list, in order, from the first the server has yet to answer
+  private favedStickersChanges: FavedStickersChange[] = [];
   private recentStickers: MyDocument[];
 
   private names: Record<string, InputStickerSet.inputStickerSetID>;
@@ -184,25 +195,17 @@ export class AppStickersManager extends AppManager {
       this.getGreetingStickersTimeout = undefined;
     }
 
-    if(!this.getGreetingStickersPromise) {
-      // * searched anew: nothing greets yet, so the search kept by the emoji, if any, failed or found nothing
-      const promise = this.getGreetingStickersPromise = this.getStickersByEmoticon({
-        emoticon: '👋⭐️',
-        includeServerStickers: true,
-        overwrite: true
-      }).then((docs) => {
-        if(!docs.length) throw 'NO_STICKERS';
-        this.greetingStickers = docs.slice() as Document.document[];
-        this.greetingStickers.sort((a, b) => Math.random() - Math.random());
-      });
-
-      // * a search that failed is not kept: the next greeting searches again
-      promise.catch(() => {
-        if(this.getGreetingStickersPromise === promise) {
-          this.getGreetingStickersPromise = undefined;
-        }
-      });
-    }
+    // * searched anew: nothing greets yet, so the search kept by the emoji, if any, found nothing. One that fails or
+    // finds nothing is not kept: the next greeting searches again
+    this.getGreetingStickersPromise ??= forgetFailedRequest(this.getStickersByEmoticon({
+      emoticon: '👋⭐️',
+      includeServerStickers: true,
+      overwrite: true
+    }).then((docs) => {
+      if(!docs.length) throw 'NO_STICKERS';
+      this.greetingStickers = docs.slice() as Document.document[];
+      this.greetingStickers.sort((a, b) => Math.random() - Math.random());
+    }), () => this.getGreetingStickersPromise, () => this.getGreetingStickersPromise = undefined);
 
     return this.getGreetingStickersPromise.then(() => {
       let doc: Document.document;
@@ -308,7 +311,8 @@ export class AppStickersManager extends AppManager {
 
   public getAnimatedEmojiSounds(overwrite?: boolean) {
     if(this.getAnimatedEmojiSoundsPromise && !overwrite) return this.getAnimatedEmojiSoundsPromise;
-    const promise = this.getAnimatedEmojiSoundsPromise = Promise.all([
+    // * one that failed is not kept: the next ask goes to the server again
+    const promise = this.getAnimatedEmojiSoundsPromise = forgetFailedRequest(Promise.all([
       this.apiManager.getAppConfig(overwrite),
       this.apiManager.getConfig()
     ]).then(([appConfig, config]) => {
@@ -352,7 +356,7 @@ export class AppStickersManager extends AppManager {
       // if(TEST_FILE_REFERENCE_REFRESH) {
       //   TEST_FILE_REFERENCE_REFRESH = false;
       // }
-    });
+    }), () => this.getAnimatedEmojiSoundsPromise, () => this.getAnimatedEmojiSoundsPromise = undefined);
 
     return promise;
   }
@@ -393,6 +397,7 @@ export class AppStickersManager extends AppManager {
       const docEmoticon = fixEmoji(doc.stickerEmojiRaw);
       for(const emoticon in this.getStickersByEmoticonsPromises) {
         const promise = this.getStickersByEmoticonsPromises[emoticon];
+        // * a search still on its way may fail: that is for whoever asked for it, with nothing to reorder here
         promise.then((stickers) => {
           const _doc = findAndSplice(stickers, (_doc) => _doc.id === doc.id);
           if(_doc) {
@@ -400,7 +405,7 @@ export class AppStickersManager extends AppManager {
           } else if(emoticon.includes(docEmoticon)) {
             stickers.unshift(doc);
           }
-        });
+        }, noop);
       }
     }
 
@@ -766,14 +771,10 @@ export class AppStickersManager extends AppManager {
     const limit = await this.getFavedStickersLimit();
 
     const doc = this.appDocsManager.getDoc(docId);
-    findAndSplice(this.favedStickers, (_doc) => _doc.id === doc.id);
-
-    let limitReached = false;
-    if(!unfave) {
-      this.favedStickers.unshift(doc);
-      const spliced = this.favedStickers.splice(limit, this.favedStickers.length - limit);
-      limitReached = spliced.length > 0;
-    }
+    const faved = this.favedStickers;
+    const change: FavedStickersChange = {document: doc, unfave, limit, before: faved.slice()};
+    this.favedStickersChanges.push(change);
+    const limitReached = this.applyFavedStickersChange(faved, change);
 
     this.rootScope.dispatchEvent('sticker_updated', {type: 'faved', faved: !unfave, document: doc, limitReached});
 
@@ -781,10 +782,58 @@ export class AppStickersManager extends AppManager {
       id: getDocumentInput(doc),
       unfave
     }).then(() => {
+      change.answered = true;
+      this.forgetAnsweredFavedStickersChanges();
       if(unfave) {
         this.onStickersUpdated('faved', true);
       }
+    }, (err) => {
+      this.revertFavedStickersChange(faved, change);
+      throw err;
     });
+  }
+
+  /** Puts the sticker first among the faved ones, or takes it out, and says whether the limit pushed another out */
+  private applyFavedStickersChange(faved: MyDocument[], {document, unfave, limit}: FavedStickersChange) {
+    findAndSplice(faved, (doc) => doc.id === document.id);
+    if(unfave) {
+      return false;
+    }
+
+    faved.unshift(document);
+    return faved.splice(limit, faved.length - limit).length > 0;
+  }
+
+  /**
+   * A fave the server did not take leaves the list as tdesktop's does (its list changes only once the server has taken
+   * one): as if it had not been made - the list it was made on, with the changes made since made on it again - put
+   * back in place, where the list's hash keeps it too, and the panel is told so with no toast. A list replaced since
+   * is the server's, right as it is.
+   */
+  private revertFavedStickersChange(faved: MyDocument[], change: FavedStickersChange) {
+    const changes = this.favedStickersChanges;
+    const index = changes.indexOf(change);
+    changes.splice(index, 1);
+    if(this.favedStickers === faved) {
+      const list = change.before.slice();
+      changes.slice(index).forEach((later) => {
+        later.before = list.slice();
+        this.applyFavedStickersChange(list, later);
+      });
+
+      faved.splice(0, faved.length, ...list);
+      this.rootScope.dispatchEvent('stickers_updated', {type: 'faved', stickers: faved, reverted: true});
+    }
+
+    this.forgetAnsweredFavedStickersChanges();
+  }
+
+  // * only a change made before one still unanswered can be made again
+  private forgetAnsweredFavedStickersChanges() {
+    const changes = this.favedStickersChanges;
+    while(changes[0]?.answered) {
+      changes.shift();
+    }
   }
 
   /**
@@ -984,7 +1033,7 @@ export class AppStickersManager extends AppManager {
       return this.getStickersByEmoticonsPromises[cacheKey];
     }
 
-    return this.getStickersByEmoticonsPromises[cacheKey] = Promise.all([
+    const promise = Promise.all([
       includeServerStickers ? this.apiManager.invokeApiHashable({
         method: 'messages.getStickers',
         params: {
@@ -1046,6 +1095,13 @@ export class AppStickersManager extends AppManager {
       const stickers = [...new Set(cachedStickersAnimated.concat(cachedStickersStatic, foundStickers))]/* .filter((doc) => !doc.animated) */;
       return this.filterShowableStickers(stickers, excludePremiumEffectStickers);
     });
+
+    // * a search that failed is not kept: the next one for these emoji asks again
+    return this.getStickersByEmoticonsPromises[cacheKey] = forgetFailedRequest(
+      promise,
+      () => this.getStickersByEmoticonsPromises[cacheKey],
+      () => delete this.getStickersByEmoticonsPromises[cacheKey]
+    );
   }
 
   /** Leaves out (in place) what this browser cannot play, and premium effects when asked to */

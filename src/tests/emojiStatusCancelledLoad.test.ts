@@ -1,5 +1,6 @@
 import {describe, expect, it, vi} from 'vitest';
 import type {Document, EmojiStatus} from '@layer';
+import collectUnhandledRejections from '@/tests/helpers/collectUnhandledRejections';
 
 /*
  * wrapSticker does not wait for the load it starts - it hands the promise over in `render`, and
@@ -51,21 +52,6 @@ async function wrapWith({cached, renderFails, loadFails}: {
     emojiStatus,
     wrapOptions: {middleware: (() => true) as any}
   });
-}
-
-/** Collects what node would report unhandled, giving every pending rejection its turn. */
-async function collectUnhandledRejections(run: () => Promise<any>) {
-  const unhandled: any[] = [];
-  const onUnhandled = (reason: any) => unhandled.push(reason);
-  process.on('unhandledRejection', onUnhandled);
-  try {
-    await run();
-    for(let i = 0; i < 5; ++i) await new Promise((resolve) => setTimeout(resolve, 0));
-  } finally {
-    process.off('unhandledRejection', onUnhandled);
-  }
-
-  return unhandled;
 }
 
 describe('an emoji status whose load was cancelled', () => {

@@ -142,7 +142,8 @@ export type BroadcastEvents = {
 
   'stickers_installed': StickerSet.stickerSet,
   'stickers_deleted': StickerSet.stickerSet,
-  'stickers_updated': {type: 'recent' | 'faved', stickers: MyDocument[]},
+  // * `reverted`: a change of the user's own that the server did not take, put back
+  'stickers_updated': {type: 'recent' | 'faved', stickers: MyDocument[], reverted?: boolean},
   'stickers_top': Long,
   'stickers_order': {type: 'masks' | 'emojis' | 'stickers', order: Long[]},
   'sticker_updated': {type: 'recent' | 'faved', document: MyDocument, faved: boolean, limitReached?: boolean},

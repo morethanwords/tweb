@@ -496,10 +496,11 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       const {limit} = category || {};
       const length = limit ? Math.min(limit, data.stickers.length) : data.stickers.length;
       // a list that got shorter means something was taken out of it — clearing the recent
-      // stickers, un-faving one — and the user has to see that happen; a list of the same
-      // length is the reorder that follows using a sticker, which waits for the panel to hide
+      // stickers, un-faving one — and the user has to see that happen, as a change of theirs
+      // that the server did not take going back; a list of the same length is the reorder that
+      // follows using a sticker, which waits for the panel to hide
       const shrunk = category && length < category.items.length;
-      (shrunk ? onStickersUpdated : onStickersUpdatedPostponed)(data);
+      (shrunk || data.reverted ? onStickersUpdated : onStickersUpdatedPostponed)(data);
     });
 
     this.listenerSetter.add(rootScope)('app_config', () => {
