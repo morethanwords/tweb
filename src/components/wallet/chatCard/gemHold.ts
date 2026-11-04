@@ -62,6 +62,7 @@ export class CardGemHold {
     hit.addEventListener('pointermove', this.onMove);
     hit.addEventListener('pointerup', this.onUp);
     hit.addEventListener('pointercancel', this.onUp);
+    hit.addEventListener('lostpointercapture', this.onUp);
     hit.addEventListener('click', this.onClick);
     hit.addEventListener('dblclick', this.onDoubleClick);
     hit.addEventListener('contextmenu', this.onContextMenu);
@@ -105,6 +106,7 @@ export class CardGemHold {
     hit.removeEventListener('pointermove', this.onMove);
     hit.removeEventListener('pointerup', this.onUp);
     hit.removeEventListener('pointercancel', this.onUp);
+    hit.removeEventListener('lostpointercapture', this.onUp);
     hit.removeEventListener('click', this.onClick);
     hit.removeEventListener('dblclick', this.onDoubleClick);
     hit.removeEventListener('contextmenu', this.onContextMenu);
@@ -159,19 +161,29 @@ export class CardGemHold {
   private onMove = (e: PointerEvent) => {
     const pull = this.pull;
     if(!pull || e.pointerId !== pull.pointerId) return;
+    // * the button went up where its pointerup never reached the gem
+    if(!e.buttons) {
+      this.onUp(e);
+      return;
+    }
+
     const now = clock.now();
     const [dx, dy] = pull.move(e, now);
     this.gem.drag(dx, dy, now);
   };
 
+  /**
+   * Let go: a pointerup, a pointercancel, or a press that ended with no pointerup here (the capture lost, a move with
+   * no button down) - that one lets the gem go where it is, unthrown.
+   */
   private onUp = (e: PointerEvent) => {
     const pull = this.pull;
     if(!pull || e.pointerId !== pull.pointerId) return;
     this.pull = undefined;
-    const now = clock.now(), cancelled = e.type === 'pointercancel';
+    const now = clock.now(), cancelled = e.type === 'pointercancel', released = e.type === 'pointerup';
     const power = this.strength;
-    const tapDirection = pull.isTap(e, now) ? (e.clientX < this.center[0] ? -1 : 1) : undefined;
-    this.gem.endDrag(pull.velocity(e, now), now, cancelled, tapDirection, RELEASE_IMPULSE);
+    const tapDirection = released && pull.isTap(e, now) ? (e.clientX < this.center[0] ? -1 : 1) : undefined;
+    this.gem.endDrag(released ? pull.velocity(e, now) : 0, now, cancelled, tapDirection, RELEASE_IMPULSE);
     this.hit.style.cursor = '';
     if(cancelled || power <= 0) return;
     // * it lands as it springs back: unless pressed again by then, the card takes a hit as hard as it had grown
