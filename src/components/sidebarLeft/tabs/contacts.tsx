@@ -2,6 +2,7 @@ import {Component, createEffect, createSignal, onCleanup, onMount} from 'solid-j
 import InputSearch from '@components/inputSearch';
 import {IS_MOBILE} from '@environment/userAgent';
 import {canFocus} from '@helpers/dom/canFocus';
+import mediaSizes from '@helpers/mediaSizes';
 import ButtonCorner from '@components/buttonCorner';
 import ButtonIcon from '@components/buttonIcon';
 import {replaceButtonIcon} from '@components/button';
@@ -64,8 +65,15 @@ const Contacts: Component = () => {
   onMount(() => {
     tab.container.id = 'contacts-container';
 
-    const btnAdd = ButtonCorner({icon: 'add', className: 'is-visible', ariaLabel: 'AddContact'});
-    tab.content.append(btnAdd);
+    const btnAdd = ButtonCorner({icon: 'add', className: 'contact-add-button', ariaLabel: 'AddContact'});
+    if(mediaSizes.isMobile) {
+      (tab.slider.sidebarEl.querySelector('.mobile-main-navigation-actions') || tab.slider.sidebarEl).append(btnAdd);
+    }
+    else tab.content.append(btnAdd);
+    onCleanup(() => btnAdd.remove());
+    tab.shown.then(() => {
+      if(tab.container.classList.contains('active')) btnAdd.classList.add('is-visible');
+    });
 
     attachClickEvent(btnAdd, () => {
       showCreateContactPopup();
