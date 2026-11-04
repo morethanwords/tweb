@@ -64,6 +64,8 @@ describe('the editor leaves the browser its shortcuts', () => {
     ['Ctrl+Shift+U', 'KeyU', 'U', {ctrlKey: true, shiftKey: true}],
     ['Ctrl+M, muting the tab', 'KeyM', 'm', {ctrlKey: true}],
     ['Ctrl+P, print', 'KeyP', 'p', {ctrlKey: true}],
+    // Tiptap's code block, Cmd+Option+C on a Mac — DevTools' inspect; jsdom's keymap reads Mod as Ctrl
+    ['Ctrl+Alt+C', 'KeyC', 'c', {ctrlKey: true, altKey: true}],
     ['AltGr+1 typing ~', 'Digit1', '~', {ctrlKey: true, altKey: true}],
     ['AltGr+2 typing ²', 'Digit2', '²', {ctrlKey: true, altKey: true}],
     ['AltGr+S typing ś', 'KeyS', 'ś', {ctrlKey: true, altKey: true}]
@@ -134,6 +136,19 @@ describe('the editor leaves the browser its shortcuts', () => {
     const {editor, input} = mount(true);
     expect(press(input, ['Cmd+B', 'KeyB', 'b', {metaKey: true}])).toBe(true);
     expect(editor.getRichValue(true, false).entities.map((it) => it._)).toEqual(['messageEntityBold']);
+  });
+
+  // jsdom's keymap reads Mod as Ctrl on any platform, so the Mac's Cmd+Y is pressed as Ctrl+Y here
+  test.each([false, true])('redoes on Mod+Y but on a Mac, where Cmd+Y is the history (a Mac: %s)', (isApple) => {
+    appleEnv.isApple = isApple;
+    const {editor, input, tiptap} = mount(false);
+    tiptap.commands.insertContent(' more');
+    const edited = editor.getRichValue(false).value;
+    tiptap.commands.undo();
+    const undone = editor.getRichValue(false).value;
+    expect(undone).not.toBe(edited);
+    expect(press(input, ['Mod+Y', 'KeyY', 'y', {ctrlKey: true}])).toBe(!isApple);
+    expect(editor.getRichValue(false).value).toBe(isApple ? undone : edited);
   });
 
   // the typed digit is the binding's, which ProseMirror's keymap does not look for under AltGr on Windows

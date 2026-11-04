@@ -13,6 +13,7 @@ import {
 import callbackify from '@helpers/callbackify';
 import {createCodeHeaderButton} from '@helpers/dom/codeBlockClick';
 import copyFromElement from '@helpers/dom/copyFromElement';
+import exceptKeys from '@helpers/object/exceptKeys';
 import classNames from '@helpers/string/classNames';
 import I18n from '@lib/langPack';
 import {setElementAttributes} from '@components/chat/inputEditor/extensions/nodeViewHelpers';
@@ -28,6 +29,11 @@ const codeHighlightCache = new Map<string, MaybePromise<CodeHighlightResult | un
 export const ChatCodeBlock = CodeBlock.extend({
   // Run code-specific Enter/ArrowDown/Backspace handling before StarterKit's base keymap.
   priority: 101,
+
+  addKeyboardShortcuts() {
+    // Tiptap's toggle, Mod-Alt-c, is Cmd+Option+C on a Mac, DevTools' inspect: a block is ``` or the toolbar's
+    return exceptKeys(this.parent?.() ?? {}, ['Mod-Alt-c']);
+  },
 
   addAttributes() {
     return {

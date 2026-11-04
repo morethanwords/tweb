@@ -615,8 +615,7 @@ describe('plain message field', () => {
 
     // a plain field has no heading, and a one-line one no code block, for these to make
     test.each([
-      ['heading level', {key: '1', code: 'Digit1', ctrlKey: true, altKey: true}],
-      ['code block', {key: 'c', code: 'KeyC', ctrlKey: true, altKey: true}]
+      ['heading level', {key: '1', code: 'Digit1', ctrlKey: true, altKey: true}]
     ] as const)('takes the %s shortcut without throwing', (_name, init) => {
       for(const {editor} of [mountCaption(), mountCaption({withLinebreaks: false})]) {
         editor.setTextWithEntities('line');

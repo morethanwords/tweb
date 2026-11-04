@@ -8,6 +8,9 @@ import {
 } from '@tiptap/pm/state';
 import {CellSelection, TableMap} from '@tiptap/pm/tables';
 import type {EditorView} from '@tiptap/pm/view';
+import {UndoRedo} from '@tiptap/extensions';
+import {IS_APPLE} from '@environment/userAgent';
+import exceptKeys from '@helpers/object/exceptKeys';
 
 type TableSelectionSnapshot = {
   anchorCell: ProseMirrorNode,
@@ -23,6 +26,14 @@ type TableSelectionSnapshot = {
 // Keep ordinary keyboard input granular like the native chat composer. IME
 // composition and commands that dispatch one transaction remain atomic.
 export const CHAT_INPUT_HISTORY_NEW_GROUP_DELAY = 1;
+
+export const ChatUndoRedo = UndoRedo.extend({
+  addKeyboardShortcuts() {
+    const shortcuts = this.parent?.() ?? {};
+    // a Mac redoes on Cmd+Shift+Z, and Cmd+Y is the browser's history there; elsewhere Ctrl+Y is redo
+    return IS_APPLE ? exceptKeys(shortcuts, ['Mod-y']) : shortcuts;
+  }
+}).configure({newGroupDelay: CHAT_INPUT_HISTORY_NEW_GROUP_DELAY});
 
 function captureTableSelection(selection: CellSelection): TableSelectionSnapshot {
   const table = selection.$anchorCell.node(-1);
