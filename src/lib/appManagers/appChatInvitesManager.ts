@@ -118,20 +118,33 @@ export default class AppChatInvitesManager extends AppManager {
     });
   }
 
+  /**
+   * A page of an admin's invite links, active or revoked, with the server's count of them all; the next page goes
+   * on from the last link of the one before - its `date` and `link`, which are sent together or not at all.
+   */
   public getExportedChatInvites({
     chatId,
     revoked,
-    adminId
+    adminId,
+    limit = 50,
+    offsetDate,
+    offsetLink
   }: {
     chatId: ChatId,
     revoked?: boolean,
-    adminId?: UserId
+    adminId?: UserId,
+    limit?: number,
+    offsetDate?: number,
+    offsetLink?: string
   }) {
+    const hasOffset = offsetLink !== undefined;
     return this.apiManager.invokeApi('messages.getExportedChatInvites', {
       peer: this.appChatsManager.getInputPeer(chatId),
       admin_id: adminId ? this.appUsersManager.getUserInput(adminId) : {_: 'inputUserSelf'},
-      limit: 50,
-      revoked
+      limit,
+      revoked,
+      offset_date: hasOffset ? offsetDate ?? 0 : undefined,
+      offset_link: offsetLink
     }).then((exportedChatInvites) => {
       this.appUsersManager.saveApiUsers(exportedChatInvites.users);
       return exportedChatInvites;

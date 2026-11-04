@@ -1,5 +1,6 @@
 import tsNow from '@helpers/tsNow';
-import {ChatInviteImporter, ExportedChatInvite} from '@layer';
+import lastItem from '@helpers/array/lastItem';
+import {ChatInviteImporter, ExportedChatInvite, MessagesExportedChatInvites} from '@layer';
 import {AppManagers} from '@lib/managers';
 import {i18n, LangPackKey} from '@lib/langPack';
 import lottieLoader from '@lib/lottie/lottieLoader';
@@ -168,11 +169,98 @@ export function getImportersLoader({
   };
 }
 
+/** how many of an admin's links, active or revoked, a page holds */
+const INVITES_PAGE_LIMIT = 50;
+
+/**
+ * Pages through an admin's invite links past the first page of each list, active and revoked, as the server orders
+ * them: each page from the last link of the one before. A link the tab has shown (`remember`) - the main one, one
+ * created, edited, revoked or deleted meanwhile - is never drawn twice.
+ */
+export function getChatInvitesLoader({
+  chatId,
+  adminId,
+  managers
+}: {
+  chatId: ChatId,
+  adminId?: UserId,
+  managers: AppManagers
+}) {
+  // * the active links, then the revoked ones
+  type List = {offset?: ChatInvite, isEnd: boolean, revision: number};
+  const lists: List[] = [{isEnd: false, revision: 0}, {isEnd: false, revision: 0}];
+  const knownLinks: Set<string> = new Set();
+
+  const remember = (link: string) => {
+    if(link) {
+      knownLinks.add(link);
+    }
+  };
+
+  /** moves a list past a page the server gave, the first one included, and returns its links not shown yet */
+  const takePage = (revoked: boolean, page: MessagesExportedChatInvites) => {
+    const list = lists[+revoked];
+    const invites = page.invites.filter((invite): invite is ChatInvite => invite._ === 'chatInviteExported');
+    const last = lastItem(invites);
+    // * a short page is the end, and so is one that does not move past the one before
+    list.isEnd = page.invites.length < INVITES_PAGE_LIMIT || !last || last.link === list.offset?.link;
+    list.offset = last ?? list.offset;
+    return invites.filter((invite) => {
+      if(knownLinks.has(invite.link)) {
+        return false;
+      }
+
+      knownLinks.add(invite.link);
+      return true;
+    });
+  };
+
+  /** the next page of a list, asked for one at a time: its links not shown yet - none once the list has ended */
+  const loadMore = async(revoked: boolean): Promise<ChatInvite[]> => {
+    const list = lists[+revoked];
+    if(list.isEnd) {
+      return;
+    }
+
+    const {offset, revision} = list;
+    const page = await managers.appChatInvitesManager.getExportedChatInvites({
+      chatId,
+      adminId,
+      revoked,
+      limit: INVITES_PAGE_LIMIT,
+      offsetDate: offset?.date,
+      offsetLink: offset?.link
+    });
+
+    // * the list was ended while the page was on its way
+    if(list.revision !== revision) {
+      return;
+    }
+
+    return takePage(revoked, page);
+  };
+
+  /** every revoked link is deleted: none is left to ask for, and a page on its way is dropped */
+  const endRevoked = () => {
+    const list = lists[1];
+    ++list.revision;
+    list.isEnd = true;
+  };
+
+  return {
+    remember,
+    takePage,
+    loadMore,
+    endRevoked,
+    isEnd: (revoked: boolean) => lists[+revoked].isEnd
+  };
+}
+
 export function getChatInviteLinksInitArgs(chatId: ChatId, adminId?: UserId) {
   return {
     animationData: !adminId && lottieLoader.loadAnimationFromURLManually('UtyanLinks'),
-    invites: rootScope.managers.appChatInvitesManager.getExportedChatInvites({chatId, adminId}),
-    invitesRevoked: rootScope.managers.appChatInvitesManager.getExportedChatInvites({chatId, adminId, revoked: true}),
+    invites: rootScope.managers.appChatInvitesManager.getExportedChatInvites({chatId, adminId, limit: INVITES_PAGE_LIMIT}),
+    invitesRevoked: rootScope.managers.appChatInvitesManager.getExportedChatInvites({chatId, adminId, revoked: true, limit: INVITES_PAGE_LIMIT}),
     adminsInvites: !adminId && hasRights(apiManagerProxy.getChat(chatId), 'change_type') && rootScope.managers.appChatInvitesManager.getAdminsWithInvites(chatId),
     chatFull: rootScope.managers.appProfileManager.getChatFull(chatId)
   };

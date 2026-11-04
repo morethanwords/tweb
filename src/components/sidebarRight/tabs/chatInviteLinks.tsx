@@ -7,7 +7,7 @@ import customProperties from '@helpers/dom/customProperties';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import tsNow from '@helpers/tsNow';
-import {MessagesExportedChatInvite, MessagesExportedChatInvites} from '@layer';
+import {MessagesExportedChatInvite} from '@layer';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {LangPackKey, i18n, joinElementsWith} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
@@ -22,13 +22,15 @@ import Section, {appendSectionContent} from '@components/section';
 import UsernameRow from '@components/usernameRow';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {wrapLeftDuration} from '@components/wrappers/wrapDuration';
-import {ChatInvite, ChatInviteActions, ChatInviteLink, getChatInviteLinksInitArgs, isActiveInvite} from './chatInviteLinkShared';
+import {ChatInvite, ChatInviteActions, ChatInviteLink, getChatInviteLinksInitArgs, getChatInvitesLoader, isActiveInvite} from './chatInviteLinkShared';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {mountSolidComponent, wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import type {AppChatInviteLinkTab, AppChatInviteLinksTab} from '@components/solidJsTabs/tabs';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import toastError from '@components/toastError';
+import ScrollableLoader from '@helpers/scrollableLoader';
+import lastItem from '@helpers/array/lastItem';
 
 const ChatInviteLinks: Component = () => {
   const [tab] = useSuperTab<typeof AppChatInviteLinksTab>();
@@ -48,6 +50,7 @@ const ChatInviteLinks: Component = () => {
     ]);
 
     const usernames = getPeerActiveUsernames(chat);
+    const invitesLoader = getChatInvitesLoader({chatId, adminId, managers: tab.managers});
 
     // title is set by the scaffold (title: 'InviteLinks')
     tab.container.classList.add('chat-folders-container', 'chat-discussion-container');
@@ -146,6 +149,7 @@ const ChatInviteLinks: Component = () => {
           const row = createInviteRow(editedInvite);
           revokedLinksContent.prepend(row.container);
           primaryInvite = newInvite;
+          invitesLoader.remember(primaryInvite?.link);
           inviteLink.setChatInvite(primaryInvite);
         }
 
@@ -328,6 +332,7 @@ const ChatInviteLinks: Component = () => {
           toggle();
         }
 
+        invitesLoader.endRevoked();
         Array.from(revokedLinksContent.children).forEach((el) => {
           const cache = invitesMap.get(el as HTMLElement);
           cache.destroy(true);
@@ -418,6 +423,7 @@ const ChatInviteLinks: Component = () => {
     const updateCallbacks: Set<() => void> = new Set();
 
     const createInviteRow = (invite: ChatInvite) => {
+      invitesLoader.remember(invite.link);
       let title: HTMLDivElement, subtitle: HTMLDivElement, media: HTMLDivElement;
       let priceElement: HTMLElement, subtitleRight: HTMLElement;
       if(invite.subscription_pricing) {
@@ -583,6 +589,53 @@ const ChatInviteLinks: Component = () => {
       revokedLinks.classList.toggle('hide', !revokedLinksContent.childElementCount);
     };
 
+    const appendInvites = (revoked: boolean, invites: ChatInvite[]) => {
+      if(!invites?.length) {
+        return;
+      }
+
+      (revoked ? revokedLinksContent : additionalLinksContent).append(...invites.map((invite) => createInviteRow(invite).container));
+      if(revoked) {
+        onRevokedLinksUpdate();
+      }
+    };
+
+    // * the active links go on as the end of their section comes near, not the end of the tab: the sections after
+    // them stay where they are, and a page put above what is in view asks for no next one
+    const watchActiveLinksEnd = () => {
+      const end = document.createElement('div');
+      additionalLinksContent.after(end);
+      let loading = false;
+      const observer = new IntersectionObserver((entries) => {
+        if(loading || !lastItem(entries).isIntersecting) {
+          return;
+        }
+
+        loading = true;
+        invitesLoader.loadMore(false).then((invites) => {
+          loading = false;
+          if(!middleware()) {
+            return;
+          }
+
+          appendInvites(false, invites);
+          observer.unobserve(end);
+          if(invitesLoader.isEnd(false)) {
+            observer.disconnect();
+            end.remove();
+          } else {
+            // * observed anew, it tells at once whether the end is still near: a page that did not move it away goes on
+            observer.observe(end);
+          }
+        }, () => {
+          // * a page that failed is asked for again as the end comes near anew
+          loading = false;
+        });
+      }, {root: tab.scrollable.container, rootMargin: `0px 0px ${tab.scrollable.onScrollOffset}px`});
+      observer.observe(end);
+      middleware.onDestroy(() => observer.disconnect());
+    };
+
     const loadLinksPromise = Promise.all([p.invites, p.invitesRevoked]).then(([chatInvites, chatInvitesRevoked]) => {
       if(adminId) {
         primaryInvite = chatInvites.invites[0] as ChatInvite;
@@ -591,22 +644,32 @@ const ChatInviteLinks: Component = () => {
       }
 
       inviteLink.setChatInvite(primaryInvite || usernames[0]);
+      invitesLoader.remember(primaryInvite?.link);
 
-      ([
-        [chatInvites, additionalLinksContent],
-        [chatInvitesRevoked, revokedLinksContent]
-      ] as Array<[MessagesExportedChatInvites, HTMLElement]>).forEach(([chatInvites, content]) => {
-        (chatInvites.invites as ChatInvite[]).forEach((invite) => {
-          if(primaryInvite?.link === invite.link) {
-            return;
-          }
-
-          const row = createInviteRow(invite);
-          content.append(row.container);
-        });
-      });
-
+      appendInvites(false, invitesLoader.takePage(false, chatInvites));
+      appendInvites(true, invitesLoader.takePage(true, chatInvitesRevoked));
       onRevokedLinksUpdate();
+
+      // * the rest of the links, a page at a time
+      if(!invitesLoader.isEnd(false)) {
+        watchActiveLinksEnd();
+      }
+
+      // * the revoked links end the tab
+      if(!invitesLoader.isEnd(true)) {
+        new ScrollableLoader({
+          scrollable: tab.scrollable,
+          getPromise: async() => {
+            const invites = await invitesLoader.loadMore(true);
+            if(!middleware()) {
+              return true;
+            }
+
+            appendInvites(true, invites);
+            return invitesLoader.isEnd(true);
+          }
+        });
+      }
 
       const update = () => {
         updateCallbacks.forEach((cb) => cb());
