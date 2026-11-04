@@ -2,6 +2,7 @@ import {loadChatBubbles, LOAD_CHAT_BUBBLES_TIMEOUT} from '@/tests/helpers/chatBu
 import type {Message, PeerSettings} from '@layer';
 import '@helpers/peerIdPolyfill';
 import {getMiddleware} from '@helpers/middleware';
+import ListenerSetter from '@helpers/listenerSetter';
 import {render} from 'solid-js/web';
 import ejectBubble from '@components/chat/bubbles/ejectBubble';
 import {markMessageLinkEntity} from '@lib/richTextProcessor/filterDisabledEntities';
@@ -1477,6 +1478,37 @@ test('guards a delayed legacy replacement immediately without owning inert state
   expect(anchor.dispatchEvent(allowed)).toBe(true);
   expect(followed).toHaveBeenCalledOnce();
   expect(bubble.inert).toBe(true);
+});
+
+test('takes no press of a pending bubble\'s buttons, on mousedown either (a touch device presses there)', () => {
+  const container = document.createElement('div');
+  const bubble = document.createElement('div');
+  const button = document.createElement('button');
+  button.classList.add('reply-markup-button');
+  bubble.append(button);
+  container.append(bubble);
+  document.body.append(container);
+
+  const listenerSetter = new ListenerSetter();
+  const harness = Object.assign(Object.create(ChatBubbles.prototype), {
+    container,
+    listenerSetter,
+    chat: {isPreview: true}
+  }) as any;
+  harness.attachContainerListeners();
+
+  const pressed = vi.fn();
+  button.addEventListener('mousedown', pressed);
+  button.addEventListener('click', pressed);
+
+  setBubbleHiddenLinksPending(bubble, true);
+  expect(button.dispatchEvent(new MouseEvent('mousedown', {bubbles: true, cancelable: true}))).toBe(false);
+  expect(pressed).not.toHaveBeenCalled();
+
+  setBubbleHiddenLinksPending(bubble, false);
+  expect(button.dispatchEvent(new MouseEvent('mousedown', {bubbles: true, cancelable: true}))).toBe(true);
+  expect(pressed).toHaveBeenCalledOnce();
+  listenerSetter.removeAll();
 });
 
 test('guards the ultimate visible source while a hidden-link candidate is still staging', () => {

@@ -518,7 +518,7 @@ export function cancelPendingHiddenLinksEvent(event: Event) {
     `[${HIDDEN_LINKS_PENDING_ATTRIBUTE}], [${HIDDEN_LINKS_FALLBACK_ATTRIBUTE}]`
   );
   // a shared contact is a web-page box too, but no link: it stays usable where links are held back
-  const navigationTarget = target.closest(`${MESSAGE_LINK_ENTITY_SELECTOR}, .webpage:not(.is-contact)`);
+  const navigationTarget = target.closest(`${MESSAGE_LINK_ENTITY_SELECTOR}, .webpage:not(.is-contact), .reply-markup-button`);
   if(!guardedBubble || !navigationTarget || !guardedBubble.contains(navigationTarget)) {
     return false;
   }
@@ -1907,6 +1907,14 @@ export default class ChatBubbles {
     );
   }
 
+  // * whether the chat holds the message's links and buttons back now (its pinned plate asks too); nothing while the
+  // * chat is not built for the message's peer yet
+  public hidesMessageLinks(message: Message.message | Message.messageService) {
+    const state = this.messageLinkPolicyState;
+    if(state?.peerId !== message.peerId) return;
+    return this.createMessageLinkPolicyAccessor(message, state)();
+  }
+
   private registerRetainedMessageLinkPolicy(
     state: MessageLinkPolicyState,
     bubble: HTMLElement,
@@ -1958,6 +1966,8 @@ export default class ChatBubbles {
     const container = this.container;
 
     this.listenerSetter.add(container)('click', cancelPendingHiddenLinksEvent, {capture: true});
+    // * a touch device presses on mousedown (`attachClickEvent`): an invoice's button opens its payment there
+    this.listenerSetter.add(container)('mousedown', cancelPendingHiddenLinksEvent, {capture: true});
     this.listenerSetter.add(container)('auxclick', cancelPendingHiddenLinksEvent, {capture: true});
     this.listenerSetter.add(container)('contextmenu', cancelPendingHiddenLinksEvent, {capture: true});
     this.listenerSetter.add(container)('dragstart', cancelPendingHiddenLinksEvent, {capture: true});
@@ -10445,7 +10455,10 @@ export default class ChatBubbles {
     if(isMessage) reconcileSummaryButton(message);
 
     const replyMarkup = isMessage && message.reply_markup;
-    if(replyMarkup?._ === 'replyInlineMarkup') {
+    // * a sender whose links are not drawn gets no buttons either (iOS)
+    if(replyMarkup?._ === 'replyInlineMarkup' && hideLinks()) {
+      bubble.dataset.hiddenLinks = '1';
+    } else if(replyMarkup?._ === 'replyInlineMarkup') {
       const containerDiv = createInlineReplyMarkup({
         rows: replyMarkup.rows,
         chat: this.chat,
@@ -15106,6 +15119,8 @@ export default class ChatBubbles {
 
     if(hadHiddenLinks === hasHiddenLinks) return;
 
+    this.chat.topbar?.pinnedMessage?.refreshActionButton();
+
     const peerId = this.peerId;
     const pendingRender = this.messagesQueuePromise;
     this.refreshHiddenLinks(hasHiddenLinks);
@@ -15147,11 +15162,15 @@ export default class ChatBubbles {
 
       const solidMessageBodyEntries = this.solidMessageBodies.get(visibleBubble) ||
         this.solidMessageBodies.get(bubble);
-      // * a link preview is the bubble's own, not its Solid body's: one the message has now, or one the bubble on
-      // * screen still shows (the body keeps the message it is drawn from, an edit without it may be on its way)
-      const isWebPage = (message: Message.message | Message.messageService) => (message as Message.message).media?._ === 'messageMediaWebPage';
-      const hasWebPage = isWebPage(message) || [...(solidMessageBodyEntries?.values() ?? [])].some((entry) => isWebPage(entry.message));
-      if(solidMessageBodyEntries?.size && !hasWebPage) {
+      // * a link preview and the buttons are the bubble's own, not its Solid body's: ones the message has now, or ones
+      // * the bubble on screen still shows (the body keeps the message it is drawn from, an edit without them may be on
+      // * its way)
+      const hasBubbleParts = (message: Message.message | Message.messageService) => {
+        return (message as Message.message).media?._ === 'messageMediaWebPage' ||
+          (message as Message.message).reply_markup?._ === 'replyInlineMarkup';
+      };
+      const bubbleHasParts = hasBubbleParts(message) || [...(solidMessageBodyEntries?.values() ?? [])].some((entry) => hasBubbleParts(entry.message));
+      if(solidMessageBodyEntries?.size && !bubbleHasParts) {
         this.hiddenLinksPendingBubbles.delete(visibleBubble);
         setBubbleHiddenLinksPending(visibleBubble, false);
         setBubbleHiddenLinksFallback(visibleBubble, false);
