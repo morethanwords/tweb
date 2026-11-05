@@ -5604,6 +5604,8 @@ const lang = {
   'VoiceChat.Chat.StartNew': 'Video chat ended. Start a new one?',
   'VoiceChat.Chat.StartNew.OK': 'Start',
   'VoiceChat.Chat.Ended': 'Video chat ended.',
+  'VoiceChat.JoinConfirm': 'Join the video chat **%@**?',
+  'VoiceChat.JoinConfirm.Channel': 'Do you want to join the live stream **%@**?',
   'VoiceChat.Topbar.Join': 'Join',
   'VoiceChat.Status.Connecting': 'Connecting...',
   'VoiceChat.Status.Members': {

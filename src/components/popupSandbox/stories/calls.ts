@@ -650,6 +650,23 @@ defineStories('Calls', [
         myId
       });
     }
+  },
+  {
+    // A link to a chat's running video chat joins only once asked (tdesktop's JoinWithConfirm).
+    id: 'call/joinFromLink',
+    title: 'Join a video chat from a link',
+    open: async(ctx) => {
+      const {showGroupCallJoinConfirmation} = await import('@components/groupCall/joinAs');
+      void showGroupCallJoinConfirmation({peerId: ctx.peer('supergroup'), isBroadcast: false});
+    }
+  },
+  {
+    id: 'call/joinLiveStreamFromLink',
+    title: 'Join a live stream from a link',
+    open: async(ctx) => {
+      const {showGroupCallJoinConfirmation} = await import('@components/groupCall/joinAs');
+      void showGroupCallJoinConfirmation({peerId: ctx.peer('channel'), isBroadcast: true});
+    }
   }
 ]);
 

@@ -138,3 +138,26 @@ describe('RtmpCallsController recovery serialization', () => {
     expect(controller.currentCall).toBeUndefined();
   });
 });
+
+// * a link's stream, which the user agreed to watch: never another the chat has started since
+describe('RtmpCallsController joining the stream asked for', () => {
+  it('joins it while it is the chat\'s', async() => {
+    const joinGroupCall = vi.fn().mockResolvedValue(joinUpdate());
+    const {controller} = makeController(joinGroupCall);
+
+    await controller.joinCall(7 as ChatId, undefined, INPUT_CALL.id);
+
+    expect(joinGroupCall).toHaveBeenCalledTimes(1);
+    expect(joinGroupCall.mock.calls[0][0]).toBe(INPUT_CALL.id);
+  });
+
+  it('joins nothing once the chat has another', async() => {
+    const joinGroupCall = vi.fn().mockResolvedValue(joinUpdate());
+    const {controller} = makeController(joinGroupCall);
+
+    await expect(controller.joinCall(7 as ChatId, undefined, 'an-ended-call')).rejects.toBeInstanceOf(Error);
+
+    expect(joinGroupCall).not.toHaveBeenCalled();
+    expect(controller.currentCall).toBeUndefined();
+  });
+});

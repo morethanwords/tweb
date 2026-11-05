@@ -9,10 +9,13 @@
 
 import showPickUserPopup from '@components/popups/pickUser';
 import PeerTitle from '@components/peerTitle';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import confirmationPopup from '@components/confirmationPopup';
 import {toastNew} from '@components/toast';
 import {i18n, LangPackKey} from '@lib/langPack';
 import type {GroupCallJoinAsOptions} from '@appManagers/appGroupCallsManager';
 import type {AppManagers} from '@lib/managers';
+import type {ActiveAccountNumber} from '@lib/accounts/types';
 import type GroupCallInstance from '@lib/calls/groupCallInstance';
 import groupCallsController from '@lib/calls/groupCallsController';
 import {CallAccount, showCallAccount} from '@lib/calls/callAccount';
@@ -95,26 +98,67 @@ export function saveGroupCallJoinAs(
 }
 
 /**
+ * Whether to join the chat's running call at all: asked before a link puts us there (tdesktop's
+ * JoinWithConfirm, CreateOrJoinConfirmation), naming the chat — its video chat, or a channel's live stream.
+ * `false` when declined.
+ */
+export async function showGroupCallJoinConfirmation(options: {
+  peerId: PeerId,
+  isBroadcast: boolean,
+  accountNumber?: ActiveAccountNumber
+}): Promise<boolean> {
+  const {peerId, accountNumber} = options;
+  const title = await wrapPeerTitle({peerId, accountNumber});
+  try {
+    await confirmationPopup({
+      descriptionLangKey: options.isBroadcast ? 'VoiceChat.JoinConfirm.Channel' : 'VoiceChat.JoinConfirm',
+      descriptionLangArgs: [title],
+      button: {langKey: 'VoiceChat.Topbar.Join'}
+    });
+  } catch{
+    return false;
+  }
+
+  return true;
+}
+
+/** The same question, about the call of the account it is joined on, and shown on that account. */
+export async function confirmGroupCallJoin(account: CallAccount, peerId: PeerId): Promise<boolean> {
+  const {accountNumber, managers} = account;
+  const isBroadcast = await managers.appChatsManager.isBroadcast(peerId.toChatId());
+  await showCallAccount(accountNumber);
+  return showGroupCallJoinConfirmation({peerId, isBroadcast, accountNumber});
+}
+
+/**
  * Who to join the video chat of `peerId` as, asking only when there is a choice to make.
  * `undefined` when the question was dismissed, the account when the list cannot be had.
+ * `confirm` (a link's call): with no choice to make, whether to join at all is asked instead.
  */
 export async function chooseGroupCallJoinAs(options: {
   account: CallAccount,
   peerId: PeerId,
-  hasCall: boolean
+  hasCall: boolean,
+  confirm?: boolean
 }): Promise<PeerId | undefined> {
-  const {account: {accountNumber, managers, myId}, peerId, hasCall} = options;
+  const {account, peerId, hasCall} = options;
+  const {accountNumber, managers, myId} = account;
+  // * a link's call: with no one to choose to be, the one question is whether to join at all
+  const confirmed = async(joinAsPeerId: PeerId) => {
+    return !options.confirm || await confirmGroupCallJoin(account, peerId) ? joinAsPeerId : undefined;
+  };
+
   let joinAs: GroupCallJoinAsOptions;
   try {
     joinAs = await managers.appGroupCallsManager.getGroupCallJoinAs(peerId);
   } catch(err) {
     // tdesktop requestList: a failed request joins as the account
     console.error('group call join-as list failed', err);
-    return myId;
+    return confirmed(myId);
   }
 
   if(!shouldAskGroupCallJoinAs(joinAs, myId, hasCall)) {
-    return joinAs.peerIds.length ? joinAs.defaultPeerId : myId;
+    return confirmed(joinAs.peerIds.length ? joinAs.defaultPeerId : myId);
   }
 
   const isBroadcast = await managers.appChatsManager.isBroadcast(peerId.toChatId());

@@ -55,6 +55,7 @@ import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
 import {getStickerSetInputByShortName} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 import {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
 import showAddBotToChat from '@components/popups/addBotToChat';
+import {isJoinVoiceChatAnchor} from '@components/wrappers/joinVoiceChatAnchor';
 import getBotAddToChatScope from '@appManagers/utils/bots/getBotAddToChatScope';
 import parseBotAdminRights from '@appManagers/utils/bots/parseBotAdminRights';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
@@ -327,9 +328,10 @@ export class InternalLinkProcessor {
       }>({
         name: 'voicechat',
         protocol: 'tg',
-        callback: ({uriParams}) => {
+        callback: ({uriParams, element}) => {
           const link = this.makeLink(INTERNAL_LINK_TYPE.VOICE_CHAT, uriParams);
-          return this.processInternalLink(link);
+          // * straight to the handler: only here is it known whether the press was on the chat's own "join"
+          return this.processVoiceChatLink(link, {fromServiceMessage: isJoinVoiceChatAnchor(element)});
         }
       });
 
@@ -1437,29 +1439,52 @@ export class InternalLinkProcessor {
     });
   };
 
-  public processVoiceChatLink = async(link: InternalLink.InternalLinkVoiceChat) => {
-    const openPeerId = (peerId: PeerId) => {
-      if(appImManager.chat.peerId !== peerId) {
-        return appImManager.setInnerPeer({peerId});
+  /**
+   * A chat's video chat or live stream: t.me/<chat>?videochat (?voicechat, ?livestream), tg://resolve?domain=…&videochat,
+   * and tg://voicechat?chat_id=…&id=…, the address the "video chat" of a call's service message carries. The chat is
+   * opened first; a link then joins only the call running there, the one it names, never a new one, and only once
+   * asked (`joinCallFromLink`, as tdesktop's joinVoiceChatFromLink). Only the service message's own anchor joins as
+   * the chat's Join button does (tdesktop GroupCallClickHandler): the same address can come from anywhere.
+   */
+  public processVoiceChatLink = async(
+    link: InternalLink.InternalLinkVoiceChat,
+    options?: {fromServiceMessage?: boolean}
+  ) => {
+    let peerId: PeerId;
+    if(link.chat_id !== undefined) {
+      if(!IS_GROUP_CALL_SUPPORTED || !link.id) {
+        return;
       }
-    };
 
-    if(link.livestream !== undefined) {
-      const peer = await this.managers.appUsersManager.resolveUsername(link.domain);
-      const peerId = peer.id.toPeerId(true);
-      await openPeerId(peerId);
-      return appImManager.joinLiveStream(peerId);
-    }
+      peerId = link.chat_id.toPeerId(true);
+    } else if(link.domain) {
+      let peer: User | Chat;
+      try {
+        peer = await this.managers.appUsersManager.resolveUsername(link.domain);
+      } catch(err) {
+        this.showUsernameResolveError(err as ApiError);
+        return;
+      }
 
-    if(!IS_GROUP_CALL_SUPPORTED) {
+      // * a call is a chat's: a user's link is the user's (tdesktop shows the peer)
+      if(peer._ === 'user') {
+        return appImManager.openUsername({userName: link.domain});
+      }
+
+      peerId = peer.id.toPeerId(true);
+    } else {
       return;
     }
 
-    if(link.id) {
-      const peerId = link.chat_id.toPeerId(true);
-      await openPeerId(peerId);
+    if(appImManager.chat.peerId !== peerId) {
+      await appImManager.setInnerPeer({peerId});
+    }
+
+    if(options?.fromServiceMessage) {
       return appImManager.joinGroupCall(peerId, link.id);
     }
+
+    return appImManager.joinCallFromLink(peerId, link.id);
   };
 
   // t.me/call/<slug> handler. Hand the slug to `appImManager.joinConference`,

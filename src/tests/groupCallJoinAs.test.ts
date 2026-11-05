@@ -10,8 +10,12 @@ import '@helpers/peerIdPolyfill';
 
 const pickUserMock = vi.hoisted(() => vi.fn());
 const showCallAccountMock = vi.hoisted(() => vi.fn());
+const confirmationPopupMock = vi.hoisted(() => vi.fn());
+const TITLE = vi.hoisted(() => ({}));
 
 vi.mock('@components/popups/pickUser', () => ({default: pickUserMock}));
+vi.mock('@components/confirmationPopup', () => ({default: confirmationPopupMock}));
+vi.mock('@components/wrappers/peerTitle', () => ({default: vi.fn(async() => TITLE)}));
 vi.mock('@lib/calls/groupCallsController', () => ({default: {}}));
 vi.mock('@lib/calls/callAccount', () => ({showCallAccount: showCallAccountMock}));
 vi.mock('@components/peerTitle', () => ({default: class {}}));
@@ -43,6 +47,17 @@ function makeManagers(joinAs: {peerIds: PeerId[], savedPeerId?: PeerId, defaultP
 // * the account the join was started on
 function makeAccount(managers: ReturnType<typeof makeManagers>) {
   return {accountNumber: ACCOUNT_NUMBER, managers, myId: ME} as any;
+}
+
+// * the picker answered with a click on `peerId`'s row; `onOpen` sees it open
+function pickOnOpen(peerId: PeerId, onOpen?: () => void) {
+  pickUserMock.mockImplementation((options) => {
+    onOpen?.();
+    queueMicrotask(() => {
+      options.onSelect([{peerId, key: '' + peerId}]);
+      options.onClose();
+    });
+  });
 }
 
 describe('choosing who to join a video chat as', () => {
@@ -88,13 +103,9 @@ describe('choosing who to join a video chat as', () => {
 
   it('asks with the preselected peer on top and keeps the pick as the chat\'s default', async() => {
     const managers = makeManagers({peerIds: [ME, CHANNEL, OTHER_CHANNEL], savedPeerId: OTHER_CHANNEL, defaultPeerId: OTHER_CHANNEL});
-    pickUserMock.mockImplementation((options) => {
+    pickOnOpen(CHANNEL, () => {
       // * the picker opens on the joining account's peers: the tab went back to it first
       expect(showCallAccountMock).toHaveBeenCalledWith(ACCOUNT_NUMBER);
-      queueMicrotask(() => {
-        options.onSelect([{peerId: CHANNEL, key: '' + CHANNEL}]);
-        options.onClose();
-      });
     });
 
     // starting a call: asked even with a saved choice
@@ -118,5 +129,72 @@ describe('choosing who to join a video chat as', () => {
     expect(await chooseGroupCallJoinAs({account: makeAccount(managers), peerId: CHAT, hasCall: true})).toBeUndefined();
     expect(pickUserMock.mock.calls[0][0].titleLangKey).toBe('VoipGroupJoinAs');
     expect(managers.appGroupCallsManager.saveDefaultGroupCallJoinAs).not.toHaveBeenCalled();
+  });
+});
+
+// * a link's call (tdesktop's JoinWithConfirm): one question is always asked - who to be, or else whether to join
+describe('joining a video chat a link points at', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('asks whether to join, naming the chat, when there is no one else to be', async() => {
+    const managers = makeManagers({peerIds: [ME], defaultPeerId: ME});
+    confirmationPopupMock.mockImplementation(() => {
+      // * the question is the joining account's: the tab went back to it first
+      expect(showCallAccountMock).toHaveBeenCalledWith(ACCOUNT_NUMBER);
+      return Promise.resolve();
+    });
+
+    expect(await chooseGroupCallJoinAs({account: makeAccount(managers), peerId: CHAT, hasCall: true, confirm: true})).toBe(ME);
+    expect(confirmationPopupMock).toHaveBeenCalledTimes(1);
+    expect(confirmationPopupMock.mock.calls[0][0]).toMatchObject({
+      descriptionLangKey: 'VoiceChat.JoinConfirm',
+      descriptionLangArgs: [TITLE],
+      button: {langKey: 'VoiceChat.Topbar.Join'}
+    });
+    expect(pickUserMock).not.toHaveBeenCalled();
+  });
+
+  it('calls a channel\'s a live stream', async() => {
+    const managers = makeManagers({peerIds: [ME], defaultPeerId: ME});
+    managers.appChatsManager.isBroadcast.mockResolvedValue(true);
+    confirmationPopupMock.mockResolvedValue(undefined);
+
+    expect(await chooseGroupCallJoinAs({account: makeAccount(managers), peerId: CHANNEL, hasCall: true, confirm: true})).toBe(ME);
+    expect(confirmationPopupMock.mock.calls[0][0].descriptionLangKey).toBe('VoiceChat.JoinConfirm.Channel');
+  });
+
+  it('joins no one when the question is declined', async() => {
+    const managers = makeManagers({peerIds: [ME, CHANNEL], savedPeerId: CHANNEL, defaultPeerId: CHANNEL});
+    confirmationPopupMock.mockRejectedValue(undefined);
+
+    // * joined again as the saved choice: no list to pick from, so the question is whether to join
+    expect(await chooseGroupCallJoinAs({account: makeAccount(managers), peerId: CHAT, hasCall: true, confirm: true})).toBeUndefined();
+    expect(confirmationPopupMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks whether to join when the list cannot be had', async() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const managers = makeManagers(new Error('offline'));
+    confirmationPopupMock.mockRejectedValue(undefined);
+
+    expect(await chooseGroupCallJoinAs({account: makeAccount(managers), peerId: CHAT, hasCall: true, confirm: true})).toBeUndefined();
+    expect(confirmationPopupMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('takes the pick of who to be for the answer', async() => {
+    const managers = makeManagers({peerIds: [ME, CHANNEL], defaultPeerId: ME});
+    pickOnOpen(CHANNEL);
+
+    expect(await chooseGroupCallJoinAs({account: makeAccount(managers), peerId: CHAT, hasCall: true, confirm: true})).toBe(CHANNEL);
+    expect(confirmationPopupMock).not.toHaveBeenCalled();
+  });
+
+  it('asks nothing more of the chat\'s own Join button', async() => {
+    const managers = makeManagers({peerIds: [ME], defaultPeerId: ME});
+
+    expect(await chooseGroupCallJoinAs({account: makeAccount(managers), peerId: CHAT, hasCall: true})).toBe(ME);
+    expect(confirmationPopupMock).not.toHaveBeenCalled();
   });
 });

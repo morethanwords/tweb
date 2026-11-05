@@ -248,3 +248,28 @@ describe('AppGroupCallsManager — join as', () => {
     ]);
   });
 });
+
+// * what a link may put us into: the chat's call as the server has it now, and only the one the link names
+describe('AppGroupCallsManager — the call a link points at', () => {
+  const chatFullWithCall = (call?: object) => ({_: 'channelFull', call} as ChatFull);
+
+  it('is the chat\'s running call, asked of the server afresh', async() => {
+    const {manager} = makeManager({chatFull: chatFullWithCall(INPUT_CALL)});
+
+    expect(await manager.getRunningGroupCall(CHAT_PEER_ID.toChatId(), '42')).toMatchObject({_: 'groupCall', id: '42'});
+    expect(await manager.getRunningGroupCall(CHAT_PEER_ID.toChatId())).toMatchObject({_: 'groupCall', id: '42'});
+    expect((manager as any).appProfileManager.getChatFull).toHaveBeenCalledWith(CHAT_PEER_ID.toChatId(), true);
+  });
+
+  it('is none when the chat runs no call, or another one', async() => {
+    expect(await makeManager({chatFull: chatFullWithCall()}).manager.getRunningGroupCall(CHAT_PEER_ID.toChatId(), '42')).toBeUndefined();
+    expect(await makeManager({chatFull: chatFullWithCall(INPUT_CALL)}).manager.getRunningGroupCall(CHAT_PEER_ID.toChatId(), '43')).toBeUndefined();
+  });
+
+  it('is none once the call is over', async() => {
+    const {manager} = makeManager({chatFull: chatFullWithCall(INPUT_CALL)});
+    (manager as any).groupCalls.set(CALL.id, {_: 'groupCallDiscarded', id: CALL.id, access_hash: CALL.access_hash, duration: 1});
+
+    expect(await manager.getRunningGroupCall(CHAT_PEER_ID.toChatId(), '42')).toBeUndefined();
+  });
+});

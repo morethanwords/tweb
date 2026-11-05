@@ -12,8 +12,15 @@ const mocks = vi.hoisted(() => ({
   importContactToken: vi.fn(),
   getDeepLinkInfo: vi.fn(),
   resolveUserByUsername: vi.fn(),
-  shareGame: vi.fn()
+  resolveUsername: vi.fn(),
+  shareGame: vi.fn(),
+  joinGroupCall: vi.fn(),
+  joinCallFromLink: vi.fn(),
+  joinLiveStream: vi.fn()
 }));
+
+// * where it is not, no link reaches a video chat at all
+vi.mock('@environment/groupCallSupport', () => ({default: true}));
 
 // everything the processor can open, none of which these links reach but through the mocks below
 vi.mock('@components/popups/sharedFolderInvite', () => ({default: vi.fn()}));
@@ -30,6 +37,10 @@ vi.mock('@lib/appImManager', () => ({
   default: {
     setInnerPeer: mocks.setInnerPeer,
     openUsername: mocks.openUsername,
+    joinGroupCall: mocks.joinGroupCall,
+    joinCallFromLink: mocks.joinCallFromLink,
+    joinLiveStream: mocks.joinLiveStream,
+    chat: {},
     getStackFromElement: (): undefined => undefined
   }
 }));
@@ -69,7 +80,8 @@ beforeAll(async() => {
   processor.construct({
     appUsersManager: {
       importContactToken: mocks.importContactToken,
-      resolveUserByUsername: mocks.resolveUserByUsername
+      resolveUserByUsername: mocks.resolveUserByUsername,
+      resolveUsername: mocks.resolveUsername
     },
     apiManager: {getDeepLinkInfo: mocks.getDeepLinkInfo},
     appGamesManager: {shareGame: mocks.shareGame}
@@ -357,5 +369,80 @@ describe('game links', () => {
 
     expect(mocks.resolveUserByUsername).toHaveBeenCalledWith('gamebot');
     expect(mocks.openUsername).toHaveBeenCalledWith(expect.objectContaining({userName: 'gamebot'}));
+  });
+});
+
+// * a link puts no one into a call unasked (tdesktop's joinVoiceChatFromLink): only the chat's own service message
+// * joins as the chat's Join button does, and the address it carries is anyone's to hand over
+describe('video chat links', () => {
+  const CHAT_ID = 77 as ChatId;
+  const PEER_ID = CHAT_ID.toPeerId(true);
+  const HREF = `tg://voicechat?chat_id=${CHAT_ID}&id=123&access_hash=456`;
+
+  async function serviceMessageAnchor() {
+    const {default: wrapJoinVoiceChatAnchor} = await import('@components/wrappers/joinVoiceChatAnchor');
+    return wrapJoinVoiceChatAnchor({
+      _: 'messageService',
+      peerId: PEER_ID,
+      action: {_: 'messageActionGroupCall', call: {_: 'inputGroupCall', id: '123', access_hash: '456'}}
+    } as any) as HTMLAnchorElement;
+  }
+
+  test('ask before joining the call a tg://voicechat link names, from a message or handed to the page', async() => {
+    const {default: wrapUrl} = await import('@lib/richTextProcessor/wrapUrl');
+    expect(wrapUrl(HREF).onclick).toBe('tg_voicechat');
+
+    await click('tg_voicechat', HREF);
+
+    expect(mocks.setInnerPeer).toHaveBeenCalledWith({peerId: PEER_ID});
+    expect(mocks.joinCallFromLink).toHaveBeenCalledWith(PEER_ID, '123');
+    expect(mocks.joinGroupCall).not.toHaveBeenCalled();
+  });
+
+  test('join from the service message of the call as the chat\'s Join button does', async() => {
+    const a = await serviceMessageAnchor();
+    expect(a.getAttribute('onclick')).toBe('tg_voicechat(this)');
+
+    await (window as any).tg_voicechat(a);
+
+    expect(mocks.joinGroupCall).toHaveBeenCalledWith(PEER_ID, '123');
+    expect(mocks.joinCallFromLink).not.toHaveBeenCalled();
+  });
+
+  test('take a copy of the service message\'s anchor for a link', async() => {
+    const a = (await serviceMessageAnchor()).cloneNode(true) as HTMLAnchorElement;
+
+    await (window as any).tg_voicechat(a);
+
+    expect(mocks.joinCallFromLink).toHaveBeenCalledWith(PEER_ID, '123');
+    expect(mocks.joinGroupCall).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    'https://t.me/somechannel?livestream',
+    'https://t.me/somechannel?videochat',
+    'https://t.me/somechannel?voicechat=hash',
+    'tg://resolve?domain=somechannel&livestream'
+  ])('ask before joining the chat\'s running call by %s, whatever it calls it', async(href) => {
+    mocks.resolveUsername.mockResolvedValue({_: 'channel', id: CHAT_ID, pFlags: {}});
+    const {default: wrapUrl} = await import('@lib/richTextProcessor/wrapUrl');
+
+    await click(wrapUrl(href).onclick, href);
+
+    expect(mocks.resolveUsername).toHaveBeenCalledWith('somechannel');
+    expect(mocks.setInnerPeer).toHaveBeenCalledWith({peerId: PEER_ID});
+    expect(mocks.joinCallFromLink).toHaveBeenCalledWith(PEER_ID, undefined);
+    expect(mocks.joinLiveStream).not.toHaveBeenCalled();
+    expect(mocks.joinGroupCall).not.toHaveBeenCalled();
+  });
+
+  test('open a user a link of the kind names', async() => {
+    mocks.resolveUsername.mockResolvedValue({_: 'user', id: 5, pFlags: {}});
+
+    await click('im', 'https://t.me/someone?livestream');
+
+    expect(mocks.openUsername).toHaveBeenCalledWith({userName: 'someone'});
+    expect(mocks.joinCallFromLink).not.toHaveBeenCalled();
+    expect(mocks.joinLiveStream).not.toHaveBeenCalled();
   });
 });

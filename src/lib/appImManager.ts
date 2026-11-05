@@ -86,7 +86,7 @@ import callTransitionCoordinator from '@lib/calls/callTransitionCoordinator';
 import {CallAccount, captureCallAccount} from '@lib/calls/callAccount';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import groupCallsController from '@lib/calls/groupCallsController';
-import {chooseGroupCallJoinAs} from '@components/groupCall/joinAs';
+import {chooseGroupCallJoinAs, confirmGroupCallJoin} from '@components/groupCall/joinAs';
 import showConferenceJoinPopup from '@components/call/conferenceJoinPopup';
 import conferenceInvitesController from '@lib/calls/conferenceInvitesController';
 import GROUP_CALL_STATE from '@lib/calls/groupCallState';
@@ -2431,6 +2431,19 @@ export class AppImManager extends EventListenerBase<{
     }
   }
 
+  /**
+   * Who to be in the chat's video chat, then the call we are in left for it. Who to be is asked before the current
+   * call is left: dismissing the question leaves it be, and gives `undefined`.
+   */
+  private async chooseJoinAsAndLeaveCurrentCall(options: Parameters<typeof chooseGroupCallJoinAs>[0]) {
+    const joinAs = await chooseGroupCallJoinAs(options);
+    if(joinAs !== undefined) {
+      await this.discardCurrentCall(options.peerId, 'Voice');
+    }
+
+    return joinAs;
+  }
+
   public joinGroupCall(peerId: PeerId, groupCallId?: GroupCallId): Promise<void> {
     preloadNoiseSuppression();
     // * the account the call is joined on: the tab can switch to another while this waits its turn
@@ -2470,13 +2483,11 @@ export class AppImManager extends EventListenerBase<{
         return;
       }
 
-      // Who to be is asked before the current call is left: dismissing the question leaves it be.
-      const joinAs = await chooseGroupCallJoinAs({account, peerId, hasCall: !!chatFull.call});
+      const joinAs = await this.chooseJoinAsAndLeaveCurrentCall({account, peerId, hasCall: !!chatFull.call});
       if(joinAs === undefined) {
         return;
       }
 
-      await this.discardCurrentCall(peerId, 'Voice');
       // * the call may have ended or been replaced while the questions were open
       chatFull = await getTargetChatFull();
       if(!chatFull) {
@@ -2698,23 +2709,73 @@ export class AppImManager extends EventListenerBase<{
     const account = captureCallAccount(this.managers);
     return this.callTransitions.run(async() => {
       await this.discardCurrentCall(peerId, 'Live');
+      await this.watchLiveStream(peerId, account);
+    });
+  }
 
-      try {
-        await rtmpCallsController.joinCall(peerId.toChatId(), account);
-      } catch(err) {
-        console.error(err);
-        toastNew({
-          langPackKey: 'Error.AnError'
-        });
+  // * `callId`: the stream asked for, when only that one will do (see rtmpCallsController.joinCall)
+  private async watchLiveStream(peerId: PeerId, account: CallAccount, callId?: GroupCallId) {
+    try {
+      await rtmpCallsController.joinCall(peerId.toChatId(), account, callId);
+    } catch(err) {
+      console.error(err);
+      toastNew({
+        langPackKey: 'Error.AnError'
+      });
+      return;
+    }
+
+    try {
+      await openRtmpCallViewer(peerId);
+    } catch(err) {
+      this.log.error('opening RTMP viewer failed', err);
+      toastNew({langPackKey: 'Error.AnError'});
+    }
+  }
+
+  /**
+   * The chat's video chat or live stream a link points at — t.me/<chat>?videochat (?voicechat, ?livestream), or
+   * tg://voicechat?chat_id=…&id=… from anywhere but the chat's own service message (tdesktop
+   * SessionNavigation::joinVoiceChatFromLink): only the call running there, the one the link names when it names
+   * one, never a new one, and only once the user said so (JoinConfirm::Always) — the one question asked is who to
+   * be, when there is a choice, or else whether to join at all. A live stream is watched and any other call joined,
+   * whatever the link called it.
+   */
+  public joinCallFromLink(peerId: PeerId, groupCallId?: GroupCallId): Promise<void> {
+    // * the account the call is joined on: the tab can switch to another while this waits its turn
+    const account = captureCallAccount(this.managers);
+    return this.callTransitions.run(async() => {
+      const chatId = peerId.toChatId();
+      const call = await account.managers.appGroupCallsManager.getRunningGroupCall(chatId, groupCallId).catch((err): undefined => {
+        // * a chat that cannot be had is one with no call to join
+        this.log.warn('the call of a link', err);
+        return undefined;
+      });
+      if(!call) {
+        toastNew({langPackKey: 'VoiceChat.Chat.Ended'});
         return;
       }
 
-      try {
-        await openRtmpCallViewer(peerId);
-      } catch(err) {
-        this.log.error('opening RTMP viewer failed', err);
-        toastNew({langPackKey: 'Error.AnError'});
+      if(call.pFlags.rtmp_stream) {
+        if(await confirmGroupCallJoin(account, peerId)) {
+          await this.discardCurrentCall(peerId, 'Live');
+          await this.watchLiveStream(peerId, account, call.id);
+        }
+
+        return;
       }
+
+      if(!IS_GROUP_CALL_SUPPORTED) {
+        return;
+      }
+
+      preloadNoiseSuppression();
+      const joinAs = await this.chooseJoinAsAndLeaveCurrentCall({account, peerId, hasCall: true, confirm: true});
+      if(joinAs === undefined) {
+        return;
+      }
+
+      await groupCallsController.joinGroupCall(chatId, call.id, true, false, undefined, account, joinAs);
     });
   }
 

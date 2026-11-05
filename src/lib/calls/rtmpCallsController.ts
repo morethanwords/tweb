@@ -3,7 +3,7 @@ import EventListenerBase from '@helpers/eventListenerBase';
 import noop from '@helpers/noop';
 import {nextRandomUint} from '@helpers/random';
 import {DataJSON, GroupCall, InputGroupCall} from '@layer';
-import {JoinGroupCallJsonPayload} from '@appManagers/appGroupCallsManager';
+import {GroupCallId, JoinGroupCallJsonPayload} from '@appManagers/appGroupCallsManager';
 import {AppManagers, TabManagers} from '@lib/managers';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import rootScope from '@lib/rootScope';
@@ -149,8 +149,9 @@ export class RtmpCallsController extends EventListenerBase<{
     };
   }
 
-  // * `account`: the one the stream is watched on - the caller's when it asked, whichever the tab shows later
-  public async joinCall(chatId: ChatId, account = captureCallAccount(this.managers)) {
+  // * `account`: the one the stream is watched on - the caller's when it asked, whichever the tab shows later;
+  // * `expectedCallId`: the stream the user agreed to watch (a link's) - never another the chat has started since
+  public async joinCall(chatId: ChatId, account = captureCallAccount(this.managers), expectedCallId?: GroupCallId) {
     if(this.currentCall) {
       throw new Error('Already in rtmp call');
     }
@@ -170,6 +171,10 @@ export class RtmpCallsController extends EventListenerBase<{
     const callId = (chat.call as InputGroupCall.inputGroupCall)?.id;
     if(!callId) {
       throw new Error('No call id');
+    }
+
+    if(expectedCallId !== undefined && String(callId) !== String(expectedCallId)) {
+      throw new Error('Not the call asked for');
     }
 
     const call = await managers.appGroupCallsManager.getGroupCallFull(callId);
