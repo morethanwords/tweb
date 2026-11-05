@@ -251,13 +251,20 @@ function processRichText(richText: RichText, options: Options): TextWithEntities
         length
       } as any), options);
     case 'textAnchor': {
+      // * an anchor is a place of a page that its links go to, and its name is the server's as given: it is an
+      // * element's id only on a page, made the page's own by its prefix. Text drawn anywhere else (a chat list row,
+      // * a reply, a caption in the media viewer) keeps its text only - a bare id would shadow the app's own ids
+      if(!options?.randomId) {
+        return processRichText(richText.text, options);
+      }
+
       // const url = options?.url && new URL(options.url);
       // if(url) url.hash = richText.name;
       return wrapEntity(richText.text, (offset, length) => ({
         _: 'messageEntityAnchor',
         offset,
         length,
-        name: (options?.randomId || '') + richText.name,
+        name: options.randomId + richText.name,
         richTextReference: length > 0
         // url: 'tg://iv?' + (url ?
         //   'url=' + encodeURIComponent(url.toString()) :

@@ -24,6 +24,19 @@ function richMessage(blocks: PageBlock[], media: Partial<RichMessage> = {}): Ric
   };
 }
 
+/** A message of nothing but `rich_message` */
+function richTextMessage(rich_message: RichMessage): Message.message {
+  return {
+    _: 'message',
+    pFlags: {},
+    id: 1,
+    date: 1,
+    message: '',
+    peer_id: {_: 'peerUser', user_id: 1},
+    rich_message
+  };
+}
+
 const labels = {
   AttachPhoto: 'Photo',
   AttachVideo: 'Video',
@@ -130,20 +143,43 @@ describe('getRichMessagePreview', () => {
     stubBrowserGlobals();
     const {default: wrapMessageForReply} = await import('@components/wrappers/messageForReply');
     const reply = await wrapMessageForReply({
-      message: {
-        _: 'message',
-        pFlags: {},
-        id: 1,
-        date: 1,
-        message: '',
-        peer_id: {_: 'peerUser', user_id: 1},
-        rich_message: richMessage([{_: 'pageBlockParagraph', text: text('word '.repeat(40))}])
-      } as Message.message,
+      message: richTextMessage(richMessage([{_: 'pageBlockParagraph', text: text('word '.repeat(40))}])),
       managers: {} as any, // * a message with no media asks them nothing
       plain: true
     });
 
     expect(reply).toBe('word '.repeat(30).trimEnd() + '…');
+  });
+
+  // the server keeps an anchor's name as given: as an id, one named as an id of the app or a tg: link's handler
+  // (`tg_x=…`) would stand for that in the document (`getElementById`, the window's names)
+  it('keeps an anchor\'s text in a reply, never its name as an id', {timeout: 60_000}, async() => {
+    stubBrowserGlobals();
+    const {default: wrapMessageForReply} = await import('@components/wrappers/messageForReply');
+    const names = ['tg_x=alert(1)', 'column-center'];
+    const message = richTextMessage(richMessage([
+      {_: 'pageBlockParagraph', text: {_: 'textConcat', texts: [
+        text('See '),
+        {_: 'textAnchor', name: names[0], text: {_: 'textBold', text: text('the note')}},
+        {_: 'textAnchor', name: names[1], text: {_: 'textEmpty'}}
+      ]}},
+      {_: 'pageBlockHeading1', text: {_: 'textAnchor', name: names[1], text: text('Title')}}
+    ]));
+
+    const container = document.createElement('div');
+    container.append(await wrapMessageForReply({message, managers: {} as any}));
+    document.body.append(container);
+    expect(container.textContent).toBe(`See the note${_}Title`);
+    expect(container.querySelector('[id]')).toBeNull();
+    for(const name of names) {
+      expect(document.getElementById(name)).toBeNull();
+    }
+
+    container.remove();
+
+    // the text keeps the rest of its formatting
+    const preview = getRichMessagePreview(message.rich_message);
+    expect(preview.entities.map((entity) => entity._)).toEqual(['messageEntityBold', 'messageEntityBold']);
   });
 
   it('cuts a long text with an ellipsis, never through an icon', () => {

@@ -1214,18 +1214,13 @@ describe('InstantViewBlocks streaming updates', () => {
     dispose();
   });
 
-  test('keeps hidden caption links disabled inside the media viewer', async() => {
+  /** Opens the only photo of a page, under `captionText`, in the media viewer: the message it is shown with */
+  async function openCaptionedPhoto(
+    captionText: RichText,
+    richTextOptions?: Parameters<typeof InstantViewBlocks>[0]['richTextOptions']
+  ) {
     const page = makeMediaPage([1]);
-    (page.blocks[0] as PageBlock.pageBlockPhoto).caption = {
-      _: 'pageCaption',
-      text: {
-        _: 'textUrl',
-        text: text('hidden link'),
-        url: 'https://example.com',
-        webpage_id: 0
-      },
-      credit: {_: 'textEmpty'}
-    };
+    (page.blocks[0] as PageBlock.pageBlockPhoto).caption = {_: 'pageCaption', text: captionText, credit: {_: 'textEmpty'}};
     const container = document.createElement('div');
     document.body.append(container);
     const dispose = render(() => (
@@ -1233,21 +1228,43 @@ describe('InstantViewBlocks streaming updates', () => {
         webPageId={1}
         page={page}
         sourceRevision={1}
-        richTextOptions={{noNavigation: true}}
+        richTextOptions={richTextOptions}
         openNewPage={() => {}}
         collapse={() => {}}
       />
     ), container);
-    await Promise.resolve();
 
-    (container.querySelector('[data-photo-id="1"]') as HTMLElement).click();
-    await vi.waitFor(() => expect(instantViewMocks.openMedia).toHaveBeenCalledOnce());
-    const options = instantViewMocks.openMedia.mock.calls[0][0] as {
-      message: {totalEntities?: Array<{_: string}>}
-    };
-    expect(options.message.totalEntities?.some((entity) => entity._ === 'messageEntityTextUrl')).toBe(false);
-    dispose();
-    container.remove();
+    try {
+      await Promise.resolve();
+      (container.querySelector('[data-photo-id="1"]') as HTMLElement).click();
+      await vi.waitFor(() => expect(instantViewMocks.openMedia).toHaveBeenCalledOnce());
+      const options = instantViewMocks.openMedia.mock.calls[0][0] as {
+        message: {message: string, totalEntities?: Array<{_: string}>}
+      };
+      return options.message;
+    } finally {
+      dispose();
+      container.remove();
+    }
+  }
+
+  test('keeps hidden caption links disabled inside the media viewer', async() => {
+    const message = await openCaptionedPhoto({
+      _: 'textUrl',
+      text: text('hidden link'),
+      url: 'https://example.com',
+      webpage_id: 0
+    }, {noNavigation: true});
+    expect(message.totalEntities?.some((entity) => entity._ === 'messageEntityTextUrl')).toBe(false);
+  });
+
+  test('gives the media viewer a caption\'s anchor as its text only, never the server\'s name as an id', async() => {
+    const message = await openCaptionedPhoto({
+      _: 'textConcat',
+      texts: [text('See '), {_: 'textAnchor', name: 'column-center', text: text('the note')}]
+    });
+    expect(message.message).toBe('See the note');
+    expect(message.totalEntities?.some((entity) => entity._ === 'messageEntityAnchor')).toBe(false);
   });
 
   test('drops an in-flight media open after policy changes or its owner is disposed', async() => {

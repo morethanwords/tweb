@@ -482,6 +482,12 @@ describe('Instant View rich rendering', () => {
       />
     ), container);
 
+    // the server's name is no id of the document: the page's prefix makes it its own, and the link still finds it
+    const reference = container.querySelector('.tg-reference');
+    expect(reference.id).not.toBe('fn-note');
+    expect(reference.id.endsWith('fn-note')).toBe(true);
+    expect(document.getElementById('fn-note')).toBeNull();
+
     const link = container.querySelector('a.anchor-url') as HTMLAnchorElement;
     link.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true}));
 
