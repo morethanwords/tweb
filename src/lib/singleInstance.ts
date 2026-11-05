@@ -7,6 +7,7 @@
 
 import App from '@config/app';
 import {MOUNT_CLASS_TO} from '@config/debug';
+import Modes from '@config/modes';
 import tabId from '@config/tabId';
 import IS_SHARED_WORKER_SUPPORTED from '@environment/sharedWorkerSupport';
 import EventListenerBase from '@helpers/eventListenerBase';
@@ -31,6 +32,13 @@ const CHECK_INSTANCE_INTERVAL = 5000;
 const DEACTIVATE_TIMEOUT = 30000;
 const MULTIPLE_TABS_THRESHOLD = 20000;
 const IS_MULTIPLE_TABS_SUPPORTED = IS_SHARED_WORKER_SUPPORTED;
+// * a running (not deactivated) tab holds a Web Lock, which the browser lets go of once the tab is gone: that is how a
+// * tab with a worker of its own learns whether the tab of the instance it read is still there. Tabs side by side share
+// * a worker, so for it they are one instance and hold one lock between them. Tabs on the test servers keep instances
+// * of their own (the storage's `t_`), so locks of their own too
+const INSTANCE_LOCK = (Modes.test ? 't_' : '') + 'xt_instance_';
+const SHARED_INSTANCE_LOCK = INSTANCE_LOCK + 'shared';
+const getInstanceLock = (id: number) => INSTANCE_LOCK + id;
 
 export class SingleInstance extends EventListenerBase<{
   activated: () =>  void,
@@ -43,6 +51,7 @@ export class SingleInstance extends EventListenerBase<{
   private deactivated: InstanceDeactivateReason;
   private log = logger('INSTANCE');
   private interclientBroadcastChannel: BroadcastChannel;
+  private releaseLock: () => void;
 
   constructor() {
     super(false);
@@ -108,7 +117,22 @@ export class SingleInstance extends EventListenerBase<{
     this.masterInstance = false;
     this.clearDeactivateTimeout();
     this.deactivated = undefined;
+    this.holdLock();
     this.sendClientInterclient(); // * should work for both cases when 'tabs' or 'otherClient'
+  }
+
+  private holdLock() {
+    const locks = navigator.locks;
+    if(!locks || this.releaseLock) {
+      return;
+    }
+
+    const released = new Promise<void>((resolve) => this.releaseLock = resolve);
+    locks.request(
+      IS_MULTIPLE_TABS_SUPPORTED ? SHARED_INSTANCE_LOCK : getInstanceLock(this.instanceId),
+      {mode: IS_MULTIPLE_TABS_SUPPORTED ? 'shared' : 'exclusive'},
+      () => released
+    );
   }
 
   private clearInstance = () => {
@@ -139,6 +163,8 @@ export class SingleInstance extends EventListenerBase<{
     this.log.warn('deactivate', reason);
     this.clearDeactivateTimeout();
     this.deactivated = reason;
+    this.releaseLock?.();
+    this.releaseLock = undefined;
 
     this.dispatchEvent('deactivated', reason);
   }
@@ -174,17 +200,44 @@ export class SingleInstance extends EventListenerBase<{
       this.deactivateInstance('version');
       apiManagerProxy.toggleStorages(false, false);
       return;
-    } else if(IS_MULTIPLE_TABS_SUPPORTED) {
-      sessionStorage.set({xt_instance: newInstance});
+    }
+
+    // * whether the tab of an instance is still there its lock says, so a tab writes its instance when what it says
+    // * changes, not on every tick (a disk write every 5 s from every tab). Without Web Locks the time in it says that,
+    // * and it is written on every tick
+    const locks = navigator.locks;
+    const isOwn = curInstance?.id === this.instanceId;
+    const write = (claim: boolean) => {
+      const changed = isOwn ?
+        curInstance.idle !== idle || curInstance.accountNumber !== newInstance.accountNumber :
+        !curInstance || claim;
+      if(!locks || changed) {
+        sessionStorage.set({xt_instance: newInstance});
+      }
+    };
+
+    if(IS_MULTIPLE_TABS_SUPPORTED) {
+      // * the tab active last names its account (t.me sends the user back to it): one in the background never takes
+      // * the place of another's
+      write(!idle);
       return;
     }
 
+    let isAnotherAlive: boolean;
+    if(locks) {
+      const held = new Set((await locks.query()).held.map((lock) => lock.name));
+      if(this.deactivated) {
+        return;
+      }
+
+      isAnotherAlive = held.has(SHARED_INSTANCE_LOCK) || (!!curInstance && !isOwn && held.has(getInstanceLock(curInstance.id)));
+    } else {
+      isAnotherAlive = !!curInstance && !isOwn && curInstance.time >= (time - MULTIPLE_TABS_THRESHOLD);
+    }
+
     // this.log('check instance', newInstance, curInstance)
-    if(!idle ||
-        !curInstance ||
-        curInstance.id === this.instanceId ||
-        curInstance.time < (time - MULTIPLE_TABS_THRESHOLD)) {
-      sessionStorage.set({xt_instance: newInstance});
+    if(!idle || !isAnotherAlive) {
+      write(true);
 
       if(!this.masterInstance) {
         this.masterInstance = true;
