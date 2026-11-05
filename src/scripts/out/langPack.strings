@@ -2369,6 +2369,7 @@
 "ShareYouLocationInfo" = "This will send your current location to the bot.";
 "ShareYouLocationUnable" = "App was unable to determine your current location";
 "AreYouSureShareMyContactInfoBot" = "The bot will know your phone number. This can be useful for integration with other services.\n\n⚠️ Warning! Never enter your Telegram login codes in mini apps.";
+"AreYouSureShareMyContactInfoBotUnblock" = "This will also unblock the bot.";
 "AreYouSureShareMyContactInfoUser" = "Are you sure you want to share your phone number %1$s with **%2$s**?";
 "ShareMyPhoneNoCaps" = "Share my phone number";
 "Conversation.ShareMyPhoneNumber.StatusSuccess" = "%@ can now see your phone number.";
@@ -4947,6 +4948,7 @@
 "VoiceChat.Chat.Ended" = "Video chat ended.";
 "VoiceChat.JoinConfirm" = "Join the video chat **%@**?";
 "VoiceChat.JoinConfirm.Channel" = "Do you want to join the live stream **%@**?";
+"VoiceChat.LinkInvalid" = "This invite link is invalid or has expired.";
 "VoiceChat.Topbar.Join" = "Join";
 "VoiceChat.Status.Connecting" = "Connecting...";
 "VoiceChat.Status.Members_one" = "%d participant";
