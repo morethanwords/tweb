@@ -4551,20 +4551,7 @@ export default class ChatBubbles {
             message.peerId;
 
         if(this.chat.type === ChatType.Discussion && !this.chat.isForum) {
-          const historyResult = await this.managers.appMessagesManager.getHistory({
-            peerId: replyToPeerId,
-            threadId: this.chat.threadId,
-            limit: 1,
-            offsetId: 1,
-            addOffset: -1
-          });
-
-          const message = this.chat.getMessageByPeer(replyToPeerId, historyResult.history[0]) as Message.message;
-          const fwdFrom = message.fwd_from;
-          if(fwdFrom?.channel_post === replyToMid) {
-            replyToMid = message.mid;
-            replyToPeerId = message.peerId;
-          }
+          ({peerId: replyToPeerId, mid: replyToMid} = await this.getDiscussionReplyTarget(replyToPeerId, replyToMid));
         }
 
         this.followStack.push(bubbleFullMid);
@@ -4616,6 +4603,24 @@ export default class ChatBubbles {
       }
     }
   };
+
+  /**
+   * Where a reply in a post's discussion goes: one to the channel's post goes to its copy that starts the thread.
+   * With no such start at hand (an empty history, a first message that is no copy of the post) it goes where it points.
+   */
+  private async getDiscussionReplyTarget(peerId: PeerId, mid: number) {
+    const historyResult = await this.managers.appMessagesManager.getHistory({
+      peerId,
+      threadId: this.chat.threadId,
+      limit: 1,
+      offsetId: 1,
+      addOffset: -1
+    });
+
+    const firstMid = historyResult.history[0];
+    const message = firstMid ? this.chat.getMessageByPeer(peerId, firstMid) as Message.message : undefined;
+    return message?.fwd_from?.channel_post === mid ? {peerId: message.peerId, mid: message.mid} : {peerId, mid};
+  }
 
   private openEmojiPackByTarget(stickerEmojiEl: HTMLElement) {
     this.managers.appEmojiManager.getCustomEmojiDocument(stickerEmojiEl.dataset.docId).then((doc) => {
