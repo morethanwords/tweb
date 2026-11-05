@@ -40,13 +40,13 @@ import {openMarkdownInstantView} from '@components/markdownInstantView';
 import isPlayableDocument from '@appManagers/utils/docs/isPlayableDocument';
 import {hotListen} from '@helpers/hotModule';
 
+// * a file shown in more than one place (another message, shared media, another tab) shows a download of it started
+// * in one of them everywhere: the other rows join it and never start one
+const attachToDownloadOfRow: WeakMap<HTMLElement, () => void> = new WeakMap();
+
 hotListen(import.meta.hot, rootScope, 'document_downloading', (docId) => {
   const elements = Array.from(document.querySelectorAll(`.document[data-doc-id="${docId}"]`)) as HTMLElement[];
-  elements.forEach((element) => {
-    if(element.querySelector('.preloader-container.manual')) {
-      simulateClickEvent(element);
-    }
-  });
+  elements.forEach((element) => attachToDownloadOfRow.get(element)?.());
 });
 
 export default async function wrapDocument({
@@ -358,13 +358,15 @@ export default async function wrapDocument({
   };
 
   // ! DO NOT USE ASYNC/AWAIT HERE ! SAFARI WON'T LET DOWNLOAD THE FILE BECAUSE OF ASYNC
-  const load = (e?: Event) => {
+  const load = (e?: Event, onlyAttach?: boolean) => {
     const save = !e || e.isTrusted;
     const doc = (docDiv as any).doc;
     // const doc = await managers.appDocsManager.getDoc(docDiv.dataset.docId);
     let download: CancellablePromise<any>;
     const queueId = hotReloadGuard.appImManager.chat?.bubbles?.lazyLoadQueue.queueId;
-    if(!save) {
+    if(onlyAttach) {
+      download = appDownloadManager.attachToDownloadToDisc(doc);
+    } else if(!save) {
       download = appDownloadManager.downloadToDisc({media: doc, queueId}, true);
     } else if(isMarkdown(doc)) {
       download = appDownloadManager.downloadMedia({media: doc, queueId});
@@ -414,7 +416,8 @@ export default async function wrapDocument({
   const {fileName: downloadFileName} = getDownloadMediaDetails({media: doc, downloadId: '1'});
   if(await managers.apiFileManager.isDownloading(downloadFileName)) {
     downloadDiv = docDiv.querySelector('.document-download') || icoDiv;
-    const promise = appDownloadManager.downloadToDisc({media: doc}, true);
+    // * the save may be over by the time this reaches it: then the file waits for a click
+    const promise = appDownloadManager.attachToDownloadToDisc(doc);
 
     preloader = new ProgressivePreloader();
     preloader.attach(downloadDiv, false, promise);
@@ -452,6 +455,12 @@ export default async function wrapDocument({
       preloader.onClick(e);
     } else if(canOpen) {
       load(e);
+    }
+  });
+
+  attachToDownloadOfRow.set(docDiv, () => {
+    if(preloader?.preloader.classList.contains('manual')) {
+      load(undefined, true);
     }
   });
 

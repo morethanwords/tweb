@@ -1,7 +1,7 @@
 import type {DownloadMediaOptions, DownloadOptions} from '@appManagers/apiFileManager';
 import type {AppMessagesManager} from '@appManagers/appMessagesManager';
 import type {MyDocument} from '@appManagers/appDocsManager';
-import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import deferredPromise, {bindPromiseToDeferred, CancellablePromise} from '@helpers/cancellablePromise';
 import {InputFile, InputFileLocation, Photo, PhotoSize} from '@layer';
 import getFileNameForUpload from '@helpers/getFileNameForUpload';
 import {TabManagers} from '@lib/managers';
@@ -380,6 +380,58 @@ export class AppDownloadManager {
   //   }
   // }
 
+  // * a save streamed to the disk by the service worker, named '<file>_download' (else a plain download of the file)
+  private canSaveViaServiceWorker() {
+    return !IS_MOBILE_SAFARI && !!apiManagerProxy.serviceMessagePort;
+  }
+
+  /**
+   * The download of this document on its way - from this tab or another one - for a place that only shows it, such
+   * as another row of the same file: its save streamed to the disk, else a plain download of it (a save without the
+   * service worker, or one that fell back to that, a file opened rather than saved). It never starts one and rejects
+   * with `NO_ENTRY_FOUND` when there is none: a save over already would be downloaded anew, unasked, and that
+   * download's own `document_downloading` would set off the next one. Kept out of `downloads`, so that no request
+   * that would start the file ever waits on one that may find nothing
+   */
+  public attachToDownloadToDisc(doc: MyDocument): DownloadBlob {
+    const downloadIds = this.canSaveViaServiceWorker() ? ['1', undefined] : [undefined];
+    const fileNames = downloadIds.map((downloadId) => getDownloadMediaDetails({media: doc, downloadId}).fileName);
+    const started = this.getDownload(fileNames[0], 'disc') as DownloadBlob;
+    if(started) {
+      return started;
+    }
+
+    const {apiFileManager} = bindManagersToSession(this.managers);
+    const deferred = deferredPromise<Blob>();
+    let fileName: string; // * of the transfer asked to join
+    deferred.cancel = () => {
+      apiFileManager.cancelDownload(fileName);
+      deferred.reject(makeError('DOWNLOAD_CANCELED'));
+    };
+
+    const onProgress = (details: Progress) => {
+      if(details.fileName === fileName) {
+        deferred.notifyAll?.(details);
+      }
+    };
+    rootScope.addEventListener('download_progress', onProgress);
+    deferred.catch(noop).finally(() => rootScope.removeEventListener('download_progress', onProgress));
+
+    const join = (index: number): Promise<Blob> => {
+      fileName = fileNames[index];
+      return apiFileManager.downloadMedia({media: doc, downloadId: downloadIds[index], onlyAttach: true}).catch((err: ApiError) => {
+        if(err?.type !== 'NO_ENTRY_FOUND' || index === fileNames.length - 1 || deferred.isRejected) {
+          throw err;
+        }
+
+        return join(index + 1);
+      });
+    };
+
+    bindPromiseToDeferred(join(0), deferred);
+    return deferred;
+  }
+
   public downloadToDisc(options: DownloadMediaOptions, justAttach?: boolean) {
     const media = options.media;
     const isDocument = media._ === 'document';
@@ -388,7 +440,7 @@ export class AppDownloadManager {
       options.thumb = (media as Photo.photo).sizes.slice().pop() as PhotoSize.photoSize;
     }
 
-    const USE_SW = !IS_MOBILE_SAFARI && !!apiManagerProxy.serviceMessagePort;
+    const USE_SW = this.canSaveViaServiceWorker();
     // const USE_SW = true;
 
     const getOutFileName = () => {

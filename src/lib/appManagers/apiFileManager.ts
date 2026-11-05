@@ -64,7 +64,12 @@ export type DownloadMediaOptions = {
   fileName?: string
   queueId?: number,
   onlyCache?: boolean,
-  downloadId?: string
+  downloadId?: string,
+  /**
+   * Join the transfer of this file already on its way, never start one: with nothing downloading it the promise
+   * rejects with `NO_ENTRY_FOUND`. For a place that only shows a download started elsewhere
+   */
+  onlyAttach?: boolean
 };
 
 type DownloadPromise = CancellablePromise<Blob>;
@@ -1075,6 +1080,10 @@ export class ApiFileManager extends AppManager {
 
     let promise = this.getDownload(fileName);
     if(!promise) {
+      if(options.onlyAttach) {
+        return Promise.reject(makeError('NO_ENTRY_FOUND'));
+      }
+
       promise = this.download(downloadOptions);
 
       if(isDocument && !thumb) {
