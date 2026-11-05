@@ -15,7 +15,6 @@ import DotRenderer from '@components/dotRenderer';
 import {observeResize} from '@components/resizeObserver';
 import {drawImageFromSource} from '@components/messageSpoilerOverlay/drawImageFromSource';
 import drawGlyphMask from '@components/messageSpoilerOverlay/glyphMask';
-import Modes from '@config/modes';
 import {
   adjustSpaceBetweenCloseRects,
   computeMaxDistToMargin,
@@ -350,15 +349,13 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
 
     props.messageElement.classList.remove('is-hovering-spoiler');
 
-    if(Modes.spoiler2) {
-      pushGlyphs();
-    }
+    pushGlyphs();
 
     // the worker mirrors the same curve for the pixels; the signal animation below
     // keeps driving the visibility class and the click guards
-    overlayHandle?.unwrap(clickCoordinates(), maxDist(), getTimeForDist(maxDist()));
+    overlayHandle?.unwrap(clickCoordinates(), maxDist(), getTimeForDist(maxDist(), useWorker));
 
-    cancelAnimation = animateValue(0, 1, getTimeForDist(maxDist()), setUnwrapProgress, {
+    cancelAnimation = animateValue(0, 1, getTimeForDist(maxDist(), useWorker), setUnwrapProgress, {
       easing: UnwrapEasing,
       onEnd: () => {
         unwrapTimeout = window.setTimeout(() => {

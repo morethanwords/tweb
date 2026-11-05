@@ -1,4 +1,3 @@
-import Modes from '@config/modes';
 import {unwrapEasing} from '@helpers/easings';
 import themeController from '@helpers/themeController';
 import {hexToRgb} from '@helpers/color';
@@ -48,10 +47,12 @@ export function computeMaxDistToMargin(e: MouseEvent, parentRect: DOMRect, rects
   )));;
 }
 
+// * the worker's dust (`dust`) gathers into the letters on the way, which takes longer than the classic reveal of the
+// * legacy path
 const DUST_SLOWDOWN = 1.7;
 
-export function getTimeForDist(dist: number) {
-  return Math.max(600, Math.sqrt((dist / 160)) * 350) * (Modes.spoiler2 ? DUST_SLOWDOWN : 1);
+export function getTimeForDist(dist: number, dust: boolean) {
+  return Math.max(600, Math.sqrt((dist / 160)) * 350) * (dust ? DUST_SLOWDOWN : 1);
 }
 
 export function toDOMRectArray(list: DOMRectList) {

@@ -20,7 +20,6 @@ export const KEPT_FLAGS = [
   'debug',
   'logs',
   'a11y',
-  'spoiler2',
   'rtl',
   'noSharedWorker',
   'noServiceWorker',
@@ -35,8 +34,9 @@ export const KEPT_FLAGS = [
 
 export type KeptFlag = typeof KEPT_FLAGS[number];
 
-// * read by the page alone (some switched while the app runs): kept out of the workers' URLs, kept or from the page's
-// * own, where a tab with one and a tab without it would start a second SharedWorker for the same accounts
+// * switched while the app runs, and read by the page alone: kept out of the workers' URLs, kept or from the page's
+// * own, where switching one would start a second SharedWorker for the same accounts. 'spoiler2' is read by nothing
+// * now (the dust is everyone's spoiler), but a tab whose address still carries it must share the others' worker
 const PAGE_ONLY_FLAGS: ReadonlySet<string> = new Set(['rtl', 'memoryWatch', 'spoiler2']);
 
 export function isPageOnlyFlag(flag: string) {
@@ -152,7 +152,6 @@ const Modes = {
   // until it settles; ?a11y=1 turns it on. ARIA names and roles stay either way,
   // since nobody without assistive technology can tell they are there.
   a11y: isFlagOn('a11y'),
-  spoiler2: isFlagOn('spoiler2'),
   // Lays the app out right to left in whatever language is loaded, to check a layout in RTL
   // without switching to Arabic, Persian or Hebrew; the real switch follows the language.
   rtl: isFlagOn('rtl'),

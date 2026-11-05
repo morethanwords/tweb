@@ -428,10 +428,6 @@ if(import.meta.env.DEV || import.meta.env.VITE_PREVIEW) {
   (window as any)['showBubbleSandbox'] = loadBubbleSandbox;
 }
 
-if(Modes.spoiler2) {
-  document.documentElement.classList.add('spoiler-2');
-}
-
 /* false &&  */document.addEventListener('DOMContentLoaded', async() => {
   const perf = performance.now();
   randomlyChooseVersionFromSearch();

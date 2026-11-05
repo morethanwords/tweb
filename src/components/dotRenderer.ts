@@ -1,7 +1,6 @@
 // * thanks https://github.com/dkaraush/particles for webgl version
 
 import {MOUNT_CLASS_TO} from '@config/debug';
-import Modes from '@config/modes';
 import {animate} from '@helpers/animation';
 import callbackify from '@helpers/callbackify';
 import deferredPromise from '@helpers/cancellablePromise';
@@ -74,19 +73,22 @@ function getMediaPlacement(source: CanvasImageSource, canvasRect: DOMRect, dpr: 
   };
 }
 
-const getImageSpoilerConfig = (dpr: number): Partial<DotRendererConfig> => Modes.spoiler2 ? {
+// * the worker's media dust, tinted by the picture it covers; the legacy path draws the classic dust
+const getImageSpoilerConfig = (dpr: number): Partial<DotRendererConfig> => ({
   particlesCount: 1.3 * getDefaultParticlesCount(IMAGE_SPOILER_SIZE, IMAGE_SPOILER_SIZE),
   radius: 1.5 * dpr,
   timeScale: .9,
   longevity: 1
-} : {};
+});
 
-const getTextSpoilerConfig = (dpr: number): Partial<DotRendererConfig> => ({
-  particlesCount: (Modes.spoiler2 ? 7 : 4) * getDefaultParticlesCount(TEXT_SPOILER_WIDTH, TEXT_SPOILER_HEIGHT),
+// * the worker's text dust (`dust`), which gathers into the letters, is denser and finer than the classic dust the
+// * legacy path draws
+const getTextSpoilerConfig = (dpr: number, dust: boolean): Partial<DotRendererConfig> => ({
+  particlesCount: (dust ? 7 : 4) * getDefaultParticlesCount(TEXT_SPOILER_WIDTH, TEXT_SPOILER_HEIGHT),
   noiseSpeed: 5,
   maxVelocity: 10,
   timeScale: 1.2,
-  radius: (Modes.spoiler2 ? 1.2 : 1.8) * dpr,
+  radius: (dust ? 1.2 : 1.8) * dpr,
   forceMult: .2,
   velocityMult: .4,
   dampingMult: 2.2,
@@ -216,7 +218,7 @@ export default class DotRenderer implements AnimationItemWrapper {
     // dotRenderer.renderFirstFrame();
 
     const dpr = window.devicePixelRatio;
-    const {canvas, rotate, flipX, flipY} = this.createTargetCanvas(width, height, dpr);
+    const {canvas, rotate, flipX, flipY} = this.createTargetCanvas(width, height, dpr, true);
     const context = canvas.getContext('2d');
 
     let revealAnimation: {
@@ -461,17 +463,18 @@ export default class DotRenderer implements AnimationItemWrapper {
       width: TEXT_SPOILER_WIDTH,
       height: TEXT_SPOILER_HEIGHT,
       dpr,
-      config: buildDotRendererConfig(TEXT_SPOILER_WIDTH, TEXT_SPOILER_HEIGHT, dpr, getTextSpoilerConfig(dpr)),
+      config: buildDotRendererConfig(TEXT_SPOILER_WIDTH, TEXT_SPOILER_HEIGHT, dpr, getTextSpoilerConfig(dpr, true)),
       ...this.getShaderURLs()
     });
   }
 
   /**
-   * Shared between the worker and the legacy paths: the target canvas with the
-   * per-instance rotation/flip disguising that all the spoilers sample the same
-   * simulation
+   * Shared between the worker and the legacy paths: the target canvas, on the legacy
+   * one (`disguise`) with the per-instance rotation/flip disguising that all the
+   * spoilers sample the same simulation - the worker's dust is tinted by the picture
+   * under it and stays as drawn
    */
-  private static createTargetCanvas(width: number, height: number, dpr: number) {
+  private static createTargetCanvas(width: number, height: number, dpr: number, disguise: boolean) {
     const index = ++this.createdIndex;
 
     const canvas = document.createElement('canvas');
@@ -481,9 +484,9 @@ export default class DotRenderer implements AnimationItemWrapper {
       canvas.height = height * dpr;
     }
 
-    const rotate = !Modes.spoiler2 && (index % 4) === 1;
-    const flipX = !Modes.spoiler2 && (index % 4) === 2;
-    const flipY = !Modes.spoiler2 && (index % 4) === 3;
+    const rotate = disguise && (index % 4) === 1;
+    const flipX = disguise && (index % 4) === 2;
+    const flipY = disguise && (index % 4) === 3;
 
     const transforms: string[] = [
       rotate && 'rotate(180deg)',
@@ -514,7 +517,7 @@ export default class DotRenderer implements AnimationItemWrapper {
     const connection = this.retainConnection();
     this.initMediaSim();
     const dpr = window.devicePixelRatio;
-    const {canvas, rotate, flipX, flipY} = this.createTargetCanvas(width, height, dpr);
+    const {canvas} = this.createTargetCanvas(width, height, dpr, false);
     const id = this.createdIndex;
 
     const simSize = IMAGE_SPOILER_SIZE * dpr;
@@ -528,8 +531,7 @@ export default class DotRenderer implements AnimationItemWrapper {
       canvas: offscreen,
       x,
       y,
-      color: config?.color ? '#' + config.color.toString(16) : undefined,
-      dust: Modes.spoiler2
+      color: config?.color ? '#' + config.color.toString(16) : undefined
     }, [offscreen]);
 
     let detached = false;
@@ -541,7 +543,7 @@ export default class DotRenderer implements AnimationItemWrapper {
       else message.bitmap.close();
     };
 
-    if(Modes.spoiler2 && thumbnail) {
+    if(thumbnail) {
       createImageBitmap(thumbnail).then((bitmap) => postBitmap({type: 'media-thumbnail', bitmap}), () => {});
     }
 
@@ -570,14 +572,6 @@ export default class DotRenderer implements AnimationItemWrapper {
 
       const rectX = event.clientX as number - bcr.left;
       const rectY = event.clientY as number - bcr.top;
-      let transX = rectX, transY = rectY;
-
-      if(Number(rotate) + Number(flipX) === 1) {
-        transX = bcr.width - rectX;
-      }
-      if(Number(rotate) + Number(flipY) === 1) {
-        transY = bcr.height - rectY;
-      }
 
       const distToMargin = Math.max(
         Math.hypot(rectX, rectY),
@@ -586,77 +580,43 @@ export default class DotRenderer implements AnimationItemWrapper {
         Math.hypot(bcr.width - rectX, bcr.height - rectY)
       );
       const maxDist = distToMargin * dpr + 50;
-
-      if(Modes.spoiler2) {
-        const dustDuration = Math.max(MEDIA_DUST_MIN_DURATION, (800 + (400 - distToMargin)) * MEDIA_DUST_SLOWDOWN);
-        const deferred = deferredPromise<void>();
-        const imagePromise = mediaSource ?
-          createImageBitmap(mediaSource).catch((): ImageBitmap => undefined) :
-          Promise.resolve<ImageBitmap>(undefined);
-        const placement = mediaSource && getMediaPlacement(mediaSource, bcr, dpr);
-        withTimeout(imagePromise, MEDIA_IMAGE_WAIT).then((bitmap) => {
-          // * a picture made after the wait is not used
-          if(!bitmap) imagePromise.then((late) => late?.close());
-          // * the spoiler went while its picture was made: nothing to reveal
-          if(detached) {
-            bitmap?.close();
-            return;
-          }
-
-          if(bitmap) postBitmap({type: 'media-image', bitmap, placement});
-
-          // * the worker draws the cover from now on, and the page's goes once the worker's is on screen - two frames
-          // * after it says so, as a style changed here can be shown before a frame it has drawn: never a frame without
-          // * one (the wave is a dot yet). The reveal ends when the worker says nothing is left, at the latest when its
-          // * time is up
-          const hideCover = () => underLyingCanvas.style.visibility = 'hidden';
-          const revealed = () => {
-            this.mediaReveals.delete(id);
-            deferred.resolve();
-          };
-          this.mediaReveals.set(id, {covered: () => doubleRaf().then(hideCover), revealed});
-          setTimeout(hideCover, MEDIA_COVER_HANDOFF_TIMEOUT);
-          this.connection?.postMessage({
-            type: 'media-reveal',
-            id,
-            coords: {x: rectX * dpr, y: rectY * dpr},
-            maxDist,
-            duration: dustDuration
-          });
-          setTimeout(revealed, dustDuration);
-        });
-
-        return deferred;
-      }
-
-      const duration = 800 + (400/* px/ms */ - distToMargin);
-
-      this.connection?.postMessage({
-        type: 'media-reveal',
-        id,
-        coords: {x: transX * dpr, y: transY * dpr},
-        maxDist,
-        duration
-      });
-
-      const underLyingCtx = underLyingCanvas.getContext('2d');
-      const underlyingCanvasClickCoords = {
-        x: rectX * underLyingCanvas.width / bcr.width,
-        y: rectY * underLyingCanvas.height / bcr.height
-      };
-      const maxDistUnderlyingCanvas = maxDist / canvas.width * underLyingCanvas.width;
-
+      const dustDuration = Math.max(MEDIA_DUST_MIN_DURATION, (800 + (400 - distToMargin)) * MEDIA_DUST_SLOWDOWN);
       const deferred = deferredPromise<void>();
-
-      animateValue(0, 1, duration,
-        (v) => {
-          drawClippingCircle(underLyingCtx, v, underlyingCanvasClickCoords, maxDistUnderlyingCanvas, dpr);
-        },
-        {
-          onEnd: () => void deferred.resolve(),
-          easing: simpleEasing
+      const imagePromise = mediaSource ?
+        createImageBitmap(mediaSource).catch((): ImageBitmap => undefined) :
+        Promise.resolve<ImageBitmap>(undefined);
+      const placement = mediaSource && getMediaPlacement(mediaSource, bcr, dpr);
+      withTimeout(imagePromise, MEDIA_IMAGE_WAIT).then((bitmap) => {
+        // * a picture made after the wait is not used
+        if(!bitmap) imagePromise.then((late) => late?.close());
+        // * the spoiler went while its picture was made: nothing to reveal
+        if(detached) {
+          bitmap?.close();
+          return;
         }
-      );
+
+        if(bitmap) postBitmap({type: 'media-image', bitmap, placement});
+
+        // * the worker draws the cover from now on, and the page's goes once the worker's is on screen - two frames
+        // * after it says so, as a style changed here can be shown before a frame it has drawn: never a frame without
+        // * one (the wave is a dot yet). The reveal ends when the worker says nothing is left, at the latest when its
+        // * time is up
+        const hideCover = () => underLyingCanvas.style.visibility = 'hidden';
+        const revealed = () => {
+          this.mediaReveals.delete(id);
+          deferred.resolve();
+        };
+        this.mediaReveals.set(id, {covered: () => doubleRaf().then(hideCover), revealed});
+        setTimeout(hideCover, MEDIA_COVER_HANDOFF_TIMEOUT);
+        this.connection?.postMessage({
+          type: 'media-reveal',
+          id,
+          coords: {x: rectX * dpr, y: rectY * dpr},
+          maxDist,
+          duration: dustDuration
+        });
+        setTimeout(revealed, dustDuration);
+      });
 
       return deferred;
     };
@@ -686,7 +646,7 @@ export default class DotRenderer implements AnimationItemWrapper {
      * Do not make this bigger, unless there is a way to mirror the dot on the other side when it is close to some margin
      */
     instance.dpr = Math.min(2, window.devicePixelRatio);
-    instance.resize(TEXT_SPOILER_WIDTH, TEXT_SPOILER_HEIGHT, undefined, getTextSpoilerConfig(instance.dpr));
+    instance.resize(TEXT_SPOILER_WIDTH, TEXT_SPOILER_HEIGHT, undefined, getTextSpoilerConfig(instance.dpr, false));
 
     MOUNT_CLASS_TO.textSpoilerRenderer = instance;
 
@@ -772,7 +732,7 @@ export default class DotRenderer implements AnimationItemWrapper {
     const id = ++this.createdIndex;
     const dpr = Math.min(2, window.devicePixelRatio);
     const offscreen = canvas.transferControlToOffscreen();
-    connection.postMessage({type: 'overlay-attach', id, canvas: offscreen, dpr, dust: Modes.spoiler2}, [offscreen]);
+    connection.postMessage({type: 'overlay-attach', id, canvas: offscreen, dpr}, [offscreen]);
 
     const animation = new AnimationItemNested({
       onPlay: () => this.connection?.postMessage({type: 'overlay-play', id}),

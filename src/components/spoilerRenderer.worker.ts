@@ -44,13 +44,13 @@ export type SpoilerOverlayUpdate = {
 export type SpoilerRendererInMessage =
   ({type: 'text-init'} & SpoilerRendererSimInit) |
   ({type: 'media-init'} & SpoilerRendererSimInit) |
-  {type: 'media-attach', id: number, canvas: OffscreenCanvas, x: number, y: number, color?: string, dust?: boolean} |
+  {type: 'media-attach', id: number, canvas: OffscreenCanvas, x: number, y: number, color?: string} |
   {type: 'media-thumbnail', id: number, bitmap: ImageBitmap} |
   // * the media itself, and where the page shows it in the canvas's pixels
   {type: 'media-image', id: number, bitmap: ImageBitmap, placement?: MediaPlacement} |
   {type: 'media-play' | 'media-pause' | 'media-detach', id: number} |
   {type: 'media-reveal', id: number, coords: {x: number, y: number}, maxDist: number, duration: number} |
-  {type: 'overlay-attach', id: number, canvas: OffscreenCanvas, dpr: number, dust?: boolean} |
+  {type: 'overlay-attach', id: number, canvas: OffscreenCanvas, dpr: number} |
   SpoilerOverlayUpdate |
   {type: 'overlay-unwrap', id: number, coords: [number, number], maxDist: number, duration: number} |
   {type: 'overlay-wrap', id: number, duration: number} |
@@ -232,7 +232,7 @@ type MediaTarget = {
   x: number,
   y: number,
   color?: string,
-  dust?: boolean,
+  dust: boolean, // * the dust's effect; the classic one once it has failed
   mediaDust?: MediaDust,
   image?: ImageBitmap,
   imagePlacement?: MediaPlacement,
@@ -263,7 +263,7 @@ type OverlayTarget = {
   scratch: OffscreenCanvas, // the particles are tinted per rect before blitting
   scratchContext: OffscreenCanvasRenderingContext2D,
   dpr: number,
-  dust?: boolean,
+  dust: boolean, // * the dust's effect; the classic one once it has failed
   overlayDust?: OverlayDust[], // * one for each run of spoiler lines (getRectGroups)
   glyphs?: {width: number, height: number, alpha: Uint8Array},
   assembly?: {data: Float32Array, count: number},
@@ -1277,7 +1277,7 @@ const handleMessage = (state: PortState, message: SpoilerRendererInMessage) => {
         x: message.x,
         y: message.y,
         color: message.color,
-        dust: message.dust
+        dust: true
       });
       break;
     }
@@ -1350,7 +1350,7 @@ const handleMessage = (state: PortState, message: SpoilerRendererInMessage) => {
         scratch,
         scratchContext: scratch.getContext('2d'),
         dpr: message.dpr,
-        dust: message.dust,
+        dust: true,
         rects: [],
         backgroundColor: 'transparent',
         particleColor: 'white'

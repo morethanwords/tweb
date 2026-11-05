@@ -1,3 +1,5 @@
+@use "../shared" as *;
+
 // [contenteditable=true] {
   // [style*="markup"] {
   //   font-family: inherit !important;
@@ -74,18 +76,18 @@
   // }
 }
 
+// * the spoiler in the composer: dust in the colour of its text, which drifts where the animations are in full
 [data-markup*="spoiler"] {
-  background-color: var(--spoiler-draft-background-color);
-}
-
-html.spoiler-2 [data-markup*="spoiler"] {
   $dust: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='32'%3E%3Cfilter id='d'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='1' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 14 0 0 0 -8.6'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23d)'/%3E%3C/svg%3E");
   background-color: currentColor;
   -webkit-mask-image: $dust;
   mask-image: $dust;
   -webkit-mask-size: 96px 32px;
   mask-size: 96px 32px;
-  animation: spoiler-dust-drift 1.6s steps(8) infinite;
+
+  @include animation-level(2) {
+    animation: spoiler-dust-drift 1.6s steps(8) infinite;
+  }
 }
 
 @keyframes spoiler-dust-drift {
