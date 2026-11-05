@@ -17,6 +17,7 @@ import {TelegramWebViewEventMap, AnyFunction, TelegramWebViewSendEventMap} from 
 import ButtonTsx from '@components/buttonTsx';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import confirmationPopup from '@components/confirmationPopup';
+import requestPhone from '@components/requestPhone';
 import showPeerPopup, {PopupPeerHandle, PopupPeerOptions} from '@components/popups/peer';
 import {showPickUser3Popup} from '@components/popups/pickUser';
 import selectRequestPeers from '@components/popups/requestPeer';
@@ -1175,9 +1176,12 @@ export default class WebApp {
       web_app_request_phone: this.debouncePopupMethod(async() => {
         const status: TelegramWebViewSendEventMap['phone_requested'] = {status: 'sent'};
         try {
-          const botId = this.webViewOptions.botId;
-          await this.managers.appMessagesManager.unblockBot(botId);
-          await hotReloadGuard.appImManager.requestPhone({peerId: botId.toPeerId(false)});
+          // * a bot the user blocked is unblocked only once they agree to share the number, never by the app's asking
+          await requestPhone({
+            managers: this.managers,
+            peerId: this.webViewOptions.botId.toPeerId(false),
+            unblockBot: true
+          });
         } catch(err) {
           status.status = 'cancelled';
         }

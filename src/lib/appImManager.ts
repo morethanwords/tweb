@@ -49,6 +49,7 @@ import telegramMeWebManager from '@lib/telegramMeWebManager';
 import {formatDate, ONE_DAY} from '@helpers/date';
 import createTopbarCall, {TopbarCallController} from '@components/topbarCall';
 import confirmationPopup from '@components/confirmationPopup';
+import requestPhone from '@components/requestPhone';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
 import IS_CONFERENCE_CALL_SUPPORTED from '@environment/conferenceCallSupport';
 import IS_CALL_SUPPORTED from '@environment/callSupport';
@@ -4244,16 +4245,7 @@ export class AppImManager extends EventListenerBase<{
   }
 
   public requestPhone(options: {peerId: PeerId, threadId?: number}) {
-    const managers = bindManagersToSession(this.managers);
-    return confirmationPopup({
-      titleLangKey: 'ShareYouPhoneNumberTitle',
-      button: {
-        langKey: 'OK'
-      },
-      descriptionLangKey: 'AreYouSureShareMyContactInfoBot'
-    }).then(() => {
-      return managers.appMessagesManager.sendContact({...options, contactPeerId: rootScope.myId});
-    });
+    return requestPhone({...options, managers: bindManagersToSession(this.managers)});
   }
 
   /** A bot keyboard asked where we are: confirm, then answer its message with the current position. */
