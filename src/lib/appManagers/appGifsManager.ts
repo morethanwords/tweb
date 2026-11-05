@@ -1,4 +1,3 @@
-import findAndSplice from '@helpers/array/findAndSplice';
 import forgetFailedRequest from '@helpers/forgetFailedRequest';
 import assumeType from '@helpers/assumeType';
 import {BotInlineResult, MessagesSavedGifs, Document} from '@layer';
@@ -6,12 +5,15 @@ import {NULL_PEER_ID} from '@appManagers/constants';
 import {ReferenceContext} from '@lib/storages/references';
 import {AppManager} from '@appManagers/manager';
 import getDocumentInput from '@appManagers/utils/docs/getDocumentInput';
+import OptimisticListChanges from '@appManagers/utils/optimisticListChanges';
 
 // * used only until help.getConfig arrives with the real one
 const GIF_SEARCH_USERNAME = 'gif';
 
 export default class AppGifsManager extends AppManager {
   private gifs: MaybePromise<Document.document[]>;
+  // * the changes of the list made here that the server has yet to answer
+  private gifsChanges = new OptimisticListChanges<Document.document>();
   // private TEST_REFERENCE = false;
 
   protected after() {
@@ -26,7 +28,7 @@ export default class AppGifsManager extends AppManager {
 
   private async onGifsUpdated() {
     const gifs = await this.getGifs(true);
-    this.rootScope.dispatchEvent('gifs_updated', gifs);
+    this.rootScope.dispatchEvent('gifs_updated', {gifs});
   }
 
   public getGifs(overwrite?: boolean) {
@@ -93,17 +95,10 @@ export default class AppGifsManager extends AppManager {
 
     // resolved after the list, which is what saves the documents it is made of
     const doc = this.appDocsManager.getDoc(docId);
-    findAndSplice(gifs as Document.document[], (_doc) => _doc.id === doc.id);
+    const {change, limitReached} = this.gifsChanges.make(gifs, doc, unsave, limit);
 
-    let limitReached = false;
-    if(!unsave) {
-      gifs.unshift(doc);
-      const spliced = gifs.splice(limit, gifs.length - limit);
-      limitReached = spliced.length > 0;
-    }
-
-    this.rootScope.dispatchEvent('gifs_updated', gifs);
-    return {doc, limitReached};
+    this.rootScope.dispatchEvent('gifs_updated', {gifs});
+    return {doc, change, limitReached};
   }
 
   /**
@@ -113,17 +108,19 @@ export default class AppGifsManager extends AppManager {
    * reorders the list on its own and `updateSavedGifs` brings the result over.
    */
   public async addRecentGif(docId: DocId) {
-    const gifs = await this.getGifs();
-    const doc = this.appDocsManager.getDoc(docId);
-    if(!doc || gifs[0]?.id === doc.id) {
+    await this.getGifs();
+    if(!this.appDocsManager.getDoc(docId)) {
       return;
     }
 
-    await this.unshiftGif(docId);
+    // * nothing to answer, it is made again when a save made before it is taken out: so even when the gif is first
+    // already, as a save on its way may have put it
+    const {change} = await this.unshiftGif(docId);
+    this.gifsChanges.answer(change);
   }
 
   public async saveGif(docId: DocId, unsave?: boolean) {
-    const {doc, limitReached} = await this.unshiftGif(docId, unsave);
+    const {doc, change, limitReached} = await this.unshiftGif(docId, unsave);
     this.rootScope.dispatchEvent('gif_updated', {saved: !unsave, document: doc, limitReached});
 
     return this.apiFileManager.invokeApiWithReference({
@@ -135,9 +132,18 @@ export default class AppGifsManager extends AppManager {
         unsave
       })
     }).then(() => {
+      this.gifsChanges.answer(change);
       if(unsave) {
         this.onGifsUpdated();
       }
+    }, (err) => {
+      // * one the server did not take is taken out, and the panel is told so with no toast
+      const gifs = this.gifsChanges.revert(change, this.gifs);
+      if(gifs) {
+        this.rootScope.dispatchEvent('gifs_updated', {gifs, reverted: true});
+      }
+
+      throw err;
     });
   }
 }

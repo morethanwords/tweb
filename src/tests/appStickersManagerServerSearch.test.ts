@@ -10,6 +10,8 @@ import lastItem from '@helpers/array/lastItem';
 import dispatchedEvents from '@/tests/helpers/dispatchedEvents';
 import makeReferenceRequestFileManager from '@/tests/helpers/referenceRequestFileManager';
 import makeApiManagerMethods from '@/tests/helpers/apiManagerMethods';
+import createDeferredCalls from '@/tests/helpers/deferredCalls';
+import testListChangeRefusals, {makeDocs} from '@/tests/helpers/listChangeRefusals';
 import withTimeout from '@helpers/schedulers/withTimeout';
 
 const doc = (id: string) => ({_: 'document', id} as any as MyDocument);
@@ -163,95 +165,24 @@ describe('AppStickersManager.getAnimatedEmojiSounds', () => {
  * server did not take it, the sticker stayed (un)faved here until a reload.
  */
 describe('AppStickersManager.faveSticker', () => {
-  const ids = (docs: MyDocument[]) => docs.map((doc) => doc.id);
-
-  function createFaving(faved: string[], limit = 5) {
-    const created = createManager();
-    const docs: {[id: string]: MyDocument} = {};
-    const getDoc = (id: string) => docs[id] ??= doc(id);
-    Object.assign(created.manager as any, {favedStickers: faved.map(getDoc)});
-    Object.assign((created.manager as any).appDocsManager, {getDoc});
-    Object.assign((created.manager as any).apiManager, {getLimit: vi.fn().mockResolvedValue(limit)});
-    const getFaved = () => ids((created.manager as any).favedStickers);
-    const events = (name: string) => dispatchedEvents(created.dispatchEvent, name);
-    return {...created, getDoc, getFaved, events};
-  }
-
-  it.each([
-    ['a fave', ['1', '2'], '3', false, 5, ['3', '1', '2']],
-    ['a fave of one faved already', ['1', '2'], '2', false, 5, ['2', '1']],
-    ['a fave past the limit', ['1', '2'], '3', false, 2, ['3', '1']],
-    ['an unfave', ['1', '2', '3'], '2', true, 5, ['1', '3']]
-  ])('%s the server did not take puts the list back, telling the panel with no toast', async(_, faved, docId, unfave, limit, changed) => {
-    const {manager, invokeApi, getFaved, events} = createFaving(faved, limit);
-    const request = deferred<never>();
-    invokeApi.mockReturnValueOnce(request.promise);
-
-    const faving = manager.faveSticker(docId, unfave);
-    await vi.waitFor(() => expect(invokeApi).toHaveBeenCalledWith('messages.faveSticker', expect.objectContaining({unfave})));
-    expect(getFaved()).toEqual(changed);
-
-    request.reject({type: 'STICKER_ID_INVALID'});
-    await expect(faving).rejects.toMatchObject({type: 'STICKER_ID_INVALID'});
-
-    expect(getFaved()).toEqual(faved);
-    // * the toast follows sticker_updated: the change was told once, and its undoing is not
-    expect(events('sticker_updated')).toEqual([expect.objectContaining({type: 'faved', faved: !unfave})]);
-    expect(events('stickers_updated')).toEqual([{type: 'faved', stickers: (manager as any).favedStickers, reverted: true}]);
-    expect(ids(events('stickers_updated')[0].stickers)).toEqual(faved);
-  });
-
-  it('leaves a list that came from the server meanwhile as it is', async() => {
-    const {manager, invokeApi, getDoc, getFaved, events} = createFaving(['1']);
-    const request = deferred<never>();
-    invokeApi.mockReturnValueOnce(request.promise);
-
-    const faving = manager.faveSticker('2');
-    await vi.waitFor(() => expect(invokeApi).toHaveBeenCalled());
-    (manager as any).favedStickers = [getDoc('5')];
-
-    request.reject({type: 'STICKER_ID_INVALID'});
-    await expect(faving).rejects.toBeDefined();
-
-    expect(getFaved()).toEqual(['5']);
-    expect(events('stickers_updated')).toEqual([]);
-  });
-
-  it.each([
-    ['two faves, the first failing', ['1'], 5, [['2', false], ['3', false]], [0], ['3', '1']],
-    ['two faves, both failing', ['1'], 5, [['2', false], ['3', false]], [0, 1], ['1']],
-    ['two faves, the second failing first', ['1'], 5, [['2', false], ['3', false]], [1, 0], ['1']],
-    ['two faves past the limit, the first failing', ['1', '2'], 2, [['3', false], ['4', false]], [0], ['4', '1']]
-  ] as const)('%s: takes out only what failed, keeping the changes made since', async(_, faved, limit, changes, failing, after) => {
-    const {manager, invokeApi, invokeApiHashable, getFaved, events} = createFaving([...faved], limit);
-    const requests = changes.map(() => deferred<boolean>());
-    requests.forEach((request) => invokeApi.mockReturnValueOnce(request.promise));
-
-    const faving = changes.map(([docId, unfave]) => manager.faveSticker(docId, unfave).catch((err) => err));
-    await vi.waitFor(() => expect(invokeApi).toHaveBeenCalledTimes(changes.length));
-    for(const index of failing) {
-      requests[index].reject({type: 'STICKER_ID_INVALID'});
-      await faving[index];
-    }
-
-    requests.forEach((request) => request.resolve(true));
-    await Promise.all(faving);
-
-    expect(getFaved()).toEqual(after);
-    expect(ids(lastItem(events('stickers_updated')).stickers)).toEqual(after);
-    expect(events('stickers_updated').every(({reverted}) => reverted)).toBe(true);
-    expect(events('stickers_updated')).toHaveLength(failing.length);
-    expect(invokeApiHashable).not.toHaveBeenCalled();
-  });
-
-  it('keeps a fave the server took', async() => {
-    const {manager, invokeApi, getFaved, events} = createFaving(['1']);
-    invokeApi.mockResolvedValueOnce(true);
-
-    await manager.faveSticker('2');
-
-    expect(getFaved()).toEqual(['2', '1']);
-    expect(events('stickers_updated')).toEqual([]);
+  testListChangeRefusals((faved, limit = 5) => {
+    const {manager, invokeApiHashable, dispatchEvent} = createManager();
+    const getDoc = makeDocs();
+    const {calls, invokeApi} = createDeferredCalls();
+    Object.assign(manager as any, {favedStickers: faved.map(getDoc)});
+    Object.assign((manager as any).appDocsManager, {getDoc});
+    Object.assign((manager as any).apiManager, {invokeApi, getLimit: vi.fn().mockResolvedValue(limit)});
+    const events = (name: string) => dispatchedEvents(dispatchEvent, name);
+    return {
+      calls,
+      change: (id, remove) => manager.faveSticker(id, remove),
+      getList: () => (manager as any).favedStickers,
+      replaceList: (list) => (manager as any).favedStickers = list.map(getDoc),
+      removeFlag: 'unfave',
+      told: () => events('sticker_updated').filter(({type}) => type === 'faved').map(({faved}) => faved),
+      reverted: () => events('stickers_updated').filter(({type, reverted}) => type === 'faved' && reverted).map(({stickers}) => stickers),
+      listReads: () => invokeApiHashable.mock.calls.length
+    };
   });
 });
 

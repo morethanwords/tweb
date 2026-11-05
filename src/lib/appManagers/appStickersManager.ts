@@ -30,6 +30,7 @@ import noop from '@helpers/noop';
 import App from '@config/app';
 import forgetFailedRequest from '@helpers/forgetFailedRequest';
 import forgetSettledRequest from '@helpers/forgetSettledRequest';
+import OptimisticListChanges from '@appManagers/utils/optimisticListChanges';
 
 const CACHE_TIME = 3600e3;
 // * a page of messages.searchStickers, as tdesktop asks for it (stickers_list_widget.cpp)
@@ -44,15 +45,6 @@ const READ_FEATURED_STICKERS_DELAY = 1000;
 // * the keys of the changes of a sticker in either list (apiFileManager.invokeApiWithReference), by the sticker's id
 const FAVED_STICKERS_KEY = 'favedStickers:';
 const RECENT_STICKERS_KEY = 'recentStickers:';
-
-// * a change faveSticker made to the faved list, and the list as it was before it
-type FavedStickersChange = {
-  document: MyDocument,
-  unfave: boolean,
-  limit: number,
-  before: MyDocument[],
-  answered?: boolean
-};
 
 export type FoundStickersPage = {
   stickers: MyDocument[],
@@ -74,8 +66,8 @@ export class AppStickersManager extends AppManager {
   private getAnimatedEmojiSoundsPromise: Promise<void>;
 
   private favedStickers: MyDocument[];
-  // * the changes faveSticker made to the list, in order, from the first the server has yet to answer
-  private favedStickersChanges: FavedStickersChange[] = [];
+  // * the changes faveSticker made to the list that the server has yet to answer
+  private favedStickersChanges = new OptimisticListChanges<MyDocument>();
   private recentStickers: MyDocument[];
 
   private names: Record<string, InputStickerSet.inputStickerSetID>;
@@ -789,10 +781,7 @@ export class AppStickersManager extends AppManager {
     const limit = await this.getFavedStickersLimit();
 
     const doc = this.appDocsManager.getDoc(docId);
-    const faved = this.favedStickers;
-    const change: FavedStickersChange = {document: doc, unfave, limit, before: faved.slice()};
-    this.favedStickersChanges.push(change);
-    const limitReached = this.applyFavedStickersChange(faved, change);
+    const {change, limitReached} = this.favedStickersChanges.make(this.favedStickers, doc, unfave, limit);
 
     this.rootScope.dispatchEvent('sticker_updated', {type: 'faved', faved: !unfave, document: doc, limitReached});
 
@@ -805,58 +794,20 @@ export class AppStickersManager extends AppManager {
         unfave
       })
     }).then(() => {
-      change.answered = true;
-      this.forgetAnsweredFavedStickersChanges();
+      this.favedStickersChanges.answer(change);
       if(unfave) {
         this.onStickersUpdated('faved', true);
       }
     }, (err) => {
-      this.revertFavedStickersChange(faved, change);
+      // * taken out, the list put back in place, where the list's hash keeps it too, and the panel is told so with no
+      // toast
+      const faved = this.favedStickersChanges.revert(change, this.favedStickers);
+      if(faved) {
+        this.rootScope.dispatchEvent('stickers_updated', {type: 'faved', stickers: faved, reverted: true});
+      }
+
       throw err;
     });
-  }
-
-  /** Puts the sticker first among the faved ones, or takes it out, and says whether the limit pushed another out */
-  private applyFavedStickersChange(faved: MyDocument[], {document, unfave, limit}: FavedStickersChange) {
-    findAndSplice(faved, (doc) => doc.id === document.id);
-    if(unfave) {
-      return false;
-    }
-
-    faved.unshift(document);
-    return faved.splice(limit, faved.length - limit).length > 0;
-  }
-
-  /**
-   * A fave the server did not take leaves the list as tdesktop's does (its list changes only once the server has taken
-   * one): as if it had not been made - the list it was made on, with the changes made since made on it again - put
-   * back in place, where the list's hash keeps it too, and the panel is told so with no toast. A list replaced since
-   * is the server's, right as it is.
-   */
-  private revertFavedStickersChange(faved: MyDocument[], change: FavedStickersChange) {
-    const changes = this.favedStickersChanges;
-    const index = changes.indexOf(change);
-    changes.splice(index, 1);
-    if(this.favedStickers === faved) {
-      const list = change.before.slice();
-      changes.slice(index).forEach((later) => {
-        later.before = list.slice();
-        this.applyFavedStickersChange(list, later);
-      });
-
-      faved.splice(0, faved.length, ...list);
-      this.rootScope.dispatchEvent('stickers_updated', {type: 'faved', stickers: faved, reverted: true});
-    }
-
-    this.forgetAnsweredFavedStickersChanges();
-  }
-
-  // * only a change made before one still unanswered can be made again
-  private forgetAnsweredFavedStickersChanges() {
-    const changes = this.favedStickersChanges;
-    while(changes[0]?.answered) {
-      changes.shift();
-    }
   }
 
   /**

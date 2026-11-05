@@ -148,7 +148,8 @@ export type BroadcastEvents = {
   'stickers_order': {type: 'masks' | 'emojis' | 'stickers', order: Long[]},
   'sticker_updated': {type: 'recent' | 'faved', document: MyDocument, faved: boolean, limitReached?: boolean},
 
-  'gifs_updated': MyDocument[],
+  // * `reverted`: a change of the user's own that the server did not take, put back
+  'gifs_updated': {gifs: MyDocument[], reverted?: boolean},
   'gif_updated': {document: MyDocument, saved: boolean, limitReached?: boolean},
 
   'state_cleared': void,

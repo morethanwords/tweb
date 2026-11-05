@@ -168,7 +168,10 @@ export default class GifsTab extends EmoticonsTabC<any, GifsSearchResults> {
     const preloader = putPreloader(this.content, true);
 
     let rendered = 0;
-    const onGifsUpdated = (gifs: MyDocument[]) => {
+    // * every update carries the whole list, and one held back shows the last of them rather than its own: it would
+    // put an older list over one shown since
+    let gifs: MyDocument[];
+    const onGifsUpdated = () => {
       masonry.update(gifs);
       rendered = gifs.length;
     };
@@ -180,11 +183,12 @@ export default class GifsTab extends EmoticonsTabC<any, GifsSearchResults> {
     });
 
     const onGifsUpdatedPostponed = this.postponedEvent(onGifsUpdated);
-    this.listenerSetter.add(rootScope)('gifs_updated', (gifs) => {
+    this.listenerSetter.add(rootScope)('gifs_updated', (data) => {
+      gifs = data.gifs;
       // a shorter list means a gif was taken out of the saved ones — the user did that and has
-      // to see it go; a list of the same length is the reorder that follows using one, which
-      // waits for the panel to hide
-      (gifs.length < rendered ? onGifsUpdated : onGifsUpdatedPostponed)(gifs);
+      // to see it go, as a change of theirs that the server did not take going back; a list of
+      // the same length is the reorder that follows using one, which waits for the panel to hide
+      (gifs.length < rendered || data.reverted ? onGifsUpdated : onGifsUpdatedPostponed)();
     });
 
     this.attachHelpers({
