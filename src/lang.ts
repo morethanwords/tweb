@@ -2634,6 +2634,7 @@ const lang = {
   'ShareYouLocationInfo': 'This will send your current location to the bot.',
   'ShareYouLocationUnable': 'App was unable to determine your current location',
   'AreYouSureShareMyContactInfoBot': 'The bot will know your phone number. This can be useful for integration with other services.\n\n⚠️ Warning! Never enter your Telegram login codes in mini apps.',
+  'AreYouSureShareMyContactInfoBotUnblock': 'This will also unblock the bot.',
   'AreYouSureShareMyContactInfoUser': 'Are you sure you want to share your phone number %1$s with **%2$s**?',
   'ShareMyPhoneNoCaps': 'Share my phone number',
   'Conversation.ShareMyPhoneNumber.StatusSuccess': '%@ can now see your phone number.',

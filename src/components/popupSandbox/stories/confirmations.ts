@@ -7,6 +7,8 @@
  */
 
 import noop from '@helpers/noop';
+import rootScope from '@lib/rootScope';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import showPeerPopup from '@components/popups/peer';
 import {defineStories} from '../registry';
 
@@ -238,6 +240,26 @@ defineStories('Confirmations', [
         requestingPeerId: ctx.peer('bot'),
         requestedPeerIds: [ctx.peer('channel')]
       }).catch(noop);
+    }
+  },
+  {
+    id: 'requestPhone/bot',
+    title: 'Share the phone number with a bot',
+    open: async(ctx) => {
+      const {default: requestPhone} = await import('@components/requestPhone');
+      requestPhone({managers: bindManagersToSession(rootScope.managers), peerId: ctx.peer('bot')}).catch(noop);
+    }
+  },
+  {
+    // A mini app's bot the user blocked: the question says it will be unblocked too (Android's)
+    id: 'requestPhone/blockedBot',
+    title: 'Share the phone number with a blocked bot (mini app)',
+    managers: {
+      appProfileManager: {isUserBlocked: () => true}
+    },
+    open: async(ctx) => {
+      const {default: requestPhone} = await import('@components/requestPhone');
+      requestPhone({managers: bindManagersToSession(rootScope.managers), peerId: ctx.peer('bot'), unblockBot: true}).catch(noop);
     }
   }
 ]);

@@ -50,9 +50,12 @@ afterEach(() => {
   rootScope.myId = previousMyId;
 });
 
-function openMiniApp() {
+function openMiniApp({isBotBlocked = true}: {isBotBlocked?: boolean} = {}) {
   const calls: string[] = [];
   const managers = {
+    appProfileManager: {
+      isUserBlocked: vi.fn(async(_userId: UserId) => isBotBlocked)
+    },
     appMessagesManager: {
       unblockBot: vi.fn(async(_botId: BotId) => {
         calls.push('unblock');
@@ -113,6 +116,30 @@ describe('a mini app asking for the phone number', () => {
       contactPeerId: MY_ID
     });
     expect(calls).toEqual(['unblock', 'send']);
+  });
+
+  test('the question says a blocked bot will be unblocked too', async() => {
+    mocks.confirmationPopup.mockRejectedValue(undefined);
+    const {managers, requestPhone} = openMiniApp();
+
+    await requestPhone();
+    expect(managers.appProfileManager.isUserBlocked).toHaveBeenCalledWith(BOT_ID);
+    const [{description, descriptionLangKey}] = mocks.confirmationPopup.mock.calls[0];
+    expect(descriptionLangKey).toBeUndefined();
+    // * no language pack is loaded here: a string renders as its key
+    expect(description.textContent).toBe('AreYouSureShareMyContactInfoBot\n\nAreYouSureShareMyContactInfoBotUnblock');
+  });
+
+  test('a bot that is not blocked is asked about the number alone, and nothing is unblocked', async() => {
+    mocks.confirmationPopup.mockResolvedValue(undefined);
+    const {managers, calls, requestPhone} = openMiniApp({isBotBlocked: false});
+
+    expect(await requestPhone()).toEqual([{status: 'sent'}]);
+    const [{description, descriptionLangKey}] = mocks.confirmationPopup.mock.calls[0];
+    expect(descriptionLangKey).toBe('AreYouSureShareMyContactInfoBot');
+    expect(description).toBeUndefined();
+    expect(managers.appMessagesManager.unblockBot).not.toHaveBeenCalled();
+    expect(calls).toEqual(['send']);
   });
 
   test('a bot that could not be unblocked gets no contact, and the app hears the request was cancelled', async() => {
