@@ -11,6 +11,9 @@ import {openChatList} from './chatList.helpers';
  * So do the other unread counters a count can change on in sight - the go-down button of the open
  * chat, the folder tabs above the list - through the very updates that change them.
  *
+ * A badge that goes leaves from where it stands, out of the row's flow: the message takes its room as
+ * it starts going and comes out from under it, rather than widening in one step once it is gone.
+ *
  * The counts are rendered locally only: the row is handed a copy of its dialog with the counters
  * it is meant to show, or the update pipeline a read-history update the server could have sent,
  * marking nothing read; nothing is sent anywhere, and the count the chat had is put back after.
@@ -36,17 +39,80 @@ type Frame = {
   rows: {text: string, opacity: number, y: number}[]
 };
 
-/** a row of the main list that is in sight */
-function findRow(page: Page) {
-  return page.evaluate(() => {
+/**
+ * The rows of the main list that are in sight, up to `max` - with `cutShort`, only those whose
+ * message is cut short and has nothing at its end
+ */
+function findRows(page: Page, max: number, cutShort?: boolean) {
+  return page.evaluate(({max, cutShort}) => {
     const w = window as any;
-    const rows = Array.from(document.querySelectorAll<HTMLElement>('#column-left .chatlist-chat[data-peer-id]'));
-    const row = rows.find((row) => {
+    const rows = Array.from(document.querySelectorAll<HTMLElement>('#column-left .chatlist-chat[data-peer-id]')).filter((row) => {
       const rect = row.getBoundingClientRect();
-      return rect.top >= 0 && rect.bottom <= innerHeight && w.appDialogsManager.xd.getDialogElement(+row.dataset.peerId)?.isMainList;
+      const dialogElement = w.appDialogsManager.xd.getDialogElement(+row.dataset.peerId);
+      if(rect.top < 0 || rect.bottom > innerHeight || !dialogElement?.isMainList) return false;
+      const subtitle: HTMLElement = dialogElement.subtitle;
+      return !cutShort || (
+        dialogElement.dom.listEl === row &&
+        subtitle.scrollWidth > subtitle.clientWidth + 20 &&
+        !row.querySelector('.dialog-subtitle-badge.is-visible')
+      );
     });
-    return row && +row.dataset.peerId;
-  });
+    return rows.slice(0, max).map((row) => +row.dataset.peerId);
+  }, {max, cutShort});
+}
+
+/** a row of the main list that is in sight */
+async function findRow(page: Page) {
+  return (await findRows(page, 1))[0];
+}
+
+/** the layouts the page has run so far - Chrome's count of them */
+async function layoutCounter(page: Page) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Performance.enable');
+  return async() => (await cdp.send('Performance.getMetrics')).metrics.find((metric) => metric.name === 'LayoutCount').value;
+}
+
+/**
+ * What a burst of updates does to the list: the unread badge of every row set in one task, and the
+ * mention's beside it. Reports how many of the counts roll
+ */
+function setUnreadBadges(page: Page, peerIds: number[], state: {
+  unread: boolean,
+  count: number,
+  mentions?: boolean,
+  /**
+   * each row written to before its badges are set, as an update does (`setLastMessage` puts its time
+   * in): a read of the layout among the badges' has it laid out again then
+   */
+  written?: boolean
+}) {
+  return page.evaluate(({peerIds, unread, count, mentions, written}) => {
+    const w = window as any;
+    for(const peerId of peerIds) {
+      const dialogElement = w.appDialogsManager.xd.getDialogElement(peerId);
+      if(written) {
+        const time: HTMLElement = dialogElement.dom.lastTimeSpan;
+        time.textContent = time.textContent;
+      }
+
+      dialogElement.setBadgeState({
+        muted: false,
+        pinned: false,
+        unread,
+        unreadText: '' + count,
+        unreadCount: count,
+        unreadMention: false,
+        unreadAvatar: false,
+        mentions: !!mentions,
+        reactions: false,
+        pollVotes: false,
+        transitionDuration: 250
+      });
+    }
+
+    return Array.from(document.querySelectorAll('#column-left .dialog-subtitle-badge-unread .animated-counter')).length;
+  }, {peerIds, ...state});
 }
 
 /**
@@ -230,39 +296,9 @@ test.describe('the unread count of a chat-list row', () => {
 
   test('reads no layout while the counts of many rows change at once', async({page}) => {
     // * the rows in sight, as many as there are of them up to 8
-    const peerIds = await page.evaluate(() => {
-      const w = window as any;
-      return Array.from(document.querySelectorAll<HTMLElement>('#column-left .chatlist-chat[data-peer-id]')).filter((row) => {
-        const rect = row.getBoundingClientRect();
-        return rect.top >= 0 && rect.bottom <= innerHeight && w.appDialogsManager.xd.getDialogElement(+row.dataset.peerId)?.isMainList;
-      }).slice(0, 8).map((row) => +row.dataset.peerId);
-    });
-
-    // * what a burst of updates does to the list: every row's badge set in one task
-    const setCounts = (count: number) => page.evaluate(({peerIds, count}) => {
-      const w = window as any;
-      for(const peerId of peerIds) {
-        w.appDialogsManager.xd.getDialogElement(peerId).setBadgeState({
-          muted: false,
-          pinned: false,
-          unread: true,
-          unreadText: '' + count,
-          unreadCount: count,
-          unreadMention: false,
-          unreadAvatar: false,
-          mentions: false,
-          reactions: false,
-          pollVotes: false,
-          transitionDuration: 250
-        });
-      }
-
-      return Array.from(document.querySelectorAll('#column-left .dialog-subtitle-badge-unread .animated-counter')).length;
-    }, {peerIds, count});
-
-    const cdp = await page.context().newCDPSession(page);
-    await cdp.send('Performance.enable');
-    const layouts = async() => (await cdp.send('Performance.getMetrics')).metrics.find((metric) => metric.name === 'LayoutCount').value;
+    const peerIds = await findRows(page, 8);
+    const setCounts = (count: number) => setUnreadBadges(page, peerIds, {unread: true, count});
+    const layouts = await layoutCounter(page);
 
     try {
       await setCounts(9);
@@ -273,6 +309,95 @@ test.describe('the unread count of a chat-list row', () => {
       // * a frame may have rendered the change before the count is read
       expect(await layouts() - before, 'the rolls read the layout as they were set').toBeLessThanOrEqual(2);
       expect(rolling, 'the counts did not roll').toBe(peerIds.length);
+    } finally {
+      for(const peerId of peerIds) {
+        await renderDialog(page, peerId).catch(() => {});
+      }
+    }
+  });
+
+  test('gives its room to the message as it starts going, from where it stood', async({page}) => {
+    const [longPeerId] = await findRows(page, 1, true);
+    test.skip(!longPeerId, 'no row in sight with a message cut short');
+
+    try {
+      await renderDialog(page, longPeerId, {...READ, unread_count: 3});
+      const frames = await page.evaluate(async({peerId, read}) => {
+        const w = window as any;
+        const dialogElement = () => w.appDialogsManager.xd.getDialogElement(peerId);
+        const badge: HTMLElement = dialogElement().dom.unreadBadge;
+        const dialog = await w.rootScope.managers.appMessagesManager.getDialogOnly(peerId);
+        const frames: {message: number, at: number, scale: number}[] = [];
+        const snapshot = () => frames.push({
+          message: dialogElement().subtitle.getBoundingClientRect().width,
+          // * where the badge stands, untransformed, and how much of it is left
+          at: badge.isConnected ? badge.offsetLeft : null,
+          scale: badge.isConnected ? new DOMMatrix(getComputedStyle(badge).transform).a : 0
+        });
+
+        snapshot();
+        await w.appDialogsManager.setUnreadMessagesN({
+          dialog: {...dialog, ...read, pFlags: {...dialog.pFlags, unread_mark: undefined}},
+          dialogElement: dialogElement()
+        });
+        const start = performance.now();
+        return new Promise<typeof frames>((resolve) => {
+          const tick = () => {
+            snapshot();
+            if(performance.now() - start < 600) requestAnimationFrame(tick);
+            else resolve(frames);
+          };
+          requestAnimationFrame(tick);
+        });
+      }, {peerId: longPeerId, read: READ});
+
+      const final = frames[frames.length - 1].message;
+      expect(final, 'the message did not take the room').toBeGreaterThan(frames[0].message + 10);
+      const taken = frames.findIndex((frame) => Math.abs(frame.message - final) <= 0.5);
+      expect(frames[taken].scale, 'the message took the room only once the badge was gone').toBeGreaterThanOrEqual(0.8);
+      expect(frames.slice(taken).every((frame) => Math.abs(frame.message - final) <= 0.5), 'the message widened in steps').toBe(true);
+      expect(frames.filter((frame) => frame.at !== null).every((frame) => Math.abs(frame.at - frames[0].at) <= 0.5), 'the badge moved as it left').toBe(true);
+    } finally {
+      await renderDialog(page, longPeerId).catch(() => {});
+    }
+  });
+
+  test('lets go of the badges of many rows at once, or of some for others, with no more layout than of one', async({page}) => {
+    const peerIds = await findRows(page, 8);
+    test.skip(peerIds.length < 4, 'too few rows in sight');
+    const layouts = await layoutCounter(page);
+
+    // * a folder read at once lets go of the badges of its rows in one task - or of the counts, for
+    // * the mentions left (`withMention`), which come in as they go; the frames after are waited out,
+    // * the one their places are read in among them
+    const letGo = async(peerIds: number[], withMention?: boolean) => {
+      await setUnreadBadges(page, peerIds, {unread: true, count: 3});
+      await page.waitForTimeout(600);
+      const before = await layouts();
+      await setUnreadBadges(page, peerIds, {unread: false, count: 3, mentions: withMention, written: true});
+      await page.evaluate(async() => {
+        for(let i = 0; i < 3; ++i) {
+          await new Promise(requestAnimationFrame);
+        }
+      });
+      return await layouts() - before;
+    };
+
+    try {
+      // * once unmeasured: the rows leave what they really show (a pin, a bot's button) on the first
+      await letGo(peerIds);
+
+      const costs = [];
+      for(const withMention of [false, true]) {
+        const one = await letGo(peerIds.slice(0, 1), withMention);
+        const many = await letGo(peerIds, withMention);
+        costs.push({withMention, one, many, extra: many - one});
+      }
+
+      expect(
+        Math.max(...costs.map(({extra}) => extra)),
+        `each row read the layout as its badge left (${peerIds.length} rows): ${JSON.stringify(costs)}`
+      ).toBeLessThanOrEqual(2);
     } finally {
       for(const peerId of peerIds) {
         await renderDialog(page, peerId).catch(() => {});

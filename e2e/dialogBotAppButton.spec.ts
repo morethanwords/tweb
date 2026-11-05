@@ -157,6 +157,172 @@ test.describe('the main mini app button of a bot row', () => {
     }
   });
 
+  test('comes back into its row however fast it is called back', async({page}) => {
+    test.setTimeout(5 * 60_000);
+    await openChatList(page);
+
+    const peerId = await findBotRow(page);
+    test.skip(!peerId, 'no bot with a main mini app in the chat list of this account');
+    await page.locator(`#column-left .chatlist-chat[data-peer-id="${peerId}"]`).scrollIntoViewIfNeeded();
+
+    try {
+      // * the count and the button take turns twice within a frame - the button comes in out of the
+      // * row and is sent away before it is put in - and the button is called back before it is gone
+      const inRow = await page.evaluate(async(peerId) => {
+        const w = window as any;
+        const dialogElement = w.appDialogsManager.xd.getDialogElement(peerId);
+        const set = (botApp: boolean) => dialogElement.setBadgeState({
+          muted: false,
+          pinned: false,
+          unread: !botApp,
+          unreadText: '1',
+          unreadCount: 1,
+          unreadMention: false,
+          unreadAvatar: false,
+          mentions: false,
+          reactions: false,
+          pollVotes: false,
+          botApp,
+          transitionDuration: 250
+        });
+        const frame = () => new Promise(requestAnimationFrame);
+
+        set(false);
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        set(true);
+        set(false);
+        await frame();
+        await frame();
+        set(true);
+        await new Promise((resolve) => setTimeout(resolve, 600));
+
+        const button: HTMLElement = dialogElement.dom.botAppButton;
+        return !!button && button.parentElement === dialogElement.subtitleRow && button.classList.contains('is-visible');
+      }, peerId);
+      expect(inRow, 'the button was left out of its row').toBe(true);
+    } finally {
+      // * whatever the account really has
+      await renderDialog(page, peerId, {}).catch(() => {});
+    }
+  });
+
+  test('stays where it stands as the count comes back on its way out', async({page}) => {
+    test.setTimeout(5 * 60_000);
+    await openChatList(page);
+
+    const peerId = await findBotRow(page);
+    test.skip(!peerId, 'no bot with a main mini app in the chat list of this account');
+    await page.locator(`#column-left .chatlist-chat[data-peer-id="${peerId}"]`).scrollIntoViewIfNeeded();
+
+    try {
+      // * the button and the count take turns again and again, each time before the one going is gone:
+      // * the count is still held on its way out when it is called back, as the button leaves again
+      const positions = await page.evaluate(async(peerId) => {
+        const w = window as any;
+        const dialogElement = w.appDialogsManager.xd.getDialogElement(peerId);
+        const set = (botApp: boolean) => dialogElement.setBadgeState({
+          muted: false,
+          pinned: false,
+          unread: !botApp,
+          unreadText: '1',
+          unreadCount: 1,
+          unreadMention: false,
+          unreadAvatar: false,
+          mentions: false,
+          reactions: false,
+          pollVotes: false,
+          botApp,
+          transitionDuration: 250
+        });
+        const frames = async(count: number) => {
+          for(let i = 0; i < count; ++i) {
+            await new Promise(requestAnimationFrame);
+          }
+        };
+
+        set(true);
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        set(false);
+        await frames(3);
+        set(true);
+        await frames(3);
+
+        // * where the button stands, untransformed, as it leaves - from just before
+        const button: HTMLElement = dialogElement.dom.botAppButton;
+        const positions = [button.offsetLeft];
+        set(false);
+        const start = performance.now();
+        while(button.isConnected && performance.now() - start < 1000) {
+          await frames(1);
+          if(button.isConnected) positions.push(button.offsetLeft);
+        }
+
+        return positions;
+      }, peerId);
+      expect(Math.max(...positions) - Math.min(...positions), `the button moved as it left: ${positions.join(', ')}`).toBeLessThanOrEqual(0.5);
+    } finally {
+      // * whatever the account really has
+      await renderDialog(page, peerId, {}).catch(() => {});
+    }
+  });
+
+  test('is not pushed aside by a badge that comes in before it is lifted', async({page}) => {
+    test.setTimeout(5 * 60_000);
+    await openChatList(page);
+
+    const peerId = await findBotRow(page);
+    test.skip(!peerId, 'no bot with a main mini app in the chat list of this account');
+    await page.locator(`#column-left .chatlist-chat[data-peer-id="${peerId}"]`).scrollIntoViewIfNeeded();
+
+    try {
+      const positions = await page.evaluate(async(peerId) => {
+        const w = window as any;
+        const dialogElement = w.appDialogsManager.xd.getDialogElement(peerId);
+        const set = (state: {botApp?: boolean, unread?: boolean, pollVotes?: boolean}) => dialogElement.setBadgeState({
+          muted: false,
+          pinned: false,
+          unread: false,
+          unreadText: '1',
+          unreadCount: 1,
+          unreadMention: false,
+          unreadAvatar: false,
+          mentions: false,
+          reactions: false,
+          pollVotes: false,
+          botApp: false,
+          transitionDuration: 250,
+          ...state
+        });
+        const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+        const frames = async(count: number) => {
+          for(let i = 0; i < count; ++i) {
+            await new Promise(requestAnimationFrame);
+          }
+        };
+
+        // * the count takes the button's place, and the votes of a poll come in a moment after, in
+        // * the same frame: where the button stands, untransformed, as it leaves - from just before
+        set({botApp: true});
+        await wait(600);
+        const button: HTMLElement = dialogElement.dom.botAppButton;
+        const positions = [button.offsetLeft];
+        set({unread: true});
+        set({unread: true, pollVotes: true});
+        const start = performance.now();
+        while(button.isConnected && performance.now() - start < 1000) {
+          await frames(1);
+          if(button.isConnected) positions.push(button.offsetLeft);
+        }
+
+        return positions;
+      }, peerId);
+      expect(Math.max(...positions) - Math.min(...positions), `the button moved as it left: ${positions.join(', ')}`).toBeLessThanOrEqual(0.5);
+    } finally {
+      // * whatever the account really has
+      await renderDialog(page, peerId, {}).catch(() => {});
+    }
+  });
+
   test('is a named control of its own with the a11y layer', async({page}) => {
     test.setTimeout(5 * 60_000);
     await openChatList(page, {query: '?a11y=1'});

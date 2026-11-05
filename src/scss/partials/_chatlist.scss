@@ -816,7 +816,7 @@ ul.chatlist {
         }
       }
 
-      // * leaving its place to another one, out of the flow where it stood
+      // * on its way out, out of the flow where it stood, over the message that takes its room
       // * (DialogElement.holdBadgesInPlace) - after the rules above, whose margins it drops
       &.is-held-in-place {
         position: absolute;
