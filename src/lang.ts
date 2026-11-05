@@ -4318,7 +4318,7 @@ const lang = {
   'QRCode.Share': 'Share QR Code',
   'QRCode.PremiumGiftsToast': 'Subscribe to Premium to use\ngifts in your QR code.',
   'QRCode.PremiumSubscribe': 'Subscribe',
-  'QRCode.NoPaid.RemoveStarsFee': 'Remove ★%s fee',
+  'QRCode.NoPaid.RemoveStarsFee': 'Remove %s fee',
   'QRCode.NoPaid.Free': 'Free',
   'QRCode.NoPaid.ExpiresIn': 'Expires in %s',
   'QRCode.NoPaid.NoTimeLimit': 'No time limit',

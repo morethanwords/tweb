@@ -100,6 +100,8 @@ export function createExportActions(options: ExportActionsOptions) {
           replyToMonoforumPeerId: monoforumThreadId,
           confirmedPaymentResult,
           file,
+          // a photo, as the other clients send the code: without it a picture goes as a file
+          isMedia: true,
           caption: link,
           ...size
         });

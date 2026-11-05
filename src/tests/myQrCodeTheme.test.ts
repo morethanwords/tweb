@@ -2,7 +2,7 @@ import {describe, expect, it} from 'vitest';
 import type {ShareTheme, ShareThemeBackdropOption} from '@layer';
 import {getDefaultBackdrop, MAX_THEME_EMOJI, shareThemeToAppearance, themeEmojiKey} from '@components/popups/myQrCode/theme';
 import {layoutCaption} from '@components/popups/myQrCode/caption';
-import {EMOJI_PERIOD, emojiNodes, modelNodes, symbolNodes} from '@components/popups/myQrCode/fieldNodes';
+import {EmojiFieldFrame, modelNodes, PlacedEmoji, placeEmojiField, symbolNodes} from '@components/popups/myQrCode/fieldNodes';
 
 const option = (backdrop_id: number, name: string): ShareThemeBackdropOption => ({
   _: 'shareThemeBackdropOption',
@@ -115,25 +115,65 @@ describe('myQrCode caption', () => {
 });
 
 describe('myQrCode field', () => {
+  const frame: EmojiFieldFrame = {width: 375, height: 750, x: 0, y: 0, time: 0, focusX: 187.5, focusY: 300, count: 3};
+  const place = (overrides: Partial<EmojiFieldFrame> = {}) => {
+    const placed: PlacedEmoji[] = [];
+    placeEmojiField({...frame, ...overrides}, (emoji) => placed.push({...emoji}));
+    return placed;
+  };
+
   it('is the same every time', () => {
-    expect(emojiNodes(1000, 900, 3)).toEqual(emojiNodes(1000, 900, 3));
+    expect(place({x: 40, y: -90, time: 12.5})).toEqual(place({x: 40, y: -90, time: 12.5}));
   });
 
-  it('repeats by its period, so that a shift by it shows the same picture', () => {
-    const nodes = emojiNodes(1400, 1300, 3);
-    const key = (node: {x: number, y: number, size: number, index: number}) => [Math.round(node.x * 100), Math.round(node.y * 100), node.size.toFixed(3), node.index].join();
-    const have = new Set(nodes.map(key));
-    let compared = 0;
-    for(const node of nodes) {
-      if(node.x + EMOJI_PERIOD.width > 1300 || node.y + EMOJI_PERIOD.height > 1200 || node.x < 100 || node.y < 100) continue;
-      ++compared;
-      expect(have.has(key({...node, x: node.x + EMOJI_PERIOD.width}))).toBe(true);
-      expect(have.has(key({...node, y: node.y + EMOJI_PERIOD.height}))).toBe(true);
+  it('keeps every copy on the surface, and gives every emoji its turn', () => {
+    const placed = place({x: -61, y: 23, time: 4});
+    expect(placed.length).toBeGreaterThan(20);
+    for(const emoji of placed) {
+      expect(emoji.x).toBeGreaterThanOrEqual(0);
+      expect(emoji.x).toBeLessThanOrEqual(frame.width);
+      expect(emoji.y).toBeGreaterThanOrEqual(0);
+      expect(emoji.y).toBeLessThanOrEqual(frame.height);
+      expect(emoji.alpha).toBeGreaterThan(0);
+      expect(emoji.alpha).toBeLessThanOrEqual(1);
+      expect(emoji.size).toBeGreaterThan(0);
     }
 
-    expect(compared).toBeGreaterThan(10);
-    expect(new Set(nodes.map((node) => node.index))).toEqual(new Set([0, 1, 2]));
-    expect(emojiNodes(1000, 900, 0)).toEqual([]);
+    expect(new Set(placed.map((emoji) => emoji.index))).toEqual(new Set([0, 1, 2]));
+    expect(place({count: 0})).toEqual([]);
+  });
+
+  it('leaves no node of the lattice empty', () => {
+    const placed = place();
+    // away from the edges (past the 90 px where they are pressed), every node (86 x 70, odd rows a half cell along,
+    // from the middle) has its copy within its orbit (10 px) and bob (3 px)
+    let nodes = 0;
+    for(let row = -3; row <= 3; ++row) {
+      for(let col = -2; col <= 2; ++col) {
+        const x = frame.width / 2 + col * 86 + ((row & 1) ? 43 : 0), y = frame.height / 2 + row * 70;
+        if(x < 100 || x > frame.width - 100) continue;
+        ++nodes;
+        expect(placed.some((emoji) => Math.hypot(emoji.x - x, emoji.y - y) <= 14)).toBe(true);
+      }
+    }
+
+    expect(nodes).toBeGreaterThan(15);
+  });
+
+  it('makes the copies smaller towards the edges', () => {
+    const placed = place();
+    const average = (list: PlacedEmoji[]) => list.reduce((sum, emoji) => sum + emoji.size, 0) / list.length;
+    const nearEdge = placed.filter((emoji) => Math.min(emoji.x, frame.width - emoji.x, emoji.y, frame.height - emoji.y) < 40);
+    const inside = placed.filter((emoji) => Math.min(emoji.x, frame.width - emoji.x, emoji.y, frame.height - emoji.y) > 120);
+    expect(nearEdge.length).toBeGreaterThan(0);
+    expect(inside.length).toBeGreaterThan(0);
+    expect(average(nearEdge)).toBeLessThan(average(inside) * 0.75);
+  });
+
+  it('has no period: the field moved by six cells is not the same picture', () => {
+    const key = (list: PlacedEmoji[]) => list.map((emoji) => `${Math.round(emoji.x)},${Math.round(emoji.y)},${emoji.index}`).sort().join(' ');
+    expect(key(place({x: 6 * 86}))).not.toEqual(key(place()));
+    expect(key(place({y: 6 * 70}))).not.toEqual(key(place()));
   });
 
   it('keeps the symbols off the models', () => {
@@ -170,5 +210,58 @@ describe('the built-in colours (Android\'s table)', () => {
     expect(appearance.backdropId).toBe(emerald.backdrop_id);
     expect(waitsForServedId(appearance)).toBe(true);
     expect(waitsForServedId(shareThemeToAppearance(undefined, BUILT_IN_BACKDROPS))).toBe(false);
+  });
+});
+
+describe('the free pill burning down (iOS\'s QrStudioBurn)', async() => {
+  const {burnCut, burnFront, burnLevel, burnParticles, burnRestart, REFILL} = await import('@components/popups/myQrCode/pillBurn');
+  const state = burnRestart(undefined, 100, 160);
+
+  it('pours in, then burns back with the minute', () => {
+    expect(burnLevel(state, 100)).toBe(0);
+    // the minute runs from the start of the pour
+    expect(burnLevel(state, 100 + REFILL)).toBeCloseTo(1 - REFILL / 60, 5);
+    expect(burnLevel(state, 130)).toBeCloseTo(0.5, 5);
+    expect(burnLevel(state, 160)).toBe(0);
+    // a fill with no timer pours in and stays
+    const kept = burnRestart(state, 130, Infinity);
+    expect(burnLevel(kept, 130)).toBeCloseTo(0.5, 5);
+    expect(burnLevel(kept, 200)).toBe(1);
+  });
+
+  it('covers nothing, all, or up to a front of its own', () => {
+    expect(burnCut(0, 160, 36, 1, 0)).toBeUndefined();
+    const kept = burnRestart(undefined, 100, Infinity);
+    expect(burnCut(burnFront(kept, 160, 101), 160, 36, 101, 0)).toBe(true);
+    const cut = burnCut(80, 160, 36, 120, 0) as [number, number][];
+    const front = cut.slice(1, -1).map(([x]) => x);
+    expect(Math.min(...front)).toBeGreaterThan(80 - 4.01);
+    expect(Math.max(...front)).toBeLessThanOrEqual(80);
+  });
+
+  it('sends sparks off the burning front only, the same for the same moment', () => {
+    expect(burnParticles(burnRestart(undefined, 100, Infinity), 160, 36, 120)).toEqual([]);
+    const particles = burnParticles(state, 160, 36, 130);
+    expect(particles.length).toBeGreaterThan(20);
+    expect(particles).toEqual(burnParticles(state, 160, 36, 130));
+    // born at the front (half way, ~85 px) and drifting on and up from it
+    const front = burnFront(state, 160, 130);
+    expect(particles.every((particle) => particle.x > front - 10 && particle.y < 36 + 10)).toBe(true);
+  });
+
+  it('fizzes on the front and trails off it as Android\'s sparks: on and up, fading with the way, few of them glowing', () => {
+    const particles = burnParticles(state, 160, 36, 130);
+    const front = burnFront(state, 160, 130);
+    const sparks = particles.filter((particle) => !particle.halo);
+    const mean = (list: typeof sparks) => list.reduce((sum, particle) => sum + particle.alpha, 0) / list.length;
+    const near = sparks.filter((particle) => particle.x < front + 6), far = sparks.filter((particle) => particle.x > front + 30);
+    expect(near.length).toBeGreaterThan(10);
+    expect(far.length).toBeGreaterThan(5);
+    expect(mean(near)).toBeGreaterThan(mean(far) * 1.5);
+    expect(sparks.reduce((sum, particle) => sum + particle.vx, 0)).toBeGreaterThan(0);
+    expect(sparks.reduce((sum, particle) => sum + particle.vy, 0)).toBeLessThan(0);
+    // the glow of a flying spark (the spots on the front stand still) is for one in a few
+    const glows = particles.filter((particle) => particle.halo && (particle.vx || particle.vy));
+    expect(glows.length).toBeLessThan(sparks.length / 4);
   });
 });

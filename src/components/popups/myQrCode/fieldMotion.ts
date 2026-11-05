@@ -1,42 +1,49 @@
 import liteMode from '@helpers/liteMode';
+import {nodeFrame} from '@helpers/schedulers';
 
-/** The field's tile and its canvas, in px: the canvas is centred on the surface and covers it at any turn and shift */
-export type FieldLayout = {surfaceWidth: number, surfaceHeight: number, canvasWidth: number, canvasHeight: number, periodWidth: number, periodHeight: number, draw?: (angle: number, x: number, y: number) => void};
+/**
+ * The field's tile and its canvas, in px: the canvas is centred on the surface and covers it at any shift. A field
+ * drawn anew every frame gives `draw` instead, which takes the shift (not wrapped: its lattice does not repeat) and the
+ * idle clock.
+ */
+export type FieldLayout =
+  {surfaceWidth: number, surfaceHeight: number, canvasWidth: number, canvasHeight: number, periodWidth: number, periodHeight: number} |
+  {draw: (x: number, y: number, time: number) => void};
 
-/** The canvas that covers a surface turned to any angle and shifted by up to a period (it must not show an edge) */
+/** The canvas that covers a surface shifted by up to a period either way (it must not show an edge) */
 export function fieldCanvasSize(width: number, height: number, periodWidth: number, periodHeight: number) {
-  const diagonal = Math.hypot(width, height);
-  return {width: Math.ceil(diagonal + periodWidth), height: Math.ceil(diagonal + periodHeight)};
+  return {width: Math.ceil(width + periodWidth), height: Math.ceil(height + periodHeight)};
 }
 
-// Android's `QrShareView`: the field turns 0.763 deg/s, drifts 6.2 px/s up and to the left with a wandering heading,
-// follows a drag 1:1 and glides on after a release (tau 0.35 s, 2600 px/s at most). The idle motion stops under the
-// finger (over 0.07 s) and returns 0.25 s after it (over 0.45 s).
-// four times Android's 0.763: asked for by eye
-const ROTATION = -3;
+// Android's `QrShareView`: the field drifts 6.2 px/s up and to the left with a wandering heading, follows a drag 1:1 and
+// glides on after a release (tau 0.35 s, 2600 px/s at most). The idle motion stops under the finger (over 0.07 s) and
+// returns 0.25 s after it (over 0.45 s). It does not turn: Android works a turn out and never applies it, iOS has none.
 const DRIFT_SPEED = 6.2, DRIFT_ANGLE = Math.atan2(-5.5, -3.5);
 const GLIDE_TAU = 0.35, GLIDE_END = GLIDE_TAU * 8, MAX_FLING = 2600;
 const SLOP = 8;
-const LIVE_FRAME = 32;
 const VELOCITY_WINDOW = 100;
 const wrap = (value: number, period: number) => value - Math.round(value / period) * period;
 
 /**
- * Moves the field's element: a turn, a drift and a drag, all by one `transform`, never a redraw. One rAF loop runs
- * while there is a pattern, the tab is visible and the animations are full; it stops itself otherwise, and `update`,
- * a press or the tab coming back start it again.
+ * Moves the field: a drift and a drag, by one `transform` of a painted tile, or by a redraw of a field drawn live, every
+ * frame, as Android does. One rAF loop runs while there is a pattern, the tab is visible and the animations
+ * are full; it stops itself otherwise, and `update`, a press or the tab coming back start it again.
  */
 export default function attachFieldMotion(surface: HTMLElement, mover: HTMLElement, canStart: (target: HTMLElement) => boolean) {
   let layout: FieldLayout | undefined;
-  let frame = 0, last = 0, lastDraw = 0;
-  // the offset in the screen's frame: the drift, and the pan (the finger and the glide)
+  // the next frame's call-off, while one is on its way
+  let frame: () => void, last = 0;
+  // the field's shift: the drift, and the pan (the finger and the glide)
   let driftX = 0, driftY = 0, panX = 0, panY = 0;
   let idleTime = 0, idleK = 1, resumeAt = 0, clock = 0;
   let pointerId = -1, startX = 0, startY = 0, baseX = 0, baseY = 0, moved = false;
   let samples: {x: number, y: number, t: number}[] = [];
   let gliding = false, glideStart = 0, glideFromX = 0, glideFromY = 0, glideVX = 0, glideVY = 0;
 
-  const canMove = () => !!layout && !document.hidden && liteMode.isAvailable('motion');
+  // the surface's own window and its clock: the popup may stand in a Document PiP window, whose frames come while the
+  // tab is in the background, and whose times count from its own start
+  const doc = surface.ownerDocument, view = doc.defaultView || window;
+  const canMove = () => !!layout && !doc.hidden && liteMode.isAvailable('motion');
 
   const apply = () => {
     if(!layout) {
@@ -44,23 +51,19 @@ export default function attachFieldMotion(surface: HTMLElement, mover: HTMLEleme
       return;
     }
 
-    const angle = ROTATION * idleTime;
-    const rad = angle * Math.PI / 180, cos = Math.cos(rad), sin = Math.sin(rad);
-    const offsetX = driftX + panX, offsetY = driftY + panY;
-    // the offset is in the screen's frame; the tile wraps in the field's own
-    const x = wrap(offsetX * cos + offsetY * sin, layout.periodWidth);
-    const y = wrap(-offsetX * sin + offsetY * cos, layout.periodHeight);
-    if(layout.draw) {
+    const x = driftX + panX, y = driftY + panY;
+    if('draw' in layout) {
       mover.style.transform = '';
-      layout.draw(angle, x, y);
+      layout.draw(x, y, idleTime);
       return;
     }
 
-    mover.style.transform = `translate(${layout.surfaceWidth / 2}px, ${layout.surfaceHeight / 2}px) rotate(${angle}deg) translate(${x - layout.canvasWidth / 2}px, ${y - layout.canvasHeight / 2}px)`;
+    // the tile wraps by its period
+    mover.style.transform = `translate(${(layout.surfaceWidth - layout.canvasWidth) / 2 + wrap(x, layout.periodWidth)}px, ${(layout.surfaceHeight - layout.canvasHeight) / 2 + wrap(y, layout.periodHeight)}px)`;
   };
 
   const step = (now: number) => {
-    frame = 0;
+    frame = undefined;
     if(!canMove()) return;
     const dt = last ? Math.min(0.05, (now - last) / 1000) : 0;
     last = now;
@@ -83,29 +86,26 @@ export default function attachFieldMotion(surface: HTMLElement, mover: HTMLEleme
       if(t > GLIDE_END) gliding = false;
     }
 
-    // a live field is a redraw: 30 a second is enough for the emoji's own frames while nothing follows the finger
-    if(!layout.draw || pointerId !== -1 || gliding || now - lastDraw >= LIVE_FRAME) {
-      lastDraw = now;
-      apply();
-    }
-
-    frame = requestAnimationFrame(step);
+    apply();
+    frame = nodeFrame(surface, step);
   };
 
   const start = () => {
     if(frame || !canMove()) return;
     last = 0;
-    frame = requestAnimationFrame(step);
+    frame = nodeFrame(surface, step);
   };
 
   const stop = () => {
-    cancelAnimationFrame(frame);
-    frame = 0;
+    frame?.();
+    frame = undefined;
   };
 
-  /** The release velocity over the last moments, capped */
-  const velocity = () => {
-    const now = performance.now();
+  /**
+   * The velocity over the last moments before `now`, capped. The times are the events' own: a busy frame delays their
+   * handlers, and a release handled late would find the moves before it too old
+   */
+  const velocity = (now: number) => {
     const recent = samples.filter((sample) => now - sample.t <= VELOCITY_WINDOW);
     if(recent.length < 2) return {x: 0, y: 0};
     const first = recent[0], end = recent[recent.length - 1];
@@ -121,8 +121,29 @@ export default function attachFieldMotion(surface: HTMLElement, mover: HTMLEleme
     return {x, y};
   };
 
+  // the press is followed over the whole window, as its events come in, before anything under it may stop them: a
+  // pointer flung off the surface before the drag has begun (and with it the capture) keeps moving the field
+  const listen = (on: boolean) => {
+    for(const [type, listener] of [['pointermove', onMove], ['pointerup', onUp], ['pointercancel', onUp]] as const) {
+      if(on) view.addEventListener(type, listener, true);
+      else view.removeEventListener(type, listener, true);
+    }
+
+    if(on) view.addEventListener('blur', drop);
+    else view.removeEventListener('blur', drop);
+  };
+
+  // a press whose release the window may never hear (it lost the focus, and the button was let go elsewhere): it ends
+  // where it stands, with no glide; so does one a new press finds still on record
+  const drop = () => {
+    if(pointerId === -1) return;
+    pointerId = -1;
+    listen(false);
+  };
+
   const onDown = (event: PointerEvent) => {
-    if(pointerId !== -1 || !event.isPrimary || event.button > 0) return;
+    if(!event.isPrimary || event.button > 0) return;
+    drop();
     if(!canMove() || !canStart(event.target as HTMLElement)) return;
     pointerId = event.pointerId;
     startX = event.clientX;
@@ -131,7 +152,8 @@ export default function attachFieldMotion(surface: HTMLElement, mover: HTMLEleme
     baseY = panY;
     moved = false;
     gliding = false; // catches a glide where it is
-    samples = [{x: startX, y: startY, t: performance.now()}];
+    samples = [{x: startX, y: startY, t: event.timeStamp}];
+    listen(true);
   };
 
   const onMove = (event: PointerEvent) => {
@@ -143,50 +165,59 @@ export default function attachFieldMotion(surface: HTMLElement, mover: HTMLEleme
       surface.setPointerCapture(pointerId);
     }
 
-    panX = baseX + dx;
-    panY = baseY + dy;
-    samples.push({x: event.clientX, y: event.clientY, t: performance.now()});
+    track(event);
+  };
+
+  // where the pointer is, and when it was there
+  const track = (event: PointerEvent) => {
+    panX = baseX + event.clientX - startX;
+    panY = baseY + event.clientY - startY;
+    samples.push({x: event.clientX, y: event.clientY, t: event.timeStamp});
     if(samples.length > 20) samples.shift();
   };
 
   const onUp = (event: PointerEvent) => {
     if(event.pointerId !== pointerId) return;
-    pointerId = -1;
+    drop();
     if(!moved || event.type !== 'pointerup') return;
-    const {x, y} = velocity();
+    // let go on the way: the field goes where it was let go, and that last stretch counts for the fling
+    track(event);
+    const {x, y} = velocity(event.timeStamp);
     if(!x && !y) return;
     glideFromX = panX;
     glideFromY = panY;
     glideVX = x;
     glideVY = y;
-    glideStart = performance.now();
+    glideStart = view.performance.now();
     gliding = true;
   };
 
-  const onVisibility = () => document.hidden ? stop() : start();
+  const onVisibility = () => doc.hidden ? stop() : start();
+
+  /** The field drawn again where it stands, and moving if it may */
+  const refresh = () => {
+    apply();
+    start();
+  };
 
   surface.addEventListener('pointerdown', onDown);
-  surface.addEventListener('pointermove', onMove);
-  surface.addEventListener('pointerup', onUp);
-  surface.addEventListener('pointercancel', onUp);
-  document.addEventListener('visibilitychange', onVisibility);
+  doc.addEventListener('visibilitychange', onVisibility);
 
   return {
     /** A new canvas, or `undefined` for a theme without a pattern: no pattern, no loop */
     update(next?: FieldLayout) {
       layout = next;
       if(!layout) stop();
-      apply();
-      start();
+      refresh();
     },
+
+    refresh,
 
     destroy() {
       stop();
+      drop();
       surface.removeEventListener('pointerdown', onDown);
-      surface.removeEventListener('pointermove', onMove);
-      surface.removeEventListener('pointerup', onUp);
-      surface.removeEventListener('pointercancel', onUp);
-      document.removeEventListener('visibilitychange', onVisibility);
+      doc.removeEventListener('visibilitychange', onVisibility);
     }
   };
 }

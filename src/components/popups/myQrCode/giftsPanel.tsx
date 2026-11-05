@@ -10,6 +10,7 @@ import {StarGiftBackdrop} from '@components/stargifts/stargiftBackdrop';
 import {createStarGiftsRenderer} from '@components/stargifts/stargiftsGrid';
 import {createProfileGiftsStore} from '@components/stargifts/profileStore';
 import wrapSticker from '@components/wrappers/sticker';
+import Scrollable from '@components/scrollable2';
 import {IconTsx} from '@components/iconTsx';
 import liteMode from '@helpers/liteMode';
 import {getMiddleware} from '@helpers/middleware';
@@ -56,7 +57,10 @@ function GiftTile(props: {
   let sticker: HTMLDivElement;
   const attributes = props.item.collectibleAttributes;
   onMount(() => {
+    // the thumb, and the sticker itself once the tile is in sight (as the profile's grid of gifts has them): the renderer
+    // watches only what it makes itself
     props.renderer.renderSticker(props.item.sticker, sticker);
+    props.renderer.observeAnimated(sticker);
   });
 
   return (
@@ -166,7 +170,12 @@ export function GiftsPanel(props: {
     return gift && !loaded().some((item) => giftId(item) === gift.id) ? gift : undefined;
   };
   const [missingItem] = createResource(missing, (gift) => managers.appGiftsManager.wrapGift(gift));
+  // nothing till the first page is in, and the gift on show with it: it does not stand alone before the others. Once
+  // shown, the list stays (a gift on show that comes later joins it): the grid is not made anew
+  let revealed = false;
   const items = createMemo(() => {
+    if(!revealed && ((!store.items.length && !done()) || missingItem.loading)) return [];
+    revealed = true;
     const pinned = missingItem();
     return pinned && giftId(pinned) === missing()?.id ? [pinned, ...loaded()] : loaded();
   });
@@ -194,12 +203,8 @@ export function GiftsPanel(props: {
     if(scrollable.scrollHeight <= scrollable.clientHeight + NEXT_PAGE_MARGIN) loadNext();
   });
 
-  const onScroll = () => {
-    if(scrollable.scrollTop + scrollable.clientHeight > scrollable.scrollHeight - NEXT_PAGE_MARGIN) loadNext();
-  };
-
   return (
-    <div ref={scrollable} class={styles.giftsScroll} onScroll={onScroll} data-sheet-scroll>
+    <Scrollable ref={scrollable} class={styles.giftsScroll} onScrolledBottom={loadNext} onScrollOffset={NEXT_PAGE_MARGIN}>
       <Show when={items().length || !done()} fallback={<GiftsEmpty managers={managers} isSelf={props.isSelf} onBrowse={props.onBrowse} />}>
         <div
           ref={grid}
@@ -226,6 +231,6 @@ export function GiftsPanel(props: {
           <div class={styles.giftsLoading}>{i18n('QRCode.LoadingGifts')}</div>
         </Show>
       </Show>
-    </div>
+    </Scrollable>
   );
 }

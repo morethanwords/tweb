@@ -37,7 +37,7 @@ import anchorCallback from '@helpers/dom/anchorCallback';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
 import {onCleanup} from 'solid-js';
-import StickersTabCategory, {EmoticonsTabStyles} from '@components/emoticonsDropdown/category';
+import StickersTabCategory, {EmoticonsTabStyles, StickersTabStyles} from '@components/emoticonsDropdown/category';
 import Tabs from '@components/tabs';
 import EmoticonsTabC from '@components/emoticonsDropdown/tab';
 import flatten from '@helpers/array/flatten';
@@ -254,6 +254,8 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
   private emojiVariants: {[emoji: string]: EmojiSkinTone};
   private groupSetController: GroupSetController;
   private groupSetHidden: boolean;
+  /** The grid's sizes, for the height a category keeps while its emoji are out of sight: a host's CSS may set others */
+  private styles: StickersTabStyles;
   public initPromise: Promise<void>;
 
   constructor(options: {
@@ -276,7 +278,8 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     searchFetcher?: EmojiTab['searchFetcher'],
     groupFetcher?: EmojiTab['groupFetcher'],
     canUsePremiumEmojiAlways?: boolean,
-    showLocks?: boolean
+    showLocks?: boolean,
+    styles?: EmojiTab['styles']
   }) {
     super({
       managers: options.managers,
@@ -320,7 +323,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
         }
 
         const container = this.categoriesContainer.cloneNode(false) as HTMLElement;
-        const category = this.createCategory({styles: EmoticonsTabStyles.Emoji});
+        const category = this.createCategory({styles: this.styles});
         this.createEmojiRendererForCategory(category);
         for(const emoji of emojis) {
           this.addEmojiToCategory({
@@ -356,6 +359,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     });
 
     safeAssign(this, options);
+    this.styles ??= EmoticonsTabStyles.Emoji;
     this.container.classList.add('emoji-padding');
     this.content.id = 'content-emoji';
     this.activeElements = [];
@@ -537,7 +541,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
         title: titleLangPackKey,
         icon: icon as Icon,
         noMenuTab: !icon,
-        styles: EmoticonsTabStyles.Emoji
+        styles: this.styles
       });
       category.elements.container.classList.remove('hide');
 
@@ -976,7 +980,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
       this.createCategory({
         id: GROUP_SET_CATEGORY_ID,
         title: getGroupSetTitle(undefined, true),
-        styles: EmoticonsTabStyles.Emoji
+        styles: this.styles
       });
 
     if(!set) {
@@ -1015,7 +1019,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
       stickerSet: set,
       id: isGroupSet ? GROUP_SET_CATEGORY_ID : undefined,
       title: wrapEmojiText(set.title),
-      styles: EmoticonsTabStyles.Emoji
+      styles: this.styles
     });
     this.positionCategory(category, prepend);
     const {container, menuTabPadding} = category.elements;

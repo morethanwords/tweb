@@ -25,6 +25,8 @@
   color: var(--qr-foreground);
   @include qr-glass;
   font: inherit;
+  // small on the pill, as the clients' 11-12 pt
+  font-size: .875rem;
   font-weight: var(--font-weight-bold);
   white-space: nowrap;
   cursor: pointer;
@@ -44,6 +46,14 @@
   display: inline-flex;
   align-items: center;
   gap: .25rem;
+}
+
+// the fee: the app's star, smaller than the words and a little apart from the number, which stands on the words'
+// line (a flex box would set it on the star's); the star's middle on the digits' middle
+.priceStar {
+  font-size: .75rem;
+  margin-inline-end: .125rem;
+  vertical-align: -.1em;
 }
 
 .freePill {
@@ -81,6 +91,15 @@
     transition-duration: 1s;
     transition-timing-function: linear;
   }
+}
+
+// the sparks of the burning fill fly round the pill and over it (`SPARKS_MARGIN_*`)
+.sparks {
+  position: absolute;
+  inset: -4.75rem -5.625rem;
+  width: calc(100% + 11.25rem);
+  height: calc(100% + 9.5rem);
+  pointer-events: none;
 }
 
 // the pill leaves while a panel is open: shrunk with the card it would not be legible, and the panel takes its room

@@ -3,6 +3,7 @@ import {ShareThemeBackdropOption} from '@layer';
 import {attachPickerGrid} from '@helpers/dom/attachListNavigation';
 import {rgbIntToHex} from '@helpers/color';
 import I18n from '@lib/langPack';
+import Scrollable from '@components/scrollable2';
 import {DEFAULT_BACKDROP_NAME} from './colors';
 import {getDefaultBackdrop} from './theme';
 import styles from '@components/popups/myQrCode.module.scss';
@@ -42,28 +43,29 @@ export function ColorsPanel(props: {
   });
 
   return (
-    <div
-      ref={grid}
-      class={styles.swatches}
-      role="group"
-      aria-label={I18n.format('QRCode.Colors', true)}
-      data-sheet-scroll
-    >
-      <For each={options()}>
-        {(option) => {
-          const backdrop = option || getDefaultBackdrop();
-          return (
-            <button
-              type="button"
-              class={styles.swatch}
-              style={{'background-image': swatchBackground(backdrop.center_color, backdrop.edge_color)}}
-              aria-label={option?.name || DEFAULT_BACKDROP_NAME}
-              aria-pressed={isSelected(option)}
-              onClick={() => props.onPick(option)}
-            />
-          );
-        }}
-      </For>
-    </div>
+    <Scrollable>
+      <div
+        ref={grid}
+        class={styles.swatches}
+        role="group"
+        aria-label={I18n.format('QRCode.Colors', true)}
+      >
+        <For each={options()}>
+          {(option) => {
+            const backdrop = option || getDefaultBackdrop();
+            return (
+              <button
+                type="button"
+                class={styles.swatch}
+                style={{'background-image': swatchBackground(backdrop.center_color, backdrop.edge_color)}}
+                aria-label={option?.name || DEFAULT_BACKDROP_NAME}
+                aria-pressed={isSelected(option)}
+                onClick={() => props.onPick(option)}
+              />
+            );
+          }}
+        </For>
+      </div>
+    </Scrollable>
   );
 }

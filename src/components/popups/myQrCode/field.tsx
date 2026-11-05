@@ -3,6 +3,8 @@ import {getStandardEmojiUrl} from './emojiPresets';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import wrapSticker from '@components/wrappers/sticker';
 import liteMode from '@helpers/liteMode';
+import safePlay from '@helpers/dom/safePlay';
+import easeOutBack from '@helpers/easing/easeOutBack';
 import rootScope from '@lib/rootScope';
 import {Accessor, createEffect, on, onCleanup, onMount} from 'solid-js';
 import {getMiddleware, Middleware} from '@helpers/middleware';
@@ -12,15 +14,15 @@ import {loadEmojiStill} from '@components/wrappers/emojiPattern';
 import {FontFamily} from '@config/font';
 import {Appearance, themeEmojiKey, ThemeEmoji} from './theme';
 import createLayerStack from './layerStack';
-import {EDGE_BAND, EMOJI_PERIOD, emojiNodes, FieldPeriod, GIFT_PERIOD, modelNodes, Node, symbolNodes} from './fieldNodes';
+import {EDGE_BAND, GIFT_PERIOD, modelNodes, Node, placeEmojiField, symbolNodes} from './fieldNodes';
 import attachFieldMotion, {fieldCanvasSize} from './fieldMotion';
 import styles from '@components/popups/myQrCode.module.scss';
 
 /**
- * What floats on the backdrop: the picked emoji, or a collectible gift's models and the symbols of its pattern. One
- * canvas painted once for an appearance and a size, a repeating tile big enough to cover the surface at any turn and
- * shift; it turns, drifts and follows a drag by `transform` alone (`fieldMotion.ts`). A change is a new canvas fading in
- * over the old one.
+ * What floats on the backdrop: the picked emoji, or a collectible gift's models and the symbols of its pattern. The
+ * gift's is one canvas painted once for an appearance and a size, a repeating tile big enough to cover the surface at
+ * any shift; it drifts and follows a drag by `transform` alone (`fieldMotion.ts`). The emoji are drawn
+ * anew every frame, each copy at its place, as Android draws them. A change is a new canvas fading in over the old one.
  */
 
 function drawRotated(ctx: CanvasRenderingContext2D, node: Node, draw: (size: number) => void) {
@@ -44,25 +46,9 @@ function createCanvas(width: number, height: number) {
   return {canvas, ctx};
 }
 
-type Picture = HTMLImageElement | HTMLCanvasElement | string;
-
 /** `QrEmojiPanel.isTextColor`: an emoji made to take the text's colour is white on the pattern, on any backdrop */
 const TEXT_COLOR_EMOJI = '#ffffff';
 const isTextColorEmoji = (doc: MyDocument) => doc.attributes.some((attribute) => attribute._ === 'documentAttributeCustomEmoji' && attribute.pFlags.text_color);
-
-async function loadPicture(emoji: ThemeEmoji, middleware: Middleware): Promise<Picture | undefined> {
-  if(!emoji.documentId) {
-    const image = new Image();
-    image.src = getStandardEmojiUrl(emoji.emoticon);
-    return image.decode().then(() => image, () => emoji.emoticon);
-  }
-
-  try {
-    const doc = await rootScope.managers.appEmojiManager.getCustomEmojiDocument(emoji.documentId);
-    const image = await loadDocument(doc, middleware, 96);
-    return image && isTextColorEmoji(doc) ? tint(image, TEXT_COLOR_EMOJI) : image;
-  } catch{}
-}
 
 async function loadDocument(doc: Parameters<typeof loadEmojiStill>[0]['docId'], middleware: Middleware, size: number) {
   try {
@@ -78,30 +64,8 @@ function tint(image: HTMLImageElement, color: string) {
   return canvas;
 }
 
-/** Paints the appearance's field; `undefined` for a theme with none, or when it was left before the art came. */
-async function paintField(appearance: Appearance, width: number, height: number, middleware: Middleware): Promise<HTMLCanvasElement | undefined> {
-  if(appearance.kind === 'emoji') {
-    const pictures = await Promise.all(appearance.emojis.map((emoji) => loadPicture(emoji, middleware)));
-    if(!middleware()) return;
-    const {canvas, ctx} = createCanvas(width, height);
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    for(const node of emojiNodes(width, height, pictures.length)) {
-      const picture = pictures[node.index];
-      if(!picture) continue;
-      drawRotated(ctx, node, (size) => {
-        if(typeof(picture) === 'string') {
-          ctx.font = `${size * 0.85}px ${FontFamily}`;
-          ctx.fillText(picture, 0, 0);
-        } else {
-          ctx.drawImage(picture, -size / 2, -size / 2, size, size);
-        }
-      });
-    }
-
-    return canvas;
-  }
-
+/** Paints the gift's field; `undefined` for a theme with none, or when it was left before the art came. */
+async function paintGiftField(appearance: Appearance, width: number, height: number, middleware: Middleware): Promise<HTMLCanvasElement | undefined> {
   if(appearance.kind === 'gift' && appearance.giftArt) {
     const [model, pattern] = await Promise.all([
       appearance.giftArt.model && loadDocument(appearance.giftArt.model as any, middleware, 128),
@@ -125,12 +89,6 @@ async function paintField(appearance: Appearance, width: number, height: number,
   }
 }
 
-/** The tile the appearance's pattern repeats by; `undefined` for a theme with no pattern */
-function fieldPeriod(appearance: Appearance): FieldPeriod | undefined {
-  if(appearance.kind === 'emoji') return EMOJI_PERIOD;
-  if(appearance.kind === 'gift' && appearance.giftArt) return GIFT_PERIOD;
-}
-
 function fieldKey(appearance: Appearance, width: number, height: number) {
   const art = appearance.kind === 'emoji' ?
     appearance.emojis.map(themeEmojiKey).join() :
@@ -138,7 +96,7 @@ function fieldKey(appearance: Appearance, width: number, height: number) {
   return [appearance.kind, art, width, height].join('|');
 }
 
-/** The field as it stands at rest on the surface (upright, not shifted), edges faded as the screen's mask does */
+/** The field as it stands at rest on the surface (not shifted), edges faded as the screen's mask does */
 function settledField(source: HTMLCanvasElement, width: number, height: number) {
   const dpr = source.width / parseFloat(source.style.width);
   const {canvas, ctx} = createCanvas(width, height);
@@ -158,26 +116,32 @@ function settledField(source: HTMLCanvasElement, width: number, height: number) 
   return canvas;
 }
 
-// Android's `placeInner`: the EdgeSqueeze band, d' = band * e^(d / band - 1), the size by the same factor, never below 9 px
-const SQUEEZE_BAND = 90;
-const SQUEEZE_MIN_SIZE = 9;
-const SQUEEZE_EDGE_FADE = 12;
-const smoothStep = (from: number, to: number, value: number) => {
-  const t = Math.min(1, Math.max(0, (value - from) / (to - from)));
-  return t * t * (3 - 2 * t);
-};
 // the largest copy is about 48 px, and a player's frames cost by their pixels
 const LIVE_EMOJI_SIZE = 48 * Math.min(window.devicePixelRatio || 1, 2);
+// `QrShareView.popIn`: once the screen has opened, each copy pops in on its own, in an order of its own each time
+const APPEAR_MS = 380, APPEAR_SPREAD_MS = 300;
+
+/** Where the card's middle is on the surface: the emoji shrink and pale from it to the edges */
+export type FieldFocus = () => {x: number, y: number};
 
 /**
  * The emoji pattern as Android draws it: every frame, each copy at its place with the emoji's current frame (one
- * playback position for all its copies), squeezed towards the screen's edges. The players stand out of sight.
+ * playback position for all its copies). The players stand out of sight and draw on the page's thread, so a frame is
+ * read off them as it is drawn, not from another thread for every copy.
  */
-function createLiveEmojiField(emojis: ThemeEmoji[], width: number, height: number, canvasWidth: number, canvasHeight: number, middleware: Middleware, onLoad: () => void) {
+function createLiveEmojiField(options: {
+  emojis: ThemeEmoji[],
+  width: number,
+  height: number,
+  focus: FieldFocus,
+  /** When the screen's open ended (`performance.now()`), none while it opens: a field there from the open shows its copies only after it, each popping in */
+  opened: Accessor<number | undefined>,
+  middleware: Middleware,
+  onLoad: () => void
+}) {
+  const {emojis, width, height, middleware} = options;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const {canvas, ctx} = createCanvas(width, height);
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  const nodes = emojiNodes(canvasWidth, canvasHeight, emojis.length);
   const players = document.createElement('div');
   players.style.cssText = 'position: fixed; inset-block-start: -200px; width: 96px; height: 96px; pointer-events: none;';
   players.setAttribute('aria-hidden', 'true');
@@ -191,7 +155,7 @@ function createLiveEmojiField(emojis: ThemeEmoji[], width: number, height: numbe
     players.append(div);
     if(!emoji.documentId) {
       const image = new Image();
-      image.onload = () => middleware() && onLoad();
+      image.onload = () => middleware() && options.onLoad();
       image.src = getStandardEmojiUrl(emoji.emoticon);
       div.append(image);
       return div;
@@ -202,9 +166,16 @@ function createLiveEmojiField(emojis: ThemeEmoji[], width: number, height: numbe
       if(isTextColorEmoji(doc)) tinted[index] = createCanvas(LIVE_EMOJI_SIZE, LIVE_EMOJI_SIZE);
       return doc;
     })
-    .then((doc) => wrapSticker({doc, div, middleware, width: LIVE_EMOJI_SIZE, height: LIVE_EMOJI_SIZE, play: liteMode.isAvailable('motion'), loop: true, group: 'none', withThumb: false, exportLoad: 2}))
+    .then((doc) => wrapSticker({doc, div, middleware, width: LIVE_EMOJI_SIZE, height: LIVE_EMOJI_SIZE, play: liteMode.isAvailable('motion'), loop: true, group: 'none', withThumb: false, exportLoad: 2, noOffscreen: true}))
     .then(({load}) => load())
-    .then(() => middleware() && onLoad())
+    .then(() => {
+      if(!middleware()) return;
+      // Chrome holds a muted video that autoplays out of sight on its first frame, as the players stand here: a video
+      // emoji is played by the script, which it lets run
+      const video = div.querySelector('video');
+      if(video && liteMode.isAvailable('motion')) safePlay(video);
+      options.onLoad();
+    })
     .catch(() => {});
     return div;
   });
@@ -219,71 +190,93 @@ function createLiveEmojiField(emojis: ThemeEmoji[], width: number, height: numbe
     return element.width ? element : undefined;
   };
 
-  const draw = (angle: number, x: number, y: number) => {
-    ctx.clearRect(0, 0, width, height);
-    const rad = angle * Math.PI / 180, cos = Math.cos(rad), sin = Math.sin(rad);
-    const margin = SQUEEZE_BAND * 1.3;
-    const frames = emojis.map((_, index) => {
-      const frame = frameOf(index), paint = tinted[index];
-      if(!frame || !paint) return frame;
-      // the current frame in white, once for all its copies
-      paint.ctx.globalCompositeOperation = 'source-over';
-      paint.ctx.clearRect(0, 0, LIVE_EMOJI_SIZE, LIVE_EMOJI_SIZE);
-      paint.ctx.drawImage(frame, 0, 0, LIVE_EMOJI_SIZE, LIVE_EMOJI_SIZE);
-      paint.ctx.globalCompositeOperation = 'source-in';
-      paint.ctx.fillStyle = TEXT_COLOR_EMOJI;
-      paint.ctx.fillRect(0, 0, LIVE_EMOJI_SIZE, LIVE_EMOJI_SIZE);
-      return paint.canvas;
-    });
-    for(const node of nodes) {
-      const fieldX = node.x - canvasWidth / 2 + x, fieldY = node.y - canvasHeight / 2 + y;
-      let screenX = width / 2 + fieldX * cos - fieldY * sin, screenY = height / 2 + fieldX * sin + fieldY * cos;
-      if(screenX < -margin || screenX > width + margin || screenY < -margin || screenY > height + margin) continue;
+  // the current frames, once a draw: a text-coloured emoji in white, once for all its copies
+  const currentFrames = () => emojis.map((_, index) => {
+    const frame = frameOf(index), paint = tinted[index];
+    if(!frame || !paint) return frame;
+    paint.ctx.globalCompositeOperation = 'source-over';
+    paint.ctx.clearRect(0, 0, LIVE_EMOJI_SIZE, LIVE_EMOJI_SIZE);
+    paint.ctx.drawImage(frame, 0, 0, LIVE_EMOJI_SIZE, LIVE_EMOJI_SIZE);
+    paint.ctx.globalCompositeOperation = 'source-in';
+    paint.ctx.fillStyle = TEXT_COLOR_EMOJI;
+    paint.ctx.fillRect(0, 0, LIVE_EMOJI_SIZE, LIVE_EMOJI_SIZE);
+    return paint.canvas;
+  });
 
-      let factor = 1;
-      const squeeze = (value: number, end: number) => {
-        const atStart = value <= end - value;
-        const near = atStart ? value : end - value;
-        if(near >= SQUEEZE_BAND) return value;
-        const g = Math.exp(near / SQUEEZE_BAND - 1);
-        factor = Math.min(factor, g);
-        return atStart ? SQUEEZE_BAND * g : end - SQUEEZE_BAND * g;
-      };
-      screenX = squeeze(screenX, width);
-      screenY = squeeze(screenY, height);
-      // what the squeeze has pressed into the corners is gone by then: `EdgeSqueeze.alpha`, and the last 12 px at the edge
-      let alpha = smoothStep(0.08, 0.25, factor);
-      if(alpha <= 0.004) continue;
-
-      const emoji = emojis[node.index];
-      const frame = frames[node.index];
-      if(!frame && emoji.documentId) continue;
-      const size = node.size * Math.max(factor, Math.min(node.size, SQUEEZE_MIN_SIZE) / node.size);
-      const half = size / 2;
-      alpha *= smoothStep(0, SQUEEZE_EDGE_FADE, Math.min(screenX - half, width - screenX - half, screenY - half, height - screenY - half));
-      if(alpha <= 0.004) continue;
-      ctx.globalAlpha = alpha;
-      ctx.save();
-      ctx.translate(screenX, screenY);
-      // the field turns, each emoji keeps its own tilt (`QrShareView`: `rot + slotRot`, no turn of the field in it)
-      ctx.rotate(node.angle * Math.PI / 180);
-      if(frame) {
-        ctx.drawImage(frame, -size / 2, -size / 2, size, size);
-      } else {
-        ctx.font = `${size * 0.85}px ${FontFamily}`;
-        ctx.fillText(emoji.emoticon, 0, 0);
-      }
-      ctx.restore();
-    }
+  // a field there from the open: its copies wait for it and pop in after, each emoji's from when it has a frame
+  const popIn = options.opened() === undefined && liteMode.isAvailable('motion');
+  const readyAt: number[] = [];
+  const salt = Math.random();
+  const appearDelay = (seed: number) => {
+    const x = Math.sin((seed + salt * 17.31) * 12.9898 + salt * 78.233) * 43758.5453;
+    return (x - Math.floor(x)) * APPEAR_SPREAD_MS;
   };
 
-  return {canvas, draw};
+  /** Draws the field on `target` as it stands; `now` times the copies' pop-in, none for the field at rest */
+  const paint = (target: CanvasRenderingContext2D, x: number, y: number, time: number, now?: number) => {
+    target.setTransform(1, 0, 0, 1, 0, 0);
+    target.clearRect(0, 0, target.canvas.width, target.canvas.height);
+    target.textAlign = 'center';
+    target.textBaseline = 'middle';
+    const frames = currentFrames();
+    if(now !== undefined) frames.forEach((frame, index) => {
+      if(frame || !emojis[index].documentId) readyAt[index] ??= now;
+    });
+    // the motion switched off on the way: every copy is there at once
+    const popping = popIn && now !== undefined && liteMode.isAvailable('motion');
+    const openedAt = popping ? options.opened() : 0;
+    if(openedAt === undefined) return;
+
+    const focus = options.focus();
+    placeEmojiField({width, height, x, y, time, focusX: focus.x, focusY: focus.y, count: emojis.length}, (placed) => {
+      const emoji = emojis[placed.index], frame = frames[placed.index];
+      if(!frame && emoji.documentId) return;
+      let size = placed.size;
+      if(popping) {
+        const appear = (now - Math.max(openedAt, readyAt[placed.index]) - appearDelay(placed.seed)) / APPEAR_MS;
+        if(appear <= 0) return;
+        if(appear < 1) size *= easeOutBack(appear);
+      }
+
+      const rad = placed.angle * Math.PI / 180, cos = Math.cos(rad) * dpr, sin = Math.sin(rad) * dpr;
+      target.globalAlpha = placed.alpha;
+      target.setTransform(cos, sin, -sin, cos, placed.x * dpr, placed.y * dpr);
+      if(frame) {
+        target.drawImage(frame, -size / 2, -size / 2, size, size);
+      } else {
+        target.font = `${size * 0.85}px ${FontFamily}`;
+        target.fillText(emoji.emoticon, 0, 0);
+      }
+    });
+    target.setTransform(1, 0, 0, 1, 0, 0);
+    target.globalAlpha = 1;
+  };
+
+  // the field at rest, kept once every emoji has a frame in it
+  let stillCanvas: HTMLCanvasElement;
+  return {
+    canvas,
+    draw: (x: number, y: number, time: number) => paint(ctx, x, y, time, performance.now()),
+    /** The field at rest (not moved, every copy in), for the exported picture */
+    still() {
+      if(stillCanvas) return stillCanvas;
+      // a picture of an emoji still on its way would be kept drawn as the font's
+      const complete = emojis.every((_, index) => frameOf(index));
+      const still = createCanvas(width, height);
+      paint(still.ctx, 0, 0, 0);
+      if(complete) stillCanvas = still.canvas;
+      return still.canvas;
+    }
+  };
 }
 
 export function PatternField(props: {
   appearance: Accessor<Appearance>,
   width: Accessor<number>,
   height: Accessor<number>,
+  focus: FieldFocus,
+  /** When the screen's open ended (`performance.now()`), none while it opens */
+  opened: Accessor<number | undefined>,
   /** Whether a press that landed on the element may start a drag of the field */
   canDrag: (target: HTMLElement) => boolean,
   /** Hands over a way to the field at rest, for the exported picture to cut a piece of */
@@ -294,8 +287,8 @@ export function PatternField(props: {
   let stack: ReturnType<typeof createLayerStack<HTMLCanvasElement>>;
   let motion: ReturnType<typeof attachFieldMotion>;
   let middleware = getMiddleware();
-  // what the export cuts from while the field on screen is drawn live
-  let stillField: HTMLCanvasElement;
+  // the emoji field drawn at rest for the export, as the live one is drawn
+  let stillField: (() => HTMLCanvasElement) | undefined;
   let settled: {source: HTMLCanvasElement, width: number, height: number, canvas: HTMLCanvasElement};
 
   onMount(() => {
@@ -303,8 +296,13 @@ export function PatternField(props: {
     motion = attachFieldMotion(host.parentElement, mover, props.canDrag);
   });
 
+  // the screen open, or the motion come or gone: the field is drawn as it now stands, and moves on if it may (the
+  // loop stops itself without the motion, and only a press or a new field started it again)
+  createEffect(on([props.opened, () => liteMode.isAvailable('motion')], () => motion?.refresh(), {defer: true}));
+
   props.fieldRef?.(() => {
-    const source = stillField ?? stack?.current;
+    if(stillField) return stillField();
+    const source = stack?.current;
     if(!source) return;
     const width = props.width(), height = props.height();
     if(settled?.source !== source || settled.width !== width || settled.height !== height) {
@@ -325,34 +323,51 @@ export function PatternField(props: {
     middleware.destroy();
     middleware = getMiddleware();
     const current = middleware.get();
-    const period = fieldPeriod(input.appearance);
-    const size = period && fieldCanvasSize(input.width, input.height, period.width, period.height);
-    (period ? paintField(input.appearance, input.appearance.kind === 'emoji' ? input.width : size.width, input.appearance.kind === 'emoji' ? input.height : size.height, current) : Promise.resolve(undefined)).then((canvas) => {
+    const {appearance, width, height} = input;
+    if(appearance.kind === 'emoji' && appearance.emojis.length) {
+      host.style.maskImage = 'none'; // the squeeze is its edge, and a mask over a redrawn canvas is paid every frame
+      // a field after another one takes its place once it has something to show: the old one stays till then
+      let shown = false;
+      const show = () => {
+        if(shown || !current()) return;
+        shown = true;
+        stack.set(live.canvas);
+      };
+      const live = createLiveEmojiField({
+        emojis: appearance.emojis,
+        width,
+        height,
+        focus: props.focus,
+        opened: props.opened,
+        middleware: current,
+        onLoad: () => {
+          show();
+          // below the full level nothing loops: a picture that came late is drawn by this update alone
+          motion.update(layout);
+        }
+      });
+      const layout = {draw: live.draw};
+      stillField = live.still;
+      if(!stack.current) show();
+      else setTimeout(show, 1000);
+      motion.update(layout);
+      return;
+    }
+
+    stillField = undefined;
+    host.style.maskImage = '';
+    const size = appearance.kind === 'gift' && appearance.giftArt ? fieldCanvasSize(width, height, GIFT_PERIOD.width, GIFT_PERIOD.height) : undefined;
+    (size ? paintGiftField(appearance, size.width, size.height, current) : Promise.resolve(undefined)).then((canvas) => {
       if(!current()) return;
-      const layout = canvas && {
-        surfaceWidth: input.width,
-        surfaceHeight: input.height,
+      stack.set(canvas);
+      motion.update(canvas && {
+        surfaceWidth: width,
+        surfaceHeight: height,
         canvasWidth: size.width,
         canvasHeight: size.height,
-        periodWidth: period.width,
-        periodHeight: period.height
-      };
-      const appearance = input.appearance;
-      if(canvas && appearance.kind === 'emoji') {
-        stillField = canvas;
-        host.style.maskImage = 'none'; // the squeeze is its edge, and a mask over a redrawn canvas is paid every frame
-        // below the full level nothing loops: a picture that came late is drawn by this update alone
-        const live = createLiveEmojiField(appearance.emojis, input.width, input.height, size.width, size.height, current, () => motion.update(liveLayout));
-        const liveLayout = {...layout, draw: live.draw};
-        stack.set(live.canvas);
-        motion.update(liveLayout);
-        return;
-      }
-
-      stillField = undefined;
-      host.style.maskImage = '';
-      stack.set(canvas);
-      motion.update(layout);
+        periodWidth: GIFT_PERIOD.width,
+        periodHeight: GIFT_PERIOD.height
+      });
     });
   }));
 

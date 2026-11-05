@@ -1,4 +1,4 @@
-import {createEffect, createMemo, createResource, createSignal, For, on, onCleanup, Show, untrack} from 'solid-js';
+import {batch, createEffect, createMemo, createResource, createSignal, For, on, onCleanup, Show, untrack} from 'solid-js';
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import Button from '@components/buttonTsx';
 import {toastNew} from '@components/toast';
@@ -18,7 +18,9 @@ import {flashControl} from '@lib/settingsSearch/highlight';
 import {createExportActions, ExportCopyButton, ExportShareSaveButtons} from './myQrCode/exportButtons';
 import classNames from '@helpers/string/classNames';
 import liteMode from '@helpers/liteMode';
+import {lerp} from '@helpers/lerp';
 import noop from '@helpers/noop';
+import {nodeFrame} from '@helpers/schedulers';
 import {useMediaSizes} from '@helpers/mediaSizes';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {Chat, InputSavedStarGift, ShareTheme, ShareThemeBackdropOption, User} from '@layer';
@@ -43,6 +45,7 @@ import {preloadAppliedEmoji} from './myQrCode/emojiPresets';
 import {GiftsLayout, GiftsPanel, giftsSheetHeight, ThemeGift} from './myQrCode/giftsPanel';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {showPremiumGiftsToast} from './myQrCode/premiumToast';
+import {OPEN_MS, revealOpening, sampledKeyframes, SHEET_CLOSE_MS, SHEET_EASING, SHEET_OPEN_MS, sheetEase} from './myQrCode/reveal';
 import styles from './myQrCode.module.scss';
 
 // `QrShareView`'s wave: a new colour spreads from the card over 600 ms, quick at first and gliding long (1 - (1 - t)^2.4)
@@ -50,6 +53,12 @@ const WAVE_MS = 600;
 const WAVE_EASING = 'cubic-bezier(.2, .65, .35, 1)';
 // … past the farthest corner by this much, so its soft edge leaves the screen
 const WAVE_OVERSHOOT = 60;
+// the island's buttons fade into the sheet as it starts growing, and back as it ends shrinking
+const ISLAND_FADE_MS = 90;
+// the sheet's content rises this far into place with it (`drawSheet`), and goes over this time as it closes
+const SHEET_CONTENT_RISE = 14, SHEET_CONTENT_OUT_MS = 170;
+// at the reduced level the sheet fades (the stylesheet's time)
+const SHEET_FADE_MS = 200;
 
 type WaveOrigin = {x: number, y: number, width: number, height: number};
 
@@ -116,6 +125,20 @@ function Backdrop(props: {
   });
 
   return host;
+}
+
+/** Once the popup has faded in: its own `opacity` transition has ended, or its time is out (one that did not run) */
+function fadedIn(popup: HTMLElement) {
+  return new Promise<void>((resolve) => {
+    const done = () => {
+      clearTimeout(timer);
+      popup.removeEventListener('transitionend', onEnd);
+      resolve();
+    };
+    const onEnd = (event: TransitionEvent) => event.target === popup && event.propertyName === 'opacity' && done();
+    const timer = window.setTimeout(done, parseFloat(getComputedStyle(popup).transitionDuration) * 1000 + 100);
+    popup.addEventListener('transitionend', onEnd);
+  });
 }
 
 function MyQrCodePopup(props: {
@@ -279,6 +302,8 @@ function MyQrCodePopup(props: {
     {id: 'gifts', icon: 'gift', iconClass: styles.iconGifts, title: 'StarGiftTitle'}
   ];
   const [panel, setPanel] = createSignal<PanelId>();
+  // what the sheet holds: the panel open, and the one it closes with until it has shrunk into the island
+  const [shownPanel, setShownPanel] = createSignal<PanelId>();
   // a panel is built when it is first opened, and kept: the emoji tab and the gifts are costly to build
   const [visited, setVisited] = createSignal<PanelId[]>([]);
   const buttons: {[id in PanelId]?: HTMLElement} = {};
@@ -296,7 +321,7 @@ function MyQrCodePopup(props: {
   const [giftsLayout, setGiftsLayout] = createSignal<GiftsLayout>();
   const sheetHeight = createMemo(() => {
     const full = fullSheetHeight();
-    const gifts = panel() === 'gifts' && giftsSheetHeight(giftsLayout(), sheetSize().width);
+    const gifts = shownPanel() === 'gifts' && giftsSheetHeight(giftsLayout(), sheetSize().width);
     return gifts ? Math.min(full, Math.round(gifts)) : full;
   });
   const cardLayout = createMemo(() => panel() ? openLayout({...surface(), pillExtra: 0}, sheetHeight()) : undefined);
@@ -309,32 +334,76 @@ function MyQrCodePopup(props: {
     }
   };
 
-  // The island grows into the sheet and back, Android's spring in a curve: the sheet's clip goes between their shapes
+  /* The island grows into the sheet and back, as on Android (`stepSheet`, `drawSheet`): the sheet's clip goes between
+     their shapes on one quick-then-soft curve, 420 ms open and 360 ms closed. The island's buttons give way to the
+     sheet as it starts and come back as it ends; the content comes with the sheet, rising 14 px into place, and goes
+     first as it closes, over 170 ms. A turn midway starts from where the shape stands. */
   let islandElement: HTMLDivElement;
+  let morph: Animation[] = [], closeTimer: number;
+  // the card moves for a panel over its transition, and only then: the screen's geometry changing (its first measure as
+  // it opens, a pill or a caption that comes later, a resize) puts it in its place at once
+  const [cardMoving, setCardMoving] = createSignal(false);
+  // the panel on show, and the card's move to make room for it: together, so that the move has its transition
+  const changePanel = (id: PanelId | undefined) => batch(() => {
+    setCardMoving(liteMode.isAvailable('motion'));
+    setPanel(id);
+  });
+  const stopMorph = () => {
+    morph.forEach((animation) => animation.cancel());
+    morph = [];
+  };
+  const finishClose = () => {
+    stopMorph();
+    if(!panel()) setShownPanel(undefined);
+  };
   createEffect(on(() => !!panel(), (open, wasOpen) => {
-    if(open === !!wasOpen || !liteMode.isAvailable('motion') || !islandElement) return;
-    const sheet = sheetElement.getBoundingClientRect(), island = islandElement.getBoundingClientRect();
-    const shapes = [
-      `inset(${island.top - sheet.top}px ${sheet.right - island.right}px ${sheet.bottom - island.bottom}px ${island.left - sheet.left}px round 20px)`,
-      'inset(0px round 28px)'
-    ];
-    sheetElement.animate(
-      {clipPath: open ? shapes : shapes.reverse()},
-      open ? {duration: 400, easing: 'cubic-bezier(.16, 1, .3, 1)'} : {duration: 240, easing: 'ease-in'}
-    );
-    // what stands in it comes once there is room for it, and goes first
-    for(const child of sheetElement.children) {
-      // the fade that held it hidden while it was closed must not outlive the closing
-      child.getAnimations().forEach((animation) => animation.cancel());
-      child.animate({opacity: open ? [0, 1] : [1, 0]}, open ? {duration: 220, delay: 90, fill: 'backwards'} : {duration: 100, fill: 'forwards'});
+    if(open === !!wasOpen) return;
+    clearTimeout(closeTimer);
+    if(!liteMode.isAvailable('motion') || !islandElement) {
+      stopMorph();
+      // at the reduced level the sheet fades, its content in it
+      if(!open) closeTimer = window.setTimeout(finishClose, liteMode.isAvailable('animations') ? SHEET_FADE_MS : 0);
+      return;
     }
+
+    const sheet = sheetElement.getBoundingClientRect(), island = islandElement.getBoundingClientRect();
+    const islandShape = `inset(${island.top - sheet.top}px ${sheet.right - island.right}px ${sheet.bottom - island.bottom}px ${island.left - sheet.left}px round 20px)`;
+    const sheetShape = 'inset(0px round 28px)';
+    const from = morph.length ? getComputedStyle(sheetElement).clipPath : open ? islandShape : sheetShape;
+    const content = sheetElement.querySelector<HTMLElement>(`[data-panel="${untrack(shownPanel)}"]`);
+    stopMorph();
+    if(open) {
+      morph.push(
+        sheetElement.animate({clipPath: [from, sheetShape]}, {duration: SHEET_OPEN_MS, easing: SHEET_EASING}),
+        sheetElement.animate({opacity: [0, 1]}, {duration: ISLAND_FADE_MS}),
+        islandElement.animate({opacity: [1, 0]}, {duration: ISLAND_FADE_MS, fill: 'forwards'})
+      );
+      // the content with the sheet: whole once it is 80% of the way
+      if(content) morph.push(content.animate(sampledKeyframes((u) => {
+        const shown = Math.min(1, sheetEase(u) / 0.8);
+        return {opacity: shown, transform: `translateY(${(1 - shown) * SHEET_CONTENT_RISE}px)`};
+      }), SHEET_OPEN_MS));
+      morph[0].finished.then(stopMorph, noop);
+      return;
+    }
+
+    if(content) morph.push(content.animate(sampledKeyframes((u) => ({opacity: (1 - u) ** 1.7})), {duration: SHEET_CONTENT_OUT_MS, fill: 'forwards'}));
+    // the last of it, where the shapes are one, hands over to the island
+    const handover = {duration: SHEET_CLOSE_MS, fill: 'forwards'} as const;
+    const shape = sheetElement.animate({clipPath: [from, islandShape]}, {...handover, easing: SHEET_EASING});
+    morph.push(
+      shape,
+      sheetElement.animate({opacity: [1, 1, 0], offset: [0, 0.6, 1]}, handover),
+      islandElement.animate({opacity: [0, 0, 1], offset: [0, 0.6, 1]}, handover)
+    );
+    shape.finished.then(finishClose, noop);
   }, {defer: true}));
 
   function closePanel(fromNavigation?: boolean) {
     const opened = panel();
     if(!opened) return;
 
-    setPanel(undefined);
+    changePanel(undefined);
     if(!fromNavigation) appNavigationController.removeItem(navigationItem);
     // the focus goes back to the button that opened it
     if(Modes.a11y) buttons[opened]?.focus();
@@ -353,12 +422,15 @@ function MyQrCodePopup(props: {
     }
 
     const wasOpen = !!panel();
-    setVisited((all) => all.includes(id) ? all : [...all, id]);
-    setPanel(id);
+    batch(() => {
+      setVisited((all) => all.includes(id) ? all : [...all, id]);
+      setShownPanel(id);
+      changePanel(id);
+    });
     if(!wasOpen) appNavigationController.pushItem(navigationItem);
     if(Modes.a11y) {
       // into the panel, onto the pressed one, else the first
-      requestAnimationFrame(() => {
+      nodeFrame(sheetElement, () => {
         const target = sheetElement.querySelector<HTMLElement>(`[data-panel="${id}"] [aria-pressed="true"]`) || sheetElement.querySelector<HTMLElement>(`[data-panel="${id}"] button`);
         target?.focus();
       });
@@ -375,6 +447,7 @@ function MyQrCodePopup(props: {
 
   onCleanup(() => {
     appNavigationController.removeItem(navigationItem);
+    clearTimeout(closeTimer);
   });
 
   if(props.canEdit) preloadAppliedEmoji(managers);
@@ -413,19 +486,12 @@ function MyQrCodePopup(props: {
     expiringToast: () => own.fee.isExpiring() ? 'QRCode.NoPaid.Toast.Expiring' : 'QRCode.LinkExpiring'
   });
 
-  // The card answers a pick, as on Android: it bounces as a new colour spreads (`bounce(0.03, 0.005)` over 320 ms) and
-  // dips when the emoji change (3% over 360 ms), only for what the user chose and with the motion on
+  // the backdrop's wave goes for a new colour; the card itself stands still, at its size, whatever changes (Android
+  // bounces it for a pick)
   const colorsKey = () => [colors().center, colors().mid, colors().edge, colors().vertical].join();
-  const emojisKey = () => appearance().emojis.map(themeEmojiKey).join();
   // the card's middle on screen, with a panel's lift and shrink
   const cardMiddle = () => cardRect().top + (cardLayout()?.shift ?? 0) + surface().card.height * (cardLayout()?.scale ?? 1) / 2;
   let cardPlace: HTMLDivElement;
-  const animateCard = (keyframes: Keyframe[], duration: number) => {
-    if(!changedByUser || !liteMode.isAvailable('motion')) return;
-    (cardPlace.firstElementChild as HTMLElement)?.animate(keyframes, {duration, easing: 'ease-in-out'});
-  };
-  createEffect(on(colorsKey, () => animateCard([{scale: 1}, {scale: 1.03, offset: .25}, {scale: .995, offset: .6}, {scale: 1}], 320), {defer: true}));
-  createEffect(on(emojisKey, () => animateCard([{scale: 1}, {scale: .975, offset: .45}, {scale: 1}], 360), {defer: true}));
 
   // the export buttons step back for a panel, and while the free code runs on its minute: such a code is not one to
   // hand out, as on Android; nor is one of the other kind, still on screen while the code asked for is on its way
@@ -442,6 +508,41 @@ function MyQrCodePopup(props: {
 
   const label = () => `${I18n.format('QRCode.Title', true)}: ${props.title}, ${url()}`;
 
+  /* The screen's open, as on Android (`QrShareView.setReveal`) but where it stands: the popup fades in, the controls
+     grow from 0.85 on a spring (860 ms), the code builds itself in its place once the screen is in, and the emoji pop
+     in once it is open. Android also raises the screen 64 px and grows the card: here the code does not fly in. The
+     close is the popup's fade. Below the full level everything is there at once. */
+  // when the code's build began (0: it builds nothing), and when the open ended, for the emoji
+  const [introStart, setIntroStart] = createSignal<number>();
+  const [opened, setOpened] = createSignal<number>();
+  const growControls = () => {
+    // what is on show of the controls, and the pill under the card
+    const controls = [
+      ...surfaceElement.querySelectorAll<HTMLElement>(`.${styles.close}, .${styles.copy}, .${styles.bar} .${styles.control}, .${styles.island}`),
+      ...[...cardPlace.children].slice(1) as HTMLElement[]
+    ].filter((element) => getComputedStyle(element).visibility !== 'hidden');
+    return Promise.all(controls.map((element) => element.animate(sampledKeyframes((u) => {
+      const x = revealOpening(u);
+      return {opacity: x, transform: `scale(${lerp(0.85, 1, x)})`};
+    }), {duration: OPEN_MS}).finished));
+  };
+
+  const onShow = () => {
+    const now = performance.now();
+    if(!liteMode.isAvailable('motion')) {
+      batch(() => {
+        setIntroStart(0);
+        setOpened(now);
+      });
+      return;
+    }
+
+    // the code builds once the screen has faded in: half of the build is in its first tenth, which a screen still
+    // fading in would hide
+    fadedIn(surfaceElement.closest<HTMLElement>('.popup')).then(() => setIntroStart(performance.now()));
+    growControls().then(() => setOpened(performance.now()), noop);
+  };
+
   return (
     <PopupElement
       managers={managers}
@@ -450,6 +551,7 @@ function MyQrCodePopup(props: {
       containerProps={{'aria-label': I18n.format('QRCode.Title', true)}}
       closable
       show={ready()}
+      onShow={onShow}
       onClose={() => {
         saver.flush();
         saveWhenServed();
@@ -479,13 +581,17 @@ function MyQrCodePopup(props: {
           appearance={appearance}
           width={() => size().width}
           height={() => size().height}
+          focus={() => ({x: size().width / 2, y: cardMiddle()})}
+          opened={opened}
           // the backdrop moves the pattern under a finger; the card, the panels and the buttons keep their presses, and an open panel its backdrop
           canDrag={(target) => !panel() && !target.closest(`.${styles.cardPlace}, .${styles.sheet}, .${styles.island}, .${styles.control}, .${styles.close}`)}
           fieldRef={(get) => { getField = get; }}
         />
         <div
           ref={cardPlace}
-          class={styles.cardPlace}
+          class={classNames(styles.cardPlace, cardMoving() && styles.cardPlaceMoving)}
+          // a move a newer one interrupts is cancelled, not ended: the newer one's end ends it
+          onTransitionEnd={(event) => event.target === event.currentTarget && setCardMoving(false)}
           style={{
             left: cardRect().left + 'px',
             // the card's top is a part of the transform, so that it moves with the compositor, not by layout
@@ -499,16 +605,19 @@ function MyQrCodePopup(props: {
             url={url}
             caption={caption}
             label={label}
+            introStart={introStart}
             qrRef={(get) => { getQr = get; }}
           />
           <Show when={own.fee.visible()} fallback={own.kind() === 'contact' && <ExpiryPill away={!!panel()} left={own.left} top={surface().card.height + PILL_GAP} />}>
-            <FeePill away={!!panel()} fee={own.fee} top={surface().card.height + PILL_GAP} />
+            <FeePill away={!!panel()} fee={own.fee} top={surface().card.height + PILL_GAP} foreground={() => colors().foreground} />
           </Show>
         </div>
         <PopupElement.CloseButton class={styles.close} />
         <Show when={props.canEdit}>
           <div
-            class={classNames(styles.sheet, panel() && styles.sheetOpen)}
+            class={classNames(styles.sheet, panel() && styles.sheetOpen, !panel() && shownPanel() && styles.sheetClosing)}
+            // what is shrinking away is out of reach already
+            inert={Modes.a11y && !panel() && !!shownPanel()}
             ref={sheetElement}
             id="qr-sheet"
             role="region"
@@ -517,7 +626,7 @@ function MyQrCodePopup(props: {
           >
             <For each={visited()}>
               {(id) => (
-                <div class={styles.sheetPanel} data-panel={id} hidden={panel() !== id}>
+                <div class={styles.sheetPanel} data-panel={id} hidden={shownPanel() !== id}>
                   {id === 'colors' && (
                     <ColorsPanel
                       backdrops={palette}
@@ -526,12 +635,15 @@ function MyQrCodePopup(props: {
                     />
                   )}
                   {id === 'emoji' && (
-                    <EmojiPanel
-                      managers={managers}
-                      emojis={() => appearance().emojis}
-                      size={sheetSize}
-                      onPick={pickEmoji}
-                    />
+                    <>
+                      <EmojiPanel
+                        managers={managers}
+                        emojis={() => appearance().emojis}
+                        size={sheetSize}
+                        onPick={pickEmoji}
+                      />
+                      <ChosenEmojiStrip emojis={() => appearance().emojis} onRemove={toggleEmoji} />
+                    </>
                   )}
                   {id === 'gifts' && (
                     <GiftsPanel
@@ -549,9 +661,6 @@ function MyQrCodePopup(props: {
               )}
             </For>
           </div>
-          <Show when={panel() === 'emoji' && appearance().emojis.length}>
-            <ChosenEmojiStrip emojis={() => appearance().emojis} onRemove={toggleEmoji} />
-          </Show>
           <div ref={islandElement} class={classNames(styles.island, panel() && styles.islandAway)} role="group" aria-label={I18n.format('QRCode.Title', true)}>
             <For each={PANELS}>
               {(item) => (

@@ -1,4 +1,5 @@
 import liteMode from '@helpers/liteMode';
+import {nodeFrame} from '@helpers/schedulers';
 import styles from '@components/popups/myQrCode.module.scss';
 
 const FADE_OUT_MS = 350;
@@ -61,7 +62,7 @@ export default function createLayerStack<T extends HTMLElement = HTMLElement>(
       const revealing = previous && liteMode.isAvailable('animations') ? how.reveal?.(layer) : undefined;
       if(previous) retire(previous, revealing);
       if(!revealing && !how.instant && liteMode.isAvailable('animations')) {
-        requestAnimationFrame(() => layer.classList.add(styles.layerShown));
+        nodeFrame(layer, () => layer.classList.add(styles.layerShown));
       } else {
         layer.classList.add(styles.layerShown);
       }

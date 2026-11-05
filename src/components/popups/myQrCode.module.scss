@@ -18,6 +18,8 @@
 }
 
 .popup {
+  // the popup fades in and out in 200 ms (`QrShareActivity`'s close)
+  --popup-transition-time: .2s;
   --popup-width: 23.5rem;
   --popup-height: min(47rem, calc(100vh - 2rem));
   --popup-max-height: 100%;
@@ -37,6 +39,11 @@
 .popupContainer {
   // the same shadow as a menu has
   box-shadow: var(--menu-box-shadow);
+
+  // it opens where it stands, not rising as a popup does: the code builds itself in its place
+  .popup & {
+    transform: none;
+  }
 }
 
 .surface {
@@ -124,7 +131,9 @@
   direction: ltr;
   // a panel opening moves the card up and shrinks it, about its top middle
   transform-origin: 50% 0;
+}
 
+.cardPlaceMoving {
   @include animation-level-global(2) {
     transition: transform var(--transition-standard-in);
   }
@@ -135,8 +144,6 @@
   background-color: #fff;
   color: var(--ink);
   contain: layout style;
-
-  @include fade(color box-shadow);
 }
 
 .qr {
@@ -269,44 +276,67 @@
     }
   }
 
-  @include animation-level-global(2) {
-    transition: visibility 0s .24s;
-  }
 }
 
-// it has grown into the sheet
+// it has grown into the sheet: at the full level it fades as the sheet starts growing over it, the script's fade
 .islandAway {
   visibility: hidden;
-  transition: none;
 
   @include animation-level-global(2) {
-    transition: none;
+    transition: visibility 0s .09s;
   }
 }
 
-// The chosen emoji, over the sheet in the island's place and of its kind: as wide as they are
+// The chosen emoji (`EmojiPickOverlay`): a glass island at the bottom of their panel, over the keyboard, as wide as they
+// are. Nothing of the keyboard shows through it: Android cuts the keyboard out under it, here it is the sheet's own
+// colour, lit as the island's glass is.
 .chosenStrip {
+  position: absolute;
+  inset-block-end: 1.1667rem;
+  inset-inline: 0;
+  z-index: 5;
+  display: flex;
   width: fit-content;
-  padding-inline: .25rem;
+  min-width: 3.125rem;
+  height: 2.75rem;
+  margin-inline: auto;
+  padding-inline: .5rem;
+  border-radius: 1.375rem;
+  background:
+    linear-gradient(rgba(255, 255, 255, .2), rgba(255, 255, 255, .2)),
+    linear-gradient(var(--qr-control), var(--qr-control)),
+    var(--qr-mid);
+  box-shadow: $qr-glass-rim, $qr-glass-top-light, $qr-glass-lift;
 }
 
 .chosenEmoji {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.5rem;
+  width: 2.125rem;
+  height: 100%;
   border: 0;
-  border-radius: 1.25rem;
   padding: 0;
+  overflow: hidden;
   background: none;
   color: inherit;
   cursor: pointer;
 }
 
+.chosenEmojiArt {
+  // `EmojiPickOverlay`: 26 px in a cell of 34
+  --custom-emoji-size: 1.625rem;
+
+  // the custom emoji's canvas covers this, not the strip: one that took the strip's size was made anew, blank, at each
+  // change of its width, and as the pop's scale, which made this its box for a while, ended
+  position: relative;
+  display: flex;
+}
+
 .chosenImage {
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.625rem;
+  height: 1.625rem;
 }
 
 // Android's own pictures of the buttons
@@ -333,11 +363,16 @@
 
 // The sheet the panels stand in, above the island. Closed it is not there for the eye, the mouse or the keyboard.
 .sheet {
+  // the app's scrollbar of every panel, in the card's colour: the theme's would vanish on the glass
+  --scrollbar-color: color-mix(in srgb, var(--qr-foreground) 20%, transparent);
+
   position: absolute;
   display: flex;
   flex-direction: column;
   border-radius: 1.76rem; // SHEET_RADIUS 28.17
   overflow: hidden;
+  // what stands in it on layers of its own (the keyboard's) stays under the island of chosen emoji
+  isolation: isolate;
   // one flat colour per backdrop, as Android's: the blur would be paid on every frame of the field beneath
   background: linear-gradient(var(--qr-control), var(--qr-control)), var(--qr-mid);
   visibility: hidden;
@@ -349,10 +384,18 @@
     transition: opacity .2s ease, visibility 0s .2s, height .2s ease;
   }
 
-  // the island grows into it (a clip from the script), and it stays until the clip has gone back
+  // the island grows into it (a clip from the script), and it stays while it shrinks back (`.sheetClosing`)
   @include animation-level-global(2) {
     opacity: 1;
-    transition: visibility 0s .24s, height .2s ease;
+    transition: height .2s ease;
+  }
+}
+
+.sheetClosing {
+  pointer-events: none;
+
+  @include animation-level-global(2) {
+    visibility: visible;
   }
 }
 
@@ -387,14 +430,11 @@
 .swatches {
   --swatch-gap: .75rem;
 
-  flex: 1 1 auto;
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   align-content: start;
   gap: var(--swatch-gap);
   padding: .6875rem;
-  overflow-y: auto;
-  overscroll-behavior: contain;
 }
 
 .swatch {
@@ -433,11 +473,16 @@
 }
 
 // Emoji: the emoji tab fills the sheet
-// `QrEmojiPanel`: its tabs, its titles (15 px, 44 px high) and the white circle of the tab on show
+// `QrEmojiPanel`: its titles (15 px, 44 px high) and its grid; the tabs over it are the dropdown's own
 .emojiHost {
-  // the tab's glyphs and labels read on the glass in the card's colour, not in the app's grey
+  // the tab's glyphs and labels read on the glass in the card's colour, not in the app's grey; so do a hovered cell, a
+  // loading one and the line under the tabs once the emoji scroll under them
   --primary-text-color: var(--qr-foreground);
   --secondary-text-color: var(--qr-foreground);
+  --light-secondary-text-color: color-mix(in srgb, var(--qr-foreground) 10%, transparent);
+  --border-color: color-mix(in srgb, var(--qr-foreground) 10%, transparent);
+  // … and the tab on show and a hovered one are white too: the dropdown colours them by the text colour's channels
+  --primary-text-color-rgb: 255, 255, 255;
 
   flex: 1 1 auto;
   min-height: 0;
@@ -465,10 +510,17 @@
       height: 100%;
     }
 
-    // the last row scrolls out from under the strip of chosen emoji
+    // the last row scrolls out from under the island of chosen emoji
     :global(.emoticons-categories-container) {
-      padding-block-end: 3.5rem;
+      padding-block-end: 4.25rem;
     }
+  }
+
+  // `QrEmojiPanel`: the emoji as far apart down as across, the row in the middle (`EMOJI_GAP`, which the tab reckons
+  // its rows' height with)
+  :global(.super-emojis) {
+    justify-content: center;
+    gap: .375rem;
   }
 
   // `EmojiPickOverlay`: a picked cell is lit 18% (white, or dark on a light backdrop) and its glyph shrinks to 0.9; a
@@ -477,6 +529,9 @@
     position: relative;
     border-radius: .625rem;
     background-color: color-mix(in srgb, var(--qr-foreground) 18%, transparent);
+
+    // hovered, it stays lit, a little more
+    @include hover-global(color-mix(in srgb, var(--qr-foreground) 26%, transparent), background-color);
 
     > * {
       scale: .9;
@@ -490,6 +545,8 @@
   :global(.super-emoji[data-pick])::after {
     content: attr(data-pick);
     position: absolute;
+    // over the emoji, which the tab draws over its cells
+    z-index: 2;
     top: .09375rem;
     inset-inline-end: .09375rem;
     width: 1rem;
@@ -514,24 +571,15 @@
     }
   }
 
-  :global(.menu-horizontal-div) {
-    flex: none;
-    height: 2.25rem;
-    padding-inline: .1875rem;
+  // the dropdown's own menu, as it is everywhere: only its glyphs are white on the glass, as the adaptive emoji beside
+  // them, and the tab on show and a hovered one too (`--primary-text-color-rgb`)
+  :global(.emoticons-menu .menu-horizontal-div-item) {
+    color: #fff;
   }
 
-  :global(.menu-horizontal-div-item) {
-    flex: none;
-    width: 2.125rem;
-    height: 1.875rem;
-    margin-block: .1875rem;
-    border-radius: .9375rem;
-    // white on every backdrop, as the adaptive emoji beside it
-    color: #fff;
-
-    &:global(.active) {
-      background-color: rgba(255, 255, 255, .36);
-    }
+  // the spinner of the packs on their way, white as the tabs, not in the app's blue
+  :global(.preloader .preloader-path) {
+    stroke: #fff;
   }
 
   :global(.category-title) {
@@ -548,10 +596,7 @@
 
 // Gifts: three to a row, a row a third of the sheet high (the script sets both: one or two at the end share the row)
 .giftsScroll {
-  flex: 1 1 auto;
   padding: .5rem;
-  overflow-y: auto;
-  overscroll-behavior: contain;
 }
 
 .gifts {

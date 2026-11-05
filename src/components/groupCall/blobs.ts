@@ -12,6 +12,7 @@
 import {ColorRgb, mixColors} from '@helpers/color';
 import liteMode from '@helpers/liteMode';
 import {MAX_SPEED, MIN_SPEED, getBlobSpeed} from '@components/lineBlobDrawable';
+import easeOutBack from '@helpers/easing/easeOutBack';
 
 const FRAME_DURATION = 1000 / 60;
 // a level reaches what the analyser reported in this long (kLevelDuration)
@@ -35,11 +36,6 @@ export function getBlobsLevel(level: number) {
 
   return Math.min(1, Math.max(0, (20 * Math.log10(level) - LEVEL_FLOOR_DB) / LEVEL_RANGE_DB));
 }
-
-const easeOutBack = (t: number) => {
-  const s = 1.70158;
-  return (t - 1) * (t - 1) * ((s + 1) * (t - 1) + s) + 1;
-};
 
 const easeInCirc = (t: number) => 1 - Math.sqrt(1 - t * t);
 
