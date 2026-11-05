@@ -562,9 +562,12 @@ test.describe('a message edited where it stands', () => {
       steps.push(['text', 'paragraph', /^Edit: in place$/]);
       for(const [option] of mediaSteps) steps.push(['media', option, /rendered anew \(media\)/]);
       if(mediaSteps[0][0] === 'photo') {
-        // * a photo's caption goes and comes, its reactions going under the photo and back into it
+        // * a photo's caption goes and comes, its reactions going under the photo and back into it - on the photo
+        // * again after a file, if the chat has one to show (a photo shown once more is no change)
+        if(mediaSteps[mediaSteps.length - 1][0] !== 'photo') {
+          steps.push(['media', 'photo', /rendered anew \(media\)/]);
+        }
         steps.push(
-          ['media', 'photo', /rendered anew \(media\)/],
           ['reactions', 'several', /^No edit$/],
           ['text', 'none', /rendered anew \(hasBodyContent\)/],
           ['text', 'line', /rendered anew \(hasBodyContent\)/],
