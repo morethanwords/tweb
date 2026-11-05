@@ -139,23 +139,15 @@ export default class AppSavedMusicManager extends AppManager {
    * an old message can be stale, and refreshing it mutates the document in place, so the retry just
    * re-reads the input.
    */
-  private async invokeSaveMusic(doc: MyDocument, params: {unsave?: true, after_id?: InputDocument}) {
-    const send = () => this.apiManager.invokeApi('account.saveMusic', {
-      ...params,
-      id: getDocumentInput(doc)
+  private invokeSaveMusic(doc: MyDocument, params: {unsave?: true, after_id?: InputDocument}) {
+    return this.apiFileManager.invokeApiWithReference({
+      context: doc,
+      change: true,
+      callback: () => this.apiManager.invokeApi('account.saveMusic', {
+        ...params,
+        id: getDocumentInput(doc)
+      })
     });
-
-    try {
-      return await send();
-    } catch(err) {
-      assumeType<ApiError>(err);
-      if(err.type !== 'FILE_REFERENCE_EXPIRED' && err.type !== 'FILE_REFERENCE_INVALID') {
-        throw err;
-      }
-
-      await this.referencesStorage.refreshReference(doc.file_reference);
-      return await send();
-    }
   }
 
   public async saveMusic(docId: DocId) {

@@ -29,6 +29,7 @@ import filterUnique from '@helpers/array/filterUnique';
 import noop from '@helpers/noop';
 import App from '@config/app';
 import forgetFailedRequest from '@helpers/forgetFailedRequest';
+import forgetSettledRequest from '@helpers/forgetSettledRequest';
 
 const CACHE_TIME = 3600e3;
 // * a page of messages.searchStickers, as tdesktop asks for it (stickers_list_widget.cpp)
@@ -39,6 +40,10 @@ const OLD_FEATURED_STICKERS_LIMIT = 40;
 const ARCHIVED_STICKERS_LIMIT = 15;
 // * kReadFeaturedSetsTimeout in tdesktop's apiwrap.cpp: the trending sets seen meanwhile are read together
 const READ_FEATURED_STICKERS_DELAY = 1000;
+
+// * the keys of the changes of a sticker in either list (apiFileManager.invokeApiWithReference), by the sticker's id
+const FAVED_STICKERS_KEY = 'favedStickers:';
+const RECENT_STICKERS_KEY = 'recentStickers:';
 
 // * a change faveSticker made to the faved list, and the list as it was before it
 type FavedStickersChange = {
@@ -58,7 +63,7 @@ export type FoundStickersPage = {
 export class AppStickersManager extends AppManager {
   private storage: AppStorage<Record<Long, MyMessagesStickerSet>, AccountDatabase>;
 
-  private getStickerSetPromises: {[setId: Long]: Promise<MyMessagesStickerSet>};
+  private getStickerSetPromises: Map<string, Promise<MyMessagesStickerSet>>;
   private getStickersByEmoticonsPromises: {[emoticon: string]: Promise<MyDocument[]>};
 
   private greetingStickers: MyDocument[];
@@ -166,7 +171,7 @@ export class AppStickersManager extends AppManager {
   }
 
   public clear = (init?: boolean) => {
-    this.getStickerSetPromises = {};
+    this.getStickerSetPromises = new Map();
     this.getStickersByEmoticonsPromises = {};
     this.sounds = {};
     this.names = {};
@@ -246,8 +251,9 @@ export class AppStickersManager extends AppManager {
     }
 
     const cacheKey = this.getCacheKey(set);
-    if(this.getStickerSetPromises[cacheKey]) {
-      return this.getStickerSetPromises[cacheKey];
+    const loading = this.getStickerSetPromises.get(cacheKey);
+    if(loading) {
+      return loading;
     }
 
     if(!params.overwrite) {
@@ -257,41 +263,33 @@ export class AppStickersManager extends AppManager {
       }
     }
 
-    const promise = this.getStickerSetPromises[cacheKey] = new Promise(async(resolve) => {
+    // * settles whatever happens: a promise left pending would be kept for the set until a reload
+    const promise = (async(): Promise<MyMessagesStickerSet> => {
       if(!params.overwrite) {
-        const cachedSet = await this.storage.get(cacheKey);
-        if(this.canUseStickerSetCache(cachedSet, params.useCache)) {
-          delete (cachedSet.documents as any).saved;
-          this.saveStickerSetLocal(cachedSet);
-          resolve(cachedSet);
-
-          if(this.getStickerSetPromises[cacheKey] === promise) {
-            delete this.getStickerSetPromises[cacheKey];
+        try {
+          const cachedSet = await this.storage.get(cacheKey);
+          if(this.canUseStickerSetCache(cachedSet, params.useCache)) {
+            delete (cachedSet.documents as any).saved;
+            this.saveStickerSetLocal(cachedSet);
+            return cachedSet;
           }
-
-          return;
+        } catch(err) {
+          // * the copy kept here could not be read: the server is asked
+          this.log.error('getStickerSet: cached set', cacheKey, err);
         }
       }
 
-      try {
-        const stickerSet = await this.apiManager.invokeApi('messages.getStickerSet', {
-          stickerset: set,
-          hash: 0
-        }) as MyMessagesStickerSet;
+      const stickerSet = await this.apiManager.invokeApi('messages.getStickerSet', {
+        stickerset: set,
+        hash: 0
+      }) as MyMessagesStickerSet;
 
-        this.saveStickerSet(stickerSet, cacheKey);
+      this.saveStickerSet(stickerSet, cacheKey);
+      return stickerSet;
+    })().catch((): MyMessagesStickerSet => null);
 
-        resolve(stickerSet);
-      } catch(err) {
-        resolve(null);
-      }
-
-      if(this.getStickerSetPromises[cacheKey] === promise) {
-        delete this.getStickerSetPromises[cacheKey];
-      }
-    });
-
-    return promise;
+    this.getStickerSetPromises.set(cacheKey, promise);
+    return forgetSettledRequest(this.getStickerSetPromises, cacheKey, promise);
   }
 
   public getLocalStickerSet(id: STICKER_LOCAL_SET_ID) {
@@ -415,10 +413,15 @@ export class AppStickersManager extends AppManager {
       this.onStickersUpdated('recent', false);
     }
 
-    return this.apiManager.invokeApi('messages.saveRecentSticker', {
-      id: getDocumentInput(doc),
-      unsave,
-      attached
+    return this.apiFileManager.invokeApiWithReference({
+      context: doc,
+      change: true,
+      key: RECENT_STICKERS_KEY + doc.id,
+      callback: () => this.apiManager.invokeApi('messages.saveRecentSticker', {
+        id: getDocumentInput(doc),
+        unsave,
+        attached
+      })
     });
   }
 
@@ -759,6 +762,21 @@ export class AppStickersManager extends AppManager {
     return this.getFavedStickers(overwrite).then(() => this.favedStickers);
   }
 
+  /**
+   * The faved or the recent stickers read from the server for the fresh file references of their documents alone (the
+   * references storage's refresh): the list kept here stays as it is. It may hold a change the server has yet to take -
+   * one gone back for a fresh reference among them - which the server's list put in its place would drop.
+   */
+  public refreshStickersReferences(type: 'faved' | 'recent') {
+    const request = type === 'faved' ?
+      this.apiManager.invokeApiSingle('messages.getFavedStickers', {hash: 0}) :
+      this.apiManager.invokeApiSingle('messages.getRecentStickers', {hash: 0});
+    return request.then((res) => {
+      assumeType<MessagesFavedStickers.messagesFavedStickers | MessagesRecentStickers.messagesRecentStickers>(res);
+      this.saveStickers(res.stickers, {type: type === 'faved' ? 'favedStickers' : 'recentStickers'});
+    });
+  }
+
   public getFavedStickersLimit() {
     return this.apiManager.getLimit('favedStickers');
   }
@@ -778,9 +796,14 @@ export class AppStickersManager extends AppManager {
 
     this.rootScope.dispatchEvent('sticker_updated', {type: 'faved', faved: !unfave, document: doc, limitReached});
 
-    return this.apiManager.invokeApi('messages.faveSticker', {
-      id: getDocumentInput(doc),
-      unfave
+    return this.apiFileManager.invokeApiWithReference({
+      context: doc,
+      change: true,
+      key: FAVED_STICKERS_KEY + doc.id,
+      callback: () => this.apiManager.invokeApi('messages.faveSticker', {
+        id: getDocumentInput(doc),
+        unfave
+      })
     }).then(() => {
       change.answered = true;
       this.forgetAnsweredFavedStickersChanges();
@@ -1039,7 +1062,9 @@ export class AppStickersManager extends AppManager {
         params: {
           emoticon
         },
-        processResult: (stickers) => stickers
+        processResult: (stickers) => stickers,
+        // * asked anew, the answer is not the one kept by its hash: a refreshed reference comes with it
+        overwrite
       }) : undefined,
       includeOurStickers ? this.preloadStickerSets() : [],
       includeOurStickers ? this.getRecentStickers() : undefined
@@ -1203,6 +1228,8 @@ export class AppStickersManager extends AppManager {
   }
 
   public clearRecentStickers() {
+    // * a change on its way, sent once more for a fresh reference after the clear, would fill the list again
+    this.apiFileManager.supersedeReferenceRequests(RECENT_STICKERS_KEY);
     if(this.recentStickers) {
       this.recentStickers.length = 0;
       this.onStickersUpdated('recent', false);

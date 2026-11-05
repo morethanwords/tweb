@@ -340,14 +340,15 @@ export class ReferencesStorage extends AppManager {
       case 'effects':
         return this.appReactionsManager.getAvailableEffects(true);
 
+      // * the lists themselves stay as they are: they may hold a change going back for a fresh reference
       case 'savedGifs':
-        return this.appGifsManager.getGifs(true);
+        return this.appGifsManager.refreshGifsReferences();
 
       case 'recentStickers':
-        return this.appStickersManager.getRecentStickers(true);
+        return this.appStickersManager.refreshStickersReferences('recent');
 
       case 'favedStickers':
-        return this.appStickersManager.getFavedStickers(true);
+        return this.appStickersManager.refreshStickersReferences('faved');
 
       case 'stickerSet':
         return this.appStickersManager.getStickerSet(context.input, {overwrite: true});
@@ -356,10 +357,12 @@ export class ReferencesStorage extends AppManager {
         return this.appReactionsManager.getAvailableEffects(true);
 
       case 'stickerSearch':
+        // * asked anew: the search kept for the emoji is the one that brought the reference
         return this.appStickersManager.getStickersByEmoticon({
           emoticon: context.emoticon,
           includeServerStickers: true,
-          includeOurStickers: false
+          includeOurStickers: false,
+          overwrite: true
         });
 
       case 'stickerSearchQuery':

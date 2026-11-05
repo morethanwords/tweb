@@ -8,6 +8,7 @@
 import type {ReferenceBytes} from '@lib/storages/references';
 import Modes from '@config/modes';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import forgetSettledRequest from '@helpers/forgetSettledRequest';
 import {randomLong} from '@helpers/random';
 import {Document, InputFile, InputFileLocation, InputWebFileLocation, Photo, PhotoSize, UploadFile, UploadWebFile, VideoSize, WebDocument} from '@layer';
 import {DcId} from '@types';
@@ -146,6 +147,8 @@ export class ApiFileManager extends AppManager {
   } = {};
 
   private requestFilePartReferences: Map<ReferenceBytes, Set<CancellablePromise<any>>> = new Map();
+  // * the latest of the requests given a key by invokeApiWithReference, until it settles
+  private referenceRequestKeys: Map<string, Promise<unknown>> = new Map();
 
   // private downloadToDiscPromises: {
   //   [fileName: string]: DownloadPromise
@@ -170,9 +173,8 @@ export class ApiFileManager extends AppManager {
   } = {};
   private downloadActives: {[dcId: string]: number} = {};
 
-  public refreshReferencePromises: {
-    [referenceHex: string]: CancellablePromise<ReferenceBytes>
-  } = {};
+  // * a reference's refresh while it is on its way, by the bytes it refreshes: the requests that used them share it
+  public refreshReferencePromises: Map<string, CancellablePromise<ReferenceBytes>> = new Map();
 
   private tempId = 0;
   private queueId = 0;
@@ -189,15 +191,6 @@ export class ApiFileManager extends AppManager {
   }
 
   protected after() {
-    setInterval(() => { // clear old promises
-      for(const hex in this.refreshReferencePromises) {
-        const deferred = this.refreshReferencePromises[hex];
-        if(deferred.isFulfilled || deferred.isRejected) {
-          delete this.refreshReferencePromises[hex];
-        }
-      }
-    }, 1800e3);
-
     this.rootScope.addEventListener('config', (config) => {
       this.webFileDcId = config.webfile_dc_id;
     });
@@ -330,7 +323,7 @@ export class ApiFileManager extends AppManager {
       queuedPulls,
       activeDownloads,
       filePartReferences: this.requestFilePartReferences.size,
-      refreshReferencePromises: Object.keys(this.refreshReferencePromises).length
+      refreshReferencePromises: this.refreshReferencePromises.size
     };
   }
 
@@ -579,12 +572,14 @@ export class ApiFileManager extends AppManager {
 
     set.add(deferred);
 
-    deferred.finally(() => {
+    // * a request that fails is for whoever made it: no copy of the failure is left unhandled here
+    const forget = () => {
       set.delete(deferred);
       if(!set.size) {
         this.requestFilePartReferences.delete(reference);
       }
-    });
+    };
+    deferred.then(forget, forget);
 
     return deferred;
   }
@@ -593,28 +588,38 @@ export class ApiFileManager extends AppManager {
   public async invokeApiWithReference<T>({
     context,
     callback,
-    checkCancel
+    checkCancel,
+    change,
+    key
   }: {
     context: InvokeApiWithReferenceContext,
     callback: () => Promise<T>,
-    checkCancel?: () => void
+    checkCancel?: () => void,
+    // * a change sent with the reference (a fave, a saved track), not a download: it is the server's to answer even once
+    // nothing here knows the document any more (a download is cancelled then: cancelDownloadByReference), and it is sent
+    // once more at most - a reference the server keeps refusing, fresh as it is, does not keep it going back and forth
+    change?: boolean,
+    // * what the change is of (a sticker among the faved ones): a later request of the same key, sent while this one goes
+    // back for a fresh reference, has the last word - sent once more after it, this one would undo it, so it fails
+    key?: string
   }) {
     checkCancel?.();
 
+    const isSuperseded = () => key && this.referenceRequestKeys.get(key) !== request;
     const reference = (context as InvokeApiWithReferenceContext).file_reference;
-    const invoke = async(): Promise<T> => {
+    const invoke = async(retried?: boolean): Promise<T> => {
       checkCancel?.(); // do not remove async, because checkCancel will throw an error
 
       const referenceUsedHex = reference ? bytesToHex(reference) : undefined;
       let promise = callback();
-      if(reference) {
+      if(reference && !change) {
         promise = this.useReference(reference, promise);
       }
 
       return promise.catch(async(err: ApiError) => {
         checkCancel?.();
 
-        if(err.type === 'FILE_REFERENCE_EXPIRED' || err.type === 'FILE_REFERENCE_INVALID') {
+        if((err.type === 'FILE_REFERENCE_EXPIRED' || err.type === 'FILE_REFERENCE_INVALID') && !(change && retried)) {
           /**
            * this is to test the case when reference is already refreshed by another request
            * but this one with old reference is not finished yet,
@@ -635,14 +640,36 @@ export class ApiFileManager extends AppManager {
             context as InvokeApiWithReferenceContext,
             reference,
             referenceUsedHex
-          ).then(invoke);
+          ).then(() => {
+            if(isSuperseded()) {
+              throw err;
+            }
+
+            return invoke(true);
+          });
         }
 
         throw err;
       });
     };
 
-    return invoke();
+    // * sent already: invoke sends at once
+    const request = invoke();
+    if(key) {
+      this.referenceRequestKeys.set(key, request);
+      forgetSettledRequest(this.referenceRequestKeys, key, request);
+    }
+
+    return request;
+  }
+
+  /** A change of all that the keys starting with `prefix` stand for (a list cleared) supersedes their requests */
+  public supersedeReferenceRequests(prefix: string) {
+    for(const key of this.referenceRequestKeys.keys()) {
+      if(key.startsWith(prefix)) {
+        this.referenceRequestKeys.delete(key);
+      }
+    }
   }
 
   private refreshReference(
@@ -655,9 +682,14 @@ export class ApiFileManager extends AppManager {
       return Promise.resolve(reference);
     }
 
-    let deferred = this.refreshReferencePromises[hex];
+    let deferred = this.refreshReferencePromises.get(hex);
     if(!deferred) {
-      deferred = this.refreshReferencePromises[hex] = deferredPromise();
+      deferred = deferredPromise();
+      // * one settled is not kept: after a failure the next request with these bytes tries again (a context of theirs
+      // may have come back since), and bytes put back after a refresh (an older copy of the document saved again) are
+      // refreshed anew instead of sent once more as they are, again and again
+      this.refreshReferencePromises.set(hex, deferred);
+      forgetSettledRequest(this.refreshReferencePromises, hex, deferred);
 
       this.referencesStorage.refreshReference(reference).then((reference) => {
         if(hex === bytesToHex(reference)) {

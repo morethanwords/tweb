@@ -8,6 +8,9 @@ import collectUnhandledRejections from '@/tests/helpers/collectUnhandledRejectio
 import deferred from '@/tests/helpers/deferred';
 import lastItem from '@helpers/array/lastItem';
 import dispatchedEvents from '@/tests/helpers/dispatchedEvents';
+import makeReferenceRequestFileManager from '@/tests/helpers/referenceRequestFileManager';
+import makeApiManagerMethods from '@/tests/helpers/apiManagerMethods';
+import withTimeout from '@helpers/schedulers/withTimeout';
 
 const doc = (id: string) => ({_: 'document', id} as any as MyDocument);
 
@@ -28,7 +31,7 @@ function createManager(language = 'ru') {
   const manager = new AppStickersManager();
   Object.assign(manager as any, {
     apiManager: {invokeApi, invokeApiHashable},
-    apiFileManager: {downloadMedia: vi.fn()},
+    apiFileManager: Object.assign(makeReferenceRequestFileManager(), {downloadMedia: vi.fn()}),
     appDocsManager: {saveDoc},
     networkerFactory: {language},
     rootScope: {premium: false, dispatchEvent}
@@ -72,6 +75,74 @@ describe('AppStickersManager.getStickersByEmoticon', () => {
     });
 
     expect(unhandled).toEqual([]);
+  });
+
+  it('refreshes a found sticker\'s reference by asking the server anew, past the search kept and its hash', async() => {
+    const {manager, saveDoc} = createManager();
+    const found = (fileReference: number) => ({_: 'document', id: '1', file_reference: [fileReference]});
+    // * the server says nothing new to the hash of what it said last: those stickers, out-of-date references and all
+    const invokeApi = vi.fn(async(_method: string, params: {hash?: number}) => {
+      return params.hash === 7 ?
+        {_: 'messages.stickersNotModified'} :
+        {_: 'messages.stickers', hash: 7, stickers: [found(invokeApi.mock.calls.length)]};
+    });
+    (manager as any).apiManager = makeApiManagerMethods(invokeApi);
+
+    await search(manager);
+    const context = saveDoc.mock.calls[0][1];
+    expect(context).toEqual({type: 'stickerSearch', emoticon: '🐱'});
+
+    const references = new ReferencesStorage();
+    Object.assign(references as any, {appStickersManager: manager});
+    await (references as any).getRefreshPromise(context);
+
+    expect(invokeApi).toHaveBeenCalledTimes(2);
+    expect(lastItem(saveDoc.mock.calls)).toEqual([found(2), context]);
+  });
+});
+
+describe('AppStickersManager.getStickerSet', () => {
+  const input = {_: 'inputStickerSetShortName', short_name: 'cats'} as const;
+  const stickerSet = () => ({
+    _: 'messages.stickerSet',
+    set: {_: 'stickerSet', id: '5', access_hash: '6', short_name: 'cats', title: 'Cats', count: 1, hash: 0, pFlags: {}},
+    packs: [] as any[],
+    documents: [doc('1')],
+    keywords: [] as any[]
+  });
+
+  // * the set kept on the device cannot be read: the storage fails, as a database closed under it does
+  function createLoading() {
+    const created = createManager();
+    Object.assign(created.manager as any, {
+      log: Object.assign(vi.fn(), {error: vi.fn(), warn: vi.fn()}),
+      storage: {
+        get: () => Promise.reject(new Error('the storage failed')),
+        getFromCache: (): undefined => undefined,
+        setToCache: (_key: string, value: unknown) => value,
+        set: vi.fn()
+      }
+    });
+
+    const load = () => withTimeout(Promise.resolve(created.manager.getStickerSet(input)), 100, 'still loading');
+    return {...created, load};
+  }
+
+  it('asks the server when the set kept here cannot be read, instead of waiting for it for good', async() => {
+    const {invokeApi, load} = createLoading();
+    invokeApi.mockResolvedValue(stickerSet());
+
+    expect(await load()).toMatchObject({set: {id: '5'}});
+    expect(invokeApi).toHaveBeenCalledWith('messages.getStickerSet', {stickerset: input, hash: 0});
+  });
+
+  it('settles with nothing when the server fails as well, and asks again the next time', async() => {
+    const {invokeApi, load} = createLoading();
+    invokeApi.mockRejectedValueOnce({type: 'NETWORK_BAD_REQUEST'}).mockResolvedValue(stickerSet());
+
+    expect(await load()).toBeNull();
+    expect(await load()).toMatchObject({set: {id: '5'}});
+    expect(invokeApi).toHaveBeenCalledTimes(2);
   });
 });
 

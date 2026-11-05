@@ -35,17 +35,32 @@ export default class AppGifsManager extends AppManager {
     }
 
     return this.gifs ??= forgetFailedRequest(this.apiManager.invokeApi('messages.getSavedGifs').then((res) => {
-      assumeType<MessagesSavedGifs.messagesSavedGifs>(res);
-      const referenceContext: ReferenceContext = {type: 'savedGifs'};
-      this.gifs = res.gifs.map((doc) => {
-        // if(this.TEST_REFERENCE) {
-        //   (doc as Document.document).file_reference[0] = 5;
-        // }
-        return this.appDocsManager.saveDoc(doc, referenceContext);
-      }).filter(Boolean);
-      // this.TEST_REFERENCE = false;
-      return this.gifs;
+      return this.gifs = this.saveGifs(res);
     }), () => this.gifs, () => this.gifs = undefined);
+  }
+
+  /**
+   * The saved GIFs read from the server for the fresh file references of their documents alone (the references
+   * storage's refresh): the list kept here stays as it is. It may hold a change the server has yet to take - one gone
+   * back for a fresh reference among them - which the server's list put in its place would drop.
+   */
+  public refreshGifsReferences() {
+    return this.apiManager.invokeApiSingle('messages.getSavedGifs', {hash: 0}).then((res) => {
+      this.saveGifs(res);
+    });
+  }
+
+  private saveGifs(res: MessagesSavedGifs) {
+    assumeType<MessagesSavedGifs.messagesSavedGifs>(res);
+    const referenceContext: ReferenceContext = {type: 'savedGifs'};
+    const gifs = res.gifs.map((doc) => {
+      // if(this.TEST_REFERENCE) {
+      //   (doc as Document.document).file_reference[0] = 5;
+      // }
+      return this.appDocsManager.saveDoc(doc, referenceContext);
+    }).filter(Boolean);
+    // this.TEST_REFERENCE = false;
+    return gifs;
   }
 
   public async searchGifs(query: string, nextOffset?: string) {
@@ -111,9 +126,14 @@ export default class AppGifsManager extends AppManager {
     const {doc, limitReached} = await this.unshiftGif(docId, unsave);
     this.rootScope.dispatchEvent('gif_updated', {saved: !unsave, document: doc, limitReached});
 
-    return this.apiManager.invokeApi('messages.saveGif', {
-      id: getDocumentInput(doc),
-      unsave
+    return this.apiFileManager.invokeApiWithReference({
+      context: doc,
+      change: true,
+      key: 'savedGifs:' + doc.id,
+      callback: () => this.apiManager.invokeApi('messages.saveGif', {
+        id: getDocumentInput(doc),
+        unsave
+      })
     }).then(() => {
       if(unsave) {
         this.onGifsUpdated();
