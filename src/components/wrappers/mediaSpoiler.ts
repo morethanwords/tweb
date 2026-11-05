@@ -119,6 +119,18 @@ export async function concealMediaSpoilerWithAnimation(options: {
 }
 
 
+function getRevealSource(mediaSpoiler: HTMLElement): CanvasImageSource {
+  const parent = mediaSpoiler.parentElement;
+  if(!parent) return;
+
+  for(const element of parent.querySelectorAll<HTMLElement>('img, video, canvas')) {
+    if(mediaSpoiler.contains(element)) continue;
+    if(element instanceof HTMLImageElement && element.complete && element.naturalWidth) return element;
+    if(element instanceof HTMLVideoElement && element.readyState >= 2) return element;
+    if(element instanceof HTMLCanvasElement && element.width && element.height) return element;
+  }
+}
+
 function revealSpoilerWithAnimation(options: {
   mediaSpoiler: HTMLElement,
   event: Event
@@ -138,7 +150,7 @@ function revealSpoilerWithAnimation(options: {
   const rect = canvas.getBoundingClientRect();
   const isInside = clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
   const from = isInside ? event : {clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2} as MouseEvent;
-  const result = controls.revealWithAnimation(from, thumbnailCanvas);
+  const result = controls.revealWithAnimation(from, thumbnailCanvas, getRevealSource(mediaSpoiler));
   if(!result) return false;
 
   return result.then(() => {
@@ -271,8 +283,13 @@ function wrapMediaSpoilerWithImage(options: {
   image.classList.add('media-spoiler-thumbnail');
 
   const container = createSpoilerContainer(middleware, decorative || inLink);
+  if(Modes.spoiler2) {
+    container.classList.add('spoiler-2');
+  }
+
   const {canvas, readyResult} = DotRenderer.create({
     ...options,
+    thumbnail: image,
     middleware: container.middlewareHelper.get()
   });
 

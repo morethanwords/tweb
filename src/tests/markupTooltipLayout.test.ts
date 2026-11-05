@@ -59,12 +59,12 @@ describe('formatting MarkupTooltip layout', () => {
       'this.buttons.underline',
       'this.buttons.strikethrough',
       'this.buttons.quote',
+      'this.buttons.spoiler',
       'this.dateLinkDelimiter',
       'this.buttons.date',
       'this.buttons.link',
       'this.extendedDelimiter',
       'this.buttons.monospace',
-      'this.buttons.spoiler',
       'this.buttons.highlight',
       'this.buttons.subscript',
       'this.buttons.superscript'

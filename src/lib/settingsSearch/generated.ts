@@ -237,6 +237,7 @@ const generated: GeneratedSettingsSearchData = {
     {id: 'AppExperimentalTab:Experimental.ServiceWorker', sectionId: 'AppExperimentalTab', kind: 'row', titleLangKey: 'Experimental.ServiceWorker'},
     {id: 'AppExperimentalTab:Experimental.SharedWorker', sectionId: 'AppExperimentalTab', kind: 'row', titleLangKey: 'Experimental.SharedWorker'},
     {id: 'AppExperimentalTab:Experimental.ShowPeerIds', sectionId: 'AppExperimentalTab', kind: 'row', titleLangKey: 'Experimental.ShowPeerIds'},
+    {id: 'AppExperimentalTab:Experimental.Spoiler2', sectionId: 'AppExperimentalTab', kind: 'row', titleLangKey: 'Experimental.Spoiler2'},
     {id: 'AppExperimentalTab:Experimental.TestServer', sectionId: 'AppExperimentalTab', kind: 'row', titleLangKey: 'Experimental.TestServer'},
     {id: 'AppExperimentalTab:Experimental.Tools', sectionId: 'AppExperimentalTab', kind: 'subsection', titleLangKey: 'Experimental.Tools'},
     {id: 'AppExperimentalTab:Experimental.Transport', sectionId: 'AppExperimentalTab', kind: 'subsection', titleLangKey: 'Experimental.Transport'},

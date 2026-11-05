@@ -254,12 +254,12 @@ export default class MarkupTooltip {
       this.buttons.underline,
       this.buttons.strikethrough,
       this.buttons.quote,
+      this.buttons.spoiler,
       this.dateLinkDelimiter,
       this.buttons.date,
       this.buttons.link,
       this.extendedDelimiter,
       this.buttons.monospace,
-      this.buttons.spoiler,
       this.buttons.highlight,
       this.buttons.subscript,
       this.buttons.superscript
@@ -552,13 +552,13 @@ export default class MarkupTooltip {
       'italic',
       'underline',
       'strikethrough',
-      'quote'
+      'quote',
+      'spoiler'
     ] as const).some((type) => !hiddenTypes.has(type));
     const hasDateOrLink = (['date', 'link'] as const)
     .some((type) => !hiddenTypes.has(type));
     const hasExtendedFormatting = ([
       'monospace',
-      'spoiler',
       'highlight',
       'subscript',
       'superscript'

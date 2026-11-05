@@ -134,3 +134,9 @@
     pointer-events: none;
   }
 }
+
+.media-spoiler-container.spoiler-2 {
+  .media-spoiler-thumbnail {
+    filter: brightness(.28) saturate(1.3);
+  }
+}
