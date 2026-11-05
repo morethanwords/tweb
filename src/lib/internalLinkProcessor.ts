@@ -68,6 +68,7 @@ import wrapPeerTitle from '@components/wrappers/peerTitle';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import {getManagersSession, isSessionLeaving} from '@lib/accounts/getCurrentAccount';
 import {isWalletReleased} from '@lib/wallet/release';
+import {tryDecodeURIComponent} from '@helpers/string/parseUriParams';
 
 /**
  * For a lookup whose failure is only a miss: any error is one but MIDDLEWARE, the end of the account
@@ -1170,10 +1171,7 @@ export class InternalLinkProcessor {
       name: 'contact',
       callback: ({pathnameParams}) => {
         // the path keeps the token percent-encoded; a broken escape leaves it as it came, a dead link
-        let token = pathnameParams[1] || '';
-        try {
-          token = decodeURIComponent(token);
-        } catch{}
+        const token = tryDecodeURIComponent(pathnameParams[1] || '');
 
         const link: InternalLink = {
           _: INTERNAL_LINK_TYPE.CONTACT_TOKEN,

@@ -32,6 +32,7 @@ import overlayCounter from '@helpers/overlayCounter';
 import {getAppWindow, onAppWindowChange} from '@helpers/appWindow';
 import singleInstance, {InstanceDeactivateReason} from '@lib/singleInstance';
 import {parseUriParamsLine} from '@helpers/string/parseUriParams';
+import getWebAuthImport from '@lib/accounts/getWebAuthImport';
 import Modes from '@config/modes';
 import {AuthState} from '@types';
 import DEBUG, {IS_BETA, IS_POPUP_SANDBOX} from '@config/debug';
@@ -592,13 +593,11 @@ if(import.meta.env.DEV || import.meta.env.VITE_PREVIEW) {
   const hash = location.hash;
   const splitted = hash.split('?');
   const params = parseUriParamsLine(splitted[1] ?? splitted[0].slice(1));
-  const webAuthTokenIsTest = params.tgWebAuthTest !== undefined && !!+params.tgWebAuthTest;
-  if(params.tgWebAuthToken && authState._ !== 'authStateSignedIn') {
+  // * a sign-in handed over with a part missing or malformed is not tried: the token is only taken out of the address
+  const webAuthImport = getWebAuthImport(params);
+  if(webAuthImport && authState._ !== 'authStateSignedIn') {
     const data: AuthState.signImport['data'] = {
-      token: params.tgWebAuthToken,
-      dcId: +params.tgWebAuthDcId,
-      userId: params.tgWebAuthUserId.toUserId(),
-      isTest: webAuthTokenIsTest,
+      ...webAuthImport,
       tgAddr: params.tgaddr
     };
 
@@ -620,8 +619,8 @@ if(import.meta.env.DEV || import.meta.env.VITE_PREVIEW) {
   // Already signed in, so the import above never ran and the token is left
   // hanging — a token for the other environment is unreachable from here, the
   // rest is ours to drop.
-  if(params.tgWebAuthToken && authState._ === 'authStateSignedIn' && webAuthTokenIsTest === Modes.test) {
-    rootScope.managers.appAccountManager.cancelWebTokenAuthorization(params.tgWebAuthToken, +params.tgWebAuthDcId);
+  if(webAuthImport && authState._ === 'authStateSignedIn' && webAuthImport.isTest === Modes.test) {
+    rootScope.managers.appAccountManager.cancelWebTokenAuthorization(webAuthImport.token, webAuthImport.dcId);
   }
 
   if(params.tgWebAuthToken) {
