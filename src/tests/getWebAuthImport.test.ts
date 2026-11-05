@@ -34,8 +34,32 @@ describe('a sign-in handed over in the address', () => {
     ['with an empty user', 'tgWebAuthToken=t&tgWebAuthUserId=&tgWebAuthDcId=2'],
     ['with a user that is not a number', 'tgWebAuthToken=t&tgWebAuthUserId=abc&tgWebAuthDcId=2'],
     ['with a user that is not a positive integer', 'tgWebAuthToken=t&tgWebAuthUserId=-5&tgWebAuthDcId=2'],
-    ['with a user of a malformed escape', 'tgWebAuthToken=t&tgWebAuthUserId=%zz&tgWebAuthDcId=2']
+    ['with a user of a malformed escape', 'tgWebAuthToken=t&tgWebAuthUserId=%zz&tgWebAuthDcId=2'],
+    // * its DC becomes the base of the slot, where every later sign-in goes: one the client does not connect to
+    // * would send them all nowhere until the site's data was cleared
+    ['without a DC', 'tgWebAuthToken=t&tgWebAuthUserId=5'],
+    ['with an empty DC', 'tgWebAuthToken=t&tgWebAuthUserId=5&tgWebAuthDcId='],
+    ['with the DC 0', 'tgWebAuthToken=t&tgWebAuthUserId=5&tgWebAuthDcId=0'],
+    ['with the DC 6', 'tgWebAuthToken=t&tgWebAuthUserId=5&tgWebAuthDcId=6'],
+    ['with a DC below zero', 'tgWebAuthToken=t&tgWebAuthUserId=5&tgWebAuthDcId=-2'],
+    ['with a DC that is not an integer', 'tgWebAuthToken=t&tgWebAuthUserId=5&tgWebAuthDcId=1.5'],
+    ['with a DC that is not a number', 'tgWebAuthToken=t&tgWebAuthUserId=5&tgWebAuthDcId=abc'],
+    ['with a DC the test servers do not have', 'tgWebAuthToken=t&tgWebAuthUserId=5&tgWebAuthDcId=4&tgWebAuthTest=1']
   ])('is not one %s', (_, line) => {
     expect(read(line)).toBeUndefined();
+  });
+
+  test.each([
+    ['1', false],
+    ['5', false],
+    ['1', true],
+    ['3', true]
+  ])('of the DC %s (of the test servers: %s)', (dcId, isTest) => {
+    expect(read(`tgWebAuthToken=t&tgWebAuthUserId=5&tgWebAuthDcId=${dcId}&tgWebAuthTest=${+isTest}`)).toEqual({
+      token: 't',
+      userId: 5,
+      dcId: +dcId,
+      isTest
+    });
   });
 });

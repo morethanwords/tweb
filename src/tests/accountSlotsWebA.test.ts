@@ -24,6 +24,8 @@ vi.mock('@lib/passcode/deferredIsUsingPasscode', () => ({default: {isUsingPassco
 import '@helpers/peerIdPolyfill';
 import AccountController from '@lib/accounts/accountController';
 import AppAccountManager from '@appManagers/appAccountManager';
+import App from '@config/app';
+import Modes from '@config/modes';
 import type {User} from '@layer';
 
 const AUTH_KEY = 'ab'.repeat(256);
@@ -106,7 +108,8 @@ describe('the DC of a slot', () => {
       baseDcId: 0,
       getAccountNumber: () => accountNumber,
       // * a move to another DC lets the previous one's connection drain
-      getNetworker: () => new Promise(() => {})
+      getNetworker: () => new Promise(() => {}),
+      log: {error: vi.fn()}
     });
     return apiManager as InstanceType<typeof ApiManager>;
   }
@@ -133,6 +136,43 @@ describe('the DC of a slot', () => {
     await AccountController.whenUpdated(2);
     expect(storage.values.account2).toMatchObject({userId: '20', dcId: 1});
     expect(storage.values.account2.sign_in_dc_id).toBeUndefined();
+  });
+
+  // * a DC kept for the slot is where every later sign-in of it goes, and the address can name one (tgWebAuthDcId)
+  test.each([6, 0, -1, 1.5, NaN, undefined])('a DC the client does not connect to (%s) is neither taken nor kept', async(dcId) => {
+    const apiManager = await createApiManager(3);
+    expect(await apiManager.getBaseDcId()).toBe(App.baseDcId);
+
+    expect(apiManager.setBaseDcId(dcId)).toBe(false);
+    await AccountController.whenUpdated(3);
+
+    expect(await apiManager.getBaseDcId()).toBe(App.baseDcId);
+    expect(storage.values.account3).toEqual({sign_in_dc_id: App.baseDcId});
+  });
+
+  test('a DC the client does not connect to, kept before, gives way to the default, and the slot is mended', async() => {
+    storage.values.account3 = {sign_in_dc_id: 6};
+
+    expect(await (await createApiManager(3)).getBaseDcId()).toBe(App.baseDcId);
+    await AccountController.whenUpdated(3);
+    expect(storage.values.account3).toEqual({sign_in_dc_id: App.baseDcId});
+  });
+
+  test('the test servers have three DCs', async() => {
+    const wasTest = Modes.test;
+    Modes.test = true;
+    try {
+      storage.values.account3 = {sign_in_dc_id: 4};
+      const apiManager = await createApiManager(3);
+      expect(await apiManager.getBaseDcId()).toBe(App.baseDcId);
+
+      expect(apiManager.setBaseDcId(5)).toBe(false);
+      expect(apiManager.setBaseDcId(3)).toBe(true);
+      await AccountController.whenUpdated(3);
+      expect(storage.values.account3).toEqual({sign_in_dc_id: 3});
+    } finally {
+      Modes.test = wasTest;
+    }
   });
 });
 

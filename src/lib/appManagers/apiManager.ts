@@ -12,6 +12,7 @@ import type TcpObfuscated from '@lib/mtproto/transports/tcpObfuscated';
 import sessionStorage from '@lib/sessionStorage';
 import MTPNetworker, {MTMessage} from '@lib/mtproto/networker';
 import {ConnectionType, constructTelegramWebSocketUrl, DcConfigurator, TransportType} from '@lib/mtproto/dcConfigurator';
+import isValidDcId from '@lib/mtproto/isValidDcId';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import App from '@config/app';
 import {MOUNT_CLASS_TO} from '@config/debug';
@@ -243,7 +244,9 @@ export class ApiManager extends ApiManagerMethods {
     const accountData = await AccountController.get(this.getAccountNumber());
     const baseDcId = accountData.dcId || accountData.sign_in_dc_id;
     if(!this.baseDcId) {
-      if(!baseDcId) {
+      // * a DC no client connects to, kept before setBaseDcId refused one, gives way to the default: the slot's
+      // * requests went nowhere until site data was cleared
+      if(!isValidDcId(baseDcId, Modes.test)) {
         this.setBaseDcId(App.baseDcId);
       } else {
         this.baseDcId = baseDcId;
@@ -276,10 +279,16 @@ export class ApiManager extends ApiManagerMethods {
     this.appAccountManager.saveSessionUser();
   }
 
+  /** false for a DC the client does not connect to: the base stays where it is, and nothing of it is kept */
   public setBaseDcId(dcId: DcId) {
+    if(!isValidDcId(dcId, Modes.test)) {
+      this.log.error('invalid base dc:', dcId);
+      return false;
+    }
+
     const wasDcId = this.baseDcId;
     if(wasDcId && wasDcId === dcId) {
-      return;
+      return true;
     }
 
     if(wasDcId) { // if migrated set ondrain
@@ -300,6 +309,8 @@ export class ApiManager extends ApiManagerMethods {
 
       return data.sign_in_dc_id === dcId ? undefined : {sign_in_dc_id: dcId};
     });
+
+    return true;
   }
 
   public async logOut(migrateAccountTo?: ActiveAccountNumber) {
@@ -807,8 +818,9 @@ export class ApiManager extends ApiManagerMethods {
           if(newDcId && newDcId !== dcId) {
             if(options.dcId || match[1] === 'FILE_MIGRATE_') {
               options.dcId = newDcId;
-            } else {
-              this.setBaseDcId(newDcId);
+            } else if(!this.setBaseDcId(newDcId)) {
+              // * the request would only go back where it was told to leave
+              throw error;
             }
 
             return this.invokeApi(method, params, options);

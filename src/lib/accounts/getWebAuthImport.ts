@@ -1,4 +1,5 @@
 import type {AuthState} from '@types';
+import isValidDcId from '@lib/mtproto/isValidDcId';
 
 export type WebAuthImport = Omit<AuthState.signImport['data'], 'tgAddr'>;
 
@@ -14,7 +15,10 @@ export default function getWebAuthImport(params: Record<string, string>): WebAut
     tgWebAuthDcId: dcId,
     tgWebAuthTest: test
   } = params;
-  if(!token || !/^[1-9]\d*$/.test(userId ?? '')) {
+  const isTest = test !== undefined && !!+test;
+  // * the DC becomes the base of the account's slot, where every later sign-in would go: one the client does not
+  // * connect to - or that the test servers do not have, for a sign-in of theirs - is no sign-in either
+  if(!token || !/^[1-9]\d*$/.test(userId ?? '') || !isValidDcId(+dcId, isTest)) {
     return;
   }
 
@@ -22,6 +26,6 @@ export default function getWebAuthImport(params: Record<string, string>): WebAut
     token,
     userId: userId.toUserId(),
     dcId: +dcId,
-    isTest: test !== undefined && !!+test
+    isTest
   };
 }
