@@ -10,6 +10,7 @@ import Modes from '@config/modes';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import {IS_WORKER} from '@helpers/context';
 import makeError from '@helpers/makeError';
+import deepEqual from '@helpers/object/deepEqual';
 import {StringKey, WorkerTaskTemplate} from '@types';
 import EncryptedStorageLayer from '@lib/encryptedStorageLayer';
 import {logger} from '@lib/logger';
@@ -17,7 +18,7 @@ import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 
 
-class LocalStorage<Storage extends Record<string, any>> {
+export class LocalStorage<Storage extends Record<string, any>> {
   private prefix = '';
   private cache: Partial<Storage> = {};
   private useStorage = true;
@@ -101,6 +102,16 @@ class LocalStorage<Storage extends Record<string, any>> {
     // }
   }
 
+  /**
+   * Removes the value only while it is still `value`, read and removed at once: another client (Web A) may have
+   * written the key since it was last read
+   */
+  public deleteIfEqual(key: keyof Storage, value: Storage[keyof Storage]) {
+    if(deepEqual(this.get(key, false), value)) {
+      this.delete(key);
+    }
+  }
+
   public clear(preserveKeys: (keyof Storage)[] = []) {
     try {
       const obj: Partial<Storage> = {};
@@ -139,7 +150,7 @@ class LocalStorage<Storage extends Record<string, any>> {
 export interface LocalStorageProxyTask extends WorkerTaskTemplate {
   type: 'localStorageProxy',
   payload: {
-    type: 'set' | 'get' | 'delete' | 'clear' | 'toggleStorage',
+    type: 'set' | 'get' | 'delete' | 'deleteIfEqual' | 'clear' | 'toggleStorage',
     args: any[]
   }
 };
@@ -161,6 +172,7 @@ export default class LocalStorageController<Storage extends Record<string, any>>
 
   private storage: LocalStorage<Storage>;
   private encryptedStorage: EncryptedStorageLayer<CommonDatabase>;
+  private encryptedStoragePromise: Promise<EncryptedStorageLayer<CommonDatabase>>;
 
   private encryptableKeys: Set<keyof Storage>;
   private encryptionDeferred: CancellablePromise<void>;
@@ -174,16 +186,57 @@ export default class LocalStorageController<Storage extends Record<string, any>>
     }
   }
 
-  private async getEncryptedStorage() {
+  private getEncryptedStorage() {
+    return this.encryptedStoragePromise ??= this.openEncryptedStorage();
+  }
+
+  private async openEncryptedStorage() {
+    // * made by turning the passcode on in this worker, with everything that was in the clear
     if(this.encryptedStorage) return this.encryptedStorage;
 
-    this.encryptedStorage = EncryptedStorageLayer.getInstance(
+    const encryptedStorage = this.encryptedStorage = EncryptedStorageLayer.getInstance(
       LocalStorageController.ENCRYPTION_DB, LocalStorageController.ENCRYPTION_DB_STORE_NAME
     );
 
-    this.encryptedStorage.loadEncrypted();
+    await encryptedStorage.ensureLoaded();
+    await this.encryptLeftovers(encryptedStorage);
 
-    return this.encryptedStorage;
+    return encryptedStorage;
+  }
+
+  /**
+   * Turning the passcode on moves the encryptable values out of localStorage into the encrypted store
+   * (`encryptEncryptable`). Stopped half way - the tab closed, the worker failed - it left them in the clear, where
+   * nothing reads them with the passcode on: all of them, when it stopped before the encrypted store was written, or
+   * those it had yet to delete. The first open with the passcode on finishes it: values nothing was encrypted from yet
+   * are folded in and written first, then whatever the encrypted store keeps as it is goes from localStorage. A value
+   * that differs from the encrypted one - by then, not only when it was read - is not this client's (Web A keeps its
+   * accounts in the same keys) and stays
+   */
+  private async encryptLeftovers(encryptedStorage: EncryptedStorageLayer<CommonDatabase>) {
+    // * best effort, like AppStorage's: the store has to open whatever happens here, the leftovers get another try
+    try {
+      const keys = Array.from(this.encryptableKeys) as StringKey<keyof Storage>[];
+      const values = await Promise.all(keys.map((key) => this.localStorageProxy<unknown>('get', key, false)));
+      const leftovers = keys
+      .map((key, idx) => [key, values[idx]] as const)
+      .filter(([, value]) => value !== undefined);
+      if(!leftovers.length) return;
+
+      this.log.warn('found unencrypted values, encrypting them', leftovers.map(([key]) => key));
+
+      // * nothing was ever written there, which an empty store that could not be read is not: it is never overwritten
+      if(!(await encryptedStorage.hasStored())) {
+        await encryptedStorage.mergeDecrypted(Object.fromEntries(leftovers));
+      }
+
+      const encrypted = await encryptedStorage.get<Storage[keyof Storage]>(leftovers.map(([key]) => key));
+      await Promise.all(leftovers.map(([key], idx) => {
+        return encrypted[idx] !== undefined && this.deleteIfEqual(key, encrypted[idx]);
+      }));
+    } catch(err) {
+      this.log.error('encrypt leftovers error', err);
+    }
   }
 
   private async shouldUseEncryptableStorage(key: keyof Storage) {
@@ -263,6 +316,14 @@ export default class LocalStorageController<Storage extends Record<string, any>>
     }
 
     return this.localStorageProxy<void>('delete', key);
+  }
+
+  /**
+   * Removes the value from localStorage only while it is still `value` (`LocalStorage.deleteIfEqual`): for the keys
+   * another client (Web A) writes as well
+   */
+  public deleteIfEqual<Key extends keyof Storage>(key: StringKey<Key>, value: Storage[Key]) {
+    return this.localStorageProxy<void>('deleteIfEqual', key, value);
   }
 
   public toggleStorage(enabled: boolean, clearWrite: boolean) {

@@ -13,6 +13,9 @@ const storage = vi.hoisted(() => {
     }),
     delete: vi.fn(async(key: string) => {
       delete values[key];
+    }),
+    deleteIfEqual: vi.fn(async(key: string, value: any) => {
+      if(JSON.stringify(values[key]) === JSON.stringify(value)) delete values[key];
     })
   };
 });
@@ -21,7 +24,8 @@ const storage = vi.hoisted(() => {
 const states = vi.hoisted(() => ({} as Record<string, Record<string, any>>));
 
 vi.mock('@lib/sessionStorage', () => ({default: storage}));
-vi.mock('@lib/passcode/deferredIsUsingPasscode', () => ({default: {isUsingPasscode: async() => false}}));
+const passcode = vi.hoisted(() => ({on: false}));
+vi.mock('@lib/passcode/deferredIsUsingPasscode', () => ({default: {isUsingPasscode: async() => passcode.on}}));
 vi.mock('@lib/stateStorage', () => ({
   default: class {
     constructor(private accountNumber: number | 'old') {}
@@ -52,10 +56,14 @@ async function load() {
   return loadStateForAllAccountsOnce();
 }
 
+beforeEach(() => {
+  for(const key in storage.values) delete storage.values[key];
+  for(const key in states) delete states[key];
+});
+
 describe('loading the accounts after Web A', () => {
   beforeEach(() => {
-    for(const key in storage.values) delete storage.values[key];
-    for(const key in states) delete states[key];
+    passcode.on = false;
   });
 
   test('what was kept for another user of the slot is dropped', async() => {
@@ -170,5 +178,62 @@ describe('loading the accounts after Web A', () => {
 
     expect(loaded[1].userId).toBe(77);
     expect(storage.values.account1).toMatchObject({dcId: 4, userId: '77', dc4_auth_key: AUTH_KEY});
+  });
+});
+
+// * Turning the passcode on removes the plain copy of the first account's keys kept for Web A beside its slot, once the
+// * worker has the accounts encrypted. Stopped before that, it left the copy in localStorage for good: with the passcode
+// * on, nothing touched it. (Here the slots stand for what the encrypted store keeps, the rest for localStorage.)
+describe('the copy of the first account\'s keys kept for Web A, with the passcode on', () => {
+  const COPY = {dc2_auth_key: AUTH_KEY, dc2_server_salt: 'fake-salt', user_auth: {dcID: 2, id: '1'}, dc: 2};
+
+  beforeEach(() => {
+    passcode.on = true;
+  });
+
+  test('left behind, it goes once the account read from the encrypted store has its keys', async() => {
+    storage.values.account1 = {dcId: 2, dc2_auth_key: AUTH_KEY, userId: '1'};
+    Object.assign(storage.values, COPY);
+
+    const loaded = await load();
+
+    expect(loaded[1].userId).toBe(1);
+    expect(storage.values.account1).toMatchObject({dcId: 2, dc2_auth_key: AUTH_KEY, userId: '1'});
+    for(const key in COPY) {
+      expect(storage.values[key]).toBeUndefined();
+    }
+  });
+
+  test('another session\'s key is Web A\'s, and stays with its salt', async() => {
+    const WEB_A_KEY = 'cd'.repeat(256);
+    storage.values.account1 = {dcId: 2, dc2_auth_key: AUTH_KEY, userId: '1'};
+    Object.assign(storage.values, COPY, {dc4_auth_key: WEB_A_KEY, dc4_server_salt: 'fake-salt-of-web-a'});
+
+    await load();
+
+    expect(storage.values).toMatchObject({dc4_auth_key: WEB_A_KEY, dc4_server_salt: 'fake-salt-of-web-a'});
+    for(const key in COPY) {
+      expect(storage.values[key]).toBeUndefined();
+    }
+  });
+
+  test('it stays while the account has no key of its own: it may be the only one', async() => {
+    storage.values.account1 = {dcId: 2, userId: '1'};
+    Object.assign(storage.values, COPY);
+
+    await load();
+
+    expect(storage.values).toMatchObject(COPY);
+  });
+
+  test('without the passcode it is what Web A reads, and stays', async() => {
+    passcode.on = false;
+    // * with nothing to fill in, the slot is not written: a write would make the copy anew from it
+    storage.values.account1 = {dcId: 2, dc2_auth_key: AUTH_KEY, userId: '1', auth_key_fingerprint: AUTH_KEY.slice(0, 8), push_key: 'fake-push-key'};
+    Object.assign(storage.values, COPY);
+
+    await load();
+
+    expect(storage.values).toMatchObject(COPY);
   });
 });

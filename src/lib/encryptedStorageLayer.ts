@@ -112,8 +112,18 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
     await this.waitToLoad();
   }
 
+  /**
+   * Whether anything is written in the store: what is in memory is empty as well when that could not be read
+   */
+  public async hasStored() {
+    const stored = await this.storage.get(EncryptedStorageLayer.STORAGE_KEY);
+    return stored !== undefined && stored !== null;
+  }
+
   public async loadDecrypted(data: StoredData) {
-    this.log('loading decrypted', data);
+    // * the names only: the values are what the passcode protects (the accounts' auth keys among them), and a log may
+    // * be collected and sent (Settings -> Experimental)
+    this.log('loading decrypted', Object.keys(data));
     this.data = data;
     await this.saveToIDB();
   }
@@ -125,7 +135,7 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
   public async mergeDecrypted(data: StoredData) {
     await this.ensureLoaded();
 
-    this.log('merging decrypted', data);
+    this.log('merging decrypted', Object.keys(data));
     this.data = {...data, ...this.data};
     await this.saveToIDB();
   }

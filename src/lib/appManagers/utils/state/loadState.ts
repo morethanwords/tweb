@@ -34,8 +34,6 @@ export type LoadStateResult = {
 
 const TEST_MULTI_MIGRATION = false;
 
-const DC_IDS: TrueDcId[] = [1, 2, 3, 4, 5];
-
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 // const REFRESH_EVERY = 1e3;
 // const REFRESH_EVERY_WEEK = 24 * 60 * 60 * 1000 * 7; // 7 days
@@ -504,7 +502,7 @@ async function moveStoragesToMultiAccountFormat() {
  */
 async function checkIfHasMultiAccount() {
   const accountData = await AccountController.get(1);
-  return !!accountData.userId || DC_IDS.some((dcId) => accountData[`dc${dcId}_auth_key`]);
+  return !!accountData.userId || AccountController.hasAuthKey(accountData);
 }
 
 function deleteOldDatabase() {
@@ -556,6 +554,8 @@ async function loadStateForAllAccounts() {
       deleteOldDatabase(); // * don't wait for the result
     }
   } else {
+    // * before its auth key is compared with the copy kept for Web A, which may be left behind a passcode turned on
+    await AccountController.removeLegacyCopyBehindPasscode();
     stateForFirstAccount = await loadStateForAccount(1);
   }
 

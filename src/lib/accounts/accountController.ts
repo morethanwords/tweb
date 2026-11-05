@@ -2,7 +2,6 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import App from '@config/app';
 import Modes from '@config/modes';
 import tsNow from '@helpers/tsNow';
-import type {TrueDcId} from '@types';
 import type {EmojiStatus, User} from '@layer';
 
 import sessionStorage from '@lib/sessionStorage';
@@ -11,12 +10,14 @@ import StaticUtilityClass from '@lib/staticUtilityClass';
 
 import {AccountSessionData, ActiveAccountNumber, SessionUserFields, StoredAccountSessionData} from '@lib/accounts/types';
 import getAuthKeyFingerprint from '@lib/accounts/authKeyFingerprint';
-import {MAX_ACCOUNTS} from '@lib/accounts/constants';
+import {DC_IDS, MAX_ACCOUNTS} from '@lib/accounts/constants';
 import bytesToHex from '@helpers/bytes/bytesToHex';
 import randomize from '@helpers/array/randomize';
 import noop from '@helpers/noop';
 
 const ACCOUNT_NUMBERS: ActiveAccountNumber[] = [1, 2, 3, 4];
+// * the first account's keys, by DC, as they are kept for Web A beside its slot as well, without a passcode only
+const LEGACY_KEYS = DC_IDS.map((dcId) => [`dc${dcId}_auth_key`, `dc${dcId}_server_salt`] as const);
 const SESSION_USER_FIELDS: (keyof SessionUserFields)[] = ['firstName', 'lastName', 'phone', 'color', 'isPremium', 'emojiStatusId'];
 
 type AccountDataChanges = Partial<AccountSessionData> | ((data: AccountSessionData) => Partial<AccountSessionData> | undefined);
@@ -69,6 +70,10 @@ export class AccountController extends StaticUtilityClass {
         return accountNumber;
       }
     }
+  }
+
+  static hasAuthKey(accountData: Partial<AccountSessionData>) {
+    return DC_IDS.some((dcId) => accountData[`dc${dcId}_auth_key`]);
   }
 
   static isSignedIn(accountData: AccountSessionData) {
@@ -261,10 +266,7 @@ export class AccountController extends StaticUtilityClass {
       else toClear.push(key);
     };
 
-    for(let i = 1; i <= 5; i++) {
-      const authKeyKey = `dc${i as TrueDcId}_auth_key` as const;
-      const serverSaltKey = `dc${i as TrueDcId}_server_salt` as const;
-
+    for(const [authKeyKey, serverSaltKey] of LEGACY_KEYS) {
       set(authKeyKey, accountData[authKeyKey]);
       set(serverSaltKey, accountData[serverSaltKey]);
     }
@@ -281,6 +283,38 @@ export class AccountController extends StaticUtilityClass {
       sessionStorage.set(obj),
       Promise.all(toClear.map((key) => sessionStorage.delete(key)))
     ]);
+  }
+
+  /**
+   * Turning the passcode on removes the plain copy of the keys (`updateStorageForLegacy(null)`) once the worker has the
+   * accounts encrypted. Turning it on that stopped before then leaves the copy in localStorage, where nothing removes it
+   * with the passcode on: a start does. A key goes only while it is the first account's own as the encrypted store
+   * keeps it, so the copy is never the only one; another one is Web A's, which signs in on the same origin, and stays
+   * with its salt
+   */
+  static async removeLegacyCopyBehindPasscode() {
+    if(!(await DeferredIsUsingPasscode.isUsingPasscode())) return;
+
+    const copied = await Promise.all(LEGACY_KEYS.map((keys) => Promise.all(keys.map((key) => sessionStorage.get(key)))));
+    if(!copied.flat().some(Boolean)) return;
+
+    const accountData = await this.get(1);
+    let hadCopy = false;
+    await Promise.all(LEGACY_KEYS.map(([authKeyKey, serverSaltKey], idx) => {
+      const [authKey, serverSalt] = copied[idx];
+      if(authKey && authKey !== accountData[authKeyKey]) return;
+
+      hadCopy ||= !!authKey;
+      return Promise.all([
+        authKey && sessionStorage.deleteIfEqual(authKeyKey, authKey),
+        serverSalt && sessionStorage.deleteIfEqual(serverSaltKey, serverSalt)
+      ]);
+    }));
+
+    // * the rest of what turning it on removes, which the encrypted store keeps by then
+    if(hadCopy) {
+      await Promise.all([sessionStorage.delete('user_auth'), sessionStorage.delete('dc')]);
+    }
   }
 }
 

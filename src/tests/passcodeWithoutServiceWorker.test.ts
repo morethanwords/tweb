@@ -38,6 +38,8 @@ vi.mock('@lib/accounts/accountController', () => ({
 
 import {usePasscodeActions} from '@lib/passcode/actions';
 import EncryptionKeyStore from '@lib/passcode/keyStore';
+import noop from '@helpers/noop';
+import deferred from '@/tests/helpers/deferred';
 
 const asked = () => fakes.apiManagerProxy.invoke.mock.calls.map(([type]) => type);
 // * what turning the passcode on tells the worker, and the service worker when there is one
@@ -46,6 +48,7 @@ const TURNING_ON = ['toggleCacheStorage', 'resetEncryptableCacheStorages', 'togg
 describe('the passcode without a service worker', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    fakes.apiManagerProxy.invoke.mockReset();
     fakes.apiManagerProxy.serviceMessagePort = undefined;
     for(const key in fakes.stored) delete fakes.stored[key];
   });
@@ -84,5 +87,35 @@ describe('the passcode without a service worker', () => {
 
     await usePasscodeActions().enablePasscode('1234');
     expect(serviceMessagePort.invoke.mock.calls.map(([type]) => type)).toEqual(TURNING_ON);
+  });
+
+  // * removed as the last step before, it stayed in localStorage when a step after the encryption did not finish (the
+  // * service worker failing, the tab closed), and nothing removed it with the passcode on
+  test('the plain copy of the auth keys goes once the worker has the accounts encrypted, never before', async() => {
+    const encrypted = deferred();
+    fakes.apiManagerProxy.invoke.mockImplementation(async(type: string) => type === 'toggleUsingPasscode' ? encrypted.promise : undefined);
+    fakes.apiManagerProxy.serviceMessagePort = {
+      invoke: vi.fn(async(type: string) => {
+        if(type === 'toggleUsingPasscode') throw new Error('the service worker is gone');
+      })
+    };
+
+    const enabling = usePasscodeActions().enablePasscode('1234');
+    enabling.catch(noop);
+    await vi.waitFor(() => expect(asked()).toContain('toggleUsingPasscode'), {timeout: 5000});
+    expect(fakes.updateStorageForLegacy).not.toHaveBeenCalled();
+
+    encrypted.resolve();
+    await expect(enabling).rejects.toThrow('the service worker is gone');
+    expect(fakes.updateStorageForLegacy).toHaveBeenCalledWith(null);
+  });
+
+  test('the plain copy stays when the worker could not encrypt the accounts', async() => {
+    fakes.apiManagerProxy.invoke.mockImplementation(async(type: string) => {
+      if(type === 'toggleUsingPasscode') throw new Error('the worker failed');
+    });
+
+    await expect(usePasscodeActions().enablePasscode('1234')).rejects.toThrow('the worker failed');
+    expect(fakes.updateStorageForLegacy).not.toHaveBeenCalled();
   });
 });

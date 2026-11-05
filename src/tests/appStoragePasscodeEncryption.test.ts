@@ -1,31 +1,17 @@
 import {beforeAll, expect, test, vi} from 'vitest';
-import {IDBKeyRange, indexedDB} from 'fake-indexeddb';
+import {indexedDB} from 'fake-indexeddb';
 
 import {getDatabaseState} from '@config/databases/state';
 import IDBStorage from '@lib/files/idb';
 import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 import EncryptionKeyStore from '@lib/passcode/keyStore';
 import AppStorage from '@lib/storage';
+import {decryptForTest, encryptForTest, fakeEncryptionKey, setUpFakeIndexedDB} from '@/tests/helpers/fakeLocalEncryption';
 
-// * fake keys that simply xor the payload, so reading with another key gives garbage, just like the real thing
-const KEY_A = {id: 0x2b} as any as CryptoKey;
-const KEY_B = {id: 0x5d} as any as CryptoKey;
+const KEY_A = fakeEncryptionKey(0x2b);
+const KEY_B = fakeEncryptionKey(0x5d);
 
-vi.mock('@lib/crypto/cryptoMessagePort', () => ({
-  default: {
-    invokeCryptoNew: async({method, args}: any) => {
-      const {key, data, encryptedData} = args[0];
-      const id: number = key?.id ?? 0;
-      const bytes = new Uint8Array(method === 'aes-local-encrypt' ? data : encryptedData);
-      return bytes.map((byte) => byte ^ id);
-    }
-  }
-}));
-
-// * `Array.from` keeps the result in this realm, the one `instanceof Uint8Array` is checked against
-const xor = (bytes: Uint8Array, key: CryptoKey) => new Uint8Array(Array.from(bytes, (byte) => byte ^ (key as any).id));
-const encryptForTest = (data: Record<string, any>, key: CryptoKey) => xor(new TextEncoder().encode(JSON.stringify(data)), key);
-const decryptForTest = (bytes: Uint8Array, key: CryptoKey) => JSON.parse(new TextDecoder().decode(xor(bytes, key)));
+vi.mock('@lib/crypto/cryptoMessagePort', async() => (await import('@/tests/helpers/fakeLocalEncryption')).fakeCryptoMessagePort);
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -34,9 +20,7 @@ const encryptedEntries = (accountNumber: 1 | 2 | 3 | 4) => new IDBStorage(getDat
 
 beforeAll(() => {
   (globalThis as any).indexedDB = indexedDB;
-  (globalThis as any).IDBKeyRange = IDBKeyRange;
-  // * fake-indexeddb returns typed arrays from node's realm, which jsdom's own `Uint8Array` disowns
-  (globalThis as any).Uint8Array = new TextEncoder().encode('').constructor;
+  setUpFakeIndexedDB();
 });
 
 test('encrypts a store that was never opened before the passcode was enabled', async() => {
