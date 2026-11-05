@@ -22,6 +22,7 @@ import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getSticker
 import A11yButton from '@components/a11yButton';
 import smoothScrollBehavior from '@helpers/dom/smoothScrollBehavior';
 import createStickersSearch from '@components/emoticonsDropdown/stickersSearch';
+import Modes from '@config/modes';
 
 export default function StickersTab() {
   const {wrapStickerSetThumb, EmoticonsSearch} = useHotReloadGuard();
@@ -190,20 +191,25 @@ export default function StickersTab() {
     let thumbsListScrollable: HTMLDivElement;
 
     onMount(() => {
-      thumbsListScrollable.ownerDocument.querySelector('.media-editor__tabs')?.append(thumbsListScrollable);
+      // * the tabs of this editor, from the tab content it is in: the strip is in no document yet (a template's clone
+      // * belongs to the template's own), so its ownerDocument found nothing and the strip never showed
+      container().closest('.media-editor__toolbar')?.querySelector('.media-editor__tabs')?.append(thumbsListScrollable);
       new ScrollableX(thumbsListScrollable);
     });
     onCleanup(() => {
       thumbsListScrollable.remove();
     });
 
-    const visible = () => stickerSets() && !filteredStickers();
+    // * the strip is outside the panel, which its tab's leaving does not hide: it goes with the tab at once
+    const visible = () => editorState.currentTab === 'stickers' && stickerSets() && !filteredStickers();
     <div
       class="media-editor__stickers-thumb-list-scrollable"
       classList={{
         'media-editor__stickers-thumb-list-scrollable--hidden': !visible(),
         'media-editor__stickers-thumb-list-scrollable--has-scroll': scrollAmount() > 8
       }}
+      inert={Modes.a11y && !visible()}
+      aria-hidden={!visible()}
       ref={thumbsListScrollable}
     >
       <div

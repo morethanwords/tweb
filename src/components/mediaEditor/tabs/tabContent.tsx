@@ -1,4 +1,4 @@
-import {Accessor, createContext, createEffect, createSignal, JSX, onCleanup, onMount} from 'solid-js';
+import {Accessor, createContext, createEffect, createRoot, createSignal, getOwner, JSX, onCleanup, onMount} from 'solid-js';
 
 import {doubleRaf} from '@helpers/schedulers';
 import Scrollable from '@components/scrollable';
@@ -32,20 +32,29 @@ export default function TabContent(props: {
   let prevTab = editorState.currentTab;
   let scrollable: Scrollable;
 
+  // * every tab lives in a root of its own, disposed once it has left: the first one too, which nothing disposed
+  // * before the editor closed, so what it had put outside its panel (the stickers tab's strip of sets) stayed
+  const owner = getOwner();
+  let disposeTab: () => void;
+  onCleanup(() => disposeTab());
+
   function createTabElement(tab: string) {
-    return (
-      <div
-        id={getMediaEditorTabPanelId(tab)}
-        role="tabpanel"
-        aria-labelledby={getMediaEditorTabId(tab)}
-      >
-        <div class="media-editor__tab-content-scrollable-content">
-          <TabContentContext.Provider value={{container, scrollAmount}}>
-            {props.tabs[tab]()}
-          </TabContentContext.Provider>
+    return createRoot((dispose) => {
+      disposeTab = dispose;
+      return (
+        <div
+          id={getMediaEditorTabPanelId(tab)}
+          role="tabpanel"
+          aria-labelledby={getMediaEditorTabId(tab)}
+        >
+          <div class="media-editor__tab-content-scrollable-content">
+            <TabContentContext.Provider value={{container, scrollAmount}}>
+              {props.tabs[tab]()}
+            </TabContentContext.Provider>
+          </div>
         </div>
-      </div>
-    ) as HTMLDivElement;
+      ) as HTMLDivElement;
+    }, owner);
   }
 
   const initialElement = createTabElement(editorState.currentTab);
@@ -58,6 +67,7 @@ export default function TabContent(props: {
     prevTab = editorState.currentTab;
 
     scrollable.destroy();
+    const disposeOld = disposeTab;
     const newElement = createTabElement(editorState.currentTab);
     setScrollable(newElement);
     const oldElement = prevElement;
@@ -87,6 +97,7 @@ export default function TabContent(props: {
 
     await delay(200);
     oldElement.remove();
+    disposeOld();
   });
 
   function setScrollable(element: HTMLElement) {

@@ -233,6 +233,23 @@ test('a media editor text layer outlines its text as text', async({page}) => {
   expect(await page.evaluate(() => (window as any).copiedMarkupRan)).toBeUndefined();
 });
 
+// * the strip of sticker sets is built off the tab's tree and moved under the editor's tabs: looked up through the
+// * strip's own ownerDocument (a template's, while the strip is in no document) the tabs were never found, and the tab
+// * showed an empty band above its search
+test('the media editor\'s stickers tab puts its sticker sets under the tabs', async({page}) => {
+  test.setTimeout(120_000);
+  const editor = await openMediaEditor(page);
+  await editor.getByRole('tab', {name: 'Stickers', exact: true}).click();
+  const strip = editor.locator('.media-editor__tabs > .media-editor__stickers-thumb-list-scrollable');
+  await expect(strip).toHaveCount(1);
+  // * beside the tablist, never in it: its buttons are no tabs
+  await expect(editor.locator('[role="tablist"] .media-editor__stickers-thumb-list-scrollable')).toHaveCount(0);
+  // * the sandbox has no sets to show: the strip is hidden, and out of the keyboard's and the screen reader's way too
+  await expect(strip).toHaveClass(/stickers-thumb-list-scrollable--hidden/);
+  await expect(strip).toHaveJSProperty('inert', true);
+  await expect(strip).toHaveAttribute('aria-hidden', 'true');
+});
+
 // * the sender's upgrade of a gift its recipient has already turned into Stars: the server keeps the upgrade link, the
 // * payment form for it is refused - and the button used to wait for that form for good. The own upgrade the same way
 for(const prepaid of [false, true]) test(`an upgrade${prepaid ? ' paid for someone else' : ''} whose payment form is refused says so and frees its button`, async({page}) => {

@@ -71,9 +71,12 @@ export default function Tabs() {
     }
   });
 
+  // * the tablist holds the tabs only: the stickers tab puts its strip of sets into the container, under them
   return (
-    <div ref={container} class="media-editor__tabs" role="tablist" onKeyDown={handleTabKeyDown} aria-label={I18n.format('MediaEditor.Tabs', true)}>
-      {tabs.map((tab) => tab.element)}
+    <div ref={container} class="media-editor__tabs">
+      <div class="media-editor__tabs-list" role="tablist" onKeyDown={handleTabKeyDown} aria-label={I18n.format('MediaEditor.Tabs', true)}>
+        {tabs.map((tab) => tab.element)}
+      </div>
       <div
         ref={underline}
         class="media-editor__tabs-underline"
