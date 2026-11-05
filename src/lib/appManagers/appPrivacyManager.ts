@@ -6,6 +6,7 @@ import Schema from '@lib/mtproto/schema';
 import noop from '@helpers/noop';
 import {IgnoredRestrictionReasons, makeIgnoredRestrictionReasons, SENSITIVE_RESTRICTION_REASON} from '@helpers/restrictions';
 import forgetFailedRequest from '@helpers/forgetFailedRequest';
+import createSerializedQueue, {SerializedQueue} from '@helpers/createSerializedQueue';
 
 /**
  * The answer to a request kept for whoever asks next takes its place only while the place still keeps that request:
@@ -24,6 +25,12 @@ function keepAnswer<T>(request: Promise<T>, kept: T | Promise<T>, answer: T, kee
 export class AppPrivacyManager extends AppManager {
   private privacy: Partial<{
     [key in PrivacyKey['_']]: PrivacyRule[] | Promise<PrivacyRule[]>
+  }> = {};
+  // * the saves of a key reach the server one after another, whichever screen made them, and are answered in that
+  // * order: an earlier one answered after a later one cached its older rules for good (tdesktop calls the earlier
+  // * save off as it sends the next one, `Api::UserPrivacy::save`)
+  private privacySaves: Partial<{
+    [key in PrivacyKey['_']]: SerializedQueue
   }> = {};
 
   private appConfigIgnoredReasons: string[];
@@ -75,7 +82,9 @@ export class AppPrivacyManager extends AppManager {
   }
 
   public setPrivacy(inputKey: InputPrivacyKey['_'], rules: InputPrivacyRule[]) {
-    return this.apiManager.invokeApi('account.setPrivacy', {
+    const privacyKey: PrivacyKey['_'] = convertInputKeyToKey(inputKey);
+    const saves = this.privacySaves[privacyKey] ??= createSerializedQueue();
+    return saves.enqueue(() => this.apiManager.invokeApi('account.setPrivacy', {
       key: {
         _: inputKey
       },
@@ -88,7 +97,7 @@ export class AppPrivacyManager extends AppManager {
       this.apiUpdatesManager.processLocalUpdate({
         _: 'updatePrivacy',
         key: {
-          _: convertInputKeyToKey(inputKey)
+          _: privacyKey
         },
         rules: privacyRules.rules
       });
@@ -96,7 +105,7 @@ export class AppPrivacyManager extends AppManager {
       // console.log('privacy rules', inputKey, privacyRules, privacyRules.rules);
 
       return privacyRules.rules;
-    });
+    }));
   }
 
   public getPrivacy(inputKey: InputPrivacyKey['_']) {
@@ -124,6 +133,8 @@ export class AppPrivacyManager extends AppManager {
   }
 
   private globalPrivacy: GlobalPrivacySettings | Promise<GlobalPrivacySettings>;
+  // * the same for the global settings, which several screens save (`Api::GlobalPrivacy::update` calls the earlier off)
+  private globalPrivacySaves = createSerializedQueue();
 
   public getGlobalPrivacySettings() {
     // Return the resolved value SYNCHRONOUSLY when cached, so that
@@ -144,11 +155,11 @@ export class AppPrivacyManager extends AppManager {
   }
 
   public setGlobalPrivacySettings(settings: GlobalPrivacySettings) {
-    return this.apiManager.invokeApi('account.setGlobalPrivacySettings', {settings}).then((updated) => {
+    return this.globalPrivacySaves.enqueue(() => this.apiManager.invokeApi('account.setGlobalPrivacySettings', {settings}).then((updated) => {
       this.globalPrivacy = updated;
       this.rootScope.dispatchEvent('global_privacy_update', updated);
       return updated;
-    });
+    }));
   }
 
   public getContentSettings(overwrite?: boolean) {

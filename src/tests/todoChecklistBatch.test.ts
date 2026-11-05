@@ -1,7 +1,7 @@
 import '@helpers/peerIdPolyfill';
 import {AppMessagesManager} from '@appManagers/appMessagesManager';
 import {Message, MessageEntity, MessageMedia, TodoCompletion} from '@layer';
-import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import createDeferredCalls, {DeferredCall} from '@/tests/helpers/deferredCalls';
 
 // A checklist's ticks are sent in batches, half a second after the last one. Every tick has to reach
 // the server, whenever it is made; a batch the server refuses is not asked again, and what it showed
@@ -37,19 +37,12 @@ function makeMessage(mid: number, completions: TodoCompletion[] = []) {
   } as Message.message;
 }
 
-type Call = {params: any, deferred: CancellablePromise<any>};
-
 function setup(messages: Message.message[]) {
   const manager = new AppMessagesManager();
   const storage = new Map<number, Message.message>(messages.map((message) => [message.mid, message])) as any;
   storage.key = `${peerId}_history`;
 
-  const calls: Call[] = [];
-  const invokeApi = vi.fn((method: string, params: any) => {
-    const deferred = deferredPromise<any>();
-    calls.push({params, deferred});
-    return deferred;
-  });
+  const {calls, invokeApi} = createDeferredCalls();
 
   Object.assign(manager as any, {
     rootScope: {dispatchEvent: vi.fn(), myId: (1 as UserId).toPeerId(false)},
@@ -81,7 +74,7 @@ const completionsOf = (message: Message.message) => {
   });
 };
 
-const refuse = (call: Call) => call.deferred.reject({type: 'CHAT_WRITE_FORBIDDEN'});
+const refuse = (call: DeferredCall) => call.deferred.reject({type: 'CHAT_WRITE_FORBIDDEN'});
 
 describe('checklist ticks batching', () => {
   beforeEach(() => {

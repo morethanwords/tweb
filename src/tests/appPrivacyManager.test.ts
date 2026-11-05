@@ -4,6 +4,8 @@ import {AppPrivacyManager} from '@appManagers/appPrivacyManager';
 import deferredPromise from '@helpers/cancellablePromise';
 import noop from '@helpers/noop';
 import pause from '@helpers/schedulers/pause';
+import convertInputKeyToKey from '@helpers/string/convertInputKeyToKey';
+import createDeferredCalls, {DeferredCall} from '@/tests/helpers/deferredCalls';
 
 function createManager(invokeApi: (method: string, params?: any) => Promise<any>) {
   let onUpdatePrivacy: (update: any) => void;
@@ -47,6 +49,70 @@ describe('AppPrivacyManager.setPrivacy', () => {
       {_: 'inputPrivacyValueAllowUsers', users: [{_: 'inputUser', user_id: 1, access_hash: '0'}]}
     ]);
     expect(await manager.getPrivacy('inputPrivacyKeyChatInvite')).toEqual(serverRules);
+  });
+});
+
+// * A server that answers the saves sent so far in the reverse order, the last one first, and whatever is sent after
+// * them once they are answered: what reaches the cache is the answer that comes last
+async function answerLastFirst(sent: DeferredCall[], answer: (params: any) => any) {
+  let answered = 0;
+  while(answered < sent.length) {
+    const batch = sent.slice(answered);
+    answered = sent.length;
+    batch.reverse().forEach(({params, deferred}) => deferred.resolve(answer(params)));
+    await pause(0);
+  }
+}
+
+function createSavingManager() {
+  const {calls, invokeApi} = createDeferredCalls();
+  return {...createManager(invokeApi), sent: calls};
+}
+
+// * Two saves of one key whose answers came out of order left the earlier save's rules in the cache, and the privacy
+// * screens showed them until a reload. The later save wins, as in tdesktop (`Api::UserPrivacy::save` calls the
+// * earlier one off)
+describe('AppPrivacyManager: two saves of one key', () => {
+  // * what the server keeps of the rules it is given: the input ones, renamed
+  const keptRules = (params: any) => privacyRules(params.rules.map((rule: any) => ({_: convertInputKeyToKey(rule._)})));
+
+  it('caches the rules of the later save, whichever is answered first', async() => {
+    const {manager, sent} = createSavingManager();
+
+    const earlier = manager.setPrivacy('inputPrivacyKeyChatInvite', [{_: 'inputPrivacyValueAllowContacts'}]);
+    const later = manager.setPrivacy('inputPrivacyKeyChatInvite', [{_: 'inputPrivacyValueAllowAll'}]);
+    await pause(0);
+    await answerLastFirst(sent, keptRules);
+
+    expect(await earlier).toEqual(OLDER_RULES);
+    expect(await later).toEqual(NEWER_RULES);
+    expect(await manager.getPrivacy('inputPrivacyKeyChatInvite')).toEqual(NEWER_RULES);
+  });
+
+  it('keeps the rules of the earlier save when the later one fails', async() => {
+    const {manager, sent} = createSavingManager();
+
+    const earlier = manager.setPrivacy('inputPrivacyKeyChatInvite', [{_: 'inputPrivacyValueAllowContacts'}]);
+    const later = manager.setPrivacy('inputPrivacyKeyChatInvite', [{_: 'inputPrivacyValueAllowAll'}]);
+    later.catch(noop);
+    await pause(0);
+    sent[0].deferred.resolve(keptRules(sent[0].params));
+    await pause(0);
+    sent[1].deferred.reject({type: 'PREMIUM_ACCOUNT_REQUIRED'});
+
+    expect(await earlier).toEqual(OLDER_RULES);
+    await expect(later).rejects.toMatchObject({type: 'PREMIUM_ACCOUNT_REQUIRED'});
+    expect(await manager.getPrivacy('inputPrivacyKeyChatInvite')).toEqual(OLDER_RULES);
+  });
+
+  it('does not hold a save of another key back', async() => {
+    const {manager, sent} = createSavingManager();
+
+    manager.setPrivacy('inputPrivacyKeyChatInvite', [{_: 'inputPrivacyValueAllowContacts'}]);
+    manager.setPrivacy('inputPrivacyKeyPhoneCall', [{_: 'inputPrivacyValueAllowAll'}]);
+    await pause(0);
+
+    expect(sent.map(({params}) => params.key._)).toEqual(['inputPrivacyKeyChatInvite', 'inputPrivacyKeyPhoneCall']);
   });
 });
 
@@ -97,19 +163,33 @@ describe('AppPrivacyManager.getPrivacy', () => {
 // * The same for the global settings: the answer to the request made as the session starts overwrote a switch saved
 // * meanwhile
 describe('AppPrivacyManager.getGlobalPrivacySettings', () => {
+  const older: GlobalPrivacySettings = {_: 'globalPrivacySettings', pFlags: {}};
+  const newer: GlobalPrivacySettings = {_: 'globalPrivacySettings', pFlags: {hide_read_marks: true}};
+
   it('keeps the settings of a save answered while they are asked for, and gives them to the caller', async() => {
-    const older: GlobalPrivacySettings = {_: 'globalPrivacySettings', pFlags: {}};
-    const saved: GlobalPrivacySettings = {_: 'globalPrivacySettings', pFlags: {hide_read_marks: true}};
     const answer = deferredPromise<GlobalPrivacySettings>();
     const {manager} = createManager((method) => {
-      return method === 'account.getGlobalPrivacySettings' ? answer : Promise.resolve(saved);
+      return method === 'account.getGlobalPrivacySettings' ? answer : Promise.resolve(newer);
     });
 
     const asked = manager.getGlobalPrivacySettings();
-    await manager.setGlobalPrivacySettings(saved);
+    await manager.setGlobalPrivacySettings(newer);
     answer.resolve(older);
 
-    expect(await asked).toBe(saved);
-    expect(manager.getGlobalPrivacySettings()).toBe(saved);
+    expect(await asked).toBe(newer);
+    expect(manager.getGlobalPrivacySettings()).toBe(newer);
+  });
+
+  // * several screens save them: the later save wins, as in tdesktop (`Api::GlobalPrivacy::update`)
+  it('caches the settings of the later of two saves, whichever is answered first', async() => {
+    const {manager, sent} = createSavingManager();
+
+    manager.setGlobalPrivacySettings(older);
+    const saved = manager.setGlobalPrivacySettings(newer);
+    await pause(0);
+    await answerLastFirst(sent, (params) => params.settings);
+
+    expect(await saved).toBe(newer);
+    expect(manager.getGlobalPrivacySettings()).toBe(newer);
   });
 });
