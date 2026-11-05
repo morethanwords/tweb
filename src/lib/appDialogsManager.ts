@@ -2566,7 +2566,7 @@ export class AppDialogsManager {
     //   dom.statusSpan.parentElement.classList.toggle('is-closed', !!dialog.pFlags.closed);
     // }
 
-    const hasPinnedBadge = isPinned && !isMonoforumThread && !isAllChats;
+    const showsPinned = isPinned && !isMonoforumThread && !isAllChats;
     const hasUnreadBadge = isDialogUnread;
     const hasUnreadAvatarBadge = dialogElement.isMainList !== false &&
       this.xd !== this.xds[FOLDER_ID_ARCHIVE] &&
@@ -2615,7 +2615,7 @@ export class AppDialogsManager {
 
     dialogElement.setBadgeState({
       muted: isMuted,
-      pinned: hasPinnedBadge,
+      pinned: showsPinned,
       unread: hasUnreadBadge && !hasOnlyGram,
       unreadText: unreadBadgeText,
       unreadCount,
@@ -2634,16 +2634,6 @@ export class AppDialogsManager {
       const notVisited = isDialogUnread && unreadBadgeText === ' ';
       dom.unreadBadge.classList.toggle('not-visited', notVisited);
     }
-
-    // if(isPinned && !isUnread && !isMention) {
-    //   dom.unreadBadge.classList.add('badge-icon', 'dialog-pinned-icon');
-    //   dom.unreadBadge.replaceChildren(Icon('chatspinned'));
-    // } else if(dom.unreadBadge) {
-    //   dom.unreadBadge.classList.remove('badge-icon', 'dialog-pinned-icon');
-    //   if(!unreadBadgeText) {
-    //     dom.unreadBadge.replaceChildren();
-    //   }
-    // }
 
     deferred.resolve();
   }

@@ -7,6 +7,7 @@ const IconsReverse = new Set<Icon>([
   'bubblereply',
   'channel',
   'chatspinned',
+  'pin_status_filled',
   'forward',
   'forward_filled',
   'group',

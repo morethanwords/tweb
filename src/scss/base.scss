@@ -1748,13 +1748,18 @@ hr {
       font-size: var(--font-size-16) !important;
       line-height: 1.375rem;
 
+      // * the time (or a member's tag) stands on the title's line: its text on the title's baseline
+      // * (`.row-title-row` below), in a box as tall as its own line, the sending status centred on it
       &-right-secondary {
         display: flex;
-        align-items: center;
-        height: 1.25rem;
-        margin-top: -.4375rem;
+        align-items: baseline;
+        height: var(--line-height-12);
         font-size: var(--font-size-12) !important;
         line-height: var(--line-height-12) !important;
+
+        .message-status {
+          align-self: center;
+        }
       }
 
       // .peer-title {
@@ -1764,6 +1769,16 @@ hr {
 
     &-row {
       height: 1.375rem;
+    }
+
+    &-title-row {
+      align-items: baseline;
+
+      // * what is taller than the time's line (the sending status, search's "Ad" chip) stands out
+      // * of it rather than being cut
+      > .row-title-right-secondary {
+        overflow: visible;
+      }
     }
   }
 

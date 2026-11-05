@@ -369,7 +369,6 @@ ul.chatlist {
 
         .row-subtitle,
         .row-title,
-        .dialog-subtitle-badge-pinned,
         //.user-title:after,
         .user-title,
         .message-status,
@@ -398,9 +397,16 @@ ul.chatlist {
           color: rgba(255, 255, 255, .7);
         }
 
-        .peer-title-direct-badge {
+        .peer-title-direct-badge,
+        &.is-pinned .dialog-title-details .dialog-time-pill {
           color: white;
           background-color: rgba(255, 255, 255, .2);
+        }
+
+        // * with the stronger contrast asked for, the time's pill darkens the accent rather than
+        // * lightening it, so the white time keeps the contrast the accent was corrected for
+        :where(.high-contrast) &.is-pinned .dialog-title-details .dialog-time-pill {
+          background-color: rgba(0, 0, 0, .15);
         }
 
         // * a tag turns over as the badges do, white with the accent in it - Desktop's active tag
@@ -659,9 +665,53 @@ ul.chatlist {
   &-title {
     &-details {
       font-size: .75rem;
-      padding: 1px 0px 0px 0px;
       flex: 0 0 auto;
       margin-inline-start: .5rem !important;
+
+      // * the pill stands 2px higher than the line, centred on the name. The sending status before
+      // * it goes along
+      .chatlist-chat.is-pinned & {
+        top: -2px;
+      }
+
+      // * a pinned chat's time is a pill with the pin in front of it (`createTimePill`), as tall as the
+      // * plain time's line
+      .chatlist-chat.is-pinned & .dialog-time-pill {
+        padding: 1px 6px;
+        border-radius: 8px;
+        background-color: var(--light-secondary-text-color);
+        line-height: .875rem;
+
+        // * the time's grey reads weaker on the pill's own (4.2:1 in the day theme): with the stronger
+        // * contrast asked for, it leans towards the theme's text, and the pin is drawn solid
+        :where(.high-contrast) & {
+          color: color-mix(in srgb, var(--secondary-text-color) 85%, var(--primary-text-color));
+        }
+      }
+
+      // * there only while the row is pinned. The glyph's box is the line, and the pin is drawn in the
+      // * middle 10px of it
+      .dialog-time-pill-pin {
+        display: none;
+        vertical-align: top;
+        font-size: .875rem;
+        line-height: inherit;
+        margin-inline-start: -.125rem;
+        opacity: .5;
+
+        .chatlist-chat.is-pinned & {
+          display: inline-block;
+        }
+
+        :where(.high-contrast) & {
+          opacity: 1;
+        }
+      }
+
+      // * no message to date: the pin alone, as far from either end
+      .chatlist-chat.is-pinned & .message-time:empty {
+        margin-inline-start: -.125rem;
+      }
     }
   }
 
@@ -669,12 +719,6 @@ ul.chatlist {
     // * the parts (chat name, sender, media thumb, message) are one inline line
     // * elided once at its end by the row's own text-overflow — a flex row would
     // * give every part its own ellipsis and truncate them all at once
-    &-parts {
-      .has-only-pinned-badge:not(.animating) & {
-        margin-inline-end: 1.5rem;
-      }
-    }
-
     &-span {
       // * isolates the part like `isolate`, but takes its direction from its own content: under
       // * `.is-rtl [dir=auto] {direction: inherit}` an `isolate` part would turn "/start" into "start/"
@@ -744,16 +788,6 @@ ul.chatlist {
 
       &-unread {
         order: 3;
-      }
-
-      &-pinned {
-        .has-multiple-badges & {
-          margin-inline-start: -1.375rem;
-        }
-
-        color: var(--chatlist-pinned-color);
-        order: 4;
-        z-index: 0;
       }
 
       &-pollvote {

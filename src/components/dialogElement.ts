@@ -42,7 +42,8 @@ export type DialogDom = {
   titleSpanContainer: HTMLSpanElement,
   statusSpan: HTMLSpanElement,
   lastTimeSpan: HTMLSpanElement,
-  pinnedBadge?: HTMLElement,
+  /** the pill a pinned row's time stands in, with the pin in front of it */
+  timePill?: HTMLElement,
   /** the grip a pinned row is dragged by while its list can be reordered */
   sortableIcon?: HTMLElement,
   unreadBadge?: HTMLElement,
@@ -214,7 +215,6 @@ export type DialogElementBadgeState = {
 type DialogElementAppliedBadgeState = {
   [key in Parameters<DialogElement['toggleBadgeByKey']>[0]]: boolean
 } & {
-  hasOnlyPinnedBadge: boolean,
   unreadText?: string,
   unreadCount?: number,
   unreadMention?: boolean,
@@ -397,7 +397,7 @@ export class DialogElement {
     rightSpan.classList.add('dialog-title-details');
     rightSpan.append(statusSpan, lastTimeSpan);
 
-    this.subtitleRow.classList.add('dialog-subtitle', 'has-multiple-badges');
+    this.subtitleRow.classList.add('dialog-subtitle');
 
     // if(I18n.isRTL) {
     //   // this.subtitle.dir = '';
@@ -481,12 +481,18 @@ export class DialogElement {
     });
   }
 
-  public createPinnedBadge() {
-    if(this.dom.pinnedBadge) return;
-    const badge = this.dom.pinnedBadge = document.createElement('div');
-    badge.className = `dialog-subtitle-badge badge badge-icon badge-${BADGE_SIZE} dialog-subtitle-badge-pinned`;
-    badge.append(Icon('chatspinned'));
-    this.dom.subtitleEl.append(badge);
+  /**
+   * The pill a pinned row's time stands in, with the pin in front of it: drawn only while the row
+   * is pinned, and kept once made, as the grip is. The time itself is rewritten by several hands
+   * (the last message, search, a community row), so the pin stays out of it
+   */
+  public createTimePill() {
+    if(this.dom.timePill) return;
+    const {lastTimeSpan} = this.dom;
+    const pill = this.dom.timePill = document.createElement('span');
+    pill.className = 'dialog-time-pill';
+    lastTimeSpan.replaceWith(pill);
+    pill.append(Icon('pin_status_filled', 'dialog-time-pill-pin'), lastTimeSpan);
   }
 
   /** The grip a pinned row is dragged by, shown only while its list can be reordered */
@@ -573,8 +579,6 @@ export class DialogElement {
 
     const previous = this.lastBadgeState;
     const botApp = !!options.botApp;
-    // * the bot's button takes the pin's place instead of covering it, as the unread badge does
-    const pinned = options.pinned && !botApp;
 
     // * `toggleBadgeByKey` writes what it toggles into the very state `previous` is
     const wasVisible = {
@@ -583,7 +587,6 @@ export class DialogElement {
     };
 
     const mounted = {
-      pinnedBadge: !!this.dom.pinnedBadge,
       unreadBadge: !!this.dom.unreadBadge,
       unreadAvatarBadge: !!this.dom.unreadAvatarBadge,
       mentionsBadge: !!this.dom.mentionsBadge,
@@ -597,7 +600,6 @@ export class DialogElement {
       Parameters<DialogElement['toggleBadgeByKey']>[0],
       boolean
     ]> = [
-      ['pinnedBadge', pinned],
       ['unreadBadge', options.unread],
       ['unreadAvatarBadge', options.unreadAvatar],
       ['mentionsBadge', options.mentions],
@@ -617,11 +619,14 @@ export class DialogElement {
     }
 
     // * the pinned rows of a list form the block that can be reordered within itself, and
-    // * `Sortable` reads that block off the DOM - see attachPinnedDialogsReorder
+    // * `Sortable` reads that block off the DOM - see attachPinnedDialogsReorder. The class is what
+    // * shows a row pinned too: its time is a pill with a pin (`createTimePill`)
     this.dom.listEl.classList.toggle(PINNED_DIALOG_CLASS_NAME, !!options.pinned);
 
-    if(options.pinned) this.createSortableIcon();
-    if(pinned) this.createPinnedBadge();
+    if(options.pinned) {
+      this.createSortableIcon();
+      this.createTimePill();
+    }
     if(options.unread) this.createUnreadBadge();
     if(options.unreadAvatar) this.createUnreadAvatarBadge();
     if(options.mentions) this.createMentionsBadge();
@@ -629,29 +634,6 @@ export class DialogElement {
     if(options.pollVotes) this.createPollVotesBadge();
     if(options.gram) this.createGramBadge();
     if(botApp) this.createBotAppButton();
-
-    const subtitleBadgesLength = [
-      pinned,
-      options.unread,
-      options.mentions,
-      options.reactions,
-      options.pollVotes,
-      options.gram,
-      botApp
-    ].filter(Boolean).length;
-    const hasOnlyPinnedBadge = pinned && subtitleBadgesLength === 1;
-    // * `SetTransition` keeps `animating` on the element for the whole duration,
-    // * and `.has-only-pinned-badge:not(.animating)` drops the subtitle's trailing
-    // * margin while it is there. Replaying it for an unchanged state makes the
-    // * subtitle of every pinned row widen and snap back — a visible blink.
-    if(!previous || previous.hasOnlyPinnedBadge !== hasOnlyPinnedBadge) {
-      SetTransition({
-        element: this.subtitleRow,
-        className: 'has-only-pinned-badge',
-        forwards: hasOnlyPinnedBadge,
-        duration: transitionDuration
-      });
-    }
 
     for(const [key, visible] of states) {
       if(!this.dom[key]) {
@@ -701,7 +683,6 @@ export class DialogElement {
     }
 
     this.lastBadgeState = {
-      pinnedBadge: pinned,
       unreadBadge: options.unread,
       unreadAvatarBadge: options.unreadAvatar,
       mentionsBadge: options.mentions,
@@ -709,7 +690,6 @@ export class DialogElement {
       pollVotesBadge: options.pollVotes,
       gramBadge: !!options.gram,
       botAppButton: botApp,
-      hasOnlyPinnedBadge,
       unreadText: options.unreadText,
       unreadCount: options.unreadCount,
       unreadMention: options.unreadMention,
@@ -749,7 +729,7 @@ export class DialogElement {
   }
 
   public toggleBadgeByKey(
-    key: Extract<keyof DialogDom, 'unreadBadge' | 'unreadAvatarBadge' | 'mentionsBadge' | 'reactionsBadge' | 'pollVotesBadge' | 'gramBadge' | 'pinnedBadge' | 'botAppButton'>,
+    key: Extract<keyof DialogDom, 'unreadBadge' | 'unreadAvatarBadge' | 'mentionsBadge' | 'reactionsBadge' | 'pollVotesBadge' | 'gramBadge' | 'botAppButton'>,
     hasBadge: boolean,
     justCreated: boolean,
     batch?: boolean

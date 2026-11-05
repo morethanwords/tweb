@@ -649,7 +649,8 @@ const Icons = {
   note: 'eb87',
   reload_star_filled: 'eb88',
   replace_circles_filled: 'eb89',
-  reply_crossed: 'eb8a'
+  reply_crossed: 'eb8a',
+  pin_status_filled: 'eb8b'
 };
 
 export default Icons;

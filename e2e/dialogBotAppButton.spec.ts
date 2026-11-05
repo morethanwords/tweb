@@ -4,9 +4,9 @@ import {openChatList} from './chatList.helpers';
 /*
  * The "Open" button a chat-list row shows for a bot with a main mini app
  * (`DialogElement.createBotAppButton`), as the official apps have it: it opens the
- * app and not the chat, takes the place of the pin, and gives way to the unread
- * badges - in that very place, so that neither the button nor the badge jumps aside
- * while the one shrinks and the other grows.
+ * app and not the chat, and gives way to the unread badges - in that very place,
+ * so that neither the button nor the badge jumps aside while the one shrinks and
+ * the other grows.
  *
  * The unread states are rendered locally only: the row is handed a copy of its
  * dialog with the counters it is meant to show, and nothing is sent anywhere - the
@@ -92,7 +92,7 @@ test.describe('the main mini app button of a bot row', () => {
   // the chat list is a column beside the conversation only on a desktop-sized window
   test.use({viewport: {width: 1280, height: 800}});
 
-  test('opens the app, replaces the pin and swaps with the unread badge in place', async({page}) => {
+  test('opens the app and swaps with the unread badge in place', async({page}) => {
     test.setTimeout(5 * 60_000);
     await openChatList(page);
 
@@ -106,8 +106,6 @@ test.describe('the main mini app button of a bot row', () => {
     try {
       await renderDialog(page, peerId, READ);
       await expect(row.locator(`${BUTTON}.is-visible`)).toHaveCount(1);
-      // * the button takes the place of the pin, whether the chat is pinned or not
-      await expect(row.locator('.dialog-subtitle-badge-pinned')).toHaveCount(0);
 
       // * it opens the app, and only the app
       const before = await page.evaluate(() => {
