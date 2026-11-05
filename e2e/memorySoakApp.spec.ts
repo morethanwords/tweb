@@ -117,6 +117,10 @@ test.describe('memory over a long session', () => {
     .toBeLessThanOrEqual(allowed(first.dom.jsEventListeners, 200, 0.1));
 
     if(first.process && last.process) {
+      // * Not all a round adds to the renderer is the app's, so it has slack. The inspector keeps the bodies of what
+      // * the page loads for the Network domain Playwright turns on (Blink's `partition_alloc` buffer partition: ~4 MB
+      // * for 100 videos mounted and taken out, next to none over bare CDP without it), and the software raster's
+      // * cache of decoded images (`cc`) fills between rounds and is given back at idle
       expect.soft(growth((checkpoint) => checkpoint.process.footprint), 'the renderer\'s footprint kept growing')
       .toBeLessThanOrEqual(allowed(first.process.footprint, 40 * MB, 0.15));
     }
