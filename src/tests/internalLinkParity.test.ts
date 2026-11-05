@@ -16,8 +16,24 @@ const mocks = vi.hoisted(() => ({
   shareGame: vi.fn(),
   joinGroupCall: vi.fn(),
   joinCallFromLink: vi.fn(),
-  joinLiveStream: vi.fn()
+  joinLiveStream: vi.fn(),
+  anchorListeners: [] as Array<{name: string, protocol?: string}>
 }));
+
+// * every handler the processor registers is kept here, whatever a test clears
+vi.mock('@helpers/addAnchorListener', async(importOriginal) => {
+  const actual = await importOriginal<typeof import('@helpers/addAnchorListener')>();
+  return {
+    ...actual,
+    default: (options: Parameters<typeof actual.default>[0]) => {
+      const result = actual.default(options);
+      mocks.anchorListeners.push(options);
+      return result;
+    }
+  };
+});
+// * the wallet's links are registered only once it is released
+vi.mock('@lib/wallet/release', () => ({isWalletReleased: () => true, isWalletAvailable: () => true}));
 
 // * where it is not, no link reaches a video chat at all
 vi.mock('@environment/groupCallSupport', () => ({default: true}));
@@ -71,12 +87,15 @@ vi.mock('@lib/richTextProcessor/wrapRichText', () => ({
 
 type Processor = import('@lib/internalLinkProcessor').InternalLinkProcessor;
 let processor: Processor;
+// * what the processor set on the window: the functions an inline onclick calls
+let windowFunctions: string[];
 let INTERNAL_LINK_TYPE: typeof import('@lib/internalLink').INTERNAL_LINK_TYPE;
 
 beforeAll(async() => {
   const module = await import('@lib/internalLinkProcessor');
   INTERNAL_LINK_TYPE = (await import('@lib/internalLink')).INTERNAL_LINK_TYPE;
   processor = new module.InternalLinkProcessor();
+  const before = new Set(Object.keys(window));
   processor.construct({
     appUsersManager: {
       importContactToken: mocks.importContactToken,
@@ -86,6 +105,7 @@ beforeAll(async() => {
     apiManager: {getDeepLinkInfo: mocks.getDeepLinkInfo},
     appGamesManager: {shareGame: mocks.shareGame}
   } as any);
+  windowFunctions = Object.keys(window).filter((key) => !before.has(key) && typeof (window as any)[key] === 'function');
 });
 
 afterEach(() => {
@@ -444,5 +464,49 @@ describe('video chat links', () => {
     expect(mocks.openUsername).toHaveBeenCalledWith({userName: 'someone'});
     expect(mocks.joinCallFromLink).not.toHaveBeenCalled();
     expect(mocks.joinLiveStream).not.toHaveBeenCalled();
+  });
+});
+
+// * an anchor's inline onclick calls its link's handler by name: `tg_ton-connect(this)` subtracted, and threw on click
+describe('link handler names', () => {
+  test('are each one an inline onclick can call', () => {
+    expect(windowFunctions.length).toBeGreaterThan(40);
+    expect(windowFunctions.filter((name) => !/^[A-Za-z_$][\w$]*$/.test(name))).toEqual([]);
+  });
+
+  test('are each the name an anchor of the link calls, and the code calls it', async() => {
+    const {default: wrapUrl, getAnchorHandlerName} = await import('@lib/richTextProcessor/wrapUrl');
+    expect(mocks.anchorListeners.some(({name, protocol}) => name === 'ton-connect' && protocol === 'tg')).toBe(true);
+
+    for(const {name, protocol} of mocks.anchorListeners) {
+      const handlerName = getAnchorHandlerName(name, protocol);
+      expect(windowFunctions).toContain(handlerName);
+      if(protocol !== 'tg') {
+        continue;
+      }
+
+      // * `safe`, and a url to show, for tg://iv
+      const href = `tg://${name}?url=${encodeURIComponent('https://example.com/')}`;
+      const {onclick} = wrapUrl(href, true);
+      expect(onclick, href).toBe(handlerName);
+
+      const a = document.createElement('a');
+      a.href = href;
+      a.setAttribute('onclick', onclick + '(this)');
+      const handler = vi.spyOn(window as any, handlerName).mockReturnValue(undefined);
+      try {
+        // * as the browser runs an inline onclick: the anchor's own code, in the window's scope
+        new Function(a.getAttribute('onclick')).call(a);
+        expect(handler, href).toHaveBeenCalledWith(a);
+      } finally {
+        handler.mockRestore();
+      }
+    }
+  });
+
+  test('cannot be registered unless the code can call them', async() => {
+    const {default: addAnchorListener} = await import('@helpers/addAnchorListener');
+    expect(() => addAnchorListener({name: 'not.a.name' as any, callback: () => {}})).toThrow();
+    expect((window as any)['not.a.name']).toBeUndefined();
   });
 });

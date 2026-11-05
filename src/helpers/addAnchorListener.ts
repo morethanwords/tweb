@@ -1,4 +1,4 @@
-import wrapUrl from '@lib/richTextProcessor/wrapUrl';
+import wrapUrl, {getAnchorHandlerName, isAnchorHandlerName} from '@lib/richTextProcessor/wrapUrl';
 import matchTelegramUrlHost from '@lib/richTextProcessor/matchTelegramUrlHost';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import parseUriParams from '@helpers/string/parseUriParams';
@@ -65,7 +65,12 @@ export default function addAnchorListener<
   noUriParams?: boolean,
   noCancelEvent?: boolean
 }) {
-  (window as any)[(options.protocol ? options.protocol + '_' : '') + options.name] = (element?: HTMLAnchorElement, e?: Event) => {
+  const handlerName = getAnchorHandlerName(options.name, options.protocol);
+  if(!isAnchorHandlerName(handlerName)) {
+    throw new Error(`a link handler is called by its name from an anchor's onclick, which ${handlerName} cannot be`);
+  }
+
+  (window as any)[handlerName] = (element?: HTMLAnchorElement, e?: Event) => {
     !options.noCancelEvent && cancelEvent(null);
 
     let href = element.href;

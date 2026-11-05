@@ -149,6 +149,15 @@ describe('wrapUrl handlers are the app\'s own', () => {
     expect(wrapUrl('https://t.me/sendgrams?to=@durov&amount=1').onclick).toBe('im');
   });
 
+  // * the name is spelled into an inline onclick: `tg_ton-connect(this)` subtracts, and throws on click
+  test('never takes a function the inline code cannot call by its name', () => {
+    vi.stubGlobal('unknownDeepLink', vi.fn());
+    vi.stubGlobal('tg_ton-connect', vi.fn());
+    vi.stubGlobal('tg_a.b', vi.fn());
+    expect(wrapUrl('tg://ton-connect?v=2').onclick).toBe('unknownDeepLink');
+    expect(wrapUrl('tg://a.b?x=1').onclick).toBe('unknownDeepLink');
+  });
+
   test('asks no element named unknownDeepLink about a tg:// link', () => {
     showByName('unknownDeepLink', document.createElement('span'));
     expect(wrapUrl('tg://nothing_like_it?x=1').onclick).toBeUndefined();

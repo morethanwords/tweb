@@ -12,13 +12,14 @@ afterEach(() => {
 describe('wrapUrl TON Connect links', () => {
   test('sends every form of the link to a TON Connect handler', () => {
     vi.stubGlobal('tc_tonconnect', vi.fn());
-    vi.stubGlobal('tg_ton-connect', vi.fn());
+    vi.stubGlobal('tg_ton_connect', vi.fn());
     vi.stubGlobal('tg_resolve', vi.fn());
     vi.stubGlobal('tg_sendgrams', vi.fn());
     vi.stubGlobal('sendgrams', vi.fn());
     const id = 'ab'.repeat(32);
     expect(wrapUrl('tc://?v=2&id=' + id + '&r=%7B%7D').onclick).toBe('tc_tonconnect');
-    expect(wrapUrl('tg://ton-connect?v=2&id=' + id).onclick).toBe('tg_ton-connect');
+    // * the name goes into an inline onclick, so the link's dash is an underscore: `tg_ton-connect(this)` subtracted
+    expect(wrapUrl('tg://ton-connect?v=2&id=' + id).onclick).toBe('tg_ton_connect');
     // * the wallet's own links and its start parameter: their handlers tell TON Connect's fields from a payment's
     expect(wrapUrl('https://t.me/sendgrams?startapp=tonconnect-v__2-id__' + id).onclick).toBe('sendgrams');
     expect(wrapUrl('tg://sendgrams?id=' + id).onclick).toBe('tg_sendgrams');
