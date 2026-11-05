@@ -43,6 +43,7 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import {batch, createSignal} from 'solid-js';
 import {render} from 'solid-js/web';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import Modes from '@config/modes';
 
 const isItemIndex = (index: number) => typeof(index) === 'number' && index >= 0;
 
@@ -724,6 +725,11 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     actions.forEach(([buttons, hide]) => {
       buttons.forEach((button) => {
         if(button instanceof HTMLElement) {
+          // * hidden on every page until its rights come: with the keyboard layer, the focus it holds stays in the
+          // * viewer rather than dropping to the page's body
+          if(hide && Modes.a11y && button.contains(button.ownerDocument.activeElement)) {
+            this.wholeDiv.focus({preventScroll: true});
+          }
           button.classList.toggle('hide', hide);
         } else {
           button.verify = () => !hide;

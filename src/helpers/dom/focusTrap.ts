@@ -57,6 +57,12 @@ export function getFocusableElements(container: HTMLElement) {
  */
 export const FOCUS_TRAP_ATTACHED_ATTRIBUTE = 'data-focus-trap-attached';
 
+/** Whether the focus is in `element` or nowhere at all: nothing else has taken it. */
+export function isFocusWithinOrLost(element: HTMLElement, doc: Document = element.ownerDocument) {
+  const focused = doc?.activeElement;
+  return !focused || focused === doc.body || element.contains(focused);
+}
+
 export type FocusTrap = ReturnType<typeof createFocusTrap>;
 type FocusScope = {element: HTMLElement, restoreTo?: HTMLElement};
 const documentTraps = new WeakMap<Document, FocusScope[]>();
@@ -180,9 +186,7 @@ export default function createFocusTrap(element: HTMLElement, isActive: () => bo
       // As a closing <dialog> does it: only when the focus is still here to give back (an action
       // may have sent it somewhere on purpose), and without scrolling — the opener is where it was
       // left, and a message bubble half out of view would otherwise drag the chat along with it.
-      const focused = activeDocument?.activeElement;
-      const focusIsHere = !focused || focused === activeDocument.body || element.contains(focused);
-      if(restoreFocus && wasTopmost && focusIsHere && token.restoreTo?.isConnected && token.restoreTo.focus) {
+      if(restoreFocus && wasTopmost && isFocusWithinOrLost(element, activeDocument) && token.restoreTo?.isConnected && token.restoreTo.focus) {
         token.restoreTo.focus(restoreOptions);
       }
       const parent = stack?.[stack.length - 1]?.element;

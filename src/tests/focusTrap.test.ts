@@ -2,6 +2,7 @@ import {afterEach, expect, it, vi} from 'vitest';
 import createFocusTrap, {FOCUS_TRAP_ATTACHED_ATTRIBUTE, getFocusableElements} from '@helpers/dom/focusTrap';
 import {setAppWindow} from '@helpers/appWindow';
 import '@/tests/helpers/a11yLayer';
+import makeVisible from '@/tests/helpers/makeVisible';
 
 // jsdom events are never trusted, so the modality is set by hand
 const modality = vi.hoisted(() => ({pointer: false}));
@@ -46,13 +47,6 @@ it('retains focus and traps Tab after an open dialog is adopted into another app
   trap.deactivate();
   expect(document.activeElement).toBe(trigger);
 });
-
-function makeVisible(element: HTMLElement) {
-  Object.defineProperty(element, 'offsetWidth', {
-    configurable: true,
-    value: 1
-  });
-}
 
 it('traps and restores focus in the container ownerDocument', () => {
   const iframe = document.createElement('iframe');

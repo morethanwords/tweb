@@ -24,7 +24,9 @@ const labels: Partial<Record<Icon, LangPackKey>> = {
   select: 'Message.Context.Select',
   settings_filled: 'Settings',
   fullscreen: 'ConferenceCall.Controls.EnterFullscreen',
-  smallscreen: 'ConferenceCall.Controls.ExitFullscreen'
+  smallscreen: 'ConferenceCall.Controls.ExitFullscreen',
+  zoomin: 'MediaZoomIn',
+  zoomout: 'MediaZoomOut'
 };
 
 export function getIconButtonLabelKey(icon: Icon) {

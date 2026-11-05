@@ -1,5 +1,6 @@
 import {expect, Page, test} from '@playwright/test';
 import {findMessage, openMessage} from './chatMedia.helpers';
+import {clickVisible, expectNoA11yViolations} from './accessibility.helpers';
 
 /*
  * The media viewer paging through a chat's photos. Its header - who sent the media, and "3 of 15 • the
@@ -194,6 +195,128 @@ test.describe('the media viewer', () => {
     expect(next.x + next.width, 'the button forward stands on the left').toBeLessThanOrEqual(middle);
   });
 
+  // * With the keyboard layer the viewer takes the focus from what opened it - a tile of the shared media
+  // * here - keeps it while open (Tab and Shift+Tab go round its own controls, never on to the page under it,
+  // * nor to the zoom bar it hides) and gives it back when it closes. Every control it stops at has a name.
+  test('keeps the keyboard focus while open and gives it back on close', async({page}) => {
+    test.setTimeout(4 * 60_000);
+    await page.goto('/?noSharedWorker=1&a11y=1');
+    await page.waitForFunction(() => document.querySelectorAll('.chatlist-chat').length > 0, null, {timeout: 180_000});
+    const found = await findMessage(page, 'photo');
+    test.skip(!found, 'no chat with a photo in the recent chats of this account');
+    await openMessage(page, found);
+    expect(await clickVisible(page, '.chat-info'), 'there was no chat header to press').toBe(true);
+
+    const tab = page.locator('#column-right .menu-horizontal-div-item').filter({hasText: /^Media$/, visible: true}).first();
+    await expect(tab, 'the profile has no Media tab').toBeVisible({timeout: 30_000});
+    await tab.click();
+    // * a plain photo of the tab: a spoiler's first click only reveals it, and a video brings a player of its own.
+    // * Told by its message, not by the tile: a spoiler is wrapped around the picture only after it is drawn
+    const tiles = '#column-right .search-super-container-media.active .grid-item';
+    await expect(page.locator(tiles).first(), 'the Media tab shows nothing').toBeAttached({timeout: 30_000});
+    const mid = await page.evaluate(async(tiles) => {
+      const managers = (window as any).appImManager.managers;
+      for(const tile of document.querySelectorAll<HTMLElement>(tiles)) {
+        const message = await managers.appMessagesManager.getMessageByPeer(tile.dataset.peerId.toPeerId(), +tile.dataset.mid);
+        const media = message?.media;
+        if(media?._ === 'messageMediaPhoto' && !media.pFlags.spoiler && !media.ttl_seconds) return tile.dataset.mid;
+      }
+    }, tiles);
+    test.skip(!mid, 'no plain photo among the first tiles of the Media tab');
+    expect(await clickVisible(page, `${tiles}[data-mid="${mid}"]`), 'no tile to open').toBe(true);
+    await expect(page.locator(`${VIEWER} .media-viewer-mover.center`)).toHaveCount(1, {timeout: 30_000});
+    await page.waitForTimeout(500);
+    await expectNoA11yViolations(page, VIEWER);
+
+    // * where the focus is: outside the viewer, in a part it hides (the zoom bar before zooming), and its name
+    const stop = () => page.evaluate((viewer) => {
+      const active = document.activeElement as HTMLElement;
+      const inside = !!active.closest(viewer) && !active.closest('[inert]');
+      let hidden = false;
+      for(let el: HTMLElement = active; el && !hidden; el = el.parentElement) hidden = getComputedStyle(el).opacity === '0';
+      return (inside ? '' : 'OUT ') + (hidden ? 'HIDDEN ' : '') + (active.getAttribute('aria-label') || active.tagName);
+    }, VIEWER);
+    const stops: string[] = [];
+    for(const key of [...Array(14).fill('Tab'), ...Array(4).fill('Shift+Tab')]) {
+      await page.keyboard.press(key);
+      stops.push(await stop());
+    }
+    expect(stops.filter((stop) => /^(OUT|HIDDEN) /.test(stop)), `the focus went: ${stops.join(', ')}`).toEqual([]);
+    expect(stops.every((stop) => stop !== 'BUTTON'), `a control without a name: ${stops.join(', ')}`).toBe(true);
+
+    // * zoomed in from the toggle and out again from the bar, which goes as it does: the focus goes back to the toggle
+    const inBar = () => page.evaluate(() => !!document.activeElement.closest('.zoom-container'));
+    const tabTo = async(label: RegExp, bar = false) => {
+      for(let i = 0; i < 12 && !(label.test(await stop()) && await inBar() === bar); ++i) await page.keyboard.press('Tab');
+      expect(await stop()).toMatch(label);
+      expect(await inBar()).toBe(bar);
+    };
+    await tabTo(/^Zoom In$/);
+    await page.keyboard.press('Enter');
+    await expect(page.locator(VIEWER)).toHaveClass(/\bis-zooming\b/);
+    await tabTo(/^Zoom Out$/, true);
+    await page.keyboard.press('Enter');
+    await expect(page.locator(VIEWER)).not.toHaveClass(/\bis-zooming\b/);
+    expect(await stop(), 'the focus once the bar went').toBe('Zoom In');
+
+    // * a page hides the message's actions until their rights come: one holding the focus keeps it in the viewer
+    const key = await page.evaluate(() => {
+      const {listLoader} = window.appMediaViewer;
+      return listLoader.previous.length ? 'ArrowLeft' : listLoader.next.length ? 'ArrowRight' : undefined;
+    });
+    if(key) {
+      await tabTo(/^(Forward|Copy Media|Download|Delete)$/);
+      const shown = await page.evaluate(() => window.appMediaViewer.target.mid);
+      await page.keyboard.press(key);
+      await expect.poll(() => page.evaluate(() => window.appMediaViewer.target.mid)).not.toBe(shown);
+      await page.waitForTimeout(1000);
+      expect(await stop(), 'the focus after paging').not.toMatch(/^OUT /);
+    }
+
+    await page.keyboard.press('Escape');
+    await expect(page.locator(VIEWER)).toHaveCount(0);
+    await expect.poll(() => page.evaluate((mid) => (document.activeElement as HTMLElement)?.matches(`.grid-item[data-mid="${mid}"]`), mid), {
+      message: 'the focus went back to the tile that opened the viewer'
+    }).toBe(true);
+  });
+
+  // * the player's controls have names too, the play button's coming with the icon it gets after it is made
+  test('names the controls of a video', async({page}) => {
+    test.setTimeout(4 * 60_000);
+    await openInViewer(page, await findSmallVideo(page));
+    await page.waitForSelector(`${VIEWER} .ckin__player`, {timeout: 60_000});
+    await page.waitForTimeout(500);
+    await expectNoA11yViolations(page, VIEWER);
+    expect(await page.locator(`${VIEWER} .ckin__player .left-controls .toggle`).getAttribute('aria-label')).toMatch(/^(Play|Pause)$/);
+  });
+
+  // * in full screen the player keeps the keyboard to itself, as the browser keeps it there: Tab goes round its own
+  // * controls, not on to the viewer's left behind it, which take no focus then
+  test('in full screen, Tab goes round the player\'s controls', async({page}) => {
+    test.setTimeout(4 * 60_000);
+    const message = await findSmallVideo(page, '/?noSharedWorker=1&a11y=1');
+    // * opened from a control, as the keyboard opens it: the viewer takes the focus
+    await page.locator('a.chatlist-chat').first().focus();
+    await openInViewer(page, message);
+    await page.waitForSelector(`${VIEWER} .ckin__player`, {timeout: 60_000});
+    await expect.poll(() => page.evaluate((viewer) => !!document.activeElement.closest(viewer), VIEWER)).toBe(true);
+    await page.locator(`${VIEWER} .ckin__player .right-controls > :last-child`).click();
+    await page.waitForFunction(() => !!document.fullscreenElement, null, {timeout: 15_000});
+
+    const stops = new Set<string>();
+    for(let i = 0; i < 12; ++i) {
+      await page.keyboard.press('Tab');
+      stops.add(await page.evaluate(() => {
+        const active = document.activeElement as HTMLElement;
+        const label = active.getAttribute('aria-label') || active.getAttribute('title') || active.tagName;
+        // * the browser passes through the document itself on its way round
+        return document.fullscreenElement.contains(active) || active === document.body ? label : 'OUT ' + label;
+      }));
+    }
+    expect([...stops].filter((stop) => stop.startsWith('OUT ')), `the focus went: ${[...stops].join(', ')}`).toEqual([]);
+    expect(stops.size, `the focus went round: ${[...stops].join(', ')}`).toBeGreaterThan(3);
+  });
+
   // * The URL of a picture can be gone by the time the viewer shows it: revoked, or its cache entry
   // * evicted. Such a picture loads nothing - it must not replace the thumbnail with an empty box, but be
   // * asked for anew. The worker is made to hand out a dead URL for one photo, every size of it, until
@@ -332,8 +455,8 @@ test.describe('the media viewer', () => {
 });
 
 /** signed in, a video of the recent chats small enough to download whole here, with a thumbnail to stand in for it */
-async function findSmallVideo(page: Page) {
-  await page.goto('/?noSharedWorker=1');
+async function findSmallVideo(page: Page, url = '/?noSharedWorker=1') {
+  await page.goto(url);
   await page.waitForFunction(() => document.querySelectorAll('.chatlist-chat').length > 0, null, {timeout: 180_000});
   const message = await page.evaluate(async() => {
     const managers = (window as any).appImManager.managers;

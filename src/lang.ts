@@ -5639,6 +5639,7 @@ const lang = {
   'AccDescr.StickerNumber': 'Sticker %s',
   'AccDescr.GifNumber': 'GIF %s',
   'AccDescr.Volume': 'Volume',
+  'AccDescr.Zoom': 'Zoom',
   'AccDescr.PlaybackPosition': 'Playback position',
   'AccDescr.OpenMedia': 'Open media',
   'AccDescr.MediaActions': 'Media actions',
