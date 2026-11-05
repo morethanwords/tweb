@@ -98,7 +98,4 @@ export const ca = {
 
 export const clamp = (v: number, limit: number): number => Math.max(-limit, Math.min(limit, v));
 export const clamp01 = (v: number): number => Math.max(0, Math.min(1, v));
-export const smoothstep01 = (v: number): number => {
-  const t = clamp01(v);
-  return t * t * (3 - 2 * t);
-};
+export {default as smoothstep01} from '@helpers/number/smoothstep01';

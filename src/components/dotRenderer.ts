@@ -18,9 +18,11 @@ import {drawImageFromSource} from '@components/messageSpoilerOverlay/drawImageFr
 import {adjustSpaceBetweenCloseRects, getInnerCustomRect, toDOMRectArray} from '@components/messageSpoilerOverlay/utils';
 import {observeResize} from '@components/resizeObserver';
 import {retainSpoilerRenderer, SpoilerRendererConnection} from '@components/spoilerRendererConnection';
-import type {SpoilerOverlayRect, SpoilerOverlayUpdate} from '@components/spoilerRenderer.worker';
+import type {MediaPlacement, MediaRect, SpoilerOverlayRect, SpoilerOverlayUpdate} from '@components/spoilerRenderer.worker';
 import {animateValue, simpleEasing} from '@helpers/animateValue';
 import {CancellablePromise} from '@helpers/cancellablePromise';
+import withTimeout from '@helpers/schedulers/withTimeout';
+import {doubleRaf} from '@helpers/schedulers';
 
 const SHADER_URLS: DotRendererShaderURLs = {
   vertex: 'assets/img/spoiler_vertex.glsl',
@@ -35,10 +37,46 @@ const WORKER_INIT_TIMEOUT = 8000;
 const MEDIA_DUST_SLOWDOWN = 1.9;
 const MEDIA_DUST_MIN_DURATION = 1800;
 const MEDIA_IMAGE_WAIT = 80;
+// * how long the page's cover waits for the worker to draw its own: a worker that draws nothing does not hold it up, and
+// * a slow one has its first frames (the first builds the grains) well before
+const MEDIA_COVER_HANDOFF_TIMEOUT = 1000;
+
+// * where the page draws the media under a spoiler, in its canvas's pixels: the element's box, and the picture in it as
+// * its object-fit lays it out (at the middle, object-position's default) - a fitted photo stands in a box of its own,
+// * a slideshow's picture is contained in its
+function getMediaPlacement(source: CanvasImageSource, canvasRect: DOMRect, dpr: number): MediaPlacement {
+  if(!(source instanceof HTMLElement)) return;
+
+  const box = source.getBoundingClientRect();
+  const [naturalWidth, naturalHeight] =
+    source instanceof HTMLImageElement ? [source.naturalWidth, source.naturalHeight] :
+    source instanceof HTMLVideoElement ? [source.videoWidth, source.videoHeight] :
+    source instanceof HTMLCanvasElement ? [source.width, source.height] :
+    [box.width, box.height];
+  if(!naturalWidth || !naturalHeight || !box.width || !box.height) return;
+
+  const fit = getComputedStyle(source).objectFit;
+  const contain = Math.min(box.width / naturalWidth, box.height / naturalHeight);
+  const scale =
+    fit === 'cover' ? Math.max(box.width / naturalWidth, box.height / naturalHeight) :
+    fit === 'contain' ? contain :
+    fit === 'scale-down' ? Math.min(1, contain) :
+    fit === 'none' ? 1 :
+    undefined; // * fill: stretched over the box
+  const width = scale === undefined ? box.width : naturalWidth * scale;
+  const height = scale === undefined ? box.height : naturalHeight * scale;
+  const toCanvas = (x: number, y: number, width: number, height: number): MediaRect =>
+    ({x: (x - canvasRect.left) * dpr, y: (y - canvasRect.top) * dpr, width: width * dpr, height: height * dpr});
+
+  return {
+    rect: toCanvas(box.left + (box.width - width) / 2, box.top + (box.height - height) / 2, width, height),
+    clip: toCanvas(box.left, box.top, box.width, box.height)
+  };
+}
 
 const getImageSpoilerConfig = (dpr: number): Partial<DotRendererConfig> => Modes.spoiler2 ? {
-  particlesCount: 3.5 * getDefaultParticlesCount(IMAGE_SPOILER_SIZE, IMAGE_SPOILER_SIZE),
-  radius: 1.2 * dpr,
+  particlesCount: 1.3 * getDefaultParticlesCount(IMAGE_SPOILER_SIZE, IMAGE_SPOILER_SIZE),
+  radius: 1.5 * dpr,
   timeScale: .9,
   longevity: 1
 } : {};
@@ -329,6 +367,9 @@ export default class DotRenderer implements AnimationItemWrapper {
   private static textInited = false;
   private static mediaWorkerReady: CancellablePromise<void>;
   private static textWorkerReady: CancellablePromise<void>;
+  // * Spoiler 2.0, a media's reveal: what hides the page's cover once the worker has drawn the cover itself, and what
+  // * ends it once nothing of the spoiler is left
+  private static mediaReveals = new Map<number, {covered: () => void, revealed: () => void}>();
 
   private static getShaderURLs() {
     return {
@@ -344,6 +385,10 @@ export default class DotRenderer implements AnimationItemWrapper {
         this.mediaWorkerReady?.resolve();
       } else if(message.type === 'text-inited') {
         this.textWorkerReady?.resolve();
+      } else if(message.type === 'media-revealing') {
+        this.mediaReveals.get(message.id)?.covered();
+      } else if(message.type === 'media-revealed') {
+        this.mediaReveals.get(message.id)?.revealed();
       } else if(message.type === 'dust-error') {
         console.error('[spoiler 2.0] fell back to the classic spoiler:', message.message);
       }
@@ -355,6 +400,7 @@ export default class DotRenderer implements AnimationItemWrapper {
 
     this.connection.release();
     this.connection = undefined;
+    this.mediaReveals.clear();
     this.mediaInited = this.textInited = false;
     this.mediaWorkerReady = this.textWorkerReady = undefined;
   }
@@ -486,17 +532,25 @@ export default class DotRenderer implements AnimationItemWrapper {
       dust: Modes.spoiler2
     }, [offscreen]);
 
+    let detached = false;
+    // * a picture for the worker's target, unless the target or the worker is gone by the time it is made
+    const postBitmap = (
+      message: {type: 'media-thumbnail', bitmap: ImageBitmap} | {type: 'media-image', bitmap: ImageBitmap, placement?: MediaPlacement}
+    ) => {
+      if(!detached && this.connection) this.connection.postMessage({...message, id}, [message.bitmap]);
+      else message.bitmap.close();
+    };
+
     if(Modes.spoiler2 && thumbnail) {
-      createImageBitmap(thumbnail).then((bitmap) => {
-        if(this.connection) this.connection.postMessage({type: 'media-thumbnail', id, bitmap}, [bitmap]);
-        else bitmap.close();
-      }, () => {});
+      createImageBitmap(thumbnail).then((bitmap) => postBitmap({type: 'media-thumbnail', bitmap}), () => {});
     }
 
     const animation = new AnimationItemNested({
       onPlay: () => this.connection?.postMessage({type: 'media-play', id}),
       onPause: () => this.connection?.postMessage({type: 'media-pause', id}),
       onDestroy: () => {
+        detached = true;
+        this.mediaReveals.delete(id);
         this.connection?.postMessage({type: 'media-detach', id});
         this.releaseConnection();
       }
@@ -539,13 +593,29 @@ export default class DotRenderer implements AnimationItemWrapper {
         const imagePromise = mediaSource ?
           createImageBitmap(mediaSource).catch((): ImageBitmap => undefined) :
           Promise.resolve<ImageBitmap>(undefined);
-        const waitPromise = new Promise<ImageBitmap>((resolve) => setTimeout(() => resolve(undefined), MEDIA_IMAGE_WAIT));
-        Promise.race([imagePromise, waitPromise]).then((bitmap) => {
-          if(bitmap) {
-            if(this.connection) this.connection.postMessage({type: 'media-image', id, bitmap}, [bitmap]);
-            else bitmap.close();
+        const placement = mediaSource && getMediaPlacement(mediaSource, bcr, dpr);
+        withTimeout(imagePromise, MEDIA_IMAGE_WAIT).then((bitmap) => {
+          // * a picture made after the wait is not used
+          if(!bitmap) imagePromise.then((late) => late?.close());
+          // * the spoiler went while its picture was made: nothing to reveal
+          if(detached) {
+            bitmap?.close();
+            return;
           }
 
+          if(bitmap) postBitmap({type: 'media-image', bitmap, placement});
+
+          // * the worker draws the cover from now on, and the page's goes once the worker's is on screen - two frames
+          // * after it says so, as a style changed here can be shown before a frame it has drawn: never a frame without
+          // * one (the wave is a dot yet). The reveal ends when the worker says nothing is left, at the latest when its
+          // * time is up
+          const hideCover = () => underLyingCanvas.style.visibility = 'hidden';
+          const revealed = () => {
+            this.mediaReveals.delete(id);
+            deferred.resolve();
+          };
+          this.mediaReveals.set(id, {covered: () => doubleRaf().then(hideCover), revealed});
+          setTimeout(hideCover, MEDIA_COVER_HANDOFF_TIMEOUT);
           this.connection?.postMessage({
             type: 'media-reveal',
             id,
@@ -553,8 +623,7 @@ export default class DotRenderer implements AnimationItemWrapper {
             maxDist,
             duration: dustDuration
           });
-          underLyingCanvas.style.visibility = 'hidden';
-          setTimeout(() => deferred.resolve(), dustDuration);
+          setTimeout(revealed, dustDuration);
         });
 
         return deferred;

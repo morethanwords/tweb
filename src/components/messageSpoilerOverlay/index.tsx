@@ -223,38 +223,49 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     pushOverlayState();
   }
 
+  // * the worker's canvas in device pixels: a step taller than the message, not its height - a message growing on
+  // * every frame (a details opening) does not resize the worker's canvas on every frame, only the spoilers move in it
+  function getOverlaySize(rect: DOMRect) {
+    return {
+      width: Math.round(rect.width * dpr()),
+      height: Math.round(Math.ceil(rect.height / OVERLAY_HEIGHT_STEP) * OVERLAY_HEIGHT_STEP * dpr())
+    };
+  }
+
   function pushOverlayState() {
     if(!overlayHandle) return;
 
     const rect = props.parentElement.getBoundingClientRect();
-    // * A step taller than the message, not its height: a message growing on every frame (a details
-    // * opening) does not resize the worker's canvas on every frame, only the spoilers move in it
-    const height = Math.ceil(rect.height / OVERLAY_HEIGHT_STEP) * OVERLAY_HEIGHT_STEP;
 
     // * shown at the size of the picture the worker last drew (`--committed-size`): one sized here
     // * changed a frame before the picture of that size came, and the old one was stretched over it
     canvas.style.setProperty('--dpr', '' + dpr());
 
-    const deviceWidth = Math.round(rect.width * dpr());
-    const deviceHeight = Math.round(height * dpr());
     overlayHandle.update({
-      width: deviceWidth,
-      height: deviceHeight,
+      ...getOverlaySize(rect),
       rects: spanRects(),
       backgroundColor: backgroundColor(),
       particleColor: particleColor()
     });
+  }
 
-    if(Modes.spoiler2) {
-      const rects = spanRects();
-      const key = deviceWidth + 'x' + deviceHeight + ':' + props.messageElement.textContent.length + ':' +
-        rects.map((spanRect) => Math.round(spanRect.left) + ',' + Math.round(spanRect.top) + ',' + Math.round(spanRect.width)).join(';');
-      if(key !== glyphsKey && rects.length) {
-        glyphsKey = key;
-        const bitmap = drawGlyphMask(props.messageElement, rect, deviceWidth, deviceHeight, dpr());
-        if(bitmap) overlayHandle.glyphs(bitmap);
-      }
-    }
+  // * what the dust of Spoiler 2.0 gathers into: the letters of the hidden text, measured as it is tapped - only a
+  // * reveal needs them, and a message that resizes (a details opening) would measure them again on every frame
+  function pushGlyphs() {
+    const rects = spanRects();
+    if(!overlayHandle || !rects.length) return;
+
+    const rect = props.parentElement.getBoundingClientRect();
+    const {width, height} = getOverlaySize(rect);
+    // * the text itself: an edit of the same length and boxes (equal-width digits) has other letters
+    const text = Array.from(props.messageElement.querySelectorAll('.spoiler-text'), (span) => span.textContent).join('\n');
+    const key = width + 'x' + height + ':' + text + ':' +
+      rects.map((spanRect) => Math.round(spanRect.left) + ',' + Math.round(spanRect.top) + ',' + Math.round(spanRect.width)).join(';');
+    if(key === glyphsKey) return;
+
+    glyphsKey = key;
+    const bitmap = drawGlyphMask(props.messageElement, rect, width, height, dpr());
+    if(bitmap) overlayHandle.glyphs(bitmap);
   }
 
   // * The overlay follows a frame behind the layout, so the text under it stays hidden while the message
@@ -338,6 +349,10 @@ function MessageSpoilerOverlay(props: InternalMessageSpoilerOverlayProps) {
     setMaxDist(computeMaxDistToMargin(e, rect, spanRects() || []) + 20);
 
     props.messageElement.classList.remove('is-hovering-spoiler');
+
+    if(Modes.spoiler2) {
+      pushGlyphs();
+    }
 
     // the worker mirrors the same curve for the pixels; the signal animation below
     // keeps driving the visibility class and the click guards

@@ -119,16 +119,26 @@ export async function concealMediaSpoilerWithAnimation(options: {
 }
 
 
+// * the media under the spoiler as it is shown: the largest picture of it there is - the blurred fill beside a fitted
+// * photo (wrapPhoto) and a thumbnail still in place are small ones
 function getRevealSource(mediaSpoiler: HTMLElement): CanvasImageSource {
   const parent = mediaSpoiler.parentElement;
   if(!parent) return;
 
+  let source: CanvasImageSource, sourceArea = 0;
   for(const element of parent.querySelectorAll<HTMLElement>('img, video, canvas')) {
     if(mediaSpoiler.contains(element)) continue;
-    if(element instanceof HTMLImageElement && element.complete && element.naturalWidth) return element;
-    if(element instanceof HTMLVideoElement && element.readyState >= 2) return element;
-    if(element instanceof HTMLCanvasElement && element.width && element.height) return element;
+    let area = 0;
+    if(element instanceof HTMLImageElement && element.complete) area = element.naturalWidth * element.naturalHeight;
+    else if(element instanceof HTMLVideoElement && element.readyState >= 2) area = element.videoWidth * element.videoHeight;
+    else if(element instanceof HTMLCanvasElement) area = element.width * element.height;
+    if(area > sourceArea) {
+      source = element as HTMLImageElement | HTMLVideoElement | HTMLCanvasElement;
+      sourceArea = area;
+    }
   }
+
+  return source;
 }
 
 function revealSpoilerWithAnimation(options: {
@@ -283,10 +293,6 @@ function wrapMediaSpoilerWithImage(options: {
   image.classList.add('media-spoiler-thumbnail');
 
   const container = createSpoilerContainer(middleware, decorative || inLink);
-  if(Modes.spoiler2) {
-    container.classList.add('spoiler-2');
-  }
-
   const {canvas, readyResult} = DotRenderer.create({
     ...options,
     thumbnail: image,

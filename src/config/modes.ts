@@ -35,9 +35,9 @@ export const KEPT_FLAGS = [
 
 export type KeptFlag = typeof KEPT_FLAGS[number];
 
-// * switched while the app runs, and read by the page alone: kept out of the workers' URLs, kept or from the page's
-// * own, where switching one would start a second SharedWorker for the same accounts
-const PAGE_ONLY_FLAGS: ReadonlySet<string> = new Set(['rtl', 'memoryWatch']);
+// * read by the page alone (some switched while the app runs): kept out of the workers' URLs, kept or from the page's
+// * own, where a tab with one and a tab without it would start a second SharedWorker for the same accounts
+const PAGE_ONLY_FLAGS: ReadonlySet<string> = new Set(['rtl', 'memoryWatch', 'spoiler2']);
 
 export function isPageOnlyFlag(flag: string) {
   return PAGE_ONLY_FLAGS.has(flag);

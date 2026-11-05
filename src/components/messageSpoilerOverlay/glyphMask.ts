@@ -1,3 +1,5 @@
+import {splitGraphemes} from '@lib/richTextProcessor/graphemes';
+
 const MAX_GLYPHS = 2000;
 
 export default function drawGlyphMask(
@@ -14,6 +16,7 @@ export default function drawGlyphMask(
   context.scale(dpr, dpr);
   context.fillStyle = '#fff';
   context.textBaseline = 'alphabetic';
+  // * left is the left edge in either direction: a piece of text is put where the page has its box
   context.textAlign = 'left';
 
   const range = document.createRange();
@@ -25,22 +28,36 @@ export default function drawGlyphMask(
       const text = node.data;
       const style = getComputedStyle(node.parentElement);
       context.font = style.font || (style.fontSize + ' ' + style.fontFamily);
+      context.direction = style.direction === 'rtl' ? 'rtl' : 'ltr';
       const metrics = context.measureText(text.trim()[0] || 'M');
       const ascent = metrics.fontBoundingBoxAscent;
       const descent = metrics.fontBoundingBoxDescent;
 
-      for(let index = 0; index < text.length; ++index) {
-        const char = text[index];
-        if(!char.trim()) continue;
-        if(++drawn > MAX_GLYPHS) return canvas.transferToImageBitmap();
+      // * the piece of text from `start` to `end` where the page has it, when it stands in one box
+      const drawPiece = (piece: string, start: number, end: number) => {
+        range.setStart(node, start);
+        range.setEnd(node, end);
+        const rects = range.getClientRects();
+        if(rects.length !== 1 || !rects[0].width) return false;
 
-        range.setStart(node, index);
-        range.setEnd(node, index + 1);
-        const rect = range.getClientRects()[0];
-        if(!rect || !rect.width) continue;
-
+        const rect = rects[0];
         const baseline = rect.top + (rect.height - ascent - descent) / 2 + ascent;
-        context.fillText(char, rect.left - parentRect.left, baseline - parentRect.top);
+        context.fillText(piece, rect.left - parentRect.left, baseline - parentRect.top);
+        return true;
+      };
+
+      // * a word at once, shaped as the page shapes it (joined Arabic, Indic clusters); one the line breaks, or one
+      // * of more than one box, grapheme by grapheme, never splitting one
+      for(const match of text.matchAll(/\S+/g)) {
+        if(++drawn > MAX_GLYPHS) return canvas.transferToImageBitmap();
+        const word = match[0];
+        if(drawPiece(word, match.index, match.index + word.length)) continue;
+
+        let offset = match.index;
+        for(const grapheme of splitGraphemes(word)) {
+          drawPiece(grapheme, offset, offset + grapheme.length);
+          offset += grapheme.length;
+        }
       }
     }
   }

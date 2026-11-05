@@ -75,25 +75,26 @@ describe('experimental flags', () => {
   });
 
   test('a worker gets the kept flags in its URL, but not the ones only the page reads', async() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(['debug', 'logs', 'rtl', 'noObjectUrlRevoke']));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(['debug', 'logs', 'rtl', 'spoiler2', 'noObjectUrlRevoke']));
     const {workerProxy} = await loadFresh();
     const url = workerProxy.makeWorkerURL('https://web.telegram.org/k/worker.js');
     expect(url.searchParams.get('debug')).toBe('1');
     expect(url.searchParams.get('noObjectUrlRevoke')).toBe('1');
     expect(url.searchParams.has('logs')).toBe(false);
     expect(url.searchParams.has('rtl')).toBe(false);
+    expect(url.searchParams.has('spoiler2')).toBe(false);
   });
 
   test('nor the page\'s own URL flags that only the page reads, while its own ?logs=1 goes on', async() => {
     const initial = location.href;
-    history.replaceState(null, '', '/k/?rtl=1&memoryWatch=1&logs=1&noPfs=1');
+    history.replaceState(null, '', '/k/?rtl=1&memoryWatch=1&spoiler2=1&logs=1&noPfs=1');
     try {
       const {workerProxy} = await loadFresh();
       const url = workerProxy.makeWorkerURL('https://web.telegram.org/k/worker.js');
       expect(url.searchParams.get('noPfs')).toBe('1');
       // * a worker of its own, collecting from its start: a tab without the flag never turns it off
       expect(url.searchParams.get('logs')).toBe('1');
-      expect(['rtl', 'memoryWatch'].filter((flag) => url.searchParams.has(flag))).toEqual([]);
+      expect(['rtl', 'memoryWatch', 'spoiler2'].filter((flag) => url.searchParams.has(flag))).toEqual([]);
     } finally {
       history.replaceState(null, '', initial);
     }
