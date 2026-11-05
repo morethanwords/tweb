@@ -213,6 +213,9 @@ export default class GroupCallInstance extends CallInstanceBase<{
   // Who a legacy video chat shows us as when it is not the account: a channel we speak as.
   // Every main join (and rejoin) asks for it; changeGroupCallJoinAs switches it.
   public joinAsPeerId?: PeerId;
+  // The speaker invite of the link the video chat was joined by, handed over by every main join and rejoin
+  // (tdesktop GroupCall::_joinHash); rejoinWithInviteHash sets it while the call goes on.
+  public inviteHash?: string;
 
   // ===== E2E (conference) mode =====
   // When set, this instance is a TdE2E-encrypted conference call rather than

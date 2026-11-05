@@ -661,6 +661,15 @@ defineStories('Calls', [
     }
   },
   {
+    // A call with a title of its own is named by it, not by the chat (tdesktop CreateOrJoinConfirmation)
+    id: 'call/joinTitledFromLink',
+    title: 'Join a video chat with a title from a link',
+    open: async(ctx) => {
+      const {showGroupCallJoinConfirmation} = await import('@components/groupCall/joinAs');
+      void showGroupCallJoinConfirmation({peerId: ctx.peer('supergroup'), isBroadcast: false, callTitle: 'Weekly sync 🗓'});
+    }
+  },
+  {
     id: 'call/joinLiveStreamFromLink',
     title: 'Join a live stream from a link',
     open: async(ctx) => {

@@ -15,7 +15,8 @@ const TITLE = vi.hoisted(() => ({}));
 
 vi.mock('@components/popups/pickUser', () => ({default: pickUserMock}));
 vi.mock('@components/confirmationPopup', () => ({default: confirmationPopupMock}));
-vi.mock('@components/wrappers/peerTitle', () => ({default: vi.fn(async() => TITLE)}));
+const wrapPeerTitleMock = vi.hoisted(() => vi.fn(async(_options: object) => TITLE));
+vi.mock('@components/wrappers/peerTitle', () => ({default: wrapPeerTitleMock}));
 vi.mock('@lib/calls/groupCallsController', () => ({default: {}}));
 vi.mock('@lib/calls/callAccount', () => ({showCallAccount: showCallAccountMock}));
 vi.mock('@components/peerTitle', () => ({default: class {}}));
@@ -154,6 +155,23 @@ describe('joining a video chat a link points at', () => {
       button: {langKey: 'VoiceChat.Topbar.Join'}
     });
     expect(pickUserMock).not.toHaveBeenCalled();
+  });
+
+  // * tdesktop CreateOrJoinConfirmation: the call's title, when it has one, rather than the chat's name
+  it('names the call by its title, when it has one', async() => {
+    const managers = makeManagers({peerIds: [ME], defaultPeerId: ME});
+    confirmationPopupMock.mockResolvedValue(undefined);
+
+    expect(await chooseGroupCallJoinAs({
+      account: makeAccount(managers),
+      peerId: CHAT,
+      hasCall: true,
+      confirm: true,
+      callTitle: 'Weekly sync'
+    })).toBe(ME);
+    // * the title drawn as a chat's name is: its emoji, its own direction
+    expect(wrapPeerTitleMock).toHaveBeenCalledWith({peerId: CHAT, accountNumber: ACCOUNT_NUMBER, fromName: 'Weekly sync'});
+    expect(confirmationPopupMock.mock.calls[0][0].descriptionLangArgs).toEqual([TITLE]);
   });
 
   it('calls a channel\'s a live stream', async() => {

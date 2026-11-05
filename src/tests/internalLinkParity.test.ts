@@ -415,7 +415,7 @@ describe('video chat links', () => {
     await click('tg_voicechat', HREF);
 
     expect(mocks.setInnerPeer).toHaveBeenCalledWith({peerId: PEER_ID});
-    expect(mocks.joinCallFromLink).toHaveBeenCalledWith(PEER_ID, '123');
+    expect(mocks.joinCallFromLink).toHaveBeenCalledWith(PEER_ID, '123', undefined);
     expect(mocks.joinGroupCall).not.toHaveBeenCalled();
   });
 
@@ -434,16 +434,18 @@ describe('video chat links', () => {
 
     await (window as any).tg_voicechat(a);
 
-    expect(mocks.joinCallFromLink).toHaveBeenCalledWith(PEER_ID, '123');
+    expect(mocks.joinCallFromLink).toHaveBeenCalledWith(PEER_ID, '123', undefined);
     expect(mocks.joinGroupCall).not.toHaveBeenCalled();
   });
 
+  // * the value is a speaker invite (tdesktop PeerByLinkInfo::voicechatHash), handed to the join
   test.each([
-    'https://t.me/somechannel?livestream',
-    'https://t.me/somechannel?videochat',
-    'https://t.me/somechannel?voicechat=hash',
-    'tg://resolve?domain=somechannel&livestream'
-  ])('ask before joining the chat\'s running call by %s, whatever it calls it', async(href) => {
+    ['https://t.me/somechannel?livestream', undefined],
+    ['https://t.me/somechannel?videochat', undefined],
+    ['https://t.me/somechannel?voicechat=hash', 'hash'],
+    ['tg://resolve?domain=somechannel&livestream', undefined],
+    ['tg://resolve?domain=somechannel&videochat=speaker', 'speaker']
+  ])('ask before joining the chat\'s running call by %s, whatever it calls it', async(href, inviteHash) => {
     mocks.resolveUsername.mockResolvedValue({_: 'channel', id: CHAT_ID, pFlags: {}});
     const {default: wrapUrl} = await import('@lib/richTextProcessor/wrapUrl');
 
@@ -451,7 +453,7 @@ describe('video chat links', () => {
 
     expect(mocks.resolveUsername).toHaveBeenCalledWith('somechannel');
     expect(mocks.setInnerPeer).toHaveBeenCalledWith({peerId: PEER_ID});
-    expect(mocks.joinCallFromLink).toHaveBeenCalledWith(PEER_ID, undefined);
+    expect(mocks.joinCallFromLink).toHaveBeenCalledWith(PEER_ID, undefined, inviteHash);
     expect(mocks.joinLiveStream).not.toHaveBeenCalled();
     expect(mocks.joinGroupCall).not.toHaveBeenCalled();
   });

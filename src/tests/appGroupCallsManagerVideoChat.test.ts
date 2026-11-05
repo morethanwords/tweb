@@ -205,7 +205,8 @@ describe('AppGroupCallsManager — join as', () => {
     expect(invokeApi.mock.calls[0][1].join_as).toEqual({_: 'inputPeerSelf'});
   });
 
-  it('joins as the channel it was asked to, and as the account otherwise', async() => {
+  // * the phone.joinGroupCall requests joins with these options send
+  async function getJoinRequests(...joins: Array<Parameters<ReturnType<typeof makeManager>['manager']['joinGroupCall']>[2]>) {
     const params: DataJSON = {_: 'dataJSON', data: '{"ssrc":1}'};
     const {manager, invokeApi} = makeManager({
       invokeApi: (method) => {
@@ -215,16 +216,33 @@ describe('AppGroupCallsManager — join as', () => {
       }
     });
 
-    await expect(manager.joinGroupCall(CALL.id, params, {type: 'main', joinAs: CHANNEL_ID})).rejects.toEqual({type: 'TEST_STOP'});
-    await expect(manager.joinGroupCall(CALL.id, params, {type: 'main'})).rejects.toEqual({type: 'TEST_STOP'});
-    await expect(manager.joinGroupCall(CALL.id, params, {type: 'main', joinAs: MY_ID})).rejects.toEqual({type: 'TEST_STOP'});
+    for(const options of joins) {
+      await expect(manager.joinGroupCall(CALL.id, params, options)).rejects.toEqual({type: 'TEST_STOP'});
+    }
 
-    const joins = invokeApi.mock.calls.filter(([method]) => method === 'phone.joinGroupCall');
-    expect(joins.map(([, request]) => request.join_as)).toEqual([
+    return invokeApi.mock.calls.filter(([method]) => method === 'phone.joinGroupCall').map(([, request]) => request);
+  }
+
+  it('joins as the channel it was asked to, and as the account otherwise', async() => {
+    const requests = await getJoinRequests(
+      {type: 'main', joinAs: CHANNEL_ID},
+      {type: 'main'},
+      {type: 'main', joinAs: MY_ID}
+    );
+
+    expect(requests.map((request) => request.join_as)).toEqual([
       {_: 'inputPeer', peerId: CHANNEL_ID},
       {_: 'inputPeerSelf'},
       {_: 'inputPeerSelf'}
     ]);
+  });
+
+  // * tdesktop GroupCall::sendJoinRequest: `invite_hash` only with a link's speaker invite
+  it('hands a link\'s speaker invite over with the join, and none without one', async() => {
+    const requests = await getJoinRequests({type: 'main', inviteHash: 'speaker'}, {type: 'main'});
+
+    expect(requests.map((request) => request.invite_hash)).toEqual(['speaker', undefined]);
+    expect('invite_hash' in requests[1]).toBe(false);
   });
 
   it('edits our own row as the channel we joined as', async() => {

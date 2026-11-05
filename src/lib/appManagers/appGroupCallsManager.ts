@@ -1270,6 +1270,8 @@ export class AppGroupCallsManager extends AppManager {
         video_stopped: !options.joinVideo
       };
 
+      if(options.inviteHash) request.invite_hash = options.inviteHash;
+
       // Conference (TdE2E) extras — only set when the caller drove the join
       // through the e2e path. Server distinguishes a conference join by the
       // presence of both fields.

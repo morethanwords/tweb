@@ -295,7 +295,9 @@ export class GroupCallsController extends EventListenerBase<{
     // * the account the call is joined on: the caller's when it asked
     account = captureCallAccount(this.managers),
     // a channel to be shown as instead of the account (getGroupCallJoinAs)
-    joinAs?: PeerId
+    joinAs?: PeerId,
+    // the speaker invite of the link it is joined by (t.me/<chat>?voicechat=<hash>)
+    inviteHash?: string
   ) {
     this.audioAsset.createAudio();
 
@@ -314,7 +316,7 @@ export class GroupCallsController extends EventListenerBase<{
     }
 
     const streamManager = await createMainStreamManager(muted, joinVideo);
-    return this.joinGroupCallInternal(chatId, groupCallId, streamManager, muted, joinVideo, account, joinAs)
+    return this.joinGroupCallInternal(chatId, groupCallId, streamManager, muted, joinVideo, account, joinAs, inviteHash)
     .then(() => {
       // have to refresh participants because of the new connection
       const {currentGroupCall} = this;
@@ -351,7 +353,8 @@ export class GroupCallsController extends EventListenerBase<{
     muted: boolean,
     joinVideo: boolean,
     account: CallAccount,
-    joinAs?: PeerId
+    joinAs?: PeerId,
+    inviteHash?: string
   ) {
     const log = this.log.bindPrefix('joinGroupCallInternal');
     log('start', groupCallId);
@@ -364,6 +367,8 @@ export class GroupCallsController extends EventListenerBase<{
     if(joinAs && joinAs !== account.myId) {
       currentGroupCall.joinAsPeerId = joinAs;
     }
+
+    currentGroupCall.inviteHash = inviteHash || undefined;
 
     // The first join holds the place of a rejoin until it settles: one started meanwhile ("Display me
     // as..." picked while phone.joinGroupCall is out) would replace the connection this join negotiates,
@@ -451,7 +456,8 @@ export class GroupCallsController extends EventListenerBase<{
         isMuted: options.muted,
         joinVideo: options.joinVideo,
         rejoin: options.rejoin,
-        joinAs: instance.joinAsPeerId
+        joinAs: instance.joinAsPeerId,
+        inviteHash: instance.inviteHash
       }
     });
 
@@ -668,6 +674,35 @@ export class GroupCallsController extends EventListenerBase<{
     }
 
     instance.joinAsPeerId = joinAs !== instance.myId ? joinAs : undefined;
+    await this.rejoinUnlessJoined(instance, (options) => options.joinAs === instance.joinAsPeerId, 'join-as');
+  }
+
+  /**
+   * A link's speaker invite for the video chat we are in: while an admin keeps us muted, join again with it, so that
+   * we may speak (tdesktop Instance::activateCurrentCall → GroupCall::rejoinWithHash) - even if we joined with it
+   * before, and were muted since. Nothing otherwise.
+   */
+  public async rejoinWithInviteHash(instance: GroupCallInstance, inviteHash: string): Promise<void> {
+    const {participant} = instance;
+    if(!inviteHash || instance.isConference || !participant || participant.pFlags.can_self_unmute) {
+      return;
+    }
+
+    instance.inviteHash = inviteHash;
+    // * only a rejoin under way now that goes out with it does instead
+    const isRejoining = this.groupCallRejoins.has(instance);
+    await this.rejoinUnlessJoined(instance, (options) => isRejoining && options.inviteHash === inviteHash, 'invite-hash');
+  }
+
+  /**
+   * Join again with what the instance holds now: a rejoin already under way finishes first, and if the connection
+   * it leaves went out with that already (`isJoined`), nothing more is done.
+   */
+  private async rejoinUnlessJoined(
+    instance: GroupCallInstance,
+    isJoined: (options: Extract<GroupCallConnectionInstance['options'], {type: 'main'}>) => boolean,
+    reason: string
+  ): Promise<void> {
     for(;;) {
       const pending = this.groupCallRejoins.get(instance);
       if(!pending) break;
@@ -676,11 +711,11 @@ export class GroupCallsController extends EventListenerBase<{
 
     const main = instance.connections.main;
     if(this.currentGroupCall !== instance || instance.isClosing ||
-      (main?.options?.type === 'main' && main.options.joinAs === instance.joinAsPeerId)) {
+      (main?.options?.type === 'main' && isJoined(main.options))) {
       return;
     }
 
-    await this.rejoinGroupCall(instance, 'join-as');
+    await this.rejoinGroupCall(instance, reason);
   }
 
   // phone.checkGroupCall: which of `sources` the server still has for us.

@@ -47,7 +47,7 @@ import IMAGE_MIME_TYPES_SUPPORTED from '@environment/imageMimeTypesSupport';
 import {NULL_PEER_ID, STARS_CURRENCY} from '@appManagers/constants';
 import telegramMeWebManager from '@lib/telegramMeWebManager';
 import {formatDate, ONE_DAY} from '@helpers/date';
-import createTopbarCall, {TopbarCallController} from '@components/topbarCall';
+import createTopbarCall, {showOngoingCall, TopbarCallController} from '@components/topbarCall';
 import confirmationPopup from '@components/confirmationPopup';
 import requestPhone from '@components/requestPhone';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
@@ -83,7 +83,7 @@ import idleController from '@helpers/idleController';
 import EventListenerBase from '@helpers/eventListenerBase';
 import {AckedResult} from '@lib/superMessagePort';
 import callTransitionCoordinator from '@lib/calls/callTransitionCoordinator';
-import {CallAccount, captureCallAccount} from '@lib/calls/callAccount';
+import {CallAccount, captureCallAccount, showCallAccount} from '@lib/calls/callAccount';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import groupCallsController from '@lib/calls/groupCallsController';
 import {chooseGroupCallJoinAs, confirmGroupCallJoin} from '@components/groupCall/joinAs';
@@ -2356,11 +2356,20 @@ export class AppImManager extends EventListenerBase<{
     });
   }
 
-  private discardCurrentCall(toPeerId: PeerId, toType: 'Live' | 'Voice' | 'Call' | 'Conference', ignoreGroupCall?: GroupCallInstance, ignoreCall?: CallInstance, ignoreLive?: RtmpCallInstance): Promise<void> {
-    if(groupCallsController.groupCall && groupCallsController.groupCall !== ignoreGroupCall) return this.discardGroupCallConfirmation(toPeerId, toType);
-    else if(callsController.currentCall && callsController.currentCall !== ignoreCall) return this.discardCallConfirmation(toPeerId, toType);
-    else if(rtmpCallsController.currentCall && rtmpCallsController.currentCall !== ignoreLive) return this.discardLiveConfirmation(toPeerId, toType);
-    else return Promise.resolve();
+  private async discardCurrentCall(...args: Parameters<AppImManager['confirmLeavingCurrentCall']>): Promise<void> {
+    const leave = await this.confirmLeavingCurrentCall(...args);
+    await leave?.();
+  }
+
+  /**
+   * Whether to leave the call the user is in for another: asked, and nothing left yet. Resolves to what leaves it,
+   * or to nothing when there is no call to leave; rejects with CallSwitchCancelledError when declined.
+   */
+  private confirmLeavingCurrentCall(toPeerId: PeerId, toType: 'Live' | 'Voice' | 'Call' | 'Conference', ignoreGroupCall?: GroupCallInstance, ignoreCall?: CallInstance, ignoreLive?: RtmpCallInstance): Promise<(() => Promise<void>) | undefined> {
+    if(groupCallsController.groupCall && groupCallsController.groupCall !== ignoreGroupCall) return this.confirmLeavingGroupCall(toPeerId, toType);
+    else if(callsController.currentCall && callsController.currentCall !== ignoreCall) return this.confirmLeavingCall(toPeerId, toType);
+    else if(rtmpCallsController.currentCall && rtmpCallsController.currentCall !== ignoreLive) return this.confirmLeavingLive(toPeerId, toType);
+    else return Promise.resolve(undefined);
   }
 
   private async discardAnyCallConfirmation(fromPeerId: PeerId, toPeerId: PeerId, fromType: Parameters<AppImManager['discardCurrentCall']>[1], toType: Parameters<AppImManager['discardCurrentCall']>[1]) {
@@ -2393,42 +2402,42 @@ export class AppImManager extends EventListenerBase<{
     return false;
   }
 
-  private async discardGroupCallConfirmation(toPeerId: PeerId, toType: Parameters<AppImManager['discardCurrentCall']>[1]) {
+  private async confirmLeavingGroupCall(toPeerId: PeerId, toType: Parameters<AppImManager['discardCurrentCall']>[1]) {
     const currentCall = groupCallsController.groupCall;
-    if(currentCall) {
-      // A GroupCallInstance carrying an e2e worker is a TdE2E conference — it has
-      // no backing chat (chatId is NULL_PEER_ID), so render it as `Conference`
-      // (its strings omit the peer) instead of an empty `video chat in ""`.
-      // Legacy SFU voice chats keep `Voice`.
-      const fromType = currentCall.e2e ? 'Conference' : 'Voice';
-      await this.discardAnyCallConfirmation(currentCall.chatId.toPeerId(true), toPeerId, fromType, toType);
+    // A GroupCallInstance carrying an e2e worker is a TdE2E conference — it has
+    // no backing chat (chatId is NULL_PEER_ID), so render it as `Conference`
+    // (its strings omit the peer) instead of an empty `video chat in ""`.
+    // Legacy SFU voice chats keep `Voice`.
+    const fromType = currentCall.e2e ? 'Conference' : 'Voice';
+    await this.discardAnyCallConfirmation(currentCall.chatId.toPeerId(true), toPeerId, fromType, toType);
 
+    return async() => {
       if(groupCallsController.groupCall === currentCall) {
         await currentCall.hangUp();
       }
-    }
+    };
   }
 
-  private async discardCallConfirmation(toPeerId: PeerId, toType: Parameters<AppImManager['discardCurrentCall']>[1]) {
+  private async confirmLeavingCall(toPeerId: PeerId, toType: Parameters<AppImManager['discardCurrentCall']>[1]) {
     const currentCall = callsController.currentCall;
-    if(currentCall) {
-      await this.discardAnyCallConfirmation(currentCall.interlocutorUserId.toPeerId(false), toPeerId, 'Call', toType);
+    await this.discardAnyCallConfirmation(currentCall.interlocutorUserId.toPeerId(false), toPeerId, 'Call', toType);
 
+    return async() => {
       if(!currentCall.isClosing) {
         await currentCall.hangUp('phoneCallDiscardReasonDisconnect');
       }
-    }
+    };
   }
 
-  private async discardLiveConfirmation(toPeerId: PeerId, toType: Parameters<AppImManager['discardCurrentCall']>[1]) {
+  private async confirmLeavingLive(toPeerId: PeerId, toType: Parameters<AppImManager['discardCurrentCall']>[1]) {
     const currentCall = rtmpCallsController.currentCall;
-    if(currentCall) {
-      await this.discardAnyCallConfirmation(currentCall.chatId.toPeerId(true), toPeerId, 'Live', toType);
+    await this.discardAnyCallConfirmation(currentCall.chatId.toPeerId(true), toPeerId, 'Live', toType);
 
+    return async() => {
       if(rtmpCallsController.currentCall === currentCall) {
         await rtmpCallsController.leaveCall();
       }
-    }
+    };
   }
 
   /**
@@ -2736,12 +2745,14 @@ export class AppImManager extends EventListenerBase<{
   /**
    * The chat's video chat or live stream a link points at — t.me/<chat>?videochat (?voicechat, ?livestream), or
    * tg://voicechat?chat_id=…&id=… from anywhere but the chat's own service message (tdesktop
-   * SessionNavigation::joinVoiceChatFromLink): only the call running there, the one the link names when it names
-   * one, never a new one, and only once the user said so (JoinConfirm::Always) — the one question asked is who to
-   * be, when there is a choice, or else whether to join at all. A live stream is watched and any other call joined,
-   * whatever the link called it.
+   * SessionNavigation::joinVoiceChatFromLink → Instance::startOrJoinGroupCall with JoinConfirm::Always): only the
+   * call running there, the one the link names when it names one, never a new one, and only once the user said so.
+   * The call the user is in already is only shown. In another call, the one question is whether to leave it
+   * (Instance::confirmLeaveCurrent); otherwise it is who to be, when there is a choice, or else whether to join at
+   * all, naming the call by its title. A live stream is watched and any other call joined, whatever the link called
+   * it; `inviteHash`, a speaker invite (?voicechat=<hash>), goes with the join.
    */
-  public joinCallFromLink(peerId: PeerId, groupCallId?: GroupCallId): Promise<void> {
+  public joinCallFromLink(peerId: PeerId, groupCallId?: GroupCallId, inviteHash?: string): Promise<void> {
     // * the account the call is joined on: the tab can switch to another while this waits its turn
     const account = captureCallAccount(this.managers);
     return this.callTransitions.run(async() => {
@@ -2752,30 +2763,68 @@ export class AppImManager extends EventListenerBase<{
         return undefined;
       });
       if(!call) {
-        toastNew({langPackKey: 'VoiceChat.Chat.Ended'});
+        toastNew({langPackKey: 'VoiceChat.LinkInvalid'});
         return;
       }
 
-      if(call.pFlags.rtmp_stream) {
-        if(await confirmGroupCallJoin(account, peerId)) {
-          await this.discardCurrentCall(peerId, 'Live');
-          await this.watchLiveStream(peerId, account, call.id);
+      // * the call the user is in already, on this account: shown, nothing asked (tdesktop
+      // * Instance::activateCurrentCall), and its speaker invite used when an admin keeps us muted there
+      const isThisCall = (instance: Pick<CallAccount, 'accountNumber'> & {chatId: ChatId}, id: GroupCallId) => {
+        return instance.accountNumber === account.accountNumber && instance.chatId === chatId && String(id) === String(call.id);
+      };
+
+      const groupCall = groupCallsController.groupCall;
+      if(groupCall && groupCallsController.isCurrentGroupCall(groupCall) && isThisCall(groupCall, groupCall.id)) {
+        showOngoingCall(groupCall);
+        await groupCallsController.rejoinWithInviteHash(groupCall, inviteHash).catch((err) => {
+          this.log.error('rejoin with the invite of a link', err);
+        });
+        return;
+      }
+
+      // * a stream has no one to speak: tdesktop makes no speaker invite for one
+      const liveCall = rtmpCallsController.currentCall;
+      if(liveCall && isThisCall(liveCall, liveCall.call.id)) {
+        showOngoingCall(liveCall);
+        return;
+      }
+
+      const isLive = !!call.pFlags.rtmp_stream;
+      if(!isLive && !IS_GROUP_CALL_SUPPORTED) {
+        return;
+      }
+
+      // * in another call, leaving it is what is asked, and joining this one is then asked no more; every
+      // * question is the joining account's: the tab goes back to it first
+      await showCallAccount(account.accountNumber);
+      let leaveCurrentCall: () => Promise<void>;
+      try {
+        leaveCurrentCall = await this.confirmLeavingCurrentCall(peerId, isLive ? 'Live' : 'Voice');
+      } catch(err) {
+        if(err instanceof CallSwitchCancelledError) return;
+        throw err;
+      }
+
+      const confirm = !leaveCurrentCall;
+      if(isLive) {
+        if(confirm && !(await confirmGroupCallJoin(account, peerId, call.title))) {
+          return;
         }
 
-        return;
-      }
-
-      if(!IS_GROUP_CALL_SUPPORTED) {
+        await leaveCurrentCall?.();
+        await this.watchLiveStream(peerId, account, call.id);
         return;
       }
 
       preloadNoiseSuppression();
-      const joinAs = await this.chooseJoinAsAndLeaveCurrentCall({account, peerId, hasCall: true, confirm: true});
+      // * who to be is asked before the call we are in is left: dismissing the question leaves it be
+      const joinAs = await chooseGroupCallJoinAs({account, peerId, hasCall: true, confirm, callTitle: call.title});
       if(joinAs === undefined) {
         return;
       }
 
-      await groupCallsController.joinGroupCall(chatId, call.id, true, false, undefined, account, joinAs);
+      await leaveCurrentCall?.();
+      await groupCallsController.joinGroupCall(chatId, call.id, true, false, undefined, account, joinAs, inviteHash);
     });
   }
 

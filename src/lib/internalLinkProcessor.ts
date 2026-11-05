@@ -1484,7 +1484,9 @@ export class InternalLinkProcessor {
       return appImManager.joinGroupCall(peerId, link.id);
     }
 
-    return appImManager.joinCallFromLink(peerId, link.id);
+    // * ?voicechat=<hash>: a speaker invite, which the join hands over (tdesktop PeerByLinkInfo::voicechatHash)
+    const inviteHash = link.livestream ?? link.videochat ?? link.voicechat;
+    return appImManager.joinCallFromLink(peerId, link.id, inviteHash || undefined);
   };
 
   // t.me/call/<slug> handler. Hand the slug to `appImManager.joinConference`,

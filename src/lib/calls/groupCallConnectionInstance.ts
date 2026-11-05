@@ -53,6 +53,8 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     rejoin?: boolean,
     // Who a legacy video chat shows us as: a channel we speak as, or (unset) the account.
     joinAs?: PeerId,
+    // The speaker invite of the link the call was joined by (phone.joinGroupCall `invite_hash`).
+    inviteHash?: string,
     // Conference (TdE2E) join: when set, passed to phone.joinGroupCall as
     // the `public_key` + `block` fields. Server treats the join as a
     // conference iff BOTH are present.

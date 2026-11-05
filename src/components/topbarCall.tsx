@@ -79,6 +79,17 @@ export type TopbarCallController = {
   destroy: () => void
 };
 
+/** Bring a call the user is in into view: what a click on its plate does, and a link to that very call. */
+export function showOngoingCall(instance: AnyInstance) {
+  if(instance instanceof RtmpCallInstance) {
+    AppMediaViewerRtmp.closeActivePip();
+  } else if(instance instanceof GroupCallInstance) {
+    showGroupCallPopup();
+  } else if(instance instanceof CallInstance) {
+    showCallPopup(instance);
+  }
+}
+
 export default function createTopbarCall(managers: TabManagers): TopbarCallController {
   const listenerSetter = new ListenerSetter();
   let instanceListenerSetter: ListenerSetter | undefined;
@@ -421,14 +432,7 @@ export default function createTopbarCall(managers: TabManagers): TopbarCallContr
 
   const onPlateClick = () => {
     const inst = instance();
-    if(!inst) return;
-    if(inst instanceof RtmpCallInstance) {
-      AppMediaViewerRtmp.closeActivePip();
-    } else if(inst instanceof GroupCallInstance) {
-      showGroupCallPopup();
-    } else if(inst instanceof CallInstance) {
-      showCallPopup(inst);
-    }
+    if(inst) showOngoingCall(inst);
   };
 
   // ───────────────────────── Plate ─────────────────────────

@@ -456,6 +456,57 @@ describe('legacy group call transport recovery', () => {
     expect(created[1].options.joinAs).toBeUndefined();
   });
 
+  // * tdesktop GroupCall::rejoinWithHash: only while an admin keeps us muted (or our hand is raised)
+  it('joins again with a link\'s speaker invite while an admin keeps us muted, and never otherwise', async() => {
+    const {controller} = makeController();
+    const {instance, main, created} = makeLegacyInstance();
+    main.options = {type: 'main'};
+    controller.setCurrentGroupCall(instance);
+
+    // * free to speak: the invite has nothing to give
+    instance.participant = {pFlags: {muted: true, can_self_unmute: true}};
+    await controller.rejoinWithInviteHash(instance, 'speaker');
+    expect(created).toHaveLength(0);
+    expect(instance.inviteHash).toBeUndefined();
+
+    instance.participant = {pFlags: {muted: true}};
+    await controller.rejoinWithInviteHash(instance, undefined);
+    expect(created).toHaveLength(0);
+
+    await controller.rejoinWithInviteHash(instance, 'speaker');
+    expect(instance.inviteHash).toBe('speaker');
+    expect(created).toHaveLength(1);
+    expect(instance.createConnectionInstance).toHaveBeenCalledWith(expect.objectContaining({
+      streamManager: main.streamManager,
+      options: expect.objectContaining({type: 'main', inviteHash: 'speaker', rejoin: true})
+    }));
+
+    // * every rejoin after keeps it
+    await controller.joinGroupCall(99 as ChatId, INPUT.id, false, true);
+    expect(created).toHaveLength(2);
+    expect(created[1].options.inviteHash).toBe('speaker');
+
+    // * muted by an admin since: the same invite is used again
+    await controller.rejoinWithInviteHash(instance, 'speaker');
+    expect(created).toHaveLength(3);
+    expect(created[2].options.inviteHash).toBe('speaker');
+  });
+
+  it('asks nothing more of a link\'s speaker invite that a rejoin under way goes out with', async() => {
+    const {controller} = makeController();
+    const {instance, main, created} = makeLegacyInstance();
+    main.options = {type: 'main'};
+    instance.participant = {pFlags: {muted: true}};
+    controller.setCurrentGroupCall(instance);
+
+    const first = controller.rejoinWithInviteHash(instance, 'speaker');
+    const second = controller.rejoinWithInviteHash(instance, 'speaker');
+    await Promise.all([first, second]);
+
+    expect(created).toHaveLength(1);
+    expect(created[0].options.inviteHash).toBe('speaker');
+  });
+
   it('never switches a conference away from the account', async() => {
     const {controller} = makeController();
     const {instance, created} = makeLegacyInstance();
@@ -489,7 +540,9 @@ describe('"Display me as..." picked while the first join is out', () => {
       streamManager: unknown,
       muted: boolean,
       joinVideo: boolean,
-      account: unknown
+      account: unknown,
+      joinAs?: PeerId,
+      inviteHash?: string
     ) => Promise<void>
   };
 
@@ -497,7 +550,10 @@ describe('"Display me as..." picked while the first join is out', () => {
    * A first join whose phone.joinGroupCall answers when `negotiated` settles, the call current meanwhile;
    * `onNegotiated` runs as the answer comes, where the transport's watcher starts.
    */
-  async function startFirstJoin(onNegotiated?: (joining: GroupCallInstance, internals: FirstJoinInternals) => void) {
+  async function startFirstJoin(
+    onNegotiated?: (joining: GroupCallInstance, internals: FirstJoinInternals) => void,
+    inviteHash?: string
+  ) {
     const {controller} = makeController();
     Object.assign(lastManagers.appGroupCallsManager, {
       getGroupCallFull: vi.fn(async() => ({_: 'groupCall', id: INPUT.id})),
@@ -519,12 +575,22 @@ describe('"Display me as..." picked while the first join is out', () => {
     const reconnect = vi.spyOn(internals, 'reconnectMainConnection').mockResolvedValue(undefined);
     const rejoin = vi.spyOn(internals, 'rejoinGroupCall');
     const account = {accountNumber: 1, managers: lastManagers, myId: (1).toPeerId()};
-    const joining = internals.joinGroupCallInternal(99 as ChatId, INPUT.id, {stop: vi.fn()}, true, false, account);
+    const joining = internals.joinGroupCallInternal(99 as ChatId, INPUT.id, {stop: vi.fn()}, true, false, account, undefined, inviteHash);
     await flush();
     const instance = controller.groupCall;
     expect(instance).toBeInstanceOf(GroupCallInstance);
     return {controller, negotiated, reconnect, rejoin, joining, instance};
   }
+
+  it('goes out with the speaker invite of the link it was joined by', async() => {
+    const {negotiated, joining, instance} = await startFirstJoin(undefined, 'speaker');
+    expect(instance.inviteHash).toBe('speaker');
+
+    negotiated.resolve();
+    await joining;
+    // * its player off the page, for the cases after it
+    instance.cleanup();
+  });
 
   it('waits for the join to settle and then joins again as the pick', async() => {
     const {controller, negotiated, reconnect, rejoin, joining, instance} = await startFirstJoin();

@@ -5607,6 +5607,8 @@ const lang = {
   'VoiceChat.Chat.Ended': 'Video chat ended.',
   'VoiceChat.JoinConfirm': 'Join the video chat **%@**?',
   'VoiceChat.JoinConfirm.Channel': 'Do you want to join the live stream **%@**?',
+  // * a link to a video chat or a live stream that is not running (tdesktop lng_group_invite_bad_link)
+  'VoiceChat.LinkInvalid': 'This invite link is invalid or has expired.',
   'VoiceChat.Topbar.Join': 'Join',
   'VoiceChat.Status.Connecting': 'Connecting...',
   'VoiceChat.Status.Members': {
