@@ -825,7 +825,8 @@ export default class DialogsStorage extends AppManager {
 
     if(wasIndex !== -1) {
       dialogs.splice(wasIndex, 1);
-      if(adjustCount) {
+      // * one that only moves within the folder (put back below, by the same test of its index) is still counted
+      if(adjustCount && !newDialogIndex) {
         --folder.count;
       }
     }

@@ -1,5 +1,7 @@
 import DialogsStorage from '@lib/storages/dialogs';
 import {Dialog as MTDialog} from '@layer';
+import {FOLDER_ID_ALL} from '@appManagers/constants';
+import makeDialogFilter from '@/tests/helpers/dialogFilter';
 import '@helpers/peerIdPolyfill';
 
 const makeHistoryStorage = () => ({
@@ -101,4 +103,40 @@ export function makeDialog(userId: number, fields?: Partial<MTDialog.dialog>): M
     notify_settings: {_: 'peerNotifySettings'},
     ...fields
   } as any;
+}
+
+/**
+ * A storage of All Chats whose chats' top messages are of the dates a test gives them (`dates`, by `peerId_mid`):
+ * `save` puts a chat in it as a page of the list does, `order` reads its chats from the top
+ */
+export function createAllChatsStorage() {
+  const dates = new Map<string, number>();
+  const storage = createDialogsStorage({
+    appMessagesManager: {
+      getMessageByPeer: (peerId: PeerId, mid: number) => dates.has(`${peerId}_${mid}`) ?
+        {_: 'message', mid, date: dates.get(`${peerId}_${mid}`), pFlags: {}} :
+        undefined,
+      getDialogUnreadCount: () => 0
+    },
+    appNotificationsManager: {
+      isPeerLocalMuted: () => false
+    },
+    appPeersManager: {
+      isForum: () => false
+    },
+    filtersStorage: {
+      getFilters: () => ({[FOLDER_ID_ALL]: makeDialogFilter(FOLDER_ID_ALL, FOLDER_ID_ALL)}),
+      testDialogForFilter: (dialog: any, filter: any) => !filter || dialog.folder_id === filter.id
+    }
+  });
+
+  const save = (userId: number, topMessage: number, date: number, options: {keepPlace?: boolean} = {}) => {
+    dates.set(`${userId}_${topMessage}`, date);
+    const dialog = makeDialog(userId, {top_message: topMessage});
+    storage.saveDialog({dialog: dialog as any, ...options});
+    return dialog;
+  };
+  const order = () => storage.getFolderDialogs(FOLDER_ID_ALL, false).map((dialog) => +dialog.peerId);
+
+  return {storage, dates, save, order};
 }

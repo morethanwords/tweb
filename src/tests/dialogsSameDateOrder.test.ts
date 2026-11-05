@@ -1,6 +1,5 @@
 import {FOLDER_ID_ALL} from '@appManagers/constants';
-import {createDialogsStorage, makeDialog} from '@/tests/helpers/dialogsStorage';
-import makeDialogFilter from '@/tests/helpers/dialogFilter';
+import {createAllChatsStorage} from '@/tests/helpers/dialogsStorage';
 
 const DATE = 1770733527;
 
@@ -8,40 +7,18 @@ const DATE = 1770733527;
 // * one is opened, read or refreshed from the server, only when one of them gets a new top message
 describe('dialogs of one date', () => {
   const setup = () => {
-    const dates = new Map<string, number>();
-    const storage = createDialogsStorage({
-      appMessagesManager: {
-        getMessageByPeer: (peerId: PeerId, mid: number) => dates.has(`${peerId}_${mid}`) ?
-          {_: 'message', mid, date: dates.get(`${peerId}_${mid}`), pFlags: {}} :
-          undefined,
-        getDialogUnreadCount: () => 0
-      },
-      appNotificationsManager: {
-        isPeerLocalMuted: () => false
-      },
-      appPeersManager: {
-        isForum: () => false
-      },
-      filtersStorage: {
-        getFilters: () => ({[FOLDER_ID_ALL]: makeDialogFilter(FOLDER_ID_ALL, FOLDER_ID_ALL)}),
-        testDialogForFilter: (dialog: any, filter: any) => !filter || dialog.folder_id === filter.id
-      }
-    });
-
-    const save = (userId: number, topMessage: number, options: {keepPlace?: boolean} = {}) => {
-      dates.set(`${userId}_${topMessage}`, DATE);
-      const dialog = makeDialog(userId, {top_message: topMessage});
-      storage.saveDialog({dialog: dialog as any, ...options});
-      return dialog;
+    const chats = createAllChatsStorage();
+    const save = (userId: number, topMessage: number, options?: {keepPlace?: boolean}) => {
+      return chats.save(userId, topMessage, DATE, options);
     };
-    const order = () => storage.getFolderDialogs(FOLDER_ID_ALL, false).map((dialog) => +dialog.peerId);
+    const {order} = chats;
 
     // * a page of the list is saved from its end, so the one above comes last
     save(100, 1);
     save(200, 1);
     expect(order()).toEqual([200, 100]);
 
-    return {storage, dates, save, order};
+    return {...chats, save};
   };
 
   test('keep their order when one of them is read or opened', () => {
