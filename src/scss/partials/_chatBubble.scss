@@ -32,6 +32,7 @@
   height: var(--message-out-gradient-height, 100%);
   border-radius: 0;
   background-size: 100% 100%;
+  image-rendering: var(--message-out-gradient-rendering, auto);
   // * the column across both ways: what took it in may start inside the bubble's tail
   transform: scaleX(calc(20000 - 19999 * var(--message-out-gradient-freeform, 0)));
   transform-origin: 50% 0;

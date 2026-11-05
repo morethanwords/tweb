@@ -60,6 +60,7 @@ import {
   getShapeTracks,
   getTailOffset,
   isVisible,
+  paintShapeGradient,
   Point,
   snapBox,
   startOnNextFrame,
@@ -1293,10 +1294,15 @@ export class BubbleTransition {
       });
       const fades = fromFilled !== toFilled;
       if((fromFilled || toFilled) && (isResized || fades)) {
-        // a bubble of a gradient is (nearly) all of its colour where it ends up: the shape is of that, over its piece
-        // of the gradient, which gives way (`.morphing`); one that has no background any more keeps the colour it was
-        const color = readOutgoingMessageGradient(content) ? toBackground.color : background.color;
+        // a bubble of a gradient is of the part of it where it ends up, which the shape is drawn of, its own piece giving
+        // way (`.morphing`); one that has no background any more keeps the colour it was
+        const gradient = readOutgoingMessageGradient(content);
+        const color = gradient ? toBackground.color : background.color;
         const parts = createShapeParts({...background, color, radii}, tail?.element);
+        if(gradient) {
+          paintShapeGradient(parts, gradient, to, origin);
+        }
+
         const under = createLayer();
         under.classList.add(styles.under);
         under.append(parts.background);

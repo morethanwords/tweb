@@ -9,7 +9,7 @@
  */
 
 import {getAppWindow} from '@helpers/appWindow';
-import {getOutgoingMessageGradientColorAt, readOutgoingMessageGradient} from '@helpers/outgoingMessageGradient';
+import {getOutgoingMessageGradientColorAt, OutgoingMessageGradientPlace, readOutgoingMessageGradient} from '@helpers/outgoingMessageGradient';
 import styles from '@components/chat/bubbleShape.module.scss';
 
 export type Box = {left: number, top: number, right: number, bottom: number};
@@ -285,6 +285,39 @@ export function createShapeParts(background: BubbleBackground, tail?: HTMLElemen
   const tailAxes = tail && createAxes(tail);
   root.append(...[shape, tailAxes?.across].filter(Boolean));
   return {background: root, bands, corners, tail: tailAxes};
+}
+
+/**
+ * The pieces of a bubble's background drawn of the outgoing bubbles' gradient (`message-out-gradient`) rather than of
+ * its colour, each of the part of it it stands over where it ends up (`to`, from `origin` on the page as the gradient's
+ * frame is): it is stretched with the piece on the way, so the bubble is of the gradient all the way and lands on the
+ * colours it is drawn in there
+ */
+export function paintShapeGradient(parts: ShapeParts, {picture, frame}: OutgoingMessageGradientPlace, to: ShapePlaces, origin: Point) {
+  const image = `url("${picture.url}")`;
+  // * the frame from the corner of the piece as it is laid out, of which `scale` stretches it
+  const paint = (element: HTMLElement, at: Point, scale: Point = {x: 1, y: 1}) => {
+    if(!scale.x || !scale.y) {
+      return;
+    }
+
+    const {style} = element;
+    style.backgroundImage = image;
+    style.backgroundRepeat = 'no-repeat';
+    style.imageRendering = picture.rendering;
+    style.backgroundSize = `${boxWidth(frame) / scale.x}px ${boxHeight(frame) / scale.y}px`;
+    style.backgroundPosition = `${(frame.left - origin.x - at.x) / scale.x}px ${(frame.top - origin.y - at.y) / scale.y}px`;
+  };
+
+  parts.bands.forEach(({part}, index) => {
+    const box = to.shape.bands[index];
+    paint(part, {x: box.left, y: box.top}, {x: boxWidth(box) / PIECE_SIZE, y: boxHeight(box) / PIECE_SIZE});
+  });
+  parts.corners.forEach(({part}, index) => paint(part, to.shape.corners[index]));
+  // * the tail's copy is drawn by what is in it (`copyTail`)
+  if(parts.tail && to.tail) {
+    paint(parts.tail.part.firstElementChild as HTMLElement, to.tail);
+  }
 }
 
 export function setShapeRadii(corners: Axes[], radii: Radii) {

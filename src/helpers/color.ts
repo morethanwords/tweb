@@ -363,12 +363,15 @@ export function darkenToMaxLuminance(hex: string, maxL: number): string {
   return '#' + c(r) + c(g) + c(b);
 }
 
+/** The luminance above which a colour is light: black reads on it better than white, which reads better under it */
+export const LIGHT_LUMINANCE = .179;
+
 /** Adjust only colours that fail text contrast, retaining the original hue. */
 export function ensureTextContrast(hex: string, background: ColorRgb, ratio = 4.9): string {
   const rgb = hexToRgb(hex);
   const backgroundLuminance = relativeLuminance(background);
   if(getContrastRatio(rgb, background) >= ratio) return hex;
-  if(backgroundLuminance > .179) {
+  if(backgroundLuminance > LIGHT_LUMINANCE) {
     return darkenToMaxLuminance(hex, (backgroundLuminance + .05) / ratio - .05);
   }
 

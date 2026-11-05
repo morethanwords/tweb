@@ -1,7 +1,12 @@
-import {channelsLuminance, ColorRgb, darkenToMaxLuminance, ensureTextContrast, getContrastRatio, getHexColorFromTelegramColor, hexToRgb, mixColors, relativeLuminance, rgbaToHexa} from '@helpers/color';
+import {channelsLuminance, ColorRgb, darkenToMaxLuminance, getHexColorFromTelegramColor, hexToRgb, LIGHT_LUMINANCE, mixColors, relativeLuminance, rgbaToHexa} from '@helpers/color';
 import {getGradientPixels, GRADIENT_PHASES, GRADIENT_SIZE} from '@helpers/freeformGradient';
 import clamp from '@helpers/number/clamp';
+import bytesToDataURL from '@helpers/bytes/bytesToDataURL';
+import crc32 from '@helpers/number/crc32';
+import {zlibSync} from 'fflate';
 import {holdCount, releaseCount} from '@helpers/holdCount';
+import {lerp} from '@helpers/lerp';
+import setStyleProperty from '@helpers/dom/setStyleProperty';
 
 // * the outgoing bubbles' fill when the theme gives them more than one colour: a gradient over the chat's frame
 // * (`.bubbles`), of which every bubble shows the part it stands over, as on Android, iOS and Desktop
@@ -14,6 +19,8 @@ const IMAGE_PROPERTY = '--message-out-gradient-image';
 export const MESSAGE_OUT_GRADIENT_IMAGE_PROPERTY = `${IMAGE_PROPERTY}-0`;
 // * 1 for the freeform gradient: its picture is stretched over the whole frame, not from a column
 const FREEFORM_PROPERTY = '--message-out-gradient-freeform';
+// * how its picture is drawn stretched (`image-rendering`): the vertical one's column from its nearest row (`COLUMN_HEIGHT`)
+const RENDERING_PROPERTY = '--message-out-gradient-rendering';
 // * whether the theme has a gradient, for what draws it to be laid out (`display`): a piece is a layer of the
 // * compositor's even when it draws nothing
 const DISPLAY_PROPERTY = '--message-out-gradient-display';
@@ -44,22 +51,32 @@ export type OutgoingMessageGradient = {
   freeform?: {textColor: ColorRgb}
 };
 
-// * what a gradient's piece is filled with, a picture stretched over the frame: its pixels, to tell the colour at a place
-type Picture = {width: number, height: number, pixels: Uint8ClampedArray};
+// * what a gradient's piece is filled with, a picture stretched over the frame: its address, how it is drawn stretched
+// * (`image-rendering`), and the colours it shows, to tell the colour at a place
+type Picture = {url: string, rendering: string, width: number, height: number, pixels: Uint8ClampedArray};
 
 // * the vertical gradient's picture is a column a pixel wide, which every part of a bubble stretches across: the
 // * compositor draws it from that column, where a gradient as wide as the frame would be painted again in full for
-// * every part; the freeform one's is the wallpapers' picture, which the compositor stretches as it is
-const IMAGE_HEIGHT = 256;
+// * every part; the freeform one's is the wallpapers' picture, which the compositor stretches as it is. The column is
+// * taller than a frame is on any screen, and drawn from the row nearest to each pixel (`pixelated`): of a colour between
+// * two whole ones it has rows of one and rows of the other, as many of each as the colour is near it, and so has the
+// * screen, as where the browser dithers a gradient of its own. A column smoothed as it is stretched over the frame
+// * draws a step of a colour every few pixels, where the eye sees it, and smoothed as it is shrunk mixes its rows into
+// * such steps again; one as tall as the frame would be made anew at every resize
+const COLUMN_HEIGHT = 4096;
 const images = new Map<string, string>();
 const pictures = new Map<string, Picture>();
+// * how the freeform gradient's picture, 50 pixels across, is drawn: smoothed, as the wallpaper's
+const SMOOTH = 'auto';
+const NEAREST = 'pixelated';
 
 // * what the text is read on (WCAG's for text), and how far under it a moved colour may land, rounded to whole channels
 const READABLE_CONTRAST = 4.5;
 const ROUNDING = .05;
-// * how many colours are put between two of the theme's, at first and at most: where they mix the text has to be read
-// * too, and a mix of two colours can be darker or lighter than both
-const STEPS_BETWEEN = 4;
+// * how many colours are put between two of the theme's, at first and at most: as many as it takes for the curve of their
+// * move to read (`smoothAmount`) to be drawn without a crease, and where they mix the text has to be read too, and a mix
+// * of two colours can be darker or lighter than both
+const STEPS_BETWEEN = 16;
 const MAX_STEPS_BETWEEN = 32;
 // * a reaction in a bubble of a gradient is a see-through tint of the bubbles' own colour over it
 // * (`--light-message-out-primary-color`, made with this by themeController), and its counter is of that colour
@@ -70,39 +87,74 @@ function tintOver(under: ColorRgb, color: ColorRgb) {
   return under.map((value, channel) => value + (color[channel] - value) * MESSAGE_OUT_TINT) as ColorRgb;
 }
 
+// * light text is read on colours darker than it, dark text on lighter ones (as ensureTextContrast tells them)
+const isLight = (textColor: ColorRgb) => relativeLuminance(textColor) > LIGHT_LUMINANCE;
+
 /**
  * Whether the outgoing text reads on a colour of the gradient, and on a tint of the text over it: a reaction's counter
  * is of the bubbles' own colour, which is the text's under light text (the night's) and under dark text no lighter than
- * it takes to read (`keepReadableOnOutgoingMessageGradient`), and it stands on a tint of itself
+ * it takes to read (`keepReadableOnOutgoingMessageGradient`), and it stands on a tint of itself. Read on the side of the
+ * text the colour is moved to (`moveFromText`), of channels past their ends too
  */
 function readsUnder(color: ColorRgb, textColor: ColorRgb, ratio = READABLE_CONTRAST) {
-  return getContrastRatio(color, textColor) >= ratio && getContrastRatio(tintOver(color, textColor), textColor) >= ratio;
+  const textLuminance = relativeLuminance(textColor);
+  const light = isLight(textColor);
+  const reads = (under: ColorRgb) => {
+    const luminance = relativeLuminance(under);
+    return (light ? (textLuminance + .05) / (luminance + .05) : (luminance + .05) / (textLuminance + .05)) >= ratio;
+  };
+
+  return reads(color) && reads(tintOver(color, textColor));
+}
+
+/**
+ * A colour moved away from the text by an amount, as ensureTextContrast moves one: under light text its channels times
+ * e^-amount, toward black, under dark text its distance from white so, toward white. 0 leaves it as it is, and below 0
+ * moves it toward the text, past the channels' ends too, to tell by how much a colour that reads could be
+ */
+function moveFromText(color: ColorRgb, light: boolean, amount: number) {
+  const scale = Math.exp(-amount);
+  return color.map((value) => light ? value * scale : 255 - (255 - value) * scale) as ColorRgb;
+}
+
+// * a moved colour in whole channels: one moved by next to nothing stays as it is (`ROUNDING`)
+function roundColor(color: ColorRgb) {
+  return color.map((value) => clamp(Math.round(value), 0, 255)) as ColorRgb;
+}
+
+// * how far a colour has to be moved from the text to read (`moveFromText`): below 0 for one that reads already, by how
+// * much it could be moved toward the text and still read
+function getReadableAmount(color: ColorRgb, textColor: ColorRgb) {
+  const light = isLight(textColor);
+  // * from e^4 times its channels, or its distance from white, which reads under no text, to e^-8 of them: black or white
+  let [low, high] = [-4, 8];
+  for(let i = 0; i < 16; ++i) {
+    const amount = (low + high) / 2;
+    if(readsUnder(moveFromText(color, light, amount), textColor)) high = amount;
+    else low = amount;
+  }
+
+  return high;
 }
 
 // * a colour moved as far from the text as it takes to be read on, the text's tint over it included (`readsUnder`)
 function makeReadable(color: ColorRgb, textColor: ColorRgb): ColorRgb {
-  // * ensureTextContrast moves its first colour against the second, which is the text here
-  const hex = rgbaToHexa(color);
-  const moved = (ratio: number) => hexToRgb(ensureTextContrast(hex, textColor, ratio));
-  let [low, high] = [READABLE_CONTRAST, 21];
-  if(readsUnder(moved(low), textColor)) {
-    return moved(low);
-  }
-
-  for(let i = 0; i < 16; ++i) {
-    const ratio = (low + high) / 2;
-    if(readsUnder(moved(ratio), textColor)) high = ratio;
-    else low = ratio;
-  }
-
-  return moved(high);
+  const light = isLight(textColor);
+  return roundColor(moveFromText(color, light, Math.max(0, getReadableAmount(color, textColor))));
 }
+
+// * the vertical gradient's colours are moved by a smooth max(0, amount) of this softness: as far as it takes where they
+// * have to be moved, a little further where that starts, and next to nothing where they read with room to spare. Moved
+// * only where they have to be, the gradient changes how fast it goes at the place the move starts, and the eye sees a
+// * line across the bubbles there
+const SOFTNESS = .1;
+const smoothAmount = (amount: number) => SOFTNESS * Math.log1p(Math.exp(amount / SOFTNESS));
 
 /**
  * The gradient's colours for the theme's ones under the outgoing text of this colour: from the bottom up, evenly
- * spaced; nothing for one colour. Each is moved as far from the text as it takes to read it - darker under white text,
- * as on Desktop, lighter under dark text - and more are put between the theme's until every mix of two that stand
- * side by side reads as well
+ * spaced; nothing for one colour. Each is moved from the text as far as it takes to read it - darker under white text,
+ * as on Desktop, lighter under dark text - and smoothly where that starts (`smoothAmount`), and more are put between
+ * the theme's until every mix of two that stand side by side reads as well
  */
 export function getOutgoingMessageGradientColors(colors: number[] | undefined, textColor: ColorRgb): ColorRgb[] | undefined {
   const hexes = (colors || []).map(getHexColorFromTelegramColor);
@@ -111,11 +163,13 @@ export function getOutgoingMessageGradientColors(colors: number[] | undefined, t
   }
 
   const theme = hexes.map(hexToRgb);
+  const light = isLight(textColor);
   for(let steps = STEPS_BETWEEN; ; steps *= 2) {
     const gradient = theme.flatMap((color, index) => {
       const next = theme[index + 1];
       return Array.from({length: next ? steps : 1}, (_, step) => {
-        return makeReadable(next ? mixColors(next, color, step / steps) : color, textColor);
+        const mixed = next ? mixColors(next, color, step / steps) : color;
+        return roundColor(moveFromText(mixed, light, smoothAmount(getReadableAmount(mixed, textColor))));
       });
     });
 
@@ -180,7 +234,7 @@ export function getOutgoingMessageFreeformColors(colors: number[] | undefined, t
     const darkest = getDarkestMix(toWhite(by).map((point) => tintOver(point, textColor)));
     return (darkest + .05) / (textLuminance + .05) >= READABLE_CONTRAST;
   };
-  if(textLuminance > .179 || read(0)) {
+  if(textLuminance > LIGHT_LUMINANCE || read(0)) {
     return points;
   }
 
@@ -194,14 +248,20 @@ export function getOutgoingMessageFreeformColors(colors: number[] | undefined, t
   return toWhite(high);
 }
 
+// * the gradients worked out, by the theme's colours and the text's: a theme is applied again on every chat opened
+const gradients = new Map<string, OutgoingMessageGradient | undefined>();
+
 export function getOutgoingMessageGradient(colors: number[] | undefined, animated: boolean, textColor: ColorRgb): OutgoingMessageGradient | undefined {
-  const freeform = animated && getOutgoingMessageFreeformColors(colors, textColor);
-  if(freeform) {
-    return {colors: freeform, freeform: {textColor}};
+  const key = [colors?.join(), animated, textColor.join()].join('|');
+  if(gradients.has(key)) {
+    return gradients.get(key);
   }
 
-  const vertical = getOutgoingMessageGradientColors(colors, textColor);
-  return vertical && {colors: vertical};
+  const freeform = animated && getOutgoingMessageFreeformColors(colors, textColor);
+  const vertical = !freeform && getOutgoingMessageGradientColors(colors, textColor);
+  const gradient = freeform ? {colors: freeform, freeform: {textColor}} : vertical ? {colors: vertical} : undefined;
+  gradients.set(key, gradient);
+  return gradient;
 }
 
 export function makeOutgoingMessageGradient(colors: ColorRgb[] | undefined) {
@@ -209,39 +269,108 @@ export function makeOutgoingMessageGradient(colors: ColorRgb[] | undefined) {
   return colors ? `linear-gradient(to top, ${colors.map(rgbaToHexa).join(', ')})` : 'none';
 }
 
-function makeImage(key: string, width: number, height: number, draw: (context: CanvasRenderingContext2D) => void) {
+// * a PNG of the pixels written here, each row filtered by the one above it and deflated: a canvas's took 4-7ms to encode
+// * the vertical gradient's column, on every theme it was made for, and came out four times the size, an address the page
+// * reads with every piece of it. In a data URL it is in the page as soon as it is set, no frame of the bubbles drawn
+// * without it
+const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
+
+function makePicture(width: number, height: number, pixels: Uint8ClampedArray) {
+  // * a byte of the filter (2, the row above), then red, green and blue of each pixel, less those above it
+  const stride = width * 3 + 1;
+  const rows = new Uint8Array(stride * height);
+  for(let row = 0; row < height; ++row) {
+    rows[row * stride] = 2;
+    for(let column = 0; column < width; ++column) {
+      for(let channel = 0; channel < 3; ++channel) {
+        const from = (row * width + column) * 4 + channel;
+        rows[row * stride + 1 + column * 3 + channel] = pixels[from] - (row ? pixels[from - width * 4] : 0);
+      }
+    }
+  }
+
+  const header = new Uint8Array(13);
+  const headerView = new DataView(header.buffer);
+  headerView.setUint32(0, width);
+  headerView.setUint32(4, height);
+  // * 8 bits a channel, of colour with no alpha
+  header.set([8, 2], 8);
+  const chunks: [string, Uint8Array][] = [['IHDR', header], ['IDAT', zlibSync(rows)], ['IEND', new Uint8Array(0)]];
+  const bytes = new Uint8Array(chunks.reduce((size, [, data]) => size + 12 + data.length, PNG_SIGNATURE.length));
+  const view = new DataView(bytes.buffer);
+  bytes.set(PNG_SIGNATURE);
+  let at = PNG_SIGNATURE.length;
+  for(const [type, data] of chunks) {
+    view.setUint32(at, data.length);
+    for(let i = 0; i < 4; ++i) bytes[at + 4 + i] = type.charCodeAt(i);
+    bytes.set(data, at + 8);
+    view.setUint32(at + 8 + data.length, crc32(bytes.subarray(at + 4, at + 8 + data.length)));
+    at += 12 + data.length;
+  }
+
+  return bytesToDataURL(bytes, 'image/png');
+}
+
+// * a picture of the pixels made, and the colours of it to tell, if not these
+function makeImage(key: string, width: number, height: number, rendering: string, make: () => [pixels: Uint8ClampedArray, shown?: Uint8ClampedArray]) {
   let image = images.get(key);
   if(!image) {
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    // * drawn and read back in memory: a canvas of the GPU took ~25ms to encode one so small
-    const context = canvas.getContext('2d', {willReadFrequently: true});
-    if(!context) {
-      return 'none';
-    }
-
-    draw(context);
-    const url = canvas.toDataURL();
+    const [pixels, shown = pixels] = make();
+    const url = makePicture(width, height, pixels);
     images.set(key, image = `url("${url}")`);
-    pictures.set(url, {width, height, pixels: context.getImageData(0, 0, width, height).data});
+    pictures.set(url, {url, rendering, width, height, pixels: shown});
   }
 
   return image;
 }
 
+// * the vertical gradient's channels at the middle of each row of a column of this height, from the top, as the page
+// * paints the gradient (`makeOutgoingMessageGradient`): not the canvas's gradient, which strews its pixels a step of a
+// * colour up and down
+function getColumnValues(colors: ColorRgb[], height: number) {
+  const values = new Float32Array(height * 3);
+  for(let row = 0; row < height; ++row) {
+    // * the colours from the bottom up, evenly spaced
+    const at = (height - row - .5) / height * (colors.length - 1);
+    const index = Math.min(Math.floor(at), colors.length - 2);
+    const [from, to] = [colors[index], colors[index + 1]];
+    for(let channel = 0; channel < 3; ++channel) {
+      values[row * 3 + channel] = lerp(from[channel], to[channel], at - index);
+    }
+  }
+
+  return values;
+}
+
+// * a threshold for each row, from 0 to 1, as evenly spread over any number of rows next to each other, or taken a row
+// * in so many, as they can be: of the golden ratio's multiples
+const GOLDEN_RATIO = (Math.sqrt(5) - 1) / 2;
+const getThreshold = (row: number) => (row * GOLDEN_RATIO) % 1;
+
+function toPixels(values: Float32Array, toWhole: (value: number, row: number) => number) {
+  const height = values.length / 3;
+  const pixels = new Uint8ClampedArray(height * 4);
+  for(let row = 0; row < height; ++row) {
+    for(let channel = 0; channel < 3; ++channel) {
+      pixels[row * 4 + channel] = toWhole(values[row * 3 + channel], row);
+    }
+
+    pixels[row * 4 + 3] = 255;
+  }
+
+  return pixels;
+}
+
 export function makeOutgoingMessageGradientImage(colors: ColorRgb[] | undefined) {
-  const hexes = colors?.map(rgbaToHexa);
-  const key = hexes?.join();
+  const key = colors?.map(rgbaToHexa).join();
   if(!key) {
     return 'none';
   }
 
-  return makeImage(key, 1, IMAGE_HEIGHT, (context) => {
-    const gradient = context.createLinearGradient(0, IMAGE_HEIGHT, 0, 0);
-    hexes.forEach((hex, index) => gradient.addColorStop(index / (hexes.length - 1), hex));
-    context.fillStyle = gradient;
-    context.fillRect(0, 0, 1, IMAGE_HEIGHT);
+  return makeImage(key, 1, COLUMN_HEIGHT, NEAREST, () => {
+    const values = getColumnValues(colors, COLUMN_HEIGHT);
+    // * the colour at a place is the gradient's, not a row's
+    return [toPixels(values, (value, row) => Math.floor(value + getThreshold(row))), toPixels(values, Math.round)];
   });
 }
 
@@ -263,10 +392,8 @@ export function getOutgoingMessageFreeformPixels(gradient: OutgoingMessageGradie
 }
 
 function makeFreeformImage(gradient: OutgoingMessageGradient, phase: number) {
-  return makeImage(`${getFreeformKey(gradient)}@${phase}`, GRADIENT_SIZE, GRADIENT_SIZE, (context) => {
-    const imageData = context.createImageData(GRADIENT_SIZE, GRADIENT_SIZE);
-    imageData.data.set(getOutgoingMessageFreeformPixels(gradient, phase));
-    context.putImageData(imageData, 0, 0);
+  return makeImage(`${getFreeformKey(gradient)}@${phase}`, GRADIENT_SIZE, GRADIENT_SIZE, SMOOTH, () => {
+    return [getOutgoingMessageFreeformPixels(gradient, phase)];
   });
 }
 
@@ -345,15 +472,19 @@ export function applyOutgoingMessageGradient(element: HTMLElement, gradient: Out
     background = makeOutgoingMessageGradient(gradient.colors);
   }
 
-  element.style.setProperty(MESSAGE_OUT_GRADIENT_PROPERTY, background);
-  images.forEach((image, index) => element.style.setProperty(`${IMAGE_PROPERTY}-${index}`, image));
-  element.style.setProperty(FREEFORM_PROPERTY, gradient?.freeform ? '1' : '0');
-  element.style.setProperty(DISPLAY_PROPERTY, gradient ? 'block' : 'none');
-  element.style.setProperty(NEXT_DISPLAY_PROPERTY, gradient?.freeform ? 'block' : 'none');
+  // * the same theme is applied again on every chat opened
+  const set = (name: string, value: string) => setStyleProperty(element.style, name, value);
+
+  set(MESSAGE_OUT_GRADIENT_PROPERTY, background);
+  images.forEach((image, index) => set(`${IMAGE_PROPERTY}-${index}`, image));
+  set(FREEFORM_PROPERTY, gradient?.freeform ? '1' : '0');
+  set(RENDERING_PROPERTY, gradient && !gradient.freeform ? NEAREST : SMOOTH);
+  set(DISPLAY_PROPERTY, gradient ? 'block' : 'none');
+  set(NEXT_DISPLAY_PROPERTY, gradient?.freeform ? 'block' : 'none');
   // * `initial` is no value, and the bubble's own colour is taken instead
-  element.style.setProperty(CONTENT_BACKGROUND_PROPERTY, gradient ? 'transparent' : 'initial');
-  element.style.setProperty(UNDER_PROPERTY, gradient ? 'initial' : 'transparent');
-  element.style.setProperty(LIGHT_PRIMARY_PROPERTY, gradient ? 'var(--light-message-out-primary-color)' : 'initial');
+  set(CONTENT_BACKGROUND_PROPERTY, gradient ? 'transparent' : 'initial');
+  set(UNDER_PROPERTY, gradient ? 'initial' : 'transparent');
+  set(LIGHT_PRIMARY_PROPERTY, gradient ? 'var(--light-message-out-primary-color)' : 'initial');
   appliedListeners.forEach((callback) => callback());
 }
 

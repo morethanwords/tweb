@@ -13,10 +13,12 @@
  * animation, or with what lies under its piece painted (its row's highlight or selection, a document's). The shapes
  * are read once a layout that may have changed them is done, before it is painted (a `ResizeObserver`'s turn): after a
  * resize of the list, of a day of it or of a bubble cut out, a bubble coming or going, a class or a style of one changed
- * (a move starting or ending), the theme. Nothing is read while the chat scrolls.
+ * (a move starting or ending), the theme. Nothing is read while the chat scrolls. After a change of the list they are
+ * read at the start of the next frame too: the observer's turn may come frames after the layout (two to four, after a
+ * history loaded above the bubbles cut out moved them all), and the bubbles stood where the cut had none of them.
  */
 
-import {getAppWindow, onAppWindowChange} from '@helpers/appWindow';
+import {getAppWindow, onAppWindowChange, requestAppWindowFrame} from '@helpers/appWindow';
 import {hasOutgoingMessageGradient, subscribeOutgoingMessageGradient} from '@helpers/outgoingMessageGradient';
 import {getRadii, Radii} from '@components/chat/bubbleShape';
 
@@ -146,6 +148,8 @@ export default class OutgoingGradientUnion {
   private path = '';
   private requested = false;
   private flip = false;
+  // * cancels the next frame's reading
+  private cancelNextFrame: VoidFunction;
   private unsubscribes: VoidFunction[];
 
   constructor() {
@@ -172,6 +176,7 @@ export default class OutgoingGradientUnion {
 
   public destroy() {
     this.unsubscribes.forEach((unsubscribe) => unsubscribe());
+    this.cancelFrame();
     this.resizeObserver?.disconnect();
     this.mutationObserver?.disconnect();
     this.unjoin();
@@ -183,6 +188,7 @@ export default class OutgoingGradientUnion {
     this.resizeObserver?.disconnect();
     this.mutationObserver?.disconnect();
     this.sized.clear();
+    this.cancelFrame();
     if(!this.inner) return;
 
     const win = getAppWindow() as Window & typeof globalThis;
@@ -232,7 +238,7 @@ export default class OutgoingGradientUnion {
       [...addedNodes, ...removedNodes].some((node) => node !== this.element);
   };
 
-  /** the shapes are read after the next layout */
+  /** the shapes are read after the next layout, or at the start of the next frame, whichever comes first */
   private request = () => {
     const {inner, element} = this;
     if(!inner) return;
@@ -241,15 +247,39 @@ export default class OutgoingGradientUnion {
       inner.prepend(element);
     }
 
+    this.cancelNextFrame ||= requestAppWindowFrame(this.onFrame);
+
     if(this.requested) return;
     this.requested = true;
-    this.sentinel.style.width = (this.flip = !this.flip) ? '1px' : '0px';
+    this.flipSentinel();
   };
 
+  private flipSentinel() {
+    this.sentinel.style.width = (this.flip = !this.flip) ? '1px' : '0px';
+  }
+
+  // * read after a layout: the next frame has nothing left to read
   private onResize = () => {
     this.requested = false;
+    this.cancelFrame();
     this.update();
   };
+
+  // * a change made before the frame: read before it is drawn, and the observer not told of the sentinel, put back
+  private onFrame = () => {
+    this.cancelNextFrame = undefined;
+    if(this.requested) {
+      this.requested = false;
+      this.flipSentinel();
+    }
+
+    this.update();
+  };
+
+  private cancelFrame() {
+    this.cancelNextFrame?.();
+    this.cancelNextFrame = undefined;
+  }
 
   private unjoin() {
     this.joined.forEach((bubble) => bubble.classList.remove(JOINED_CLASS));

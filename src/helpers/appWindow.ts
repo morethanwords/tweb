@@ -24,6 +24,13 @@ export function getAppWindow(): Window {
   return activeWindow;
 }
 
+/** A frame of the window the app is in; the function it gives cancels it */
+export function requestAppWindowFrame(callback: FrameRequestCallback): () => void {
+  const win = activeWindow;
+  const id = win.requestAnimationFrame(callback);
+  return () => win.cancelAnimationFrame(id);
+}
+
 /**
  * The body where transient overlays (context menus, popups, tooltips, the media viewer) should mount.
  * It's the active app window's body — so an overlay opened while the client is popped out lands in the

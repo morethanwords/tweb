@@ -5,7 +5,7 @@
  */
 
 import {createComputed, createRoot, on} from 'solid-js';
-import {bindActiveWindowListener, getAppWindow, onAppWindowChange} from '@helpers/appWindow';
+import {bindActiveWindowListener, getAppWindow, onAppWindowChange, requestAppWindowFrame} from '@helpers/appWindow';
 import {clock} from '@components/wallet/visual/clock';
 import {hotEffect} from '@helpers/hotModule';
 
@@ -96,11 +96,7 @@ export function isWalletElementOnScreen(element: Element) {
 }
 
 /** A frame of the window the app is in; the function it gives cancels it */
-export function requestWalletFrame(callback: FrameRequestCallback): () => void {
-  const win = getAppWindow();
-  const id = win.requestAnimationFrame(callback);
-  return () => win.cancelAnimationFrame(id);
-}
+export const requestWalletFrame = requestAppWindowFrame;
 
 const isShown = (client: WalletFrameClient) => client.isVisible() && !(client.element && offScreen.has(client.element));
 

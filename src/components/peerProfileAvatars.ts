@@ -38,6 +38,7 @@ import Button from '@components/button';
 import Modes from '@config/modes';
 import isDocumentRTL from '@helpers/dom/isDocumentRTL';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import setStyleProperty from '@helpers/dom/setStyleProperty';
 
 const LOAD_NEAREST = 3;
 export const SHOW_NO_AVATAR = true;
@@ -673,9 +674,7 @@ export default class PeerProfileAvatars {
         // paint) for nothing and can flicker the loading avatar underneath.
         if(!isPlaying) tab.classList.add('is-playing');
         const value = Math.min(100, (video.currentTime / video.duration) * 100).toFixed(1) + '%';
-        if(tab.style.getPropertyValue('--progress') !== value) {
-          tab.style.setProperty('--progress', value);
-        }
+        setStyleProperty(tab.style, '--progress', value);
       } else if(isPlaying) {
         tab.classList.remove('is-playing');
         tab.style.removeProperty('--progress');
