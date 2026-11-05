@@ -1,26 +1,18 @@
 import '@helpers/peerIdPolyfill';
-import {AppDraftsManager} from '@appManagers/appDraftsManager';
 import deferredPromise from '@helpers/cancellablePromise';
-import type {DraftMessage, InputRichMessage} from '@layer';
+import type {InputRichMessage} from '@layer';
+import {makeDraftSyncManager} from '@/tests/helpers/draftSync';
 
 function setup() {
-  const manager = new AppDraftsManager();
-  const invokeApi = vi.fn(async(_method: string, _params: unknown): Promise<unknown> => true);
   const assertRichMessage = vi.fn(async() => {});
   const retry = vi.fn((_input: unknown, invoke: () => Promise<unknown>) => invoke());
-  Object.assign(manager, {
-    apiManager: {invokeApi},
+  const {manager, invokeApi} = makeDraftSyncManager({
     appMessagesManager: {
       assertRichMessage,
       resolveInputRichMessage: (input: InputRichMessage) => input,
       invokeWithRichMessageReferenceRetry: retry
-    },
-    appPeersManager: {getInputPeerById: () => ({_: 'inputPeerUser', user_id: 42, access_hash: '1'}), isMonoforum: () => false},
-    dialogsStorage: {getDialogOnly: () => ({top_message: 1})},
-    drafts: {},
-    timeManager: {getServerTimeOffset: () => 0, getServerTime: () => Math.floor(Date.now() / 1000)}
+    }
   });
-  vi.spyOn(manager, 'saveDraft').mockImplementation(({draft}) => draft as DraftMessage.draftMessage);
   const save = (text: string, rich = false, threadId?: number) => {
     const blocks = [{_: 'pageBlockParagraph' as const, text: {_: 'textPlain' as const, text}}];
     return manager.syncDraft({

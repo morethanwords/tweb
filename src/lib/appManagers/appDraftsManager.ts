@@ -498,7 +498,12 @@ export class AppDraftsManager extends AppManager {
         params.reply_to = {
           _: 'inputReplyToMessage',
           reply_to_msg_id: getServerMessageId(replyTo.reply_to_msg_id),
-          poll_option: replyTo.poll_option
+          poll_option: replyTo.poll_option,
+          // * the quote stays with the draft, as tdesktop's ReplyToForMTP and iOS' apiReplyQuoteFields send it
+          quote_text: replyTo.quote_text,
+          quote_entities: replyTo.quote_entities,
+          quote_offset: replyTo.quote_offset,
+          quote_rich: replyTo.quote_rich
         };
 
         if(replyTo.reply_to_peer_id && !isObject(replyTo.reply_to_peer_id)) {
