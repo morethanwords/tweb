@@ -7254,8 +7254,18 @@ export default class ChatBubbles {
           return;
         }
 
-        // scrollable.checkForTriggers();
-        scrollable.onScroll(); // * have to refresh scroll position, not just check with previous position
+        // * have to refresh scroll position, not just check with previous position - once the scroll to where the chat
+        // * opens is over: it is no scroll of the user's (as a static one is not, `scrollToBubble`), and its direction
+        // * must not keep a side from loading. A jump down to the end from far up leaves the list short of the screen
+        // * (a page of one-line messages), and only what is above can fill it
+        getHeavyAnimationPromise().then(() => {
+          if(!middleware()) {
+            return;
+          }
+
+          scrollable.lastScrollPosition = scrollable.scrollPosition;
+          scrollable.onScroll();
+        });
 
         if(options.mediaTimestamp !== undefined) {
           // ! :(

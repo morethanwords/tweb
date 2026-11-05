@@ -31,7 +31,6 @@
     box-shadow: $chat-input-box-shadow;
     border-radius: inherit;
     height: auto;
-    pointer-events: all;
     // max-height: 20rem;
     max-height: 207px !important;
 
@@ -48,10 +47,13 @@
       }
     }
 
+    // * only the list that is shown takes the pointer: a hidden one is put away by where it stands alone (below the
+    // * input, cut off), and wherever that fails it would hold the chat's clicks unseen
     &.forwards {
       .scrollable {
         transform: translateY(0);
         opacity: 1;
+        pointer-events: auto;
       }
     }
   }

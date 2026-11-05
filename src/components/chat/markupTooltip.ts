@@ -31,6 +31,8 @@ import tooltipController from '@helpers/tooltipController';
 import captureInputContent from '@components/chat/inputEditor/captureInputContent';
 import {FOCUS_TRAP_ATTACHED_ATTRIBUTE} from '@helpers/dom/focusTrap';
 import getInputFormattingTypes from '@helpers/dom/getInputFormattingTypes';
+import isDocumentRTL from '@helpers/dom/isDocumentRTL';
+import getLayoutWidth from '@helpers/dom/getLayoutWidth';
 
 export type MarkupTooltipTypes = Extract<
   MarkdownType,
@@ -48,6 +50,9 @@ export default class MarkupTooltip {
   public container: HTMLElement;
   private wrapper: HTMLElement;
   private scrollContainer: HTMLDivElement;
+  private row: HTMLElement;
+  // * the stylesheet's, which the row is cut near (`getWidth`)
+  private width: number;
   private buttons: {[type in MarkupTooltipTypes]: HTMLElement} = {} as any;
   private buttonIcons: Partial<{[type in MarkupTooltipTypes]: {inactive: Icon, active: Icon}}> = {};
   private quoteIcon: Icon = 'quote';
@@ -102,7 +107,7 @@ export default class MarkupTooltip {
     this.wrapper = document.createElement('div');
     this.wrapper.classList.add('markup-tooltip-wrapper');
 
-    const row = document.createElement('div');
+    const row = this.row = document.createElement('div');
     row.classList.add('markup-tooltip-row');
     mountMarkupTooltipScrollable({
       mount: this.wrapper,
@@ -277,6 +282,7 @@ export default class MarkupTooltip {
 
     this.container.append(this.wrapper);
     getOverlayRoot().append(this.container);
+    this.width = getLayoutWidth(this.container);
 
     window.addEventListener('resize', () => {
       this.hide();
@@ -441,8 +447,7 @@ export default class MarkupTooltip {
     const selectionRect = getRangeContentRect(range);
     const inputRect = rowsWrapper.getBoundingClientRect();
     const sizesRect = this.scrollContainer.getBoundingClientRect();
-
-    this.container.style.maxWidth = inputRect.width + 'px';
+    const width = this.getWidth(inputRect.width);
 
     const visibleRect = getVisibleRect(
       undefined,
@@ -450,6 +455,9 @@ export default class MarkupTooltip {
       false,
       selectionRect
     );
+
+    this.container.style.maxWidth = inputRect.width + 'px';
+    this.container.style.width = width + 'px';
 
     const {newHeight = 0, oldHeight = newHeight} = this.input as any;
 
@@ -462,11 +470,33 @@ export default class MarkupTooltip {
     const top = selectionTop - sizesRect.height - 8 + (true ? oldHeight - newHeight : 0);
 
     const minX = inputRect.left;
-    const maxX = (inputRect.left + inputRect.width) - Math.min(inputRect.width, sizesRect.width);
-    const x = selectionRect.left + (selectionRect.width - sizesRect.width) / 2;
+    const maxX = (inputRect.left + inputRect.width) - Math.min(inputRect.width, width);
+    const x = selectionRect.left + (selectionRect.width - width) / 2;
     const left = clamp(x, minX, maxX);
 
     this.container.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+  }
+
+  // * the row scrolls along: where it does not fit whole, the tooltip ends in the middle of a button, so the half
+  // * that shows says there is more - never between two buttons, which reads as the end of the row
+  private getWidth(maxWidth: number) {
+    const limit = Math.min(this.width, maxWidth);
+    const rtl = isDocumentRTL();
+    const rowRect = this.row.getBoundingClientRect();
+    let previousCenter: number;
+    for(const button of this.row.children) {
+      if(!button.classList.contains('btn-icon') || button.classList.contains('hide')) continue;
+      const rect = button.getBoundingClientRect();
+      const start = rtl ? rowRect.right - rect.right : rect.left - rowRect.left;
+      const center = start + rect.width / 2;
+      if(start + rect.width > limit + .5) {
+        return center <= maxWidth ? center : previousCenter ?? limit;
+      }
+
+      previousCenter = center;
+    }
+
+    return limit;
   }
 
   private hasFormattableSelection(input = this.input) {

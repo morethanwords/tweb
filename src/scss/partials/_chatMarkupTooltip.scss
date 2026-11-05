@@ -126,7 +126,7 @@
 		&-regular {
 			height: $rowHeight;
 			padding-block: 0;
-			width: $widthRegular;
+			width: 100%;
 		}
 	}
 
@@ -209,8 +209,7 @@
 	backdrop-filter: var(--menu-backdrop-filter);
 	box-shadow: var(--menu-box-shadow);
 
-	.markup-tooltip-wrapper,
-	.markup-tooltip-tools-regular {
+	.markup-tooltip-wrapper {
 		width: 100%;
 	}
 

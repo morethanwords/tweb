@@ -246,6 +246,50 @@ const mountFoldedComposer = async(page: Page, sendsRich: boolean) => {
   return page.locator('.input-message-input');
 };
 
+// The tooltip's row scrolls along. Where it does not fit whole, the tooltip ends in the middle of a button, so the
+// half that shows says there is more: an end between two buttons reads as the end of the row. In a wide field and a
+// narrow one, with the folded field's shorter row, and laid out right to left.
+for(const {name, rtl, width, sendsRich} of [
+  {name: 'a wide field', rtl: false, width: 1280, sendsRich: true},
+  {name: 'a narrow field', rtl: false, width: 400, sendsRich: true},
+  {name: 'the folded field', rtl: false, width: 1280, sendsRich: false},
+  {name: 'right to left', rtl: true, width: 1280, sendsRich: true}
+]) {
+  test(`the selection tooltip cuts the next button in half in ${name}`, async({page}) => {
+    await page.setViewportSize({width, height: 720});
+    const input = await mountFoldedComposer(page, sendsRich);
+    if(rtl) await page.evaluate(() => window.popupSandbox.setDirection('rtl'));
+    await page.evaluate(() => window.richMediaComposerHarness.setText('formatted words'));
+    await input.click();
+    await page.keyboard.press('ControlOrMeta+a');
+    const tooltip = page.locator('.markup-tooltip.is-visible');
+    await expect(tooltip).toBeVisible();
+
+    const cut = () => tooltip.evaluate((tooltip) => {
+      const box = tooltip.getBoundingClientRect();
+      const rtl = getComputedStyle(tooltip).direction === 'rtl';
+      // how far along the row each button runs, from the tooltip's inline start
+      const buttons = [...tooltip.querySelectorAll('.markup-tooltip-row > .btn-icon')].map((button) => {
+        const rect = button.getBoundingClientRect();
+        return {start: rtl ? box.right - rect.right : rect.left - box.left, width: rect.width};
+      }).filter(({width}) => width);
+      const index = buttons.findIndex(({start, width}) => start + width > box.width + .5);
+      const button = buttons[index];
+      return {
+        rtl,
+        // the first that does not fit whole, and how much of it shows
+        index,
+        shown: button && box.width - button.start,
+        half: button && button.width / 2
+      };
+    });
+    await expect.poll(async() => (await cut()).index).toBeGreaterThan(0);
+    const {rtl: laidOutRtl, shown, half} = await cut();
+    expect(laidOutRtl).toBe(rtl);
+    expect(Math.abs(shown - half)).toBeLessThanOrEqual(1);
+  });
+}
+
 // Without Premium a rich message would not go out as it is, and the folded field is a plain one: what is
 // typed there is the message as it will be sent. The expanded editor is where a rich one is written, and
 // what was written there stays rich when the field folds, until it is gone.
