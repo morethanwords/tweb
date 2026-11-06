@@ -1,14 +1,10 @@
 import {MessageEntity} from '@layer';
-import findConflictingEntity from '@lib/richTextProcessor/findConflictingEntity';
+import {createEntityConflictCheck} from '@lib/richTextProcessor/findConflictingEntity';
 import sortEntities from '@lib/richTextProcessor/sortEntities';
 
 export default function mergeEntities(currentEntities: MessageEntity[], newEntities: MessageEntity[]) {
-  currentEntities = currentEntities.slice();
-  const filtered = newEntities.filter((e) => {
-    return !findConflictingEntity(currentEntities, e);
-  });
-
-  currentEntities.push(...filtered);
+  const isConflicting = createEntityConflictCheck(currentEntities);
+  currentEntities = currentEntities.concat(newEntities.filter((entity) => !isConflicting(entity)));
   sortEntities(currentEntities);
   // currentEntities.sort((a, b) => a.offset - b.offset);
   // currentEntities.sort((a, b) => (a.offset - b.offset) || (a._ === 'messageEntityCaret' && -1));

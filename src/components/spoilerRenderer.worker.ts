@@ -3,7 +3,7 @@ import applyColorOnContext from '@helpers/canvas/applyColorOnContext';
 import {defaultEasing, simpleEasing, unwrapEasing} from '@helpers/easings';
 import DotRendererCore, {drawClippingCircle, DotRendererConfig} from '@components/dotRendererCore';
 import {drawImageFromSource} from '@components/messageSpoilerOverlay/drawImageFromSource';
-import {lowerBound} from '@components/dynamicVirtualList/lowerBound';
+import {lowerBound} from '@helpers/array/lowerBound';
 import clamp from '@helpers/number/clamp';
 import smoothstep01 from '@helpers/number/smoothstep01';
 import {lerp} from '@helpers/lerp';

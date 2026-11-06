@@ -37,3 +37,8 @@ export function normalizeUrlProtocol(url: string) {
   const protocol = matchUrlProtocolText(url);
   return protocol && !SKIP_PROTOCOLS.has(protocol) ? url : 'https://' + url;
 }
+
+/** Whether a URL is a web page's: http or https — not a script, data, or another app's scheme. */
+export function isWebPageUrl(url: URL) {
+  return url.protocol === 'https:' || url.protocol === 'http:';
+}

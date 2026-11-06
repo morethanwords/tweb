@@ -4,6 +4,11 @@ import {render} from 'solid-js/web';
 import {Message, Page, PageBlock, RichText} from '@layer';
 import type {TextRevealFrameScheduler} from '@components/chat/bubbleParts/solidMessageText';
 import onQuoteClick from '@helpers/dom/onQuoteClick';
+import {RICH_QUOTE_SOURCE_ATTRIBUTE, getRichQuoteSource} from '@components/chat/richQuoteSources';
+import {getRichQuoteNodes} from '@lib/richQuote';
+import type TelegramWebView from '@components/telegramWebView';
+
+type WebViewOptions = ConstructorParameters<typeof TelegramWebView>[0];
 
 const instantViewMocks = vi.hoisted(() => ({
   openMedia: vi.fn(),
@@ -16,6 +21,7 @@ const instantViewMocks = vi.hoisted(() => ({
   webViewDestroyed: vi.fn(),
   webViews: [] as Array<{
     iframe: HTMLIFrameElement,
+    options: WebViewOptions,
     emitResize: (height: number) => void
   }>
 }));
@@ -52,7 +58,7 @@ beforeAll(async() => {
       public iframe = document.createElement('iframe');
       private resizeListener: (event: {height: number}) => void;
 
-      constructor() {
+      constructor(public options: WebViewOptions) {
         instantViewMocks.webViews.push(this);
       }
 
@@ -1168,6 +1174,39 @@ describe('InstantViewBlocks streaming updates', () => {
     dispose();
   });
 
+  test('points an embed\'s frame at a web page only', async() => {
+    // A script URL in a frame runs as the page holding it — the app, its storage and its keys.
+    const canonical = '<link rel="canonical" href="https://embed.example/x">';
+    const frameOf = async(url: string, html?: string) => {
+      instantViewMocks.webViews.length = 0;
+      const container = document.createElement('div');
+      const dispose = render(() => (
+        <InstantViewBlocks
+          webPageId={1}
+          page={{...makePage('', ''), blocks: [{_: 'pageBlockEmbed', pFlags: {}, url, html, w: 16, h: 9, caption}]}}
+          sourceRevision={1}
+          openNewPage={() => {}}
+          collapse={() => {}}
+        />
+      ), container);
+      await Promise.resolve();
+      const options = instantViewMocks.webViews[0]?.options;
+      dispose();
+      return options && {
+        url: options.url,
+        html: !!options.html,
+        sameOrigin: options.sandbox.split(' ').includes('allow-same-origin')
+      };
+    };
+
+    expect(await frameOf('javascript:parent.document.title="x"')).toBeUndefined();
+    expect(await frameOf('data:text/html,<script>alert(1)</script>')).toBeUndefined();
+    expect(await frameOf('https://example.com/embed')).toEqual({url: 'https://example.com/embed', html: false, sameOrigin: true});
+    // a script URL beside markup: the markup's page, or the markup itself in a frame of no origin
+    expect(await frameOf('javascript:alert(1)', canonical)).toEqual({url: 'https://embed.example/x', html: false, sameOrigin: true});
+    expect(await frameOf('javascript:alert(1)', '<p>embed</p>')).toEqual({url: undefined, html: true, sameOrigin: false});
+  });
+
   test('cancels delayed embed scroll restore when policy unmounts the webview', async() => {
     const [navigationDisabled, setNavigationDisabled] = createSignal(false);
     const page: Page.page = {
@@ -1489,6 +1528,40 @@ describe('InstantViewBlocks streaming updates', () => {
     expect(options.index).toBe(1);
     expect(options.prevTargets.map((target) => target.index)).toEqual([0]);
     expect(options.nextTargets.map((target) => target.index)).toEqual([2]);
+
+    dispose();
+    container.remove();
+  });
+
+  test('draws lists nested deep at once, each text knowing where it stands', async() => {
+    // Every level of a list used to read its parent's place twice over, so a few hundred bytes of nested
+    // lists took the tab seconds, and a few more levels its memory.
+    const DEPTH = 10;
+    let block: PageBlock = {_: 'pageBlockParagraph', text: text('deepest')};
+    for(let level = DEPTH; level > 0; --level) {
+      block = {_: 'pageBlockList', items: [
+        {_: 'pageListItemText', pFlags: {}, text: text(`item ${level}`)},
+        {_: 'pageListItemBlocks', pFlags: {}, blocks: [{_: 'pageBlockParagraph', text: text(`level ${level}`)}, block]}
+      ]};
+    }
+    const blocks: PageBlock[] = [{_: 'pageBlockParagraph', text: text('first')}, block];
+    const container = document.createElement('div');
+    document.body.append(container);
+    const startedAt = performance.now();
+    const dispose = render(() => (
+      <InstantViewBlocks
+        webPageId={1}
+        page={{_: 'page', pFlags: {}, url: '', blocks, photos: [], documents: [], views: 0}}
+        openNewPage={() => {}}
+        collapse={() => {}}
+      />
+    ), container);
+    await Promise.resolve();
+    expect(performance.now() - startedAt).toBeLessThan(1000);
+
+    const drawn = [...container.querySelectorAll(`[${RICH_QUOTE_SOURCE_ATTRIBUTE}]`)].map(getRichQuoteSource);
+    expect(drawn).toEqual(getRichQuoteNodes(blocks).map((node) => node.id));
+    expect(drawn).toHaveLength(2 + DEPTH * 2);
 
     dispose();
     container.remove();

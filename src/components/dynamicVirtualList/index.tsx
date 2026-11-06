@@ -23,7 +23,7 @@ import useElementSize from '@hooks/useElementSize';
 import {useIsCleaned} from '@hooks/useIsCleaned';
 import {useResizeObserver} from '@hooks/useResizeObserver';
 import {useScrollPosition} from '@hooks/useScrollPosition';
-import {lowerBound} from '@components/dynamicVirtualList/lowerBound';
+import {lowerBound} from '@helpers/array/lowerBound';
 import styles from '@components/dynamicVirtualList/styles.module.scss';
 
 

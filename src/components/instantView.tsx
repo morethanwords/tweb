@@ -33,6 +33,7 @@ import {orderedListCounterStyle, orderedListItemStyle} from '@components/instant
 import {canonicalOrderedListType, getOrderedListTypePresentation} from '@lib/richTextProcessor/orderedList';
 import wrapRichText, {makeQuoteCollapsable} from '@lib/richTextProcessor/wrapRichText';
 import classNames from '@helpers/string/classNames';
+import {isWebPageUrl} from '@lib/richTextProcessor/matchUrlProtocol';
 import {IconTsx} from '@components/iconTsx';
 import GenericTable, {GenericTableCell, GenericTableRow} from '@components/genericTable';
 import {SolidJSHotReloadGuardContextValue, useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
@@ -199,8 +200,19 @@ function extractEmbedUrl(html: string) {
     .querySelector('link[rel~="canonical" i]')
     ?.getAttribute('href')
     ?.trim();
-    const url = href && new URL(href);
-    return url && (url.protocol === 'https:' || url.protocol === 'http:') ? url.href : undefined;
+    return getEmbedPageUrl(href);
+  } catch(err) {
+    return undefined;
+  }
+}
+
+// The only URL a frame is pointed at: a web page's. `javascript:` would run in the frame as this page,
+// `data:` and the like are no page of a site — and an embed's URL is whatever its sender wrote.
+function getEmbedPageUrl(href: string) {
+  if(!href) return;
+  try {
+    const url = new URL(href);
+    return isWebPageUrl(url) ? url.href : undefined;
   } catch(err) {
     return undefined;
   }
@@ -213,7 +225,9 @@ function getEmbedSandbox(html: string, url: string) {
 
   let isCrossOrigin: boolean;
   try {
-    isCrossOrigin = new URL(url, location.href).origin !== location.origin;
+    // * an origin of "null" (`javascript:`, `data:`) is not another site's: such a frame runs as this one
+    const parsed = new URL(url, location.href);
+    isCrossOrigin = isWebPageUrl(parsed) && parsed.origin !== location.origin;
   } catch(err) {
     isCrossOrigin = false;
   }
@@ -750,7 +764,8 @@ function EmbedWebView(props: {
   onHeight: (height: number) => void
 }) {
   // Prefer the canonical URL, and only render the markup inline when there is none.
-  const embedUrl = props.block.url || (props.block.html ? extractEmbedUrl(props.block.html) : undefined);
+  const blockUrl = getEmbedPageUrl(props.block.url);
+  const embedUrl = blockUrl || (props.block.html ? extractEmbedUrl(props.block.html) : undefined);
   const embedHtml = embedUrl ? undefined : props.block.html;
   const webView = new TelegramWebView({
     html: embedHtml,
@@ -759,7 +774,7 @@ function EmbedWebView(props: {
   });
   webView.iframe.classList.add(styles.EmbedIframe);
   webView.iframe.allowFullscreen = true;
-  if(props.block.url) {
+  if(blockUrl) {
     webView.iframe.style.width = '100%';
     webView.iframe.style.height = '100%';
     webView.iframe.style.border = '0';
@@ -936,6 +951,18 @@ async function onMediaClick({
   });
 }
 
+/**
+ * The path of a block inside its parent's, made once per block. Written as a prop, it would be a
+ * getter reading the parent's path getter, which reads its parent's, and so on: every block nested in a
+ * message (each level of a list twice) would double the work of all the blocks inside it.
+ */
+function createChildPath(parentPath: () => number[] | undefined, index: () => number) {
+  return createMemo(() => {
+    const path = parentPath();
+    return path && [...path, index()];
+  });
+}
+
 function StablePageBlocks(props: {
   blocks: PageBlock[],
   paddings: number,
@@ -946,13 +973,18 @@ function StablePageBlocks(props: {
   const entries = createStablePageBlockEntries(() => props.blocks);
 
   return (
-    <For each={entries()}>{(entry, index) => (
-      props.render ?
-        props.render(entry.block) :
+    <For each={entries()}>{(entry, index) => {
+      if(props.render) {
+        return props.render(entry.block);
+      }
+
+      const path = createChildPath(() => props.path, index);
+      return (
         <BlockEmojiCanvas block={entry.block}>
-          <Block block={entry.block} paddings={props.paddings} noCaption={props.noCaption} path={props.path && [...props.path, index()]} />
+          <Block block={entry.block} paddings={props.paddings} noCaption={props.noCaption} path={path()} />
         </BlockEmojiCanvas>
-    )}</For>
+      );
+    }}</For>
   );
 }
 
@@ -1353,6 +1385,7 @@ function Block(props: {
         >
           <For each={block.items}>{(item, idx) => {
             const orderedItem = isOrdered ? item as PageListOrderedItem : undefined;
+            const path = createChildPath(() => props.path, idx);
             return (
               <li
                 class={classNames(styles.ListItem, shouldHaveOwnNumbers() && styles.ListItemHasNumber)}
@@ -1403,13 +1436,13 @@ function Block(props: {
                   {item._ === 'pageListItemText' || item._ === 'pageListOrderedItemText' ? (
                     <RichTextRenderer
                       text={item.text}
-                      quote={props.path && (() => getRichQuoteNodeId([...props.path, idx()], 'text'))}
+                      quote={path() && (() => getRichQuoteNodeId(path(), 'text'))}
                     />
                   ) : (
                     <StablePageBlocks
                       blocks={item.blocks}
                       paddings={props.paddings + 1}
-                      path={props.path && [...props.path, idx()]}
+                      path={path()}
                     />
                   )}
                 </div>
@@ -1724,7 +1757,7 @@ function Block(props: {
 
       const [height, setHeight] = createSignal(0);
       let mediaRef: HTMLDivElement;
-      const canMountWebView = () => !hasDisabledNavigation(context) && !!(block.html || block.url);
+      const canMountWebView = () => !hasDisabledNavigation(context) && !!(block.html || getEmbedPageUrl(block.url));
       createEffect(() => {
         const width = block.w || 4;
         const blockHeight = block.h || 3;
@@ -1814,26 +1847,29 @@ function Block(props: {
             items={items()}
             getItemKey={(item) => item.key}
           >
-            {(item, idx) => (
-              <Block
-                block={item.block}
-                paddings={0}
-                path={props.path && [...props.path, idx]}
-                noCaption
-                grouped
-                onSize={(size) => {
-                  setSizes((current) => {
-                    if(
-                      current[item.key]?.width === size.width &&
-                      current[item.key]?.height === size.height
-                    ) return current;
-                    const next = {...current};
-                    next[item.key] = size;
-                    return next;
-                  });
-                }}
-              />
-            )}
+            {(item, idx) => {
+              const path = createChildPath(() => props.path, () => idx);
+              return (
+                <Block
+                  block={item.block}
+                  paddings={0}
+                  path={path()}
+                  noCaption
+                  grouped
+                  onSize={(size) => {
+                    setSizes((current) => {
+                      if(
+                        current[item.key]?.width === size.width &&
+                        current[item.key]?.height === size.height
+                      ) return current;
+                      const next = {...current};
+                      next[item.key] = size;
+                      return next;
+                    });
+                  }}
+                />
+              );
+            }}
           </Slideshow>
           <CaptionC caption={block.caption} quote={quote} />
         </>
@@ -1983,6 +2019,7 @@ function Block(props: {
         >
           <For each={items()}>{(item, index) => {
             let ref: HTMLDivElement;
+            const path = createChildPath(() => props.path, index);
             onCleanup(() => {
               map.delete(ref);
               setSizeRevision((revision) => revision + 1);
@@ -1995,7 +2032,7 @@ function Block(props: {
                 <Block
                   block={item.block}
                   paddings={props.paddings}
-                  path={props.path && [...props.path, index()]}
+                  path={path()}
                   grouped
                   onSize={(size) => {
                     map.set(ref, size);

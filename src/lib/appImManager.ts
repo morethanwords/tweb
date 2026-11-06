@@ -1,5 +1,6 @@
 import {keepsKeyFromComposer, shouldPreserveKeyboardFocus} from '@helpers/dom/isKeyboardControl';
 import isTargetAnInput from '@helpers/dom/isTargetAnInput';
+import {isWebPageUrl} from '@lib/richTextProcessor/matchUrlProtocol';
 import type {GroupCallId, MyGroupCall} from '@appManagers/appGroupCallsManager';
 import type {ApiLimitType} from '@appManagers/apiManagerMethods';
 import type GroupCallInstance from '@lib/calls/groupCallInstance';
@@ -1615,7 +1616,7 @@ export class AppImManager extends EventListenerBase<{
       }
 
       const originalUrl = element.dataset.originalUrl ??= element.href;
-      if(appConfig.autologin_domains.includes(url.hostname) && (url.protocol === 'https:' || url.protocol === 'http:')) {
+      if(appConfig.autologin_domains.includes(url.hostname) && isWebPageUrl(url)) {
         // the token signs the user in, so it never travels in plaintext: an http link goes out as https,
         // the way tdesktop and tdlib upgrade it, and no other scheme gets the token at all
         url.protocol = 'https:';

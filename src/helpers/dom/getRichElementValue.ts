@@ -6,7 +6,7 @@
  */
 
 import {MessageEntity} from '@layer';
-import {normalizeUrlProtocol} from '@lib/richTextProcessor/matchUrlProtocol';
+import {isWebPageUrl, normalizeUrlProtocol} from '@lib/richTextProcessor/matchUrlProtocol';
 import {BOM_REG_EXP} from '@helpers/string/bom';
 import {ENTITY_ELEMENT_MAP} from '@lib/richTextProcessor/wrapRichText';
 
@@ -248,8 +248,7 @@ function checkElementForEntity(
         try {
           const url1 = new URL((closest as HTMLAnchorElement).href);
           const url1String = url1.toString();
-          const isRealUrl = url1.protocol === 'http:' || url1.protocol === 'https:';
-          if(!isRealUrl) {
+          if(!isWebPageUrl(url1)) {
             throw 1;
           }
 
