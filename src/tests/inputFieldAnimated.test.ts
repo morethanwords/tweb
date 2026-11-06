@@ -9,7 +9,7 @@ vi.mock('@components/inputField', () => ({
     constructor() {
       this.input.className = 'input-field-input';
       this.input.contentEditable = 'true';
-      Object.defineProperty(this.input, 'isContentEditable', {value: true});
+      Object.defineProperty(this.input, 'isContentEditable', {value: true, configurable: true});
       this.placeholder.className = 'input-field-placeholder';
     }
 
@@ -60,6 +60,40 @@ describe('InputFieldAnimated', () => {
       borderBoxSize: [{blockSize, inlineSize: 200}]
     } as unknown as ResizeObserverEntry], observer as unknown as ResizeObserver);
   }
+
+  test('a held height stays the least while the text under it changes, smoothly though locked, until let go', () => {
+    const inputField = mountInputField();
+    emitResize(inputField, 60);
+    Object.defineProperty(inputField.input, 'isContentEditable', {value: false, configurable: true});
+
+    const held = () => inputField.heightWrapper.classList.contains('is-height-held');
+    inputField.holdHeight(true);
+    // * its text at the top meanwhile
+    expect(held()).toBe(true);
+    emitResize(inputField, 37);
+    expect(inputField.heightWrapper.style.height).toBe('60px');
+
+    emitResize(inputField, 80);
+    expect(inputField.heightWrapper.style.height).toBe('80px');
+    expect(inputField.heightWrapper.style.transitionDuration).not.toBe('0ms');
+
+    // * let go while it still grows: at the top till it has come to its height
+    inputField.holdHeight(false);
+    expect(held()).toBe(true);
+    emitResize(inputField, 37);
+    expect(inputField.heightWrapper.style.height).toBe('37px');
+    // * locked and not held, it changes at once as before
+    expect(inputField.heightWrapper.style.transitionDuration).toBe('0ms');
+    expect(held()).toBe(false);
+  });
+
+  test('a height let go of when it has settled centres the text again at once', () => {
+    const inputField = mountInputField();
+    emitResize(inputField, 60);
+    inputField.holdHeight(true);
+    inputField.holdHeight(false);
+    expect(inputField.heightWrapper.classList.contains('is-height-held')).toBe(false);
+  });
 
   test('uses one real sizing wrapper without creating a fake editor', () => {
     const inputField = mountInputField();

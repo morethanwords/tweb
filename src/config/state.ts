@@ -149,6 +149,9 @@ export type StateSettings = {
     doNotTranslate: TranslatableLanguageISO[]
   },
   chatContextMenuHintWasShown: boolean,
+  // * the AI editor's request made on every message a chat sends, by chat, topic or direct-message conversation
+  // * (getAiSendStyleKey), as a string (keepAiSendStyle)
+  aiSendStyles: {[chatKey: string]: string},
   passcode: {
     enabled: boolean,
     autoLockTimeoutMins: number, // number | null is not working, gets reset after reloading the page
@@ -601,6 +604,7 @@ export const SETTINGS_INIT: StateSettings = {
     showInMenu: true,
     doNotTranslate: []
   },
+  aiSendStyles: {},
   passcode: {
     enabled: false,
     autoLockTimeoutMins: 0,

@@ -5,7 +5,7 @@ import {I18nTsx} from '@helpers/solid/i18n';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createSignal} from 'solid-js';
 import styles from './bodyContent.module.scss';
-import {useAiEditorPopupContext} from './context';
+import {takeSavedSendStyle, useAiEditorPopupContext, useAiEditorRequest} from './context';
 import {Divider, Original, Result, useTransitionGroupWhenMeasured} from './parts';
 import {previewStyles} from '@components/popups/previewCard';
 
@@ -16,14 +16,21 @@ export const TranslateTab = (props: {
   isAppearing: boolean;
 }) => {
   const {usePeerTranslation, pickLanguage} = useHotReloadGuard();
-  const {peerId, text: originalText} = useAiEditorPopupContext();
+  const context = useAiEditorPopupContext();
+  const {peerId, text: originalText} = context;
 
   const peerTranslation = usePeerTranslation(peerId);
 
-  const [emojify, setEmojify] = createSignal(false);
-  const [language, setLanguage] = createSignal<TranslatableLanguageISO>(peerTranslation.language());
+  const savedTranslation = takeSavedSendStyle(context, (style) => !!style.translateTo);
+  const [emojify, setEmojify] = createSignal(!!savedTranslation?.emojify);
+  const [language, setLanguage] = createSignal<TranslatableLanguageISO>(
+    (savedTranslation?.translateTo as TranslatableLanguageISO) || peerTranslation.language()
+  );
 
   const {Wrapper, onMeasured} = useTransitionGroupWhenMeasured();
+
+  const request = () => ({text: originalText, translateTo: language(), emojify: emojify()});
+  useAiEditorRequest(context, request);
 
   const onLanguageClick = async() => {
     const lang = await pickLanguage(false);
@@ -51,11 +58,7 @@ export const TranslateTab = (props: {
           }
           emojify={emojify()}
           onEmojify={() => setEmojify(!emojify())}
-          composeMessageWithAiArgs={{
-            text: originalText,
-            translateTo: language(),
-            emojify: emojify()
-          }}
+          composeMessageWithAiArgs={request()}
         />
       </Wrapper>
     </AutoHeight>

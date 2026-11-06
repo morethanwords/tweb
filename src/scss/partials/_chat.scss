@@ -89,8 +89,10 @@
 		}
 	}
 
+	// * by the emoji button on the field's last line, as the other buttons of the row: also while the field still
+	// * shrinks from a long message just sent, when the field is empty and these come back
 	.float {
-		align-self: center;
+		align-self: flex-end;
 		display: none !important;
 		margin: 0 !important;
 
@@ -270,24 +272,26 @@
     top: var(--padding-vertical);
     inset-inline-end: var(--padding-horizontal);
 
-    // it stays mounted while the field is too short for it, and `.btn-icon`'s `display: flex`
-    // outranks the attribute — a caption's button then sat over the popup's Send and took its clicks
-    &[hidden] {
-      display: none;
-    }
+    // * it stays while the field is too short for it, where it would cover another button (a caption's popup's Send),
+    // * and comes as the field has grown round it, as the field's expand button does
+    @include animation-level-icon-toggle(is-shown);
 
     &__icon {
       pointer-events: none;
       font-size: 1.5rem;
     }
 
-    &__star-1 {
+    // * its stars twinkle in each time it comes
+    &__star-1,
+    &__star-2 {
       opacity: 0;
+    }
+
+    &.is-shown &__star-1 {
       animation: chat-input-ai-editor-button-star-animation 3.2s ease-in-out forwards;
     }
 
-    &__star-2 {
-      opacity: 0;
+    &.is-shown &__star-2 {
       animation: chat-input-ai-editor-button-star-animation 3.2s ease-in-out 0.32s forwards;
     }
   }

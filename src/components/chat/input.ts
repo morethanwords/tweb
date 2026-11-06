@@ -1,6 +1,23 @@
 import RichMessageInput, {RichMessageInputController} from '@components/richMessageInput';
 import type {RichMediaUploadServices} from '@components/richMessageInput/media';
 import createAiEditorContext from '@components/chat/inputState/createAiEditorContext';
+import {
+  AiSendStyle,
+  formatAiSendStyleLabel,
+  getAiSendStyleKey,
+  hasTextToRewrite,
+  isSameAiSendStyle,
+  keepAiSendStyle,
+  readKeptAiSendStyle
+} from '@components/chat/aiSendStyles';
+import getAiEditorRequest from '@components/richMessageInput/aiRequest';
+import type {ComposeMessageWithAiResult} from '@appManagers/aiTonesManager';
+import AiSendSparkles from '@components/chat/aiSendSparkles';
+import AiRewriteEffect from '@components/chat/aiRewriteEffect';
+import AiSendFlight from '@components/chat/aiSendFlight';
+import liteMode from '@helpers/liteMode';
+import {appSettings, setAppSettings} from '@stores/appSettings';
+import anchorCallback from '@helpers/dom/anchorCallback';
 import type {MyDocument} from '@appManagers/appDocsManager';
 import getDocumentInput from '@appManagers/utils/docs/getDocumentInput';
 import sliceMessageEntities from '@helpers/sliceMessageEntities';
@@ -156,7 +173,7 @@ import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import showTooltip from '@components/tooltip';
 import createContextMenu from '@helpers/dom/createContextMenu';
-import {Accessor, createComponent, createEffect, createRoot, createSignal, Setter} from 'solid-js';
+import {Accessor, createComponent, createEffect, createRoot, createSignal, on, Setter} from 'solid-js';
 import {unwrapSolidElement, wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import SelectedEffect from '@components/chat/selectedEffect';
 import windowSize from '@helpers/windowSize';
@@ -191,7 +208,7 @@ import {getChatInputEditor} from './inputEditor/registry';
 import canSafelyEditRichMessage from './inputEditor/richMessageEditability';
 import {getAttachRichMediaTarget, RichMediaItemInsertAction} from '@components/chat/inputEditor/mediaPaste';
 import {entitiesFittingPlainMessage} from '@components/chat/inputEditor/model';
-import {getInputReplyQuote, richMessageToPlainMessage} from '@lib/richMessage';
+import {flattenRichMessageContent, getInputReplyQuote, richMessageToPlainMessage} from '@lib/richMessage';
 import {getReplyQuote} from '@lib/richQuote';
 import {canShowAttachMenuAction} from '@components/chat/inputEditor/attachMenuPolicy';
 import type {RichMessageAttachMenuAction} from '@components/chat/inputEditor/attachMenuPolicy';
@@ -214,6 +231,13 @@ import toastError from '@components/toastError';
 
 const HOT_CHAT_INPUTS = import.meta.hot ? [] as ChatInput[] : null;
 let botCommandsListId = 0;
+
+// * a medium in the field still uploading: what would go without it is refused, saying why
+function showMediaUploadingError(editor: ChatInputEditor) {
+  if(!editor?.hasPendingRichMediaUploads()) return false;
+  toastNew({langPackKey: 'RichMessage.Error.MediaUploading'});
+  return true;
+}
 
 function showRichMessageValidationError(validation: RichMessageValidationResult) {
   if(validation.valid) return false;
@@ -254,7 +278,7 @@ type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply' | 'suggested
 
 type ChatSendBtnIcon = 'send' | 'record' | 'record-video' | 'edit' | 'schedule' | 'forward' | 'stop';
 /** what one send goes with, besides the field: Send Without Sound, Schedule Message */
-type SendingFlags = Pick<ChatInput, 'scheduleDate' | 'scheduleRepeatPeriod' | 'sendSilent'>;
+type SendingFlags = Pick<ChatInput, 'scheduleDate' | 'scheduleRepeatPeriod' | 'sendSilent' | 'sendWithoutAiStyle'>;
 /** a message that left the field as it went, until the draft clears its send asks for are back (`takeOwnDraftUpdate`) */
 // * `saveRevision`: the field's saves as the send left it - a save after it is of the next message, not of the clear
 type OwnSend = {clears: number, until: number, saveRevision: number};
@@ -491,6 +515,20 @@ export default class ChatInput {
   public scheduleDate: number;
   public scheduleRepeatPeriod: number;
   public sendSilent: true;
+  /** the press sends the field as it is, past the AI editor's request saved for the chat */
+  public sendWithoutAiStyle: true;
+  /** the chat whose AI editor request the send button's sparkles show (getAiSendStyleKey) */
+  private setAiSendStyleKey: Setter<string>;
+  private aiSendSparkles: {icon: ChatSendBtnIcon, sparkles: AiSendSparkles}[];
+  /** stops the AI editor's request being made on the field before it goes, while it is */
+  private stopAiSendStyle: () => void;
+  /** whether the field could be typed in before that request locked it */
+  private editableBeforeAiSendStyle: boolean;
+  /**
+   * the AI editor's answer the field holds, of which request: while the field is as it left it and that request is
+   * still the chat's, it goes as it is, not rewritten again
+   */
+  private aiStyledContent: {style: AiSendStyle, isCurrent: (editor?: ChatInputEditor) => boolean};
   public startParam: string;
   public invertMedia: boolean;
   public effect: Accessor<DocId>;
@@ -1741,6 +1779,11 @@ export default class ChatInput {
       ['stop', 'stop']
     ];
     this.btnSend.append(...icons.map(([name, type, mirror]) => Icon(name, 'animated-button-icon-icon', 'btn-send-icon-' + type, ...(mirror ? [mirror] : []))));
+    // * the sparkles of a request the AI editor makes on what is sent, round the plane or the clock
+    this.aiSendSparkles = (['send', 'schedule'] as const).map((icon) => ({
+      icon,
+      sparkles: new AiSendSparkles(this.btnSend.querySelector<HTMLElement>('.btn-send-icon-' + icon), icon === 'schedule')
+    }));
 
     this.addStarsBadge();
 
@@ -1752,6 +1795,22 @@ export default class ChatInput {
       this.effect = effect;
       this.setEffect = setEffect;
       this.btnSendContainer.append(unwrapSolidElement(SelectedEffect({effect: this.effect})) as HTMLElement);
+
+      // * the sparkles follow the setting, saved in this tab or in another one
+      const [aiSendStyleKey, setAiSendStyleKey] = createSignal<string>();
+      this.setAiSendStyleKey = setAiSendStyleKey;
+      createEffect(() => {
+        const key = aiSendStyleKey();
+        this.btnSend.classList.toggle('has-ai-send-style', !!(key && readKeptAiSendStyle(appSettings.aiSendStyles?.[key])));
+        if(this.sendBtnIcon) {
+          this.updateSendBtnLabel();
+          this.updateAiSendSparkles();
+        }
+      });
+      // * and the animation level, switched while they are there
+      createEffect(on(() => liteMode.getAnimationLevel(), () => {
+        this.aiSendSparkles?.forEach(({sparkles}) => sparkles.updateLevel());
+      }, {defer: true}));
     });
 
     this.sendMenu = new SendMenu({
@@ -1759,6 +1818,15 @@ export default class ChatInput {
         this.sendSilent = true;
         if(this.recording) this.recordingController.finishRecordingFromMenu();
         else this.sendMessage();
+      },
+      aiSendStyleLabel: () => {
+        const style = !this.recording && this.getAiSendStyle();
+        return style ? formatAiSendStyleLabel(style) : undefined;
+      },
+      onSendWithoutAiStyleClick: () => this.sendAsWritten(),
+      onRemoveAiStyleClick: () => {
+        this.setAiSendStyle(undefined);
+        toastNew({langPackKey: 'AiEditor.ApplyOnSend.Removed'});
       },
       onScheduleClick: () => {
         if(this.recording) this.scheduleSending(() => this.recordingController.finishRecordingFromMenu());
@@ -1777,6 +1845,8 @@ export default class ChatInput {
           !this.isWelcomeComposer &&
           // the button is a Stop right now, and stopping has no send options
           this.sendBtnIcon !== 'stop' &&
+          // nor while the AI editor rewrites what is about to go: a press stops that
+          !this.stopAiSendStyle &&
           (this.recording || !this.isInputEmpty() || !!(this.forwarding && Object.keys(this.forwarding).length)) &&
           !this.editMsgId;
         if(good) {
@@ -3233,6 +3303,9 @@ export default class ChatInput {
       setSendAsCallback?.();
       replyKeyboard?.setPeer(peerId);
       sendMenu?.setPeerParams({peerId, isPaid: !!this.chat.starsAmount});
+      this.stopAiSendStyle?.();
+      this.aiStyledContent = undefined;
+      this.setAiSendStyleKey(this.getChatAiSendStyleKey());
 
       let haveSomethingInControl = false;
       if(this.chat && this.frozenBtn) {
@@ -3900,7 +3973,9 @@ export default class ChatInput {
   }
 
   public canSendPlain() {
-    return this.messageInput.isContentEditable && !this.chatInput.classList.contains('is-hidden');
+    // * the AI editor's request locks the field for a while, which the chat's rights have nothing to do with
+    const editable = this.stopAiSendStyle ? this.editableBeforeAiSendStyle : this.messageInput.isContentEditable;
+    return editable && !this.chatInput.classList.contains('is-hidden');
   }
 
   public async isSendingConfirmed() {
@@ -4697,6 +4772,12 @@ export default class ChatInput {
   private onBtnSendClick = async(e: Event) => {
     cancelEvent(e);
 
+    // * the AI editor is rewriting what is about to go: the press stops it, and the message stays in the field
+    if(this.stopAiSendStyle) {
+      this.stopAiSendStyle();
+      return;
+    }
+
     // This click is the release of a long-press that already opened the
     // record-mode menu — swallow it so it doesn't also start a recording.
     if(this.recordingController.consumeLongPressSuppression()) {
@@ -5044,17 +5125,8 @@ export default class ChatInput {
       this.btnSend.classList.toggle(i, icon === i);
     });
 
-    const sendBtnLabelKey: {[key in ChatSendBtnIcon]: LangPackKey} = {
-      'send': 'Send',
-      'record': 'UserRestrictionsSendVoices',
-      'record-video': 'UserRestrictionsSendRound',
-      'edit': 'Edit',
-      'schedule': 'Chat.Send.ScheduledMessage',
-      'forward': 'Forward',
-      // the button stops a draft the server is still streaming in
-      'stop': 'ChatAutomation.Stop'
-    };
-    this.btnSend.setAttribute('aria-label', I18n.format(sendBtnLabelKey[icon], true));
+    this.updateSendBtnLabel();
+    this.updateAiSendSparkles();
 
     this.inputState.set({
       hasSendButton: icon === 'send',
@@ -5075,6 +5147,31 @@ export default class ChatInput {
     // the audio/video sub-mode — collapse to 'record' so they don't need to
     // learn the new variant.
     this.onUpdateSendBtn?.(icon === 'record-video' ? 'record' : icon);
+  }
+
+  private updateSendBtnLabel() {
+    const icon = this.sendBtnIcon;
+    const sendBtnLabelKey: {[key in ChatSendBtnIcon]: LangPackKey} = {
+      'send': 'Send',
+      'record': 'UserRestrictionsSendVoices',
+      'record-video': 'UserRestrictionsSendRound',
+      'edit': 'Edit',
+      'schedule': 'Chat.Send.ScheduledMessage',
+      'forward': 'Forward',
+      // the button stops a draft the server is still streaming in
+      'stop': 'ChatAutomation.Stop'
+    };
+
+    let label = I18n.format(sendBtnLabelKey[icon], true);
+    // * what the AI editor does to the message goes with the button's name, as its stars go with the plane
+    const aiSendStyle = (icon === 'send' || icon === 'schedule') && this.getAiSendStyle();
+    if(this.stopAiSendStyle) {
+      label = I18n.format('AiEditor.ApplyOnSend.Stop', true);
+    } else if(aiSendStyle) {
+      label = I18n.format('AiEditor.ApplyOnSend.SendLabel', true, [label, formatAiSendStyleLabel(aiSendStyle)]);
+    }
+
+    this.btnSend.setAttribute('aria-label', label);
   }
 
   private async addStarsBadge() {
@@ -5131,6 +5228,7 @@ export default class ChatInput {
     this.scheduleDate = undefined;
     this.scheduleRepeatPeriod = undefined;
     this.sendSilent = undefined;
+    this.sendWithoutAiStyle = undefined;
   }
 
   public onMessageSent(clearInput = true, clearReply?: boolean, skipReadHistory = false) {
@@ -5226,8 +5324,7 @@ export default class ChatInput {
     const editor = inputField && getChatInputEditor(inputField.input);
     const contentIsCurrent = inputField && captureInputContent(inputField.input, editor);
     const editorHasContent = editor && !editor.isEmpty();
-    if(editor?.hasPendingRichMediaUploads()) {
-      toastNew({langPackKey: 'RichMessage.Error.MediaUploading'});
+    if(showMediaUploadingError(editor)) {
       return false;
     }
     if(editorHasContent) {
@@ -5431,9 +5528,206 @@ export default class ChatInput {
    * that press alone, and never stay on the field for the next message
    */
   private takeSendingFlags(): SendingFlags {
-    const {scheduleDate, scheduleRepeatPeriod, sendSilent} = this;
+    const {scheduleDate, scheduleRepeatPeriod, sendSilent, sendWithoutAiStyle} = this;
     this.resetSendingFlags();
-    return {scheduleDate, scheduleRepeatPeriod, sendSilent};
+    return {scheduleDate, scheduleRepeatPeriod, sendSilent, sendWithoutAiStyle};
+  }
+
+  /**
+   * where the field's chat keeps the AI editor's request: by its topic, or by the conversation of a channel's direct
+   * messages, as its draft is kept
+   */
+  private getChatAiSendStyleKey() {
+    const {peerId, threadId, monoforumThreadId} = this.chat;
+    return getAiSendStyleKey(rootScope.myId, peerId, threadId || monoforumThreadId);
+  }
+
+  /** the AI editor's request saved to be made on every message the field sends in this chat, its topic or conversation */
+  public getAiSendStyle(): AiSendStyle {
+    return this.chat.peerId ? readKeptAiSendStyle(appSettings.aiSendStyles?.[this.getChatAiSendStyleKey()]) : undefined;
+  }
+
+  public setAiSendStyle(style: AiSendStyle | undefined) {
+    setAppSettings('aiSendStyles', this.getChatAiSendStyleKey(), keepAiSendStyle(style));
+  }
+
+  /**
+   * sends the field as it is, past the AI editor's request saved for the chat; `flags` are those of a send the request
+   * stopped, which goes as it was meant to then: scheduled (the date already picked), without sound
+   */
+  public sendAsWritten(flags?: SendingFlags) {
+    if(flags) {
+      this.scheduleDate = flags.scheduleDate;
+      this.scheduleRepeatPeriod = flags.scheduleRepeatPeriod;
+      this.sendSilent = flags.sendSilent;
+    }
+
+    this.sendWithoutAiStyle = true;
+    return this.sendMessage(!!flags?.scheduleDate);
+  }
+
+  /**
+   * The request saved in the AI editor is made on the field before it goes: the field is locked while it is asked,
+   * then holds the answer, which is what is sent. It is not asked of a bot command, of a message that has no words
+   * (emoji, links, usernames), or of the answer to the same request when its send stopped before it went (slow mode, a
+   * payment); nor while a medium in the field still uploads, which the send refuses all the same. A press of the send
+   * button or Escape stops it, leaving the field as it was, and so do an edit of a message, the field going over to
+   * another chat and the chat closing; a chat left open behind another goes on with it, as with any send. A failure
+   * stops it too, saying why and offering to send the message as written. Resolves whether the message may go.
+   */
+  private async applyAiSendStyle(style: AiSendStyle, isCurrent: () => boolean, flags: SendingFlags) {
+    const editor = this.messageInputEditor;
+    const styled = this.aiStyledContent;
+    if(!editor || (styled && isSameAiSendStyle(styled.style, style) && styled.isCurrent(editor))) return true;
+
+    const {text, richMessage} = getAiEditorRequest(this.messageInput, editor);
+    // * by the words written, not a medium's stand-in ("Photo") the request is given to say what it is
+    if(!hasTextToRewrite(richMessage ? flattenRichMessageContent(richMessage.output).text : text.text)) return true;
+
+    // * the same refusal the send makes, before the field is rewritten without the medium
+    if(showMediaUploadingError(editor)) {
+      return false;
+    }
+
+    const {chat, messageInput} = this;
+    const {peerId, threadId} = chat;
+    const middleware = this.getMiddleware();
+    // * the field is still this chat's, and still holds the message (not an edit of another one)
+    const isSameField = () => middleware() && chat.peerId === peerId && chat.threadId === threadId;
+    const isSameChat = () => isSameField() && !this.editMsgId;
+    // * why the message did not go, with a link that sends it as written: long enough to press it
+    const sayWhyNotSent = (langPackKey: LangPackKey, args: (sendAsWritten: HTMLAnchorElement) => FormatterArguments) => {
+      // * of the message that failed: pressed once another one is in the field (it went some other way), it sends nothing
+      const isFailedMessage = captureInputContent(messageInput, this.messageInputEditor);
+      const sendAsWritten = anchorCallback(() => {
+        if(isSameChat() && isFailedMessage(this.messageInputEditor)) this.sendAsWritten(flags);
+      });
+      toastNew({langPackKey, langPackArguments: args(sendAsWritten), duration: 5000});
+    };
+    const wasEditable = messageInput.isContentEditable;
+    const stopped = deferredPromise<void>();
+    // * the field lights up while it is asked, and the answer comes into it word after word
+    const effect = new AiRewriteEffect({
+      field: this.rowsWrapper,
+      root: this.inputMessageContainer,
+      textBox: this.messageInputField.heightWrapper,
+      input: messageInput
+    });
+    // * and the plane is in flight in the send button meanwhile, gone with the message or landing without it
+    const flight = new AiSendFlight(this.btnSend);
+    let locked = true, heightHeld = false;
+    // * at once, before what stopped it looks at the field: an edit takes in whether it may be typed in
+    const unlock = () => {
+      if(!locked) return;
+      locked = false;
+      teardown.destroy();
+      appNavigationController.removeItem(navigationItem);
+      this.stopAiSendStyle = undefined;
+      effect.stop();
+      flight.cancel();
+      this.toggleApplyingAiSendStyle(false);
+      // * a chat opened meanwhile has set the field up for itself
+      if(isSameField()) this.setMessageInputEditable(wasEditable);
+      if(heightHeld) this.messageInputField?.holdHeight(false);
+    };
+    const stop = () => {
+      unlock();
+      stopped.resolve();
+    };
+    const navigationItem: NavigationItem = {type: 'ai-send-style', onPop: stop, noHistory: true};
+    // * the composer torn down meanwhile (its chat closed, or gone): nothing else stops it then, and the light, the
+    // * plane and Escape's entry would wait for the request with it
+    const teardown = middleware.create();
+    teardown.get().onClean(() => {
+      if(locked) stop();
+    });
+    this.stopAiSendStyle = stop;
+    this.editableBeforeAiSendStyle = wasEditable;
+    this.setMessageInputEditable(false);
+    this.toggleApplyingAiSendStyle(true);
+    effect.start();
+    flight.start();
+    appNavigationController.pushItem(navigationItem);
+    let result: ComposeMessageWithAiResult;
+    try {
+      result = await Promise.race([
+        this.managers.aiTonesManager.composeMessageWithAi({...style, text, richMessage: richMessage?.input}),
+        stopped.then((): ComposeMessageWithAiResult => undefined)
+      ]);
+    } catch{}
+
+    // * stopped, by a press or by leaving
+    if(stopped.isFulfilled || !isSameChat()) {
+      unlock();
+      return false;
+    }
+
+    if(!isCurrent()) {
+      unlock();
+      toastNew({langPackKey: 'AiEditor.MessageChanged'});
+      return false;
+    }
+
+    if(result?.ok !== true) {
+      unlock();
+      if(result?.isToneMissing && isSameAiSendStyle(this.getAiSendStyle(), style)) {
+        // * a style that is gone stays off: the next message goes as written. Unless another request was kept
+        // * meanwhile (in another tab): that one stays, and this send just failed
+        this.setAiSendStyle(undefined);
+        sayWhyNotSent('AiEditor.ApplyOnSend.StyleMissing', (link) => [formatAiSendStyleLabel(style), link]);
+      } else if(result?.isPremiumFlood) {
+        sayWhyNotSent('AiEditor.ApplyOnSend.PremiumFlood', (link) => [
+          link,
+          anchorCallback(() => hotReloadGuard.showPremiumPopup())
+        ]);
+      } else {
+        sayWhyNotSent('AiEditor.ApplyOnSend.Error', (link) => [link]);
+      }
+
+      return false;
+    }
+
+    const {resultRichMessage, resultText} = result.data;
+    // * still locked while the new text settles in: it goes then, unless stopped meanwhile (it stays in the field)
+    const applied = await effect.reveal(() => {
+      // * the field neither shrinks before the message goes nor jumps as the new text comes in
+      heightHeld = true;
+      this.messageInputField?.holdHeight(true);
+      // * a step of its own in the field's history: an undo after a stopped send brings the message as it was written
+      editor.separateHistory();
+      const applied = resultRichMessage ?
+        editor.replaceAllRichMessage(resultRichMessage) :
+        editor.replaceAllText(resultText.text, resultText.entities);
+      editor.separateHistory();
+      if(applied) this.aiStyledContent = {style, isCurrent: captureInputContent(messageInput, editor)};
+      return applied;
+    });
+    // * and the field still holds it: nothing took it back while it came in (the expanded field's toolbar has an undo
+    // * of its own), or what went would not be what was shown
+    const goes = applied && !stopped.isFulfilled && isSameChat() && !!this.aiStyledContent?.isCurrent(editor);
+    if(goes) flight.depart();
+    unlock();
+    if(!applied) {
+      sayWhyNotSent('AiEditor.ApplyOnSend.Error', (link) => [link]);
+      return false;
+    }
+
+    return goes;
+  }
+
+  private toggleApplyingAiSendStyle(applying: boolean) {
+    this.btnSend.classList.toggle('is-applying-ai-send-style', applying);
+    // * an ARIA state, not a boolean attribute: it has to say "true"
+    if(applying) this.messageInput.setAttribute('aria-busy', 'true');
+    else this.messageInput.removeAttribute('aria-busy');
+    this.aiSendSparkles.forEach(({sparkles}) => sparkles.setActive(applying));
+    this.updateSendBtnLabel();
+  }
+
+  // * with the plane or the clock, while the chat has a request of the AI editor kept
+  private updateAiSendSparkles() {
+    const kept = this.btnSend.classList.contains('has-ai-send-style');
+    this.aiSendSparkles?.forEach(({icon, sparkles}) => sparkles.setShown(kept && this.sendBtnIcon === icon));
   }
 
   private async sendFieldMessage(force: boolean, ephemeralCommandReceiverId: UserId, flags: SendingFlags) {
@@ -5446,6 +5740,7 @@ export default class ChatInput {
       // the press goes on in the schedule picker: the send it makes goes without sound if this press did
       this.scheduleSending(() => {
         this.sendSilent = flags.sendSilent;
+        this.sendWithoutAiStyle = flags.sendWithoutAiStyle;
         this.sendMessage(true);
       });
       return;
@@ -5465,6 +5760,12 @@ export default class ChatInput {
       (!this.isInputEmpty() || this.forwarding) &&
       (!(await this.isSendingConfirmed()) || !isCurrent())
     ) {
+      return;
+    }
+
+    const aiSendStyle = !flags.sendWithoutAiStyle && !ephemeralCommandReceiverId && !this.isEphemeralComposerMode() &&
+      !this.isInputEmpty() && this.getAiSendStyle();
+    if(aiSendStyle && !(await this.applyAiSendStyle(aiSendStyle, isCurrent, flags))) {
       return;
     }
 
@@ -5632,8 +5933,7 @@ export default class ChatInput {
     const message = this.editMessage;
     const canUseRichMessage = !message.media || message.media._ === 'messageMediaWebPage';
     const editorHasContent = !this.messageInputEditor.isEmpty();
-    if(this.messageInputEditor.hasPendingRichMediaUploads()) {
-      toastNew({langPackKey: 'RichMessage.Error.MediaUploading'});
+    if(showMediaUploadingError(this.messageInputEditor)) {
       return;
     }
     if(editorHasContent) await this.messageInputEditor.resolveAutoCodeLanguages();
@@ -5828,6 +6128,8 @@ export default class ChatInput {
   public initMessageEditing(mid: number) {
     const message = this.chat.getMessage(mid) as Message.message;
     if(!message) return;
+    // * the edit takes the field: a rewrite of the message in it stops, and gives the field back first
+    this.stopAiSendStyle?.();
     const peerId = this.chat.peerId;
     const threadId = this.chat.threadId;
     let input: LocalTextWithEntities = {text: message.message, entities: message.totalEntities};

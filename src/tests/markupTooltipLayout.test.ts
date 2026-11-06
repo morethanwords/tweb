@@ -117,8 +117,8 @@ describe('formatting MarkupTooltip layout', () => {
     expect(source).toContain(
       'const aiAvailable = this.input.classList.contains(\'input-message-input\');'
     );
-    expect(aiEditorButtonSource).toContain('const available = !!target && !!field;');
-    expect(aiEditorButtonSource).toContain('const visible = available && canShowButton();');
+    expect(aiEditorButtonSource).toContain('if(!target || !field) return;');
+    expect(aiEditorButtonSource).toContain('const visible = canShowButton();');
   });
 
   test('reuses the composite animated AI icon in every chat editor control', () => {

@@ -1,7 +1,9 @@
 import {RichMessage, TextWithEntities} from '@layer';
 import {LangPackKey} from '@lib/langPack';
-import {Accessor, createContext, createSignal, Setter, useContext} from 'solid-js';
+import {Accessor, createComputed, createContext, createSignal, onCleanup, Setter, useContext} from 'solid-js';
 import type {AiEditorActionResult, AiEditorPopupProps} from '@components/popups/aiEditorPopup/aiEditorPopup';
+import type {ComposeMessageWithAiArgs} from '@appManagers/aiTonesManager';
+import type {AiSendStyle} from '@components/chat/aiSendStyles';
 
 export type AiEditorPrimaryAction = {
   disabled: Accessor<boolean>;
@@ -15,7 +17,28 @@ export type AiEditorPopupContextValue = AiEditorPopupProps & {
   primaryActionSignal: [Accessor<AiEditorPrimaryAction>, Setter<AiEditorPrimaryAction>];
   resultTextSignal: [Accessor<TextWithEntities>, Setter<TextWithEntities>];
   resultRichMessageSignal: [Accessor<RichMessage>, Setter<RichMessage>];
+  /** What the editor's tab asks for now, its result shown or not: what a chat keeps to be made on sending */
+  requestSignal: [Accessor<ComposeMessageWithAiArgs>, Setter<ComposeMessageWithAiArgs>];
+  /** The saved request is yet to be shown by the tab it is of (`takeSavedSendStyle`) */
+  showSavedSendStyle: boolean;
 };
+
+/** What a tab asks for, for as long as it is shown */
+export function useAiEditorRequest(context: AiEditorPopupContextValue, args: () => ComposeMessageWithAiArgs) {
+  const [, setRequest] = context.requestSignal;
+  createComputed(() => {
+    setRequest(args());
+    onCleanup(() => setRequest());
+  });
+}
+
+/** The request saved for the chat, to the tab it is of when it asks first: the popup opens showing it made */
+export function takeSavedSendStyle(context: AiEditorPopupContextValue, isOfTab: (style: AiSendStyle) => boolean) {
+  const style = context.savedSendStyle;
+  if(!style || !context.showSavedSendStyle || !isOfTab(style)) return;
+  context.showSavedSendStyle = false;
+  return style;
+}
 
 export function createAiEditorPopupContextValue(
   props: AiEditorPopupProps,
@@ -52,7 +75,9 @@ export function createAiEditorPopupContextValue(
     promptTextSignal: createSignal(''),
     primaryActionSignal: createSignal<AiEditorPrimaryAction>(),
     resultTextSignal: createSignal<TextWithEntities>(),
-    resultRichMessageSignal: createSignal<RichMessage>()
+    resultRichMessageSignal: createSignal<RichMessage>(),
+    requestSignal: createSignal<ComposeMessageWithAiArgs>(),
+    showSavedSendStyle: true
   };
 }
 

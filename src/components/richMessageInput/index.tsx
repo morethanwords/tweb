@@ -1,4 +1,4 @@
-import {createSignal, onCleanup} from 'solid-js';
+import {Accessor, createSignal, onCleanup} from 'solid-js';
 import InputFieldAnimated from '@components/inputFieldAnimated';
 import type {InputFieldOptions} from '@components/inputField';
 import ButtonIcon from '@components/buttonIcon';
@@ -12,7 +12,8 @@ import EditorToolbar, {type EditorToolbarOptions} from '@components/richMessageI
 import RichMediaUploads, {type RichMediaUploadServices} from '@components/richMessageInput/media';
 import editRichMediaItem from '@components/richMessageInput/editMedia';
 import type {AiEditorContext} from '@components/richMessageInput/aiContext';
-import {useAiEditorButton} from '@components/richMessageInput/ai';
+import {defaultShouldShowFromHeight, useAiEditorButton} from '@components/richMessageInput/ai';
+import {observeResize} from '@components/resizeObserver';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {handleMarkdownShortcut} from '@helpers/dom/markdown';
@@ -96,7 +97,10 @@ export class RichMessageInputController {
   // a rich message being edited is edited as one, wherever rich text may not be written anew
   private richRequired = false;
   private plainEditor = false;
-  private fieldHeight = 0;
+  // * how tall the field's container is, and what the field is to be as it changes height
+  private contentHeight = 0;
+  private fieldHeight: Accessor<number>;
+  private unobserveContent: VoidFunction;
   private readonly listenerSetter = new ListenerSetter();
   private readonly middlewareHelper = getMiddleware();
   private readonly reloadScheduler: ReturnType<typeof createChatInputEditorReloadScheduler>;
@@ -128,12 +132,21 @@ export class RichMessageInputController {
     this.input.classList.replace('input-field-input', 'input-message-input');
     this.content.append(this.field.heightWrapper, this.field.placeholder);
     this.row.append(this.content);
+    // * the buttons on the field's corners, the expand one and the AI one, come once the field has grown round them, not
+    // * as it starts to (they would stand over Send and the attachments meanwhile), and go as soon as it starts to
+    // * shrink, not once it has: they would slide down over those
+    const [fieldHeight, setFieldHeight] = createSignal(0);
+    this.fieldHeight = fieldHeight;
     this.field.onChangeHeight = (height) => {
-      this.fieldHeight = height;
+      setFieldHeight(height);
       this.syncExpandButton();
       if(!options.layoutElement) this.layout.style.setProperty('--message-input-collapsed-height', Math.max(48, height + 8) + 'px');
       options.onHeightChange?.(height);
     };
+    this.unobserveContent = observeResize(this.content, (entry) => {
+      this.contentHeight = entry.contentRect.height;
+      this.syncExpandButton();
+    });
     if(options.expandable !== false) {
       this.expandButton = ButtonIcon('fullscreen toggle-message-input-size', {noRipple: true});
       let restoreFocus = false;
@@ -199,7 +212,10 @@ export class RichMessageInputController {
       container: () => this.content,
       appendTo: () => this.row,
       canSend: true,
-      forceHidden: () => {uiRevision(); return options.isAiHidden?.() ?? false;}
+      forceHidden: () => {
+        uiRevision();
+        return (options.isAiHidden?.() ?? false) || fieldHeight() < defaultShouldShowFromHeight;
+      }
     });
     mountedInputs.add(this);
   }
@@ -454,7 +470,10 @@ export class RichMessageInputController {
   }
 
   private syncExpandButton() {
-    this.row.classList.toggle('has-message-input-expand-button', this.expandable && this.fieldHeight >= 72);
+    const visible = this.expandable &&
+      this.contentHeight >= defaultShouldShowFromHeight &&
+      this.fieldHeight() >= defaultShouldShowFromHeight;
+    this.expandButton?.classList.toggle('is-shown', visible);
   }
 
   // where rich text may not be written, the expanded editor's button goes, an open one folds back
@@ -626,6 +645,7 @@ export class RichMessageInputController {
     this.toolbar.destroy();
     this.editor.destroy();
     this.field.destroy();
+    this.unobserveContent();
     this.listenerSetter.removeAll();
     this.middlewareHelper.destroy();
   }

@@ -1,0 +1,82 @@
+// * the send button while what it sends is rewritten first (aiSendFlight.ts)
+
+// * the light's tint: the button's color, lit
+.flight,
+.aura {
+  --ai-flight-tint: color-mix(in srgb, var(--primary-color), white 55%);
+}
+
+.flight {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+}
+
+.streak {
+  position: absolute;
+  background-color: currentColor;
+  opacity: 0;
+}
+
+.shake {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.plane {
+  position: absolute;
+  margin: 0;
+}
+
+// * just inside the button's edge, turning round
+.orbit {
+  position: absolute;
+  inset: 1.25px;
+  border-radius: 50%;
+  filter: drop-shadow(0 0 2px var(--ai-flight-tint));
+
+  &.reflected {
+    scale: -1 1;
+  }
+}
+
+// * brightest at the head (at the top), into the tint along the tail, a third of the way round
+.tail {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    transparent 0deg 238deg,
+    hsl(from var(--ai-flight-tint) h s l / .2) 280deg,
+    hsl(from var(--ai-flight-tint) h s l / .5) 320deg,
+    hsl(from currentColor h s l / .85) 350deg,
+    currentColor 360deg
+  );
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+}
+
+.head {
+  position: absolute;
+  top: calc(1px - 1.75px);
+  left: calc(50% - 1.75px);
+  width: 3.5px;
+  height: 3.5px;
+  border-radius: 50%;
+  background-color: currentColor;
+  box-shadow: 0 0 3.5px color-mix(in srgb, currentColor, var(--ai-flight-tint) 30%);
+}
+
+// * round the button, outside what it clips
+.aura {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: 0 0 5px 1px var(--ai-flight-tint);
+}

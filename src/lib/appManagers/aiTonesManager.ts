@@ -1,6 +1,7 @@
 import {AiComposeTone, InputAiComposeTone, InputRichMessage, RichMessage, TextWithEntities} from '@layer';
 import {AppManager} from '@lib/appManagers/manager';
 import {flattenRichMessageSummary} from '@lib/richMessage';
+import getAiComposeToneKey from '@appManagers/utils/aiTones/getAiComposeToneKey';
 
 type Tone = AiComposeTone;
 
@@ -24,6 +25,8 @@ export type ComposeMessageWithAiOkResultData = {
 export type ComposeMessageWithAiResult = {
   ok: false;
   isPremiumFlood: boolean;
+  /** the tone asked for is not among the account's any more */
+  isToneMissing?: boolean;
 } | {
   ok: true;
   data: ComposeMessageWithAiOkResultData;
@@ -89,8 +92,7 @@ export class AiTonesManager extends AppManager {
       this.tonesMap.clear();
 
       for(const tone of fetchedResult.tones) {
-        if(tone._ === 'aiComposeToneDefault') this.tonesMap.set(tone.tone, tone);
-        else if(tone._ === 'aiComposeTone') this.tonesMap.set(tone.id.toString(), tone);
+        this.tonesMap.set(getAiComposeToneKey(tone), tone);
       }
 
       return this.tones = fetchedResult.tones;
@@ -202,13 +204,22 @@ export class AiTonesManager extends AppManager {
     translateTo,
     emojify
   }: ComposeMessageWithAiArgs): Promise<ComposeMessageWithAiResult> {
-    const tone = toneNameOrId ? this.tonesMap.get(toneNameOrId) : undefined;
-    const toneInput: InputAiComposeTone | undefined = customPrompt?.trim() ? {
-      _: 'inputAiComposeToneSingleUse',
-      custom_prompt: customPrompt
-    } : tone ? this.getToneInput(tone) : undefined;
-
     try {
+      const hasCustomPrompt = !!customPrompt?.trim();
+      let tone = toneNameOrId && !hasCustomPrompt ? this.tonesMap.get(toneNameOrId) : undefined;
+      // * a request saved to be made on sending names its tone: the tones are not loaded after a reload, and the
+      // * tone may have been deleted since, here or on another device (the list is stale then)
+      if(toneNameOrId && !hasCustomPrompt && (!tone || this.isStale)) {
+        await this.getTones();
+        tone = this.tonesMap.get(toneNameOrId);
+        if(!tone) return {ok: false, isPremiumFlood: false, isToneMissing: true};
+      }
+
+      const toneInput: InputAiComposeTone | undefined = hasCustomPrompt ? {
+        _: 'inputAiComposeToneSingleUse',
+        custom_prompt: customPrompt
+      } : tone ? this.getToneInput(tone) : undefined;
+
       if(richMessage || createRichMessage) {
         const inputRichMessage = richMessage ?
           this.appMessagesManager.resolveInputRichMessage(richMessage) :

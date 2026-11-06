@@ -22,7 +22,7 @@ import {
 } from './composerParts';
 import {useAiEditorPopupContext} from '@components/popups/aiEditorPopup/context';
 import AiEditorPopupProvider from '@components/popups/aiEditorPopup/provider';
-import {Result} from './parts';
+import {CopyResultButton, Result} from './parts';
 
 keepMe(ripple);
 
@@ -143,6 +143,10 @@ export const CreateWithAiPopupBody = () => {
         </Section>
       </GrowHeightReveal>
       <div class={bodyStyles.footerButtons}>
+        {/* nothing to copy before the first answer, while the button generates */}
+        <Show when={hasResult()}>
+          <CopyResultButton />
+        </Show>
         <Button
           class={bodyStyles.applyButton}
           primaryFilled

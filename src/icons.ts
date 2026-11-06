@@ -650,7 +650,8 @@ const Icons = {
   reload_star_filled: 'eb88',
   replace_circles_filled: 'eb89',
   reply_crossed: 'eb8a',
-  pin_status_filled: 'eb8b'
+  pin_status_filled: 'eb8b',
+  copy_filled: 'eb8c'
 };
 
 export default Icons;

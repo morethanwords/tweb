@@ -283,6 +283,11 @@
     transition-property: height;
     transition-timing-function: var(--transition-standard-in);
   }
+
+  // * a held height (InputFieldAnimated.holdHeight)
+  &.is-height-held {
+    align-items: flex-start;
+  }
 }
 
 .input-fields-row {

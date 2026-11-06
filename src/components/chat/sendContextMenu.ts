@@ -14,6 +14,7 @@ import {getOverlayRoot} from '@helpers/appWindow';
 import {positionMenuTrigger} from '@helpers/positionMenu';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import verifyMenuItem from '@helpers/verifyMenuItem';
+import I18n from '@lib/langPack';
 
 /**
  * A send button's menu lives in the overlay root like every other menu, placed against the button:
@@ -47,7 +48,11 @@ export default class SendMenu {
     // * no room past the menu's end: the effects bar keeps over the menu, with no bubble at the button
     effectsWithinMenu?: () => boolean,
     effect?: () => DocId,
-    onEffect?: (effect: DocId) => void
+    onEffect?: (effect: DocId) => void,
+    /** what the AI editor does to what is sent, when a request of it is saved for that */
+    aiSendStyleLabel?: () => string,
+    onSendWithoutAiStyleClick?: () => void,
+    onRemoveAiStyleClick?: () => void
   }) {
     this.middlewareHelper = options.middleware.create();
     this.createMenu();
@@ -59,6 +64,20 @@ export default class SendMenu {
   }
 
   private createButtons(): ButtonMenuItemOptionsVerifiable[] {
+    // * named by what it turns off, as the menu opens
+    const turnOffAiSendStyle: ButtonMenuItemOptionsVerifiable = {
+      icon: 'edit_stars',
+      text: 'AiEditor.ApplyOnSend.TurnOff',
+      textArgs: [''],
+      onClick: this.options.onRemoveAiStyleClick,
+      verify: () => {
+        const label = this.options.aiSendStyleLabel?.();
+        if(!label) return false;
+        (I18n.weakMap.get(turnOffAiSendStyle.textElement) as I18n.IntlElement)?.update({args: [label]});
+        return true;
+      }
+    };
+
     return [{
       icon: 'mute',
       text: 'Chat.Send.WithoutSound',
@@ -80,6 +99,11 @@ export default class SendMenu {
       onClick: this.options.onSendWhenOnlineClick,
       verify: async() => this.type === 'schedule' && (await this.options.canSendWhenOnline?.()) && !this.isPaid
     }, {
+      icon: 'send2',
+      text: 'AiEditor.ApplyOnSend.SendAsIs',
+      onClick: this.options.onSendWithoutAiStyleClick,
+      verify: () => !!this.options.aiSendStyleLabel?.()
+    }, turnOffAiSendStyle, {
       icon: 'crossround',
       text: 'Effect.Remove',
       danger: true,

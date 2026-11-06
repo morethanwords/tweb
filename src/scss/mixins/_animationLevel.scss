@@ -156,3 +156,34 @@ $animation-level-reduced: opacity visibility color background-color background b
 @mixin animation-level-icon-out($important: false) {
   @include -animation-level-icon(fade-out-opacity, hide-icon, $important);
 }
+
+// a control that stays where it stands and comes as an icon swapped in a button does, popping or fading, shown while
+// it has the class `$shown`; it goes quicker, as what it stands in may be moving (a field shrinking under a button on
+// its top): hidden, it takes no clicks, and leaves the keyboard's way once it has gone. By transitions both ways, so
+// that a turn midway goes back from where it is
+@mixin animation-level-icon-toggle($shown) {
+  &:not(.#{$shown}) {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+
+    @include animation-level(1) {
+      transition: opacity .15s, visibility 0s .15s;
+    }
+
+    @include animation-level(2) {
+      scale: .5;
+      transition: opacity .15s, scale .15s, visibility 0s .15s;
+    }
+  }
+
+  &.#{$shown} {
+    @include animation-level(1) {
+      transition: opacity .2s;
+    }
+
+    @include animation-level(2) {
+      transition: opacity .2s, scale .4s cubic-bezier(.34, 1.56, .64, 1);
+    }
+  }
+}

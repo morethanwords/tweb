@@ -42,25 +42,24 @@
     }
 
     .new-message-wrapper {
+      // * shown and hidden where it stands as the AI button is, at its other corner; going as the field shrinks, it
+      // * slides under Send, which hides it there
       .toggle-message-input-size {
-        display: none;
         inset-inline-end: var(--padding-horizontal);
         position: absolute;
         top: var(--padding-vertical);
         z-index: 4;
-      }
+        @include animation-level-icon-toggle(is-shown);
 
-      &.has-message-input-expand-button {
-        .toggle-message-input-size {
-          display: flex;
+        &:not(.is-shown) {
+          z-index: auto;
         }
       }
 
-      &.has-ai-editor-button {
-        > .chat-input-ai-editor-button {
-          inset-inline-end: auto;
-          inset-inline-start: var(--padding-horizontal);
-        }
+      // * in its corner while it goes too
+      > .chat-input-ai-editor-button {
+        inset-inline-end: auto;
+        inset-inline-start: var(--padding-horizontal);
       }
     }
   }

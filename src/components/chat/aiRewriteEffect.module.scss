@@ -1,0 +1,72 @@
+// * the AI editor rewriting what is about to be sent (aiRewriteEffect.ts)
+
+// * round the field, under what it holds
+.halo {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 1px hsl(from var(--primary-color) h s l / .45),
+    0 0 1.25rem .25rem hsl(from var(--primary-color) h s l / .35);
+}
+
+// * the light through the field's glass, under all it holds
+.glass {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+
+  .band {
+    background-color: hsl(from var(--primary-color) h s l / .3);
+
+    :global(.night) & {
+      background-color: hsl(from var(--primary-color) h s l / .35);
+    }
+  }
+}
+
+// * the composer's rows (the input's, a reply's or a link's) are of the field's own background: it shows through them
+// * while the light is under them
+.lit > :global(.rows-wrapper-row) {
+  background-color: transparent;
+}
+
+// * a sheen's window, moved along the line; its light is its mask
+.band {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+}
+
+// * what is drawn over the field's text
+.text,
+.layer,
+.letters {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+// * the letters as the sheens light them, and a new word's glow
+.letters .piece,
+.wordGlow {
+  color: var(--primary-color);
+
+  :global(.night) & {
+    color: color-mix(in srgb, var(--primary-color) 55%, white);
+  }
+}
+
+.piece,
+.word,
+.wordGlow,
+.wordSettled {
+  position: absolute;
+  margin: 0;
+  white-space: pre;
+}

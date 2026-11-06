@@ -1,0 +1,43 @@
+// * the AI editor's sparkles round the send button's glyph (aiSendSparkles.ts), drawn in the glyph's own box: its em
+// * stands in the middle of its line
+.sparkles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+// * a sparkle where it stands in the em, as big as it reaches
+.holder {
+  position: absolute;
+  left: calc((var(--x) - var(--radius)) * 1em);
+  top: calc((100% - 1em) / 2 + (var(--y) - var(--radius)) * 1em);
+  width: calc(var(--radius) * 2em);
+  height: calc(var(--radius) * 2em);
+}
+
+.body,
+.shape,
+.glow {
+  position: absolute;
+  inset: 0;
+}
+
+.shape,
+.glow {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-linejoin: round;
+}
+
+// * its light, shining out as it flares
+.glow {
+  opacity: 0;
+  filter: blur(1.5px);
+}

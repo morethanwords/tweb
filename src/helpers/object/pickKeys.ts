@@ -1,4 +1,4 @@
-export default function pickKeys<T extends object, K extends keyof T>(obj: T, keys: K[]) {
+export default function pickKeys<T extends object, K extends keyof T>(obj: T, keys: readonly K[]) {
   const result = {} as {[key in K]: T[key]};
 
   keys.forEach((key) => {

@@ -27,10 +27,14 @@
   flex: 1;
   overflow: hidden;
 
-  --tone-height: 80px;
-  --tone-width: 88px;
-  --tone-border-radius: 20px;
-  --tone-icon-size: 42px;
+  --tone-height: 65px;
+  // * the narrowest a style gets: when they all fit, they stretch over the row; when not, the row scrolls, and the
+  // * style tab widens them to cut the last one in sight in half (`--tone-width` on the row)
+  --tone-min-width: 70px;
+  // * a tab of the menu on top and a tone are rounded alike
+  --item-border-radius: 1.25rem;
+  // * the emoji of a style is drawn at this size in pixels (`TONE_ICON_SIZE`)
+  --tone-icon-size: 1.875rem;
 }
 
 .padded {
@@ -52,7 +56,7 @@
   display: flex;
   gap: 0.25rem;
   padding: 0.25rem;
-  border-radius: 200px;
+  border-radius: $border-radius-big;
   background-color: var(--surface-color);
 }
 
@@ -71,11 +75,13 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.125rem;
 
   flex: 1;
-  padding: 0.5rem 0.25rem 0.25rem;
-  border-radius: 100px;
+  height: 65px;
+  padding: 0 0.25rem;
+  border-radius: var(--item-border-radius);
 
   cursor: pointer;
   transition: background-color 0.2s;
@@ -92,10 +98,18 @@
   }
 }
 
-.tabContent, .section {
+.tabContent {
   background-color: var(--surface-color);
   border-radius: 24px;
   overflow: hidden;
+}
+
+.tonesRest {
+  position: relative;
+}
+
+.tonesBorder {
+  border-top: 1px solid var(--border-color);
 }
 
 .tabContent {
@@ -114,8 +128,9 @@
   --content-padding-x: 0.5em;
 }
 
+// * under the styles, above the line that ends them
 .promptField {
-  padding: 1rem var(--content-padding-x) 0;
+  padding: .75rem var(--content-padding-x) 1rem;
 }
 
 .promptInput {
@@ -139,7 +154,7 @@
 
 .tonesList {
   display: flex;
-  gap: 2px;
+  gap: 0.25rem;
   --padding: 0.25rem;
   padding: var(--padding);
   height: calc(var(--tone-height) + var(--padding) * 2);
@@ -153,11 +168,10 @@
   align-items: center;
   flex-direction: column;
   justify-content: center;
-  flex-shrink: 0;
+  flex: 1 0 var(--tone-width, var(--tone-min-width));
 
   height: var(--tone-height);
-  width: var(--tone-width);
-  border-radius: var(--tone-border-radius);
+  border-radius: var(--item-border-radius);
   gap: 0.25rem;
 
   cursor: pointer;
@@ -168,7 +182,7 @@
     font-size: 0.75rem;
     font-weight: var(--font-weight-bold);
     white-space: nowrap;
-    width: 64px;
+    width: calc(100% - .375rem);
     text-align: center;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -204,7 +218,7 @@
   }
 
   &Skeleton {
-    width: var(--tone-width);
+    flex: 1 0 var(--tone-width, var(--tone-min-width));
     height: var(--tone-height);
 
     display: flex;
@@ -221,7 +235,7 @@
     }
 
     &Text {
-      width: calc(var(--tone-width) - 2.5rem);
+      width: calc(var(--tone-min-width) - 2.5rem);
     }
   }
 }
@@ -243,7 +257,6 @@
 
 .sendButtonWrapper {
   position: relative;
-  flex: 64px 0;
   display: flex;
 
   :global(.btn-send-effect-container) {
@@ -251,9 +264,13 @@
   }
 }
 
-.sendButton {
-  flex: 1;
-  border-radius: 100px;
+// * a button of only an icon: a circle as tall as the one with words beside it
+.roundButton {
+  flex: none;
+  width: $button-height;
+  height: $button-height;
+  padding: 0;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -261,6 +278,13 @@
   &Icon {
     font-size: 1.5rem;
   }
+}
+
+// * "Always use in this chat": a section under the tab's, as wide as it (the scrollable keeps the popup's sides
+// * already) and as far from it as the tab's from the menu
+.alwaysUse {
+  margin-top: .5rem;
+  padding-inline: 0;
 }
 
 .sectionWrapper {

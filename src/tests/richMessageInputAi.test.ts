@@ -12,15 +12,26 @@ import type {MessageEntity, RichMessage} from '@layer';
 const mocks = vi.hoisted(() => ({
   click: undefined as (() => Promise<void>),
   open: vi.fn(),
-  create: vi.fn()
+  create: vi.fn(),
+  // * the AI button made last
+  button: undefined as HTMLButtonElement,
+  // * who watches what for its size, to be told one by `resize`
+  resizes: [] as [Element, (entry: ResizeObserverEntry) => void][]
 }));
 vi.mock('@lib/appImManager', () => ({AppImManager: class {}, APP_TABS: {}, default: {}}));
 vi.mock('@components/buttonTsx', () => ({default: (props: {onClick: () => Promise<void>}) => {
   mocks.click = props.onClick;
-  return document.createElement('button');
+  return mocks.button = document.createElement('button');
 }}));
 vi.mock('@components/chat/createAiEditorIcon', () => ({default: () => document.createElement('span')}));
-vi.mock('@components/resizeObserver', () => ({observeResize: () => () => {}}));
+vi.mock('@components/resizeObserver', () => ({observeResize: (element: Element, callback: (entry: ResizeObserverEntry) => void) => {
+  const watch: [Element, (entry: ResizeObserverEntry) => void] = [element, callback];
+  mocks.resizes.push(watch);
+  return () => mocks.resizes.splice(mocks.resizes.indexOf(watch), 1);
+}}));
+const resize = (element: Element, height: number) => mocks.resizes
+.filter(([watched]) => watched === element)
+.forEach(([, callback]) => callback({contentRect: {height}} as ResizeObserverEntry));
 vi.mock('@lib/solidjs/hotReloadGuard', () => ({useHotReloadGuard: () => ({
   rootScope: {managers: {acknowledged: {aiTonesManager: {getTones: async() => ({cached: true, result: [] as never[]})}}}},
   toastNew: vi.fn(),
@@ -104,14 +115,41 @@ test('AI rewrite targets its own field and retains explicit document policy', as
   expect(second.editor.getRichValue().value).toBe('Rewritten');
 });
 
+// * the field is to be `height` tall, and has become so
+function grow(field: RichMessageInputController, height: number) {
+  field.field.onChangeHeight(height);
+  resize(field.content, height);
+}
+
 test('AI visibility changes cannot remove the field expansion control', () => {
   const {field, hideAi} = mount();
-  field.field.onChangeHeight(100);
-  expect(field.row.classList.contains('has-message-input-expand-button')).toBe(true);
+  const expand = document.querySelector('.toggle-message-input-size');
+  grow(field, 100);
+  expect(expand.classList.contains('is-shown')).toBe(true);
   hideAi();
-  expect(field.row.classList.contains('has-message-input-expand-button')).toBe(true);
+  expect(expand.classList.contains('is-shown')).toBe(true);
+  grow(field, 40);
+  expect(expand.classList.contains('is-shown')).toBe(false);
+});
+
+test('the expand and AI buttons come together once the field has grown round them, and go as soon as it shrinks', () => {
+  const {field} = mount();
+  const expand = document.querySelector('.toggle-message-input-size');
+  const aiButton = mocks.button;
+  const shown = () => [expand.classList.contains('is-shown'), aiButton.classList.contains('is-shown')];
+  // * the height the field is to grow to is not enough: it has to have grown
+  field.field.onChangeHeight(100);
+  expect(shown()).toEqual([false, false]);
+  resize(field.content, 100);
+  expect(shown()).toEqual([true, true]);
+  // * the height it is to shrink to is: they would slide down over Send and the attachments
   field.field.onChangeHeight(40);
-  expect(field.row.classList.contains('has-message-input-expand-button')).toBe(false);
+  expect(shown()).toEqual([false, false]);
+  resize(field.content, 40);
+  expect(shown()).toEqual([false, false]);
+  // * the very same button, where it was
+  expect(mocks.button).toBe(aiButton);
+  expect(aiButton.parentElement).toBe(field.row);
 });
 
 // A plain message — and a caption, or the composer where rich posting is off, which send only one —

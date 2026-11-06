@@ -88,7 +88,9 @@ function setup(mode: 'legacy' | 'selection' | 'create' = 'legacy') {
     getDefaultParamsForSlowModeTooltip: () => ({}),
     paidMessageInterceptor: undefined as undefined,
     Class: {sendMessageWithForward: send},
-    setInputValue: vi.fn()
+    setInputValue: vi.fn(),
+    getAiSendStyle: (): undefined => undefined,
+    setAiSendStyle: vi.fn()
   };
   const apply = vi.fn();
   createRoot(dispose => {
@@ -176,3 +178,12 @@ for(const format of ['plain', 'rich'] as const) {
     expect(state.host.setInputValue).toHaveBeenCalledTimes(interruption === 'none' ? 1 : 0);
   });
 }
+
+test('a paid chat is offered to keep the request, though the popup cannot send there', async() => {
+  const state = setup();
+  state.host.chat.starsAmount = 10;
+  const popup = await state.open();
+  expect(popup.onSend).toBeUndefined();
+  expect(popup.onSaveSendStyle?.({proofRead: true})).toBe(true);
+  expect(state.host.setAiSendStyle).toHaveBeenCalledWith({proofRead: true});
+});

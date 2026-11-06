@@ -1,14 +1,18 @@
 import {AutoHeight} from '@components/autoHeight';
 import {useContext} from 'solid-js';
 import styles from './bodyContent.module.scss';
-import {AiEditorPopupContext} from './context';
+import {AiEditorPopupContext, useAiEditorRequest} from './context';
 import {Divider, Original, Result, useTransitionGroupWhenMeasured} from './parts';
 
 
 export const FixTab = (props: {isAppearing: boolean}) => {
-  const {text: originalText} = useContext(AiEditorPopupContext);
+  const context = useContext(AiEditorPopupContext);
+  const {text: originalText} = context;
 
   const {Wrapper, onMeasured} = useTransitionGroupWhenMeasured();
+
+  const request = {text: originalText, proofRead: true};
+  useAiEditorRequest(context, () => request);
 
   return (
     <AutoHeight outerClass={styles.tabContent}>
@@ -18,7 +22,7 @@ export const FixTab = (props: {isAppearing: boolean}) => {
         <Result
           useDiffText
           isAppearing={props.isAppearing}
-          composeMessageWithAiArgs={{text: originalText, proofRead: true}}
+          composeMessageWithAiArgs={request}
         />
       </Wrapper>
     </AutoHeight>

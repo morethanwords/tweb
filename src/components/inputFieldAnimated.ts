@@ -20,6 +20,7 @@ export default class InputFieldAnimated extends InputField {
   private maxHeight: number | undefined;
   private measuredHeight: number | undefined;
   private heightMeasurementEnabled = true;
+  private heldHeight: number | undefined;
   private destroyed = false;
   private unobserveResize: () => void;
 
@@ -69,9 +70,10 @@ export default class InputFieldAnimated extends InputField {
       this.maxHeight === undefined ? newHeight : Math.min(newHeight, this.maxHeight)
     );
     const currentHeight = this.measuredHeight ?? newHeight;
+    if(this.heldHeight !== undefined) newHeight = Math.max(newHeight, this.heldHeight);
     if(currentHeight === newHeight && this.heightWrapper.style.height) return;
 
-    noAnimation ??= !this.input.isContentEditable || this.measuredHeight === undefined;
+    noAnimation ??= (!this.input.isContentEditable && this.heldHeight === undefined) || this.measuredHeight === undefined;
     const heightDifference = Math.abs(newHeight - currentHeight);
     const transitionDuration = noAnimation || heightDifference <= 1 ?
       0 :
@@ -95,6 +97,7 @@ export default class InputFieldAnimated extends InputField {
       onTransitionEnd: () => {
         this.input.classList.remove('is-changing-height');
         (this.input as any).oldHeight = (this.input as any).newHeight;
+        if(this.heldHeight === undefined) this.heightWrapper.classList.remove('is-height-held');
       }
     });
   }
@@ -116,6 +119,24 @@ export default class InputFieldAnimated extends InputField {
   public syncFromInput() {
     super.syncFromInput();
     this.measureHeight();
+  }
+
+  /**
+   * While held, the field keeps at least the height it has, and changes it smoothly though it cannot be typed in: a
+   * text that replaces another one in a message about to go (the AI editor's rewrite on send) does not shrink the field
+   * before it goes, and grows it without a jump. Its text stands at the top meanwhile, where the one it replaced
+   * started, and goes along with the top as the field grows. Let go, it takes the height of what it holds, and the
+   * text is centred again once it has.
+   */
+  public holdHeight(hold: boolean) {
+    this.heldHeight = hold ? this.measuredHeight : undefined;
+    if(hold) {
+      this.heightWrapper.classList.add('is-height-held');
+      return;
+    }
+
+    this.measureHeight();
+    if(!this.input.classList.contains('is-changing-height')) this.heightWrapper.classList.remove('is-height-held');
   }
 
   public setHeightMeasurementEnabled(enabled: boolean) {

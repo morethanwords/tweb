@@ -6,7 +6,9 @@
 
 import noop from '@helpers/noop';
 import browserStyles from '@components/browser.module.scss';
+import type {AiSendStyle} from '@components/chat/aiSendStyles';
 import {defineStories, PopupStory} from '../registry';
+import type {PopupStoryContext} from '../context';
 
 import {
   EMBEDDED_PAGE_URL,
@@ -21,6 +23,23 @@ import {
   storyItem,
   userFullWithRating
 } from '../fixtures';
+
+// * the AI editor on a draft, as the composer's button opens it; with `savedSendStyle`, the request the chat keeps
+async function openAiEditorStory(ctx: PopupStoryContext, savedSendStyle?: AiSendStyle) {
+  const [{openAiEditorPopup}, {default: HotReloadGuard}] = await Promise.all([
+    import('@components/popups/aiEditorPopup'),
+    import('@lib/solidjs/hotReloadGuardProvider')
+  ]);
+
+  openAiEditorPopup({
+    peerId: ctx.peer('private'),
+    text: {_: 'textWithEntities', text: 'a draft the editor will rewrite', entities: []},
+    onApply: noop,
+    onSend: () => true,
+    savedSendStyle,
+    onSaveSendStyle: () => true
+  }, HotReloadGuard);
+}
 
 // * a real photo: a real preview size also exercises the edit/spoiler/delete controls
 async function loadSandboxPhoto(name: string) {
@@ -233,18 +252,20 @@ defineStories('Composer & bots', [
   {
     id: 'aiEditor',
     title: 'AI editor',
-    open: async(ctx) => {
-      const [{openAiEditorPopup}, {default: HotReloadGuard}] = await Promise.all([
-        import('@components/popups/aiEditorPopup'),
-        import('@lib/solidjs/hotReloadGuardProvider')
-      ]);
-
-      openAiEditorPopup({
-        peerId: ctx.peer('private'),
-        text: {_: 'textWithEntities', text: 'a draft the editor will rewrite', entities: []},
-        onApply: noop
-      }, HotReloadGuard);
-    }
+    open: (ctx) => openAiEditorStory(ctx)
+  },
+  {
+    // * opened with a request kept for the chat: on its tab, made on the draft, with "Always use in this chat" on
+    id: 'aiEditor/applyOnSend',
+    title: 'AI editor — applied on send',
+    managers: {
+      aiTonesManager: {
+        composeMessageWithAi: () => ({ok: true, data: {
+          resultText: {_: 'textWithEntities', text: 'A draft the editor will rewrite.', entities: []}
+        }})
+      }
+    },
+    open: (ctx) => openAiEditorStory(ctx, {proofRead: true})
   },
   {
     // A local document tests the iframe chrome without booting another Telegram client.

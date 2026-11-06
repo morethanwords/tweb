@@ -14,6 +14,8 @@ export default function createAiEditorContext(instance: ChatInput): AiEditorCont
         instance.chat.threadId === threadId && instance.chat.type === chatType &&
         instance.editMsgId === editMsgId && instance.isEphemeralComposerMode() === wasEphemeral;
       const canSend = !wasEphemeral && !instance.chat.starsAmount && !editMsgId;
+      // * what the composer sends goes through its own checks, a payment's among them
+      const canSaveSendStyle = !wasEphemeral && !editMsgId;
       const sendingParams = canSend ? instance.chat.getMessageSendingParams() : undefined;
       return {
         peerId,
@@ -21,6 +23,12 @@ export default function createAiEditorContext(instance: ChatInput): AiEditorCont
         isScheduled: chatType === ChatType.Scheduled,
         canSendWhenOnline: instance.canSendWhenOnline,
         clear: () => instance.setInputValue(''),
+        sendStyle: canSaveSendStyle ? instance.getAiSendStyle() : undefined,
+        saveSendStyle: canSaveSendStyle ? (style) => {
+          if(!isCurrent()) return false;
+          instance.setAiSendStyle(style);
+          return true;
+        } : undefined,
         send: canSend ? async(text, options, richMessage) => {
           if(!isCurrent()) return false;
           const result = await instance.Class.sendMessageWithForward({

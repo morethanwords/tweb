@@ -3,10 +3,7 @@ import I18n from '@lib/langPack';
 import createAiEditorIcon from '@components/chat/createAiEditorIcon';
 import type InputField from '@components/inputField';
 import {observeResize} from '@components/resizeObserver';
-import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
-import track from '@helpers/solid/track';
 import classNames from '@helpers/string/classNames';
-import trimRichText from '@lib/richTextProcessor/trimRichText';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {resolveFirst} from '@solid-primitives/refs';
 import {LocalTextWithEntities} from '@types';
@@ -21,8 +18,8 @@ import {getChatInputEditor} from '@components/chat/inputEditor/registry';
 import captureInputContent from '@components/chat/inputEditor/captureInputContent';
 import type {AiEditorSendOptions} from '@components/popups/aiEditorPopup/aiEditorPopup';
 import {flattenRichMessageSummary} from '@lib/richMessage';
-import type {TextWithEntities} from '@layer';
 import shouldOpenCreateWithAi from '@components/chat/inputState/shouldOpenCreateWithAi';
+import getAiEditorRequest from '@components/richMessageInput/aiRequest';
 
 export const defaultShouldShowFromHeight = 72;
 
@@ -64,24 +61,25 @@ export function useAiEditorButton({
   });
 
   createEffect(() => {
-    track(canShowButton); // appendTo might not be reactive
     const target = appendTo();
     const field = inputField();
-    const available = !!target && !!field;
-    const visible = available && canShowButton();
-    target?.classList.toggle('has-ai-editor-button', visible);
-    onCleanup(() => target?.classList.remove('has-ai-editor-button'));
     if(!target || !field) return;
 
-    createAiEditorButton({
+    // * it stays while the field is too short for it, and comes and goes where it stands
+    const button = createAiEditorButton({
       context,
       appendTo: target,
       inputField: field,
       onApply,
       class: className,
-      canSend,
-      hidden: !visible
+      canSend
     });
+    createEffect(() => {
+      const visible = canShowButton();
+      target.classList.toggle('has-ai-editor-button', visible);
+      button.classList.toggle('is-shown', visible);
+    });
+    onCleanup(() => target.classList.remove('has-ai-editor-button'));
   });
 }
 
@@ -92,7 +90,6 @@ type CreateAiEditorButtonArgs = {
   onApply: (text: LocalTextWithEntities) => void;
   canSend: boolean;
   class?: string;
-  hidden?: boolean;
 };
 
 const createAiEditorButton = ({
@@ -101,8 +98,7 @@ const createAiEditorButton = ({
   appendTo,
   onApply,
   class: className,
-  canSend,
-  hidden
+  canSend
 }: CreateAiEditorButtonArgs) => {
   const {HotReloadGuard, rootScope, toastNew} = useHotReloadGuard();
 
@@ -119,13 +115,7 @@ const createAiEditorButton = ({
     children: icon,
     onClick: async() => {
       const editor = getChatInputEditor(inputField.input);
-      // Only content a plain message cannot carry goes to the structured endpoints, judged as on send;
-      // the rest, and all of a field that sends only plain messages (a caption, the composer with rich
-      // posting off), goes to the plain ones and gets text back, as on Android. A rich result may hold
-      // a block a plain field has no room for (a translation's footer), and an account that may not
-      // post rich messages is refused the structured endpoints (RICH_MESSAGE_UNSUPPORTED).
       const canHoldRichMessage = !!editor && !editor.plainOnly;
-      const richEditor = canHoldRichMessage && editor.getMode() === 'rich' ? editor : undefined;
       const session = context.capture();
       const {peerId} = session;
       const contentIsCurrent = captureInputContent(inputField.input, editor);
@@ -186,19 +176,11 @@ const createAiEditorButton = ({
 
       // Rich content is rewritten by the structured compose endpoint, preserving blocks and marks.
       // Create with AI is handled separately above because it has no source.
-      const editorRichMessage = richEditor &&
-        ((hasEditorSelection && richEditor.getSelectedRichMessage()) || richEditor.getRichMessage());
-      let popupText: TextWithEntities.textWithEntities;
-      if(editorRichMessage) {
-        popupText = flattenRichMessageSummary(editorRichMessage.output);
-      } else if(hasEditorSelection) {
-        // plain content goes as the field sends it, and a selection as itself serialized the same way
-        const {value, entities} = editor.getSelectedRichValue();
-        popupText = {_: 'textWithEntities', text: value, entities};
-      } else {
-        const {value, entities} = getRichValueWithCaret(inputField.input, true, false);
-        popupText = {_: 'textWithEntities', ...trimRichText(value, entities)};
-      }
+      const {text: popupText, richMessage: editorRichMessage} = getAiEditorRequest(
+        inputField.input,
+        editor,
+        hasEditorSelection
+      );
 
       const {module: {openAiEditorPopup}, initialTones} = await namedPromises({
         module: import('@components/popups/aiEditorPopup'),
@@ -207,6 +189,8 @@ const createAiEditorButton = ({
       if(!isCurrent()) return;
 
       const canSendResult = canSend && !!session.send;
+      // * a paid chat keeps one too: the popup cannot send there, but the composer's own send pays as it goes
+      const canKeepSendStyle = canSend && !!session.saveSendStyle;
       const sendResult = async(
         text: LocalTextWithEntities,
         options?: AiEditorSendOptions,
@@ -251,6 +235,10 @@ const createAiEditorButton = ({
         },
         canSendWhenOnline: session.canSendWhenOnline,
         isScheduled: session.isScheduled,
+        // * only the composer's own button: a caption is sent by its popup, never through the chat's field
+        savedSendStyle: canKeepSendStyle ? session.sendStyle : undefined,
+        // * of the chat, not of the text: the text it is made on is the one each message has as it goes
+        onSaveSendStyle: canKeepSendStyle ? session.saveSendStyle : undefined,
         onSend: canSendResult ? sendResult : undefined,
         onSendRichMessage: canSendResult ? (richMessage, options) => {
           if(!canApplyResult()) return false;
@@ -265,10 +253,11 @@ const createAiEditorButton = ({
   const child = resolveFirst(() => button);
   const element = child() as HTMLElement;
 
-  element.hidden = !!hidden;
   appendTo.append(element);
 
   onCleanup(() => {
     element.remove();
   });
+
+  return element;
 };

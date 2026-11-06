@@ -200,7 +200,9 @@ function createContext(): AiEditorPopupContextValue {
     promptTextSignal: createSignal(''),
     primaryActionSignal: createSignal(),
     resultTextSignal: createSignal(),
-    resultRichMessageSignal: createSignal()
+    resultRichMessageSignal: createSignal(),
+    requestSignal: createSignal(),
+    showSavedSendStyle: true
   };
 }
 

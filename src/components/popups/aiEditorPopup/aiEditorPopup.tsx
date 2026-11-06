@@ -6,6 +6,7 @@ import PopupElement, {createPopup} from '../indexTsx';
 import styles from './aiEditorPopup.module.scss';
 import {AiEditorPopupBodyContent} from './bodyContent';
 import AiEditorPopupProvider from '@components/popups/aiEditorPopup/provider';
+import type {AiSendStyle} from '@components/chat/aiSendStyles';
 
 
 export type AiEditorSendOptions = {
@@ -29,6 +30,13 @@ export type AiEditorPopupProps = {
   canSendWhenOnline?: () => boolean | Promise<boolean>;
   /** When true, sending always opens the schedule popup and the send context menu is hidden */
   isScheduled?: boolean;
+  /** The request saved to be made on every message the chat sends, if one is */
+  savedSendStyle?: AiSendStyle;
+  /**
+   * Keeps a request of the editor for the chat, to be made on every message it sends (or none, given none): "Always use
+   * in this chat". Whether it is kept
+   */
+  onSaveSendStyle?: (style: AiSendStyle | undefined) => boolean;
 };
 
 const AiEditorPopup = (props: AiEditorPopupProps) => {

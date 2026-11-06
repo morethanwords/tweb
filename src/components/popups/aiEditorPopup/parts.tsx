@@ -1,5 +1,5 @@
-import {ButtonIconTsx} from '@components/buttonIconTsx';
 import {ButtonMenuItemOptions} from '@components/buttonMenu';
+import Button from '@components/buttonTsx';
 import EmojiDocumentIcon from '@components/emojiDocumentIcon';
 import {IconTsx} from '@components/iconTsx';
 import {InstantViewBlocks} from '@components/instantView';
@@ -66,6 +66,36 @@ export const Tabs = <T, >(props: TabsProps<T>) => {
         )}</For>
       </div>
     </div>
+  );
+};
+
+// * the footer's first button: the result shown goes to the clipboard as it would go into the field, formatting and all
+export const CopyResultButton = () => {
+  const {toastNew, I18n} = useHotReloadGuard();
+  const {resultTextSignal: [resultText]} = useAiEditorPopupContext();
+
+  const onClick = async() => {
+    const result = resultText();
+    if(!result) return;
+    const {text, html} = prepareTextWithEntitiesForCopying(result);
+    try {
+      await copyTextToClipboard(text, html, {rethrow: true});
+      toastNew({langPackKey: 'TextCopied'});
+    } catch{
+      toastNew({langPackKey: 'TextCopyFailed'});
+    }
+  };
+
+  return (
+    <Button
+      class={styles.roundButton}
+      primaryFilled
+      disabled={!resultText()}
+      aria-label={I18n.format('Copy', true)}
+      onClick={onClick}
+    >
+      <IconTsx class={styles.roundButtonIcon} icon='copy_filled' />
+    </Button>
   );
 };
 
@@ -193,21 +223,6 @@ export const Result = (props: {
     }
   });
 
-  const onCopyClick = async() => {
-    if(composedMessage.state !== 'ready') return;
-    const {text, html} = prepareTextWithEntitiesForCopying(composedMessage().resultText);
-    try {
-      await copyTextToClipboard(text, html, {rethrow: true});
-      toastNew({
-        langPackKey: 'TextCopied'
-      });
-    } catch{
-      toastNew({
-        langPackKey: 'TextCopyFailed'
-      });
-    }
-  };
-
   return (
     <>
       <div class={previewStyles.resultHeader}>
@@ -215,14 +230,6 @@ export const Result = (props: {
           <Show when={props.overrideTitle} fallback={<I18nTsx key='AiEditor.Result' class={previewStyles.resultTitle} />}>
             {props.overrideTitle}
           </Show>
-          <ButtonIconTsx
-            class={previewStyles.copyButton}
-            classList={{
-              [previewStyles.hidden]: composedMessage.state !== 'ready'
-            }}
-            icon='copy'
-            onClick={onCopyClick}
-          />
         </div>
         <Show when={props.onEmojify}>
           <EmojifyCheckbox checked={props.emojify} onClick={props.onEmojify} />
@@ -327,6 +334,9 @@ type ToneProps = {
   onClick: JSX.EventHandlerUnion<HTMLButtonElement, MouseEvent>;
 } & ({docId: DocId, icon?: never} | {docId?: never, icon: Icon});
 
+// * `--tone-icon-size` in pixels: the emoji is drawn as big as it shows
+const TONE_ICON_SIZE = 30;
+
 export const Tone = (props: ToneProps) => {
   const {rootScope} = useHotReloadGuard();
   const labelId = createUniqueId();
@@ -385,7 +395,7 @@ export const Tone = (props: ToneProps) => {
           <EmojiDocumentIcon
             docId={docId}
             color={props.selected ? 'primary-color' : 'primary-text-color'}
-            size={42}
+            size={TONE_ICON_SIZE}
             class={styles.toneIcon}
             managers={rootScope.managers}
           />

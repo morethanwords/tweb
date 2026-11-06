@@ -1,5 +1,6 @@
 import convertPunycode from '@vendor/convertPunycode';
 import {normalizeUrlProtocol} from '@lib/richTextProcessor/matchUrlProtocol';
+import LETTER_REG_EXP from '@helpers/string/letterRegExp';
 
 // * inspired by https://github.com/Ajaxy/telegram-tt/blob/6b52024107b7b534fc25dfaddd91868f653d0092/src/util/browser/url.ts#L43
 // * the plain latin/non-latin split it (and Telegram for iOS) uses misses a mix of two non-latin
@@ -20,7 +21,6 @@ const RECOMMENDED_SCRIPTS = [
 type Script = typeof RECOMMENDED_SCRIPTS[number];
 
 const SCRIPT_REG_EXPS = RECOMMENDED_SCRIPTS.map((script) => [script, new RegExp(`\\p{Script=${script}}`, 'u')] as const);
-const LETTER_REG_EXP = /\p{L}/u;
 // digits, hyphens, and script-neutral letters such as the japanese `ー` belong to no script in particular
 const SCRIPTLESS_REG_EXP = /[\p{Script=Common}\p{Script=Inherited}]/u;
 
