@@ -32,8 +32,8 @@ import contextMenuController from '@helpers/contextMenuController';
 
 let keyboardId = 0;
 // * Android's keyboard time (AdjustPanLayoutHelper.keyboardDuration), in its curve (`EASING_Y`)
-const DURATION = 250;
-const FADE_IN = 200;
+export const KEYBOARD_DURATION = 250;
+export const KEYBOARD_FADE_IN = 200;
 
 /**
  * A bot's keyboard, laid out under the message field like the inline keyboard under a bubble. The
@@ -436,13 +436,13 @@ export default class ReplyKeyboard extends EventListenerBase<{
       liteMode.isAvailable('motion') &&
       composer.isConnected &&
       composer.ownerDocument.visibilityState !== 'hidden';
-    this.chatInput.chat.setChatInputKeyboardHeight(height, motion ? DURATION : undefined);
+    this.chatInput.chat.setChatInputKeyboardHeight(height, motion ? KEYBOARD_DURATION : undefined);
 
     // * opened or closed at once, or its height changed as it stood (another keyboard came)
     if(!motion || (was && height)) {
       if(!height) this.element.classList.remove('is-shown');
       else if(!was && animate && liteMode.isAvailable('animations')) {
-        this.element.animate([{opacity: 0}, {opacity: 1}], {duration: FADE_IN});
+        this.element.animate([{opacity: 0}, {opacity: 1}], {duration: KEYBOARD_FADE_IN});
       }
 
       return;
@@ -453,7 +453,7 @@ export default class ReplyKeyboard extends EventListenerBase<{
       height ?
         [{translate: `0 ${distance}px`}, {translate: '0 0'}] :
         [{translate: '0 0'}, {translate: `0 ${distance}px`}],
-      {duration: DURATION, easing: EASING_Y, fill: 'forwards'}
+      {duration: KEYBOARD_DURATION, easing: EASING_Y, fill: 'forwards'}
     );
     animation.finished.then(() => {
       if(this.slide === animation) this.settle();
@@ -511,7 +511,7 @@ export default class ReplyKeyboard extends EventListenerBase<{
       !chatInput.replyToMsgId &&
       !chatInput.editMsgId
     ) {
-      chatInput.initMessageReply({replyToMsgId: replyMarkup.mid});
+      chatInput.initMessageReply({replyToMsgId: replyMarkup.mid}, true);
     }
   }
 

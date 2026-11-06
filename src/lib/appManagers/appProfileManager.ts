@@ -7,7 +7,8 @@
 
 import type {MyTopPeer} from '@appManagers/appUsersManager';
 import tsNow from '@helpers/tsNow';
-import {ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, InputPhoto, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates, ChatParticipant, PeerSettings, SendAsPeer, InputGroupCall, Birthday, TextWithEntities, UsersUserFull, MessagesChatFull, ProfileTab, Document, InputCollectible, ReportReason} from '@layer';
+import setBooleanFlag from '@helpers/object/setBooleanFlag';
+import {ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, InputPhoto, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates, ChatParticipant, PeerSettings, SendAsPeer, InputGroupCall, Birthday, TextWithEntities, UsersUserFull, MessagesChatFull, ProfileTab, Document, InputCollectible, ReportReason, WallPaper} from '@layer';
 import SearchIndex from '@lib/searchIndex';
 import {AppManager} from '@appManagers/manager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
@@ -61,6 +62,8 @@ export class AppProfileManager extends AppManager {
   private peerSettings: {[peerId: PeerId]: PeerSettings};
   // * the users whose settings are on the way, and whether a send to them was answered meanwhile (`endSuspiciousPeer`)
   private peerSettingsLoading: Map<PeerId, boolean> = new Map();
+  // * how many times a chat's wallpaper has changed here, by chat: a change after a moment is newer than it
+  private chatWallPaperRevisions: {[peerId: PeerId]: number} = {};
 
   protected after() {
     this.apiUpdatesManager.addMultipleEventsListeners({
@@ -83,6 +86,8 @@ export class AppProfileManager extends AppManager {
       updatePeerSettings: this.onUpdatePeerSettings,
 
       updatePeerHistoryTTL: this.onUpdatePeerHistoryTTL,
+
+      updatePeerWallpaper: this.onUpdatePeerWallpaper,
 
       updateBotCommands: this.onUpdateBotCommands
     });
@@ -181,6 +186,7 @@ export class AppProfileManager extends AppManager {
         userFull.personal_photo = this.appPhotosManager.savePhoto(userFull.personal_photo, {type: 'profilePhoto', peerId});
       }
       userFull.wallpaper = this.appThemesManager.saveWallPaper(userFull.wallpaper);
+      userFull.theme = this.appThemesManager.saveChatTheme(userFull.theme);
 
       const referenceContext: ReferenceContext = {type: 'userFull', userId: peerId.toUserId()};
 
@@ -1724,6 +1730,35 @@ export class AppProfileManager extends AppManager {
     }
 
     this.rootScope.dispatchEvent('auto_delete_period_update', {peerId, period: update.ttl_period});
+  };
+
+  /**
+   * The chat's own wallpaper, or none. `overridden`, a private chat's: set by the other side for both — what lets
+   * this side put its own back.
+   */
+  public setCachedChatWallPaper(peerId: PeerId, wallPaper: WallPaper | undefined, overridden?: boolean) {
+    this.chatWallPaperRevisions[peerId] = this.getChatWallPaperRevision(peerId) + 1;
+    this.modifyCachedFullPeer(peerId, (peerFull) => {
+      const fullWithWallPaper = peerFull as UserFull.userFull;
+      if(wallPaper) {
+        fullWithWallPaper.wallpaper = this.appThemesManager.saveWallPaper(wallPaper);
+      } else {
+        delete fullWithWallPaper.wallpaper;
+      }
+
+      if(peerId.isUser()) {
+        setBooleanFlag(fullWithWallPaper.pFlags, 'wallpaper_overridden', !!overridden);
+      }
+    });
+  }
+
+  public getChatWallPaperRevision(peerId: PeerId) {
+    return this.chatWallPaperRevisions[peerId] ?? 0;
+  }
+
+  private onUpdatePeerWallpaper = (update: Update.updatePeerWallpaper) => {
+    const peerId = this.appPeersManager.getPeerId(update.peer);
+    this.setCachedChatWallPaper(peerId, update.wallpaper, update.pFlags.wallpaper_overridden);
   };
 
   private onUpdateBotCommands = (update: Update.updateBotCommands) => {

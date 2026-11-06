@@ -651,6 +651,11 @@ export default class ChatTopbar {
         isWalletAvailable(await apiManagerProxy.getAppConfig())
       )
     }, {
+      icon: 'image',
+      text: 'SetWallpapers',
+      onClick: () => this.chat.toggleThemeChooser(),
+      verify: () => this.chat.canChooseTheme()
+    }, {
       icon: 'message',
       text: 'ChannelDirectMessages.Manage',
       onClick: () => this.onDirectMessagesClick(),

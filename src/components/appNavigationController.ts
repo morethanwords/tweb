@@ -16,7 +16,7 @@ export type NavigationItem = {
     'global-search' | 'voice' | 'mobile-search' | 'filters' | 'global-search-focus' |
     'toast' | 'dropdown' | 'forum' | 'stories' | 'stories-focus' | 'topbar-search' |
     'settings-popup' | 'profile-popup' | 'settings-search' | 'monoforum' | 'inline-message-input' | 'browser' |
-    'ai-send-style',
+    'ai-send-style' | 'theme-chooser',
   onPop: (canAnimate: boolean) => boolean | void,
   /**
    * Closes it whatever it is doing - before it ever showed, in the middle of a move - settling once it is

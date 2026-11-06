@@ -26,7 +26,7 @@ import LazyLoadQueue from '@components/lazyLoadQueue';
 import ListenerSetter from '@helpers/listenerSetter';
 import showChatToast from '@components/chat/chatToast';
 import {AudioElement, DeferredMediaElement, isAudioElement} from '@components/audio';
-import {ChannelParticipant, Chat as MTChat, ChatParticipant, Document, Game, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, UserFull, WebPage, WebPageAttribute, Reaction, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, PeerSettings, LangPackString, ForumTopic, MessageAction} from '@layer';
+import {ChannelParticipant, Chat as MTChat, ChatParticipant, Document, Game, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, UserFull, WebPage, WebPageAttribute, Reaction, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, PeerSettings, LangPackString, ForumTopic, MessageAction, StarGift} from '@layer';
 import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP, SERVICE_PEER_ID, STARS_CURRENCY} from '@appManagers/constants';
 import {FocusDirection, ScrollStartCallbackDimensions} from '@helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '@hooks/useHeavyAnimationCheck';
@@ -99,6 +99,7 @@ import {MESSAGE_LINK_ENTITY_SELECTOR} from '@lib/richTextProcessor/filterDisable
 import wrapMessageActionTextNew from '@components/wrappers/messageActionTextNew';
 import isMentionUnread from '@appManagers/utils/messages/isMentionUnread';
 import getReadMaxIdIfUnread from '@appManagers/utils/messages/getReadMaxIdIfUnread';
+import isOwnMessage from '@appManagers/utils/messages/isOwnMessage';
 import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
 import {getFakeUserIdForJustName, getPeerColorIndexById, getPeerColorIndexByPeer} from '@appManagers/utils/peers/getPeerColorById';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
@@ -225,6 +226,8 @@ import {StarGiftBubble, UniqueStarGiftWebPageBox} from '@components/chat/bubbles
 import {PremiumGiftBubble} from '@components/chat/bubbles/premiumGift';
 import WalletChatCard from '@components/wallet/chatCard';
 import {isWalletReleased} from '@lib/wallet/release';
+import {ChatThemeGiftBubble} from '@components/chat/bubbles/chatThemeGift';
+import {ChatWallPaperBubble} from '@components/chat/bubbles/chatWallPaper';
 import {UnknownUserBubble} from '@components/chat/bubbles/unknownUser';
 import {
   HIDDEN_LINK_ENTITY_TYPES,
@@ -9364,6 +9367,8 @@ export default class ChatBubbles {
 
       const s = document.createElement('div');
       s.classList.add('service-msg');
+      // * set by an action that shows its text inside its own card
+      let hideServiceText = false;
       if(action) {
         const isGiftCode = action._ === 'messageActionGiftCode';
         let promise: Promise<any>;
@@ -9573,6 +9578,55 @@ export default class ChatBubbles {
             serviceContainer: s,
             wrapOptions
           }), s, middleware);
+        } else if(action._ === 'messageActionSetChatTheme' && action.theme._ === 'chatThemeUniqueGift') {
+          // * the gift stands in for the text, with the text under it, as in tdesktop
+          const slug = (action.theme.gift as StarGift.starGiftUnique).slug;
+          const [gift, text] = await Promise.all([
+            this.managers.appGiftsManager.wrapGift(action.theme.gift),
+            wrapMessageActionTextNew({message, ...wrapOptions})
+          ]);
+          hideServiceText = true;
+          this.wrapSomeSolid(() => ChatThemeGiftBubble({
+            gift,
+            text,
+            stickerOptions: {
+              middleware,
+              play: true,
+              loop: false,
+              group: this.chat.animationGroup,
+              liteModeKey: 'stickers_chat'
+            },
+            onView: () => {
+              hotReloadGuard.internalLinkProcessor.processUniqueStarGiftLink({_: INTERNAL_LINK_TYPE.UNIQUE_STAR_GIFT, slug});
+            }
+          }), bubbleContainer, middleware);
+        } else if(action._ === 'messageActionSetChatWallPaper' && !action.pFlags.same) {
+          // * the wallpaper stands in for the text, with the text under it, as in tdesktop
+          const text = await wrapMessageActionTextNew({message, ...wrapOptions});
+          const wallPaper = action.wallpaper;
+          const peerId = this.peerId;
+          hideServiceText = true;
+          this.wrapSomeSolid(() => ChatWallPaperBubble({
+            peerId,
+            wallPaper,
+            forBoth: !!action.pFlags.for_both,
+            isOut: isOwnMessage(message, rootScope.myId),
+            text,
+            // * a channel's is only shown
+            actions: peerId.isUser() && {
+              onOwnClick: () => this.chat.canChooseTheme() && this.chat.toggleThemeChooser(),
+              onView: () => {
+                import('@components/popups/chatWallPaperPreview').then(({default: showChatWallPaperPreviewPopup}) => {
+                  if(middleware()) showChatWallPaperPreviewPopup({peerId, wallPaper, fromMessageId: message.mid, managers: this.managers});
+                });
+              },
+              onRemove: () => {
+                import('@components/popups/chatWallPaper').then(({resetChatWallPaper}) => {
+                  if(middleware()) resetChatWallPaper(peerId, this.managers, {revert: true});
+                });
+              }
+            }
+          }), bubbleContainer, middleware);
         } else if(
           PHOTO_BUBBLE_ACTIONS[action._] &&
           (action as MessageAction.messageActionChatEditPhoto).photo?._ === 'photo'
@@ -9628,6 +9682,20 @@ export default class ChatBubbles {
             message,
             ...wrapOptions
           }).then((el) => s.append(el));
+
+          // * a click on the text picks another theme, as in tdesktop; the menu has it for the keyboard
+          if(action._ === 'messageActionSetChatTheme' && this.chat.canChooseTheme()) {
+            s.classList.add('is-clickable');
+            // * held by the bubble, not the chat: it goes with the bubble
+            const detach = attachClickEvent(s, (e) => {
+              if(findUpTag(e.target, 'A') || findUpClassName(e.target, 'peer-title')) {
+                return;
+              }
+
+              this.chat.toggleThemeChooser();
+            });
+            middleware.onClean(detach);
+          }
         }
 
         if(action._ === 'messageActionGiftPremium' || (isGiftCode && shouldDisplayGiftCodeAsGift(action))) {
@@ -9861,7 +9929,11 @@ export default class ChatBubbles {
               }
             }
           }), container, middleware)
-        } else if(serviceMessageActionsWithReply.includes(action._)) {
+        } else if(
+          serviceMessageActionsWithReply.includes(action._) ||
+          // * the same wallpaper as the other side's: it leads to theirs
+          (action._ === 'messageActionSetChatWallPaper' && action.pFlags.same && (message as Message.messageService).reply_to)
+        ) {
           bubble.classList.add('is-reply')
         }
 
@@ -9966,7 +10038,7 @@ export default class ChatBubbles {
 
         loadPromises.push(promise);
       }
-      bubbleContainer.append(s);
+      if(!hideServiceText) bubbleContainer.append(s);
 
       if((message as Message.messageService).pFlags.is_single) { // * Ignore 'Discussion started'
         bubble.classList.add('is-group-last');

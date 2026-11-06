@@ -1813,6 +1813,8 @@ export class AppImManager extends EventListenerBase<{
 
       const chat = this.chat;
       if(Modes.a11y && targetIsInput && target !== chat?.input?.messageInput) return;
+      // * the theme picker stands in for the composer while it is up: no key reaches the draft it hides
+      const composerTakesKeys = !chat?.themeChooser;
 
       // Hand keyboard focus to the bubbles scroll container so the browser scrolls it natively.
       // (overflow:auto + outline:none → focus is invisible.)
@@ -1847,7 +1849,7 @@ export class AppImManager extends EventListenerBase<{
           }
         });
         return;
-      } else if((key === 'ArrowUp' || key === 'ArrowDown') && this.chat?.type !== ChatType.Scheduled && this.chat?.type !== ChatType.Welcome) {
+      } else if((key === 'ArrowUp' || key === 'ArrowDown') && composerTakesKeys && this.chat?.type !== ChatType.Scheduled && this.chat?.type !== ChatType.Welcome) {
         // In chats/channels where the user can't post (read-only broadcasts, restricted groups,
         // unjoined chats), there's no message to edit, so let ArrowUp/Down scroll the chat instead.
         if(chat?.input && !chat.input.canSendPlain()) {
@@ -1931,6 +1933,7 @@ export class AppImManager extends EventListenerBase<{
         this.isChatColumnShown() &&
         !chat.selection.isSelecting &&
         !chat.input.recording &&
+        composerTakesKeys &&
         chat.input.messageInput.isContentEditable
       ) {
         chat.input.passEventToInput(e);
@@ -3574,13 +3577,20 @@ export class AppImManager extends EventListenerBase<{
 
     if(prevTabId !== undefined && id > prevTabId) {
       if(id < APP_TABS.PROFILE || !appNavigationController.findItemByType('im')) {
-        appNavigationController.pushItem({
-          type: 'im',
-          onPop: (canAnimate) => {
-            // this.selectTab(prevTabId, !isSafari);
-            this.setPeer({}, canAnimate);
+        // * under what the chat shown has put up already (its theme picker, a bot's keyboard): the chat comes in once
+        // * its background is ready, which can be well after, and Escape is theirs first - as `chatsSelectTab` has it
+        const found = this.chat && appNavigationController.findItem((item) => item.context === this.chat);
+        appNavigationController.spliceItems(
+          found ? found.index : appNavigationController.getNextIndex(),
+          0,
+          {
+            type: 'im',
+            onPop: (canAnimate) => {
+              // this.selectTab(prevTabId, !isSafari);
+              this.setPeer({}, canAnimate);
+            }
           }
-        });
+        );
       }
     }
 

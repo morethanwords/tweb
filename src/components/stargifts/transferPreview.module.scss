@@ -12,17 +12,8 @@
 }
 
 .giftWrap {
-  position: relative;
   width: 60px;
   height: 60px;
-  border-radius: 12px;
-  overflow: hidden;
-
-  :global(.media-sticker-wrapper) {
-    top: 6px;
-    left: 6px;
-    z-index: 1;
-  }
 }
 
 .giftBackdropCanvas {

@@ -19,7 +19,7 @@ import {Theme, WallPaper} from '@layer';
 import themeControllerSingleton, {ThemeController} from '@helpers/themeController';
 import {getColorsFromWallPaper} from '@helpers/color';
 import ChatBackgroundGradientRenderer from '@components/chat/gradientRenderer';
-import ChatBackgroundPatternRenderer from '@components/chat/patternRenderer';
+import ChatBackgroundPatternRenderer, {GiftPatternArea} from '@components/chat/patternRenderer';
 import ChatBackgroundStore from '@lib/chatBackgroundStore';
 import appDownloadManager from '@lib/appDownloadManager';
 import renderImageFromUrl from '@helpers/dom/renderImageFromUrl';
@@ -32,9 +32,13 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import {DEFAULT_BACKGROUND_SLUG} from '@config/app';
 import {ReadingManagers} from '@lib/managers';
 import {AppTheme} from '@config/state';
-import {appState} from '@stores/appState';
+import {getMiddleware} from '@helpers/middleware';
+import type {MyDocument} from '@appManagers/appDocsManager';
+import getUniqueGiftAttributes from '@appManagers/utils/gifts/getUniqueGiftAttributes';
+import {getChatBackgroundFromFullPeer, getGiftChatTheme} from '@components/chat/chatTheme';
 import classNames from '@helpers/string/classNames';
 import noop from '@helpers/noop';
+import liteMode from '@helpers/liteMode';
 
 import styles from '@components/chat/bubbles/chatBackground.module.scss';
 
@@ -118,6 +122,13 @@ type Slot = {
   image?: HTMLImageElement;
   /** a pattern's colours alone, which its pattern is still to come over (`colorsFirst`) */
   colorsOnly?: boolean;
+  giftModel?: GiftModel;
+};
+
+/** The gift of a gift theme, standing in its slot of the pattern. */
+type GiftModel = {
+  el: HTMLElement,
+  dispose: () => void
 };
 
 /**
@@ -134,6 +145,7 @@ type BuiltContent = {
   gradientRenderer?: ChatBackgroundGradientRenderer;
   gradientCanvas?: HTMLCanvasElement;
   image?: HTMLImageElement;
+  giftModel?: GiftModel;
   readyPromise: Promise<void>;
 };
 
@@ -151,16 +163,7 @@ async function resolveFromPeer(
 ): Promise<{theme?: ChatBackgroundTheme, wallPaper?: WallPaper}> {
   if(!peerId.isUser()) return {};
   const full = await managers.appProfileManager.getCachedFullUser(peerId.toUserId());
-  if(full?.wallpaper) return {wallPaper: full.wallpaper};
-  if(full?.theme) {
-    const themeEmoticon = 'emoticon' in full.theme ? full.theme.emoticon : undefined;
-    const acctTheme = appState.accountThemes.themes?.find((t) => t.emoticon === themeEmoticon);
-    if(acctTheme) {
-      const wallPaper = acctTheme.settings?.find((s) => s.wallpaper)?.wallpaper as WallPaper.wallPaper | undefined;
-      return {theme: acctTheme, wallPaper};
-    }
-  }
-  return {};
+  return getChatBackgroundFromFullPeer(full, untrack(() => themeControllerSingleton.isNight()));
 }
 
 function resolveBackgroundSync(
@@ -211,6 +214,79 @@ function getWallPaperUrl(
   return {urlOrPromise, isColorOnly};
 }
 
+/**
+ * The gift's own sticker over the slot the pattern keeps for it, played once and half-transparent
+ * as tdesktop shows it.
+ */
+function createGiftModel(
+  patternRenderer: ChatBackgroundPatternRenderer,
+  patternCanvas: HTMLCanvasElement,
+  doc: MyDocument
+): GiftModel {
+  const el = document.createElement('div');
+  el.classList.add(styles.GiftModel);
+  const middlewareHelper = getMiddleware();
+  let size: number, area: GiftPatternArea, shown: {width: number, height: number};
+  // * the canvas is drawn at the window's size and shown cover-fitted in its layer, which a preview's is smaller than:
+  // * the model goes where its slot is shown
+  const place = () => {
+    if(!area || !shown?.width) {
+      return;
+    }
+
+    const dpr = patternCanvas.dpr || 1;
+    const drawnWidth = patternCanvas.width / dpr, drawnHeight = patternCanvas.height / dpr;
+    const scale = Math.max(shown.width / drawnWidth, shown.height / drawnHeight);
+    const centerX = (shown.width - drawnWidth * scale) / 2 + (area.left + area.width / 2) * scale;
+    const centerY = (shown.height - drawnHeight * scale) / 2 + (area.top + area.height / 2) * scale;
+    el.style.transform = `translate(${centerX - size / 2}px, ${centerY - size / 2}px) rotate(${area.rotation}deg) scale(${area.width * scale / size})`;
+  };
+
+  const resizeObserver = new ResizeObserver(([entry]) => {
+    shown = {width: entry.contentRect.width, height: entry.contentRect.height};
+    place();
+  });
+  resizeObserver.observe(patternCanvas);
+
+  patternRenderer.setGiftAreaListener(patternCanvas, (newArea) => {
+    el.classList.toggle('hide', !newArea);
+    area = newArea;
+    if(!area) {
+      return;
+    }
+
+    if(size === undefined) {
+      size = Math.round(area.width);
+      el.style.width = el.style.height = size + 'px';
+      const middleware = middlewareHelper.get();
+      import('@components/wrappers/sticker').then(({default: wrapSticker}) => {
+        if(!middleware()) return;
+        return wrapSticker({
+          doc,
+          div: el,
+          middleware,
+          width: size,
+          height: size,
+          play: true,
+          loop: false,
+          group: 'none',
+          liteModeKey: 'stickers_chat'
+        });
+      });
+    }
+
+    place();
+  });
+
+  return {
+    el,
+    dispose: () => {
+      resizeObserver.disconnect();
+      middlewareHelper.destroy();
+    }
+  };
+}
+
 function buildContent(
   layer: HTMLElement,
   resolved: ResolvedBackground,
@@ -219,6 +295,12 @@ function buildContent(
   height: number
 ): BuiltContent {
   const {wallPaper} = resolved;
+  // * the gift's symbols belong to its theme's own pattern, not to a wallpaper set over it
+  const giftTheme = getGiftChatTheme(resolved.theme);
+  const gift = giftTheme?.theme_settings.some((themeSettings) => themeSettings.wallpaper?.id === wallPaper?.id) ?
+    giftTheme.gift :
+    undefined;
+  const giftAttributes = gift?._ === 'starGiftUnique' ? getUniqueGiftAttributes(gift) : undefined;
   const colors = getColorsFromWallPaper(wallPaper);
   const isPattern = !!(wallPaper as WallPaper.wallPaper)?.pFlags?.pattern;
   const themeName = (resolved.theme as AppTheme)?.name;
@@ -236,7 +318,8 @@ function buildContent(
   // Picker still controls gradient colors and accent — only the rendering knobs (intensity, isDarkPattern)
   // are held to default tinted's values.
   let intensity = wallPaper.settings?.intensity && wallPaper.settings.intensity / 100;
-  if(useOverlayRender) intensity = -0.38;
+  // * a pattern only: an image's intensity is its dimming, which stays its own
+  if(useOverlayRender && isPattern) intensity = -0.38;
   const isDarkPattern = useOverlayRender || (!!intensity && intensity < 0);
 
   let patternCanvas: HTMLCanvasElement | undefined;
@@ -244,6 +327,7 @@ function buildContent(
   let image: HTMLImageElement | undefined;
   let patternRenderer: ChatBackgroundPatternRenderer | undefined;
   let gradientRenderer: ChatBackgroundGradientRenderer | undefined;
+  let giftModel: GiftModel | undefined;
 
   if(url && isPattern) {
     patternRenderer = ChatBackgroundPatternRenderer.getInstance({
@@ -251,15 +335,22 @@ function buildContent(
       url,
       width,
       height,
-      mask: isDarkPattern && !useOverlayRender
+      mask: isDarkPattern && !useOverlayRender,
+      giftSymbol: giftAttributes?.pattern?.document as MyDocument
     });
     patternCanvas = patternRenderer.createCanvas();
     patternCanvas.classList.add(styles.CanvasCommon);
     if(!isDarkPattern || useOverlayRender) patternCanvas.classList.add(styles.Blend);
     if(useOverlayRender) patternCanvas.classList.add(styles.DarkPatternInvert);
+    if(giftAttributes?.model) {
+      giftModel = createGiftModel(patternRenderer, patternCanvas, giftAttributes.model.document as MyDocument);
+    }
   } else if(url) {
     image = document.createElement('img');
     image.alt = '';
+    // * painted in the frame it goes in: decoded off the frame, a chat's picture showed its slot's bare
+    // * backdrop for a frame or more as it took the place of the background before it
+    image.decoding = 'sync';
     image.classList.add(styles.CanvasCommon);
   }
 
@@ -270,12 +361,18 @@ function buildContent(
     gradientCanvas.classList.add(styles.CanvasCommon, styles.GradientCanvas);
   }
 
+  // * an image's intensity is how much it is dimmed in the dark, and only there
+  if(image && !themeControllerSingleton.isNightThemeName(themeName || untrack(() => themeControllerSingleton.getResolvedThemeName()))) {
+    intensity = 0;
+  }
+
   if(intensity) {
     // Mask path applies opacity to the gradient (so the small visible gradient area in pattern shape
     // is dimmed). Overlay path applies opacity to the pattern overlay (gradient stays full).
     const setOpacityTo = image ?? (isDarkPattern && !useOverlayRender ? gradientCanvas : patternCanvas);
     let opacityMax = Math.abs(intensity) * (isDarkPattern && !useOverlayRender ? .5 : 1);
-    if(image) opacityMax = Math.max(0.3, 1 - intensity);
+    // * dimmed as far as asked, to nothing of it at 100%, as tdesktop does
+    if(image) opacityMax = 1 - intensity;
     else if(isDarkPattern && !useOverlayRender) opacityMax = Math.max(0.3, opacityMax);
     setOpacityTo?.style.setProperty('--opacity-max', '' + opacityMax);
   }
@@ -300,6 +397,7 @@ function buildContent(
     gradientRenderer,
     gradientCanvas,
     image,
+    giftModel,
     readyPromise
   };
 }
@@ -308,6 +406,7 @@ function buildContent(
 function disposeBuilt(built: BuiltContent) {
   if(built.patternRenderer && built.patternCanvas) built.patternRenderer.cleanup(built.patternCanvas);
   if(built.gradientRenderer) built.gradientRenderer.cleanup();
+  built.giftModel?.dispose();
 }
 
 /** Moves a built content into a slot's DOM, taking ownership of its renderers. */
@@ -319,6 +418,7 @@ function attachBuiltToSlot(slot: Slot, built: BuiltContent) {
   if(built.gradientCanvas) slot.el.append(built.gradientCanvas);
   if(built.patternCanvas) slot.el.append(built.patternCanvas);
   if(built.image) slot.el.append(built.image);
+  if(built.giftModel) slot.el.append(built.giftModel.el);
 
   slot.appliedTheme = built.resolved.theme;
   slot.appliedWallPaper = built.resolved.wallPaper;
@@ -327,6 +427,7 @@ function attachBuiltToSlot(slot: Slot, built: BuiltContent) {
   slot.gradientCanvas = built.gradientCanvas;
   slot.patternCanvas = built.patternCanvas;
   slot.image = built.image;
+  slot.giftModel = built.giftModel;
 }
 
 function clearSlot(slot: Slot) {
@@ -336,6 +437,7 @@ function clearSlot(slot: Slot) {
   if(slot.gradientRenderer) {
     slot.gradientRenderer.cleanup();
   }
+  slot.giftModel?.dispose();
   while(slot.el.firstChild) slot.el.removeChild(slot.el.firstChild);
   slot.appliedTheme = undefined;
   slot.appliedWallPaper = undefined;
@@ -345,11 +447,11 @@ function clearSlot(slot: Slot) {
   slot.patternCanvas = undefined;
   slot.image = undefined;
   slot.colorsOnly = undefined;
+  slot.giftModel = undefined;
 }
 
 function transitionClassFor(transition: ChatBackgroundTransition): string | undefined {
   switch(transition) {
-    case 'fade': return styles.SlotFade;
     case 'crossfade-forwards': return styles.SlotCrossfadeForwards;
     case 'crossfade-backwards': return styles.SlotCrossfadeBackwards;
     default: return undefined;
@@ -395,13 +497,44 @@ export const ChatBackground: Component<ChatBackgroundProps> = (props) => {
   const themeController = (): ThemeController => props.themeController ?? themeControllerSingleton;
   const managers = (): ReadingManagers | undefined => props.managers ?? rootScope.managers;
 
+  // * the background a fade comes in over, let go of once it is covered
+  let settleFade: (() => void) | undefined;
+
   /** Promotes `stagingSlot` to visible and demotes `visibleSlot`, then swaps the references. */
   const presentStagingSlot = (transition: ChatBackgroundTransition) => {
+    settleFade?.();
     const incoming = stagingSlot;
     const outgoing = visibleSlot;
 
     incoming.el.classList.remove(...FADE_TRANSITION_CLASSES);
     outgoing.el.classList.remove(...FADE_TRANSITION_CLASSES);
+
+    if(transition === 'fade' && !liteMode.isAvailable('animations')) {
+      transition = 'instant';
+    }
+
+    // * a fade comes in over the background it replaces, which stays whole under it till then — the two
+    // * fading at once let the page's white through the middle of it (a chat whose picture came late)
+    if(transition === 'fade') {
+      layer.append(incoming.el);
+      incoming.el.classList.add(styles.SlotFade);
+      // Force reflow so the just-added transition class kicks in cleanly.
+      void incoming.el.offsetWidth;
+      incoming.el.classList.add(styles.SlotActive);
+      [visibleSlot, stagingSlot] = [incoming, outgoing];
+
+      const settle = settleFade = () => {
+        incoming.el.removeEventListener('transitionend', onTransitionEnd);
+        if(settleFade === settle) settleFade = undefined;
+        outgoing.el.classList.remove(styles.SlotActive);
+        clearSlot(outgoing);
+      };
+      const onTransitionEnd = (e: TransitionEvent) => {
+        if(e.target === incoming.el) settle();
+      };
+      incoming.el.addEventListener('transitionend', onTransitionEnd);
+      return;
+    }
 
     const transitionClass = transitionClassFor(transition);
     if(transitionClass) {
@@ -421,11 +554,8 @@ export const ChatBackground: Component<ChatBackgroundProps> = (props) => {
     void incoming.el.offsetWidth;
 
     incoming.el.classList.add(styles.SlotActive);
-    // For plain fade we keep the outgoing slot at opacity 1 underneath (new layer fades in over it).
     // For crossfades the outgoing actively fades out.
-    // if(transition !== 'fade') {
     outgoing.el.classList.remove(styles.SlotActive);
-    // }
 
     [visibleSlot, stagingSlot] = [incoming, outgoing];
 
@@ -495,6 +625,7 @@ export const ChatBackground: Component<ChatBackgroundProps> = (props) => {
           getColorsFromWallPaper(resolved.wallPaper)
         ) {
           // its colours alone (a pattern built with no picture of it), till the pattern comes over them
+          settleFade?.();
           clearSlot(stagingSlot);
           attachBuiltToSlot(stagingSlot, buildContent(layer, resolved, undefined, 0, 0));
           stagingSlot.colorsOnly = true;
@@ -530,6 +661,7 @@ export const ChatBackground: Component<ChatBackgroundProps> = (props) => {
       const hadPrevious = !!visibleSlot.appliedWallPaper;
       const transition = visibleSlot.colorsOnly ? 'fade' : resolveTransition(props.transition, cached, hadPrevious);
 
+      settleFade?.();
       clearSlot(stagingSlot);
       attachBuiltToSlot(stagingSlot, built);
 

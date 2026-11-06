@@ -40,6 +40,7 @@ import getPhotoMediaInput from '@appManagers/utils/photos/getPhotoMediaInput';
 import parseMarkdown from '@lib/richTextProcessor/parseMarkdown';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import getReadMaxIdIfUnread from '@appManagers/utils/messages/getReadMaxIdIfUnread';
+import isOwnMessage from '@appManagers/utils/messages/isOwnMessage';
 import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 import isAnchoredEphemeralMessage from '@appManagers/utils/messages/isAnchoredEphemeralMessage';
@@ -8049,6 +8050,14 @@ export class AppMessagesManager extends AppManager {
       }
 
       switch(action._) {
+        case 'messageActionSetChatTheme':
+          action.theme = this.appThemesManager.saveChatTheme(action.theme);
+          break;
+
+        case 'messageActionSetChatWallPaper':
+          action.wallpaper = this.appThemesManager.saveWallPaper(action.wallpaper);
+          break;
+
         // case 'messageActionChannelEditPhoto':
         case 'messageActionChatEditPhoto':
           // action.photo = appPhotosManager.savePhoto(action.photo, mediaContext);
@@ -10992,6 +11001,32 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
+  private updateChatBackgroundOnNewMessage(message: MyMessage) {
+    const action = (message as Message.messageService).action;
+    if(!message.peerId.isUser()) {
+      return;
+    }
+
+    if(action?._ === 'messageActionSetChatTheme') {
+      const theme = action.theme;
+      this.appProfileManager.modifyCachedFullUser(message.peerId.toUserId(), (userFull) => {
+        if(theme._ === 'chatThemeUniqueGift' || theme.emoticon) {
+          userFull.theme = theme;
+        } else {
+          delete userFull.theme;
+        }
+      });
+    } else if(action?._ === 'messageActionSetChatWallPaper') {
+      // * as tdesktop takes it: a wallpaper of one's own, or one the other side set for both
+      const isOwn = isOwnMessage(message, this.rootScope.myId);
+      if(!isOwn && !action.pFlags.for_both) {
+        return;
+      }
+
+      this.appProfileManager.setCachedChatWallPaper(message.peerId, action.wallpaper, !isOwn);
+    }
+  }
+
   public hasOutgoingMessage(peerId: PeerId) {
     for(const randomId in this.pendingByRandomId) {
       const pending = this.pendingByRandomId[randomId];
@@ -11380,6 +11415,8 @@ export class AppMessagesManager extends AppManager {
 
     if(!isLocalThreadUpdate) {
       this.updateMessageRepliesIfNeeded(message, true);
+      // * before the check below: a history loaded meanwhile may have the message already, and the chat its old background
+      this.updateChatBackgroundOnNewMessage(message);
     }
 
     // * so message can exist if reloadConversation came back earlier with mid

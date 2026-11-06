@@ -60,7 +60,7 @@ export function BubbleLayout(props: {
     >
       <div class="bubble-content-wrapper">
         <div class="bubble-content" style={props.contentStyle}>
-          {props.justMedia ? (
+          {(props.via || props.name) && (props.justMedia ? (
             <div class="floating-part name-with-reply" dir="auto">
               <div class="name">
                 {renderVia()}
@@ -76,7 +76,7 @@ export function BubbleLayout(props: {
             >
               {props.name ?? renderVia()}
             </div>
-          )}
+          ))}
           {props.attachment}
           {(props.text || props.content) && (
             <div class={classNames('message spoilers-container', props.attachment && 'mt-shorter')} dir="auto">

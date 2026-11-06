@@ -1,10 +1,8 @@
 import classNames from '@helpers/string/classNames';
-import {MyDocument} from '@appManagers/appDocsManager';
 import {MyStarGift} from '@appManagers/appGiftsManager';
 import {AvatarNewTsx} from '@components/avatarNew';
 import {IconTsx} from '@components/iconTsx';
-import {StickerTsx} from '@components/wrappers/sticker';
-import {StarGiftBackdrop} from '@components/stargifts/stargiftBackdrop';
+import {StarGiftPreview} from '@components/stargifts/starGiftPreview';
 import styles from '@components/stargifts/transferPreview.module.scss'
 
 export function StarGiftTransferPreview(props: {
@@ -14,21 +12,13 @@ export function StarGiftTransferPreview(props: {
 }) {
   return (
     <div class={classNames(styles.graph, props.class)}>
-      <div class={/* @once */ styles.giftWrap}>
-        <StarGiftBackdrop
-          backdrop={props.gift.collectibleAttributes?.backdrop}
-          patternEmoji={props.gift.collectibleAttributes?.pattern.document as MyDocument}
-          small
-          canvasClass={/* @once */ styles.giftBackdropCanvas}
-        />
-        <StickerTsx
-          sticker={props.gift.collectibleAttributes?.model.document as MyDocument}
-          width={48}
-          height={48}
-          autoStyle
-          extraOptions={{play: true, loop: true}}
-        />
-      </div>
+      <StarGiftPreview
+        gift={props.gift}
+        class={/* @once */ styles.giftWrap}
+        canvasClass={/* @once */ styles.giftBackdropCanvas}
+        stickerSize={48}
+        stickerOptions={{play: true, loop: true}}
+      />
       <IconTsx icon="next" />
       <AvatarNewTsx
         peerId={props.recipient}

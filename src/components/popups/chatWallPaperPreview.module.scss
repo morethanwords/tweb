@@ -1,0 +1,51 @@
+.forWhom {
+  --popup-width: 22.5rem;
+}
+
+.night {
+  margin-inline-start: auto;
+}
+
+.preview {
+  height: 22rem;
+  border-radius: var(--border-radius-medium, .625rem);
+  overflow: hidden;
+  margin: 0 .75rem .5rem;
+}
+
+.messages {
+  justify-content: flex-end;
+  gap: .25rem;
+  padding: .75rem .5rem;
+
+  // * the chat centres its column of bubbles; here they fill the preview
+  :global(.bubble) {
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
+  }
+
+  // * the limit on the wrapper, sized by the bubble: on the content it would be a share of itself
+  :global(.bubble-content-wrapper) {
+    max-width: 80%;
+  }
+
+  :global(.bubble-content) {
+    max-width: 100%;
+  }
+
+  // * each side on its own edge, as in a chat
+  :global(.bubble.is-in .bubble-content-wrapper) {
+    align-items: flex-start;
+  }
+
+  :global(.bubble.is-out .bubble-content-wrapper) {
+    align-items: flex-end;
+  }
+}
+
+// * the line tdesktop puts over the messages, a service message's pill: who else can take it, or when it was set
+.service {
+  align-self: center;
+  margin-bottom: auto;
+}

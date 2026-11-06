@@ -20,10 +20,6 @@
     background-color: #000;
   }
 
-  &.IsImage {
-    background-color: var(--body-background-color, #000);
-  }
-
   &.IsTinted {
     // Was hard-coded #000. For dark themes that produced a pure-black backdrop, with the
     // gradient canvas only contributing 30-50% opacity on top — visually collapsing tinted
@@ -32,6 +28,11 @@
     // body-bg gives the correct «dark navy with gradient overlay» look for tinted while
     // leaving night nearly identical (#181818 instead of #000).
     background-color: var(--body-background-color, #000);
+  }
+
+  // * a picture is dimmed toward black, in tinted too: the other clients lay a black layer over it
+  &.IsImage {
+    background-color: #000;
   }
 }
 
@@ -73,4 +74,11 @@
 // then soft-light over the dark gradient lifts them — matches Android's "lighter pattern over dark gradient" look.
 .DarkPatternInvert {
   filter: invert(1);
+}
+
+.GiftModel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: .5;
 }

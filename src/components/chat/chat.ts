@@ -7,10 +7,10 @@ import {logger, LogTypes} from '@lib/logger';
 import rootScope from '@lib/rootScope';
 import ChatBubbles, {FullMid, splitFullMid} from '@components/chat/bubbles';
 import ChatContextMenu from '@components/chat/contextMenu';
-import ChatInput from '@components/chat/input';
+import ChatInput, {CHAT_INPUT_BASE_HEIGHT} from '@components/chat/input';
 import ChatSelection from '@components/chat/selection';
 import ChatTopbar from '@components/chat/topbar';
-import {NULL_PEER_ID, REPLIES_PEER_ID, SEND_PAID_WITH_STARS_DELAY} from '@appManagers/constants';
+import {NULL_PEER_ID, REPLIES_PEER_ID, SEND_PAID_WITH_STARS_DELAY, VERIFICATION_CODES_BOT_ID} from '@appManagers/constants';
 import getAutoDeleteUnavailablePeerIds from '@appManagers/utils/peers/getAutoDeleteUnavailablePeerIds';
 import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
 import ChatSearch from '@components/chat/search';
@@ -24,7 +24,9 @@ import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMediaTab';
 import noop from '@helpers/noop';
 import middlewarePromise from '@helpers/middlewarePromise';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
-import {Message, WallPaper, Chat as MTChat, Reaction, AvailableReaction, ChatFull, MessageEntity, PaymentsPaymentForm, InputPeer, ChatTheme, UserFull, User, StoriesStealthMode} from '@layer';
+import {Message, WallPaper, Chat as MTChat, Reaction, AvailableReaction, MessageEntity, PaymentsPaymentForm, InputPeer, User, StoriesStealthMode, Theme} from '@layer';
+import {getChatBackgroundFromFullPeer} from '@components/chat/chatTheme';
+import {toastNew} from '@components/toast';
 import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import deferredPromise, {CancellablePromise, bindPromiseToDeferred} from '@helpers/cancellablePromise';
@@ -41,7 +43,6 @@ import createUnifiedSignal from '@helpers/solid/createUnifiedSignal';
 import liteMode from '@helpers/liteMode';
 import {useFullPeer, type PeerFull} from '@stores/fullPeers';
 import {useAppConfig, useAppState} from '@stores/appState';
-import {unwrap} from 'solid-js/store';
 import callbackify from '@helpers/callbackify';
 import useIsNightTheme from '@hooks/useIsNightTheme';
 import useStars, {setReservedStars} from '@stores/stars';
@@ -201,6 +202,9 @@ export default class Chat extends EventListenerBase<{
   public currentTheme: Parameters<typeof themeController['getThemeSettings']>[0];
   public currentWallPaper: WallPaper;
   public preferredBackgroundTransition?: ChatBackgroundTransition;
+  /** The background the theme picker previews, in place of the chat's own while it is open. */
+  public themeOverride = createSignal<{theme?: Theme, wallPaper?: WallPaper}>();
+  public themeChooser: {close: () => void};
 
   /**
    * Stashed by `_handleBackgrounds` on the peer-change publish: a bundle of the staging-slot
@@ -303,12 +307,45 @@ export default class Chat extends EventListenerBase<{
 
   private chatInputSurplusPx = 0;
   private chatInputKeyboardPx = 0;
-  private chatInputKeyboardFinish?: () => void;
+  // * a history on its way with the room under it (`moveBottomRoom`), laid out where it goes by this
+  private bottomRoomFinish: {[kind in 'keyboard' | 'panel']?: () => void} = {};
+  private inputSurplusPx = 0;
+  private bottomPanelSurplusPx: number;
   private pinnedFloatingHeightPx = 0;
   private topbarBarsPx = 0;
   private preservePaddingScrollAbort?: () => void;
 
   public updateChatInputHeight(surplus: number) {
+    this.inputSurplusPx = surplus;
+    this.applyChatInputSurplus();
+  }
+
+  /**
+   * A panel standing in for the composer (the theme picker) takes its room while it is up. With `duration` the
+   * history goes with it as with the bot keyboard (`setChatInputKeyboardHeight`), for the panel to grow or shrink
+   * in that time.
+   */
+  public setBottomPanelHeight(height: number | undefined, duration?: number) {
+    this.bottomRoomFinish.panel?.();
+    this.bottomPanelSurplusPx = height === undefined ? undefined : height - CHAT_INPUT_BASE_HEIGHT;
+    if(duration === undefined) {
+      this.applyChatInputSurplus();
+      return;
+    }
+
+    const surplus = this.bottomPanelSurplusPx ?? this.inputSurplusPx;
+    const delta = surplus - this.chatInputSurplusPx;
+    if(!delta) return;
+    this.chatInputSurplusPx = surplus;
+    this.moveBottomRoom('panel', delta, () => {
+      // * as it is once laid out: the composer back meanwhile may have changed it (a reply's helper)
+      this.setChatInputRuleProperty('--chat-input-height-surplus', this.chatInputSurplusPx);
+      this.recomputePaddings(true);
+    }, duration);
+  }
+
+  private applyChatInputSurplus() {
+    const surplus = this.bottomPanelSurplusPx ?? this.inputSurplusPx;
     if(this.chatInputSurplusPx === surplus) return;
     this.preservePaddingScroll();
     this.chatInputSurplusPx = surplus;
@@ -323,18 +360,29 @@ export default class Chat extends EventListenerBase<{
    * and go with it by themselves.
    *
    * With `duration` (full animations) a history at its end goes up or down with the input, in the keyboard's
-   * time and curve, and as the input does: moved by the compositor alone. It is laid out where it ends (the room,
-   * the boxes, and the scroll that keeps it where it was on the screen) once it is up, or before it goes down, and
-   * only its messages are moved there, by a `translate`: nothing is laid out or scrolled on the way, so the main
-   * thread being busy cannot hold it back behind the input, and nothing it moves passes under the zone the
-   * keyboard hides (`$bubbles-keyboard-zone`). A history scrolled up stays.
+   * time and curve, as the input does (`moveBottomRoom`).
    */
   public setChatInputKeyboardHeight(height: number, duration?: number) {
-    this.chatInputKeyboardFinish?.();
+    this.bottomRoomFinish.keyboard?.();
     const delta = height - this.chatInputKeyboardPx;
     if(!delta) return;
     this.chatInputKeyboardPx = height;
+    this.moveBottomRoom('keyboard', delta, () => {
+      this.recomputePaddings(true);
+      this.setChatInputRuleProperty('--chat-input-keyboard-height', height);
+    }, duration);
+  }
 
+  /**
+   * The room under the history changes by `delta`, `layout` laying it out. With `duration` (full animations) a
+   * history at its end goes up or down with what takes the room, in its time and the keyboard's curve, moved by
+   * the compositor alone: it is laid out where it ends (the room, the boxes, and the scroll that keeps it where it
+   * was on the screen) once it is up, or before it goes down, and only its messages are moved there, by a
+   * `translate`: nothing is laid out or scrolled on the way, so the main thread being busy cannot hold it back,
+   * and nothing it moves passes under the zone the keyboard hides (`$bubbles-keyboard-zone`). A history scrolled
+   * up stays.
+   */
+  private moveBottomRoom(kind: keyof Chat['bottomRoomFinish'], delta: number, layout: () => void, duration?: number) {
     const bubbles = this.bubbles;
     const scrollable = bubbles?.scrollable;
     const inner = bubbles?.chatInner;
@@ -342,8 +390,7 @@ export default class Chat extends EventListenerBase<{
     const commit = () => {
       // * read before the writes, which would have it laid out for the read
       const position = atEnd && scrollable.scrollPosition;
-      this.recomputePaddings(true);
-      this.setChatInputRuleProperty('--chat-input-keyboard-height', height);
+      layout();
       // * the room taken or given back under it: at its end still, where it was on the screen
       if(atEnd) scrollable.setScrollPositionSilently(position + delta);
     };
@@ -364,7 +411,7 @@ export default class Chat extends EventListenerBase<{
       const timeout = window.setTimeout(() => finish(), duration);
       finish = () => {
         clearTimeout(timeout);
-        this.chatInputKeyboardFinish = undefined;
+        this.bottomRoomFinish[kind] = undefined;
         commit();
       };
     } else {
@@ -386,16 +433,16 @@ export default class Chat extends EventListenerBase<{
       ];
       // * over, or cut short (the keyboard goes again on the way): it is where it was going
       finish = () => {
-        this.chatInputKeyboardFinish = undefined;
+        this.bottomRoomFinish[kind] = undefined;
         if(delta > 0) commit();
         animations.forEach((animation) => animation.cancel());
       };
       animations[0].finished.then(() => {
-        if(this.chatInputKeyboardFinish === finish) finish();
+        if(this.bottomRoomFinish[kind] === finish) finish();
       }, noop);
     }
 
-    this.chatInputKeyboardFinish = finish;
+    this.bottomRoomFinish[kind] = finish;
   }
 
   // * `--chat-input-height-surplus`, `--chat-input-keyboard-height` and `--bubbles-padding-height` are not
@@ -543,6 +590,42 @@ export default class Chat extends EventListenerBase<{
     this.bubbles?.updateStickyIntersectorRootMargin?.();
   }
 
+  /** Whether this chat can be given a theme: a private one that can be written to, as in tdesktop. */
+  public canChooseTheme() {
+    const {peerId} = this;
+    return this.type === ChatType.Chat &&
+      peerId.isUser() &&
+      peerId !== REPLIES_PEER_ID &&
+      peerId !== VERIFICATION_CODES_BOT_ID &&
+      !(this.peer as User.user)?.pFlags?.deleted &&
+      !this.isPremiumRequired;
+  }
+
+  /** Opens the theme picker of a private chat in place of the composer, or closes it. */
+  public async toggleThemeChooser() {
+    if(this.themeChooser) {
+      this.themeChooser.close();
+      return;
+    }
+
+    if(this.appConfig.freeze_since_date) {
+      import('@components/popups/frozen').then(({default: showFrozenPopup}) => showFrozenPopup());
+      return;
+    }
+
+    if(this.input.recording) {
+      toastNew({langPackKey: 'ChatThemeCantVoice'});
+      return;
+    }
+
+    // * the chat may have moved to another peer, or been closed (an account switch), by the time it loads
+    const middleware = this.middlewareHelper.get();
+    const {openChatThemeChooser} = await import('@components/chat/themeChooser');
+    if(middleware() && !this.themeChooser) {
+      openChatThemeChooser(this);
+    }
+  }
+
   public applyContainerTheme() {
     if(!this.container) return;
     const newTheme = this.currentTheme ?? themeController.getTheme();
@@ -688,36 +771,22 @@ export default class Chat extends EventListenerBase<{
       });
     };
 
-    const getThemeByEmoticon = (emoticon: string) => {
-      if(!emoticon) {
+    const peerId = this.peerId;
+    const update = () => {
+      // * the peer has changed and this root is on its way out — the theme picker letting go of its
+      // * preview must not repaint the chat being left
+      if(this.peerId !== peerId) {
         return;
       }
 
-      const {accountThemes} = appState;
-      return accountThemes.themes?.find((theme) => theme.emoticon === emoticon);
-    };
-
-    const update = () => {
-      const _fullPeer = fullPeer();
-      let wallPaper: WallPaper;
-      let theme: Chat['currentTheme'];
-
-      if(_fullPeer) {
-        wallPaper = unwrap((_fullPeer as ChatFull.channelFull).wallpaper);
-        const emoticon = (_fullPeer as ChatFull.channelFull).theme_emoticon ||
-          ((_fullPeer as UserFull.userFull).theme as ChatTheme.chatTheme)?.emoticon ||
-          (wallPaper && wallPaper.settings?.emoticon);
-
-        theme = unwrap(getThemeByEmoticon(emoticon));
-        if(emoticon && theme) {
-          wallPaper = undefined;
-        }
-      }
+      // * the theme picker shows what it is pointing at before it is applied
+      const override = this.themeOverride[0]();
+      const {theme, wallPaper} = override || getChatBackgroundFromFullPeer(fullPeer(), isNightTheme());
 
       this.currentTheme = theme;
       this.currentWallPaper = wallPaper;
 
-      log('updating', _fullPeer, theme, wallPaper);
+      log('updating', theme, wallPaper);
       publish();
 
       createEffect(on(isNightTheme, update, {defer: true}));
@@ -725,7 +794,6 @@ export default class Chat extends EventListenerBase<{
 
     const isNightTheme = useIsNightTheme();
     const fullPeer = useFullPeer(this.peerId);
-    const [appState] = useAppState();
     createEffect(() => {
       update();
     });
@@ -1044,8 +1112,8 @@ export default class Chat extends EventListenerBase<{
     // * chat, container and shared-media tabs included, which is how 4 951 detached nodes ended up
     // * charged to rootScope in a day-old tab. Peer changes keep cleaning it as before.
     this.middlewareHelper.destroy();
-    // * a keyboard's way that would lay it out later would make the rule again, on a chat that is gone
-    this.chatInputKeyboardFinish?.();
+    // * a keyboard's or a panel's way that would lay it out later would make the rule again, on a chat that is gone
+    Object.values(this.bottomRoomFinish).forEach((finish) => finish?.());
     this.chatInputRule?.remove();
 
     this.chatInputRule =

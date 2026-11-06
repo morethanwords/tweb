@@ -1,0 +1,82 @@
+@use "../../scss/mixins" as *;
+@use "../../scss/partials/chatVariables" as *;
+
+// * stands where the composer stood: same width, same plate
+.container {
+  width: 100%;
+  max-width: var(--chat-input-max-width);
+  margin: 0 auto;
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 3;
+}
+
+// * built out of sight, where it will stand, till its strip is drawn
+.pending {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  visibility: hidden;
+}
+
+// * the panel's box: its shadow, and the edge its sheet is cut by as it comes out of the composer
+.plate {
+  border-radius: var(--chat-input-border-radius);
+  box-shadow: $chat-input-box-shadow;
+  overflow: hidden;
+}
+
+// * what the panel is drawn on, which comes up out of the composer's bar (`swapWithComposer`)
+.sheet {
+  // * the button at the bottom is the composer's own, of its size
+  --button-size: #{$chat-input-button-size};
+  display: flex;
+  flex-direction: column;
+  background: var(--chat-input-background);
+  border-radius: var(--chat-input-border-radius);
+  padding-top: .25rem;
+  overflow: hidden;
+}
+
+// * only part of it shown as it comes: the shadow is of that part
+.swapping {
+  filter: drop-shadow(0 1px 8px rgb(0 0 0 / 12%));
+
+  > .plate {
+    box-shadow: none;
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  padding-inline: 1rem .5rem;
+  min-height: 2.5rem;
+}
+
+.title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: var(--font-weight-bold);
+  @include text-overflow();
+}
+
+.close {
+  flex: 0 0 auto;
+}
+
+.strip {
+  padding-block: .25rem;
+
+  // * inside the plate, not reaching past a settings section's edges
+  :global(.themes-container) {
+    width: 100%;
+    margin: 0;
+    padding-inline: .25rem;
+  }
+}
+
+.apply {
+  // * the gap the composer leaves round its row
+  padding: .25rem;
+}

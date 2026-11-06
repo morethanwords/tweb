@@ -12,16 +12,19 @@ import {MyDocument} from '@appManagers/appDocsManager';
 import {StickerTsx} from '@components/wrappers/sticker';
 
 export function PremiumGiftBubble(props: {
+  class?: string
   assetName?: LottieAssetName
   sticker?: MyDocument
-  title: JSX.Element
+  // * shown in place of a sticker
+  media?: JSX.Element
+  title?: JSX.Element
   subtitle: JSX.Element
   buttonText?: JSX.Element
   buttonCallback?: () => void
   lottieOptions?: Partial<LottieOptions>
 }) {
   return (
-    <div class={/* @once */ classNames(styles.bubble, stylesCommon.addon)}>
+    <div class={/* @once */ classNames(styles.bubble, stylesCommon.addon, 'media' in props && styles.withMedia, props.class)}>
       {props.sticker && (
         <StickerTsx
           sticker={props.sticker}
@@ -48,7 +51,8 @@ export function PremiumGiftBubble(props: {
         />
       )}
 
-      <span class="text-bold">{props.title}</span>
+      {props.media}
+      {props.title && <span class="text-bold">{props.title}</span>}
       <span class={/* @once */ styles.subtitle}>
         {props.subtitle}
       </span>

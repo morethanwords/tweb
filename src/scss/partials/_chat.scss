@@ -33,6 +33,27 @@
     padding-top: 12px;
 	}
 
+	// * the theme picker stands in for the composer while it is up
+	&.is-choosing-theme > &-container {
+		display: none;
+	}
+
+	// * and turns out of it or back into it: the composer stays where it stood meanwhile, over the picker, fading out
+	// * or in (`swapWithComposer`)
+	&.is-choosing-theme.is-swapping-theme-chooser > &-container {
+		display: flex;
+		position: absolute;
+		inset-inline: 0;
+		bottom: 0;
+		z-index: 4;
+		pointer-events: none;
+
+		// * the picker's plate under it, which it is part of, has the shadow
+		.chat-input-wrapper {
+			box-shadow: none;
+		}
+	}
+
   .chat-input-secondary-button {
     padding: 0;
   }
@@ -730,7 +751,7 @@
 	--padding-vertical: .25rem;
 	--padding-horizontal: .25rem;
 	--padding: var(--padding-vertical) var(--padding-horizontal);
-  --button-size: 2.5rem;
+  --button-size: #{$chat-input-button-size};
   --button-horizontal-margin: 0.25rem;
   --message-input-editor-side-controls-width: calc(
     var(--button-size) +

@@ -1,9 +1,8 @@
 import {createEffect, createMemo, createSignal, JSX, onCleanup, onMount, untrack, useContext} from 'solid-js';
-import {unwrap} from 'solid-js/store';
-import {ChatFull, ChatTheme, UserFull, WallPaper} from '@layer';
+import {getChatBackgroundFromFullPeer} from '@components/chat/chatTheme';
 import PopupElement, {createPopup, PopupContext} from '@components/popups/indexTsx';
 import Chat from '@components/chat/chat';
-import {ChatBackground, ChatBackgroundTheme} from '@components/chat/bubbles/chatBackground';
+import {ChatBackground} from '@components/chat/bubbles/chatBackground';
 import {ChatType} from '@components/chat/chatType';
 import {NULL_PEER_ID} from '@appManagers/constants';
 import themeController from '@helpers/themeController';
@@ -14,7 +13,6 @@ import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import replaceContent from '@helpers/dom/replaceContent';
 import {useFullPeer} from '@stores/fullPeers';
-import {appState} from '@stores/appState';
 import useIsNightTheme from '@hooks/useIsNightTheme';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import ListenerSetter from '@helpers/listenerSetter';
@@ -104,25 +102,8 @@ export default function showChatPreviewPopup(options: ChatPreviewOptions): void 
     // re-fires the createMemo when the full peer lands, so the popup picks up the proper
     // wallpaper as soon as it's loaded.
     const fullPeer = useFullPeer(options.peerId);
-    const resolvedBg = createMemo(() => {
-      const _fullPeer = fullPeer();
-      let wallPaper: WallPaper | undefined;
-      let theme: ChatBackgroundTheme | undefined;
-
-      if(_fullPeer) {
-        wallPaper = unwrap((_fullPeer as ChatFull.channelFull).wallpaper);
-        const emoticon = (_fullPeer as ChatFull.channelFull).theme_emoticon ||
-          ((_fullPeer as UserFull.userFull).theme as ChatTheme.chatTheme)?.emoticon ||
-          (wallPaper && wallPaper.settings?.emoticon);
-        const found = emoticon && appState.accountThemes?.themes?.find((t) => t.emoticon === emoticon);
-        theme = found ? unwrap(found) : undefined;
-        // A theme picked by emoticon brings its own wallpaper; the per-peer override
-        // shouldn't compete with it.
-        if(emoticon && theme) wallPaper = undefined;
-      }
-
-      return {theme, wallPaper};
-    });
+    const isNight = useIsNightTheme();
+    const resolvedBg = createMemo(() => getChatBackgroundFromFullPeer(fullPeer(), isNight()));
 
     // A preview Chat has `isPreview`, so `Chat.handleBackgrounds()` short-circuits and never runs
     // `applyContainerTheme` — the per-chat theme's outgoing-bubble vars (`--message-out-*`) are thus
@@ -130,7 +111,6 @@ export default function showChatPreviewPopup(options: ChatPreviewOptions): void 
     // main chat: stash the resolved theme on the chat and apply it to its container. `isNight()` keeps
     // the effect re-firing on a day/night toggle while the preview is open so the theme re-resolves to
     // the right variant — the same role `useIsNightTheme` plays in `Chat._handleBackgrounds`.
-    const isNight = useIsNightTheme();
     createEffect(() => {
       isNight();
       chat.currentTheme = resolvedBg().theme;

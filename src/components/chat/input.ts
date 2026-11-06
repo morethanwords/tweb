@@ -273,6 +273,8 @@ if(import.meta.hot) {
 }
 
 const REPLY_IN_TOPIC = false;
+// * the composer's height with one line in it, beyond which the chat makes room
+export const CHAT_INPUT_BASE_HEIGHT = 48;
 
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply' | 'suggested';
 
@@ -1247,6 +1249,7 @@ export default class ChatInput {
       !this.fakeWrapperTo &&
       !this.messageInputExpanded &&
       !this.chatInput.classList.contains('is-message-input-resizing') &&
+      !this.chatInput.classList.contains('is-choosing-theme') &&
       !this.chatInput.classList.contains('is-hidden');
   }
 
@@ -1266,6 +1269,21 @@ export default class ChatInput {
   public onRecordingChange(recording: boolean) {
     if(recording) this.replyKeyboard?.suspend();
     else this.replyKeyboard?.resume();
+  }
+
+  /**
+   * The theme picker takes the place of the field and of the bot's keyboard under it (`openChatThemeChooser`), as in
+   * tdesktop: the keyboard goes at once while it is up - true if it was open - and comes back once it is closed
+   */
+  public onThemeChooserChange(open: boolean) {
+    if(!open) {
+      this.replyKeyboard?.resume();
+      return false;
+    }
+
+    const wasOpen = !!this.replyKeyboard?.isActive();
+    this.replyKeyboard?.suspend(false);
+    return wasOpen;
   }
 
   private constructBotCommands() {
@@ -3090,7 +3108,7 @@ export default class ChatInput {
       replyToQuote: getReplyQuote(replyTo),
       replyToPollOption: replyTo.poll_option,
       replyToMonoforumPeerId: replyTo.monoforum_peer_id && getPeerId(replyTo.monoforum_peer_id)
-    });
+    }, true);
 
     const inputSet = this.setInputValue(
       draftTextWithEntities(draft),
@@ -3845,7 +3863,7 @@ export default class ChatInput {
   }
 
   private notifyChatInputHeight() {
-    const baseHeight = 48;
+    const baseHeight = CHAT_INPUT_BASE_HEIGHT;
     const helperPx = this.helperVisible ? 48 : 0;
     const collapsedHeight = Math.max(baseHeight, this.messageInputNaturalHeight + 8) + helperPx;
     this.chatInput?.style.setProperty('--message-input-collapsed-height', `${collapsedHeight}px`);
@@ -6130,6 +6148,8 @@ export default class ChatInput {
     if(!message) return;
     // * the edit takes the field: a rewrite of the message in it stops, and gives the field back first
     this.stopAiSendStyle?.();
+    // * editing needs the composer the theme picker stands in for
+    this.chat.themeChooser?.close();
     const peerId = this.chat.peerId;
     const threadId = this.chat.threadId;
     let input: LocalTextWithEntities = {text: message.message, entities: message.totalEntities};
@@ -6264,6 +6284,8 @@ export default class ChatInput {
   }
 
   public initMessagesForward(fromPeerIdsMids: {[fromPeerId: PeerId]: number[]}, videoTimestamp?: number) {
+    // * forwarded into this very chat: the composer the theme picker stands in for is needed
+    this.chat.themeChooser?.close();
     const f = async() => {
       // const peerTitles: string[]
       const fromPeerIds = Object.keys(fromPeerIdsMids).map((fromPeerId) => fromPeerId.toPeerId());
@@ -6410,7 +6432,10 @@ export default class ChatInput {
     return result;
   }
 
-  public async initMessageReply(replyTo: ReturnType<ChatInput['getReplyTo']>) {
+  public async initMessageReply(replyTo: ReturnType<ChatInput['getReplyTo']>, automatic?: boolean) {
+    // * a reply the user starts needs the composer the theme picker stands in for; one the chat sets by itself (a
+    // * draft, a force reply) waits behind it
+    if(!automatic) this.chat.themeChooser?.close();
     if(deepEqual(this.getReplyTo(), replyTo)) {
       return;
     }

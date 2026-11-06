@@ -413,6 +413,30 @@ test.describe('the bot keyboard under the field', () => {
     expect(await dismissals()).toBe(1);
   });
 
+  test('gives its place to the theme picker, which stands in for the field, and is back once the picker is closed', async({page}) => {
+    await setKeyboard(page, 2, {mid: 401});
+    await page.locator('.chat-input-main .toggle-reply-markup').click();
+    expect((await settled(page)).active).toBe(true);
+
+    const panel = page.getByRole('region', {name: 'Select theme'});
+    const togglePicker = () => page.evaluate(() => (window as any).appImManager.chat.toggleThemeChooser());
+    await togglePicker();
+    await expect(panel).toBeVisible();
+    expect((await settled(page)).active).toBe(false);
+    await page.keyboard.press('Escape');
+    await expect(panel).toBeHidden();
+    expect((await settled(page)).active).toBe(true);
+
+    // * one that comes while the picker is up opens once it is gone
+    await togglePicker();
+    await expect(panel).toBeVisible();
+    await setKeyboard(page, 2, {mid: 402, comes: true});
+    expect((await settled(page)).active).toBe(false);
+    await page.keyboard.press('Escape');
+    await expect(panel).toBeHidden();
+    expect((await settled(page)).active).toBe(true);
+  });
+
   test('a single-use keyboard goes once the user answers it with a message of their own', async({page}) => {
     await setKeyboard(page, 2, {singleUse: true, mid: 201, comes: true});
     expect((await settled(page)).active).toBe(true);

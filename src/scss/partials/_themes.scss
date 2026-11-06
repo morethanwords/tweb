@@ -147,6 +147,12 @@ $theme-bubble-out-end: .375rem;
     @include animation-level(2) {
       transition: transform var(--transition-standard-in);
     }
+
+    &.is-static {
+      font-size: 1.5rem;
+      line-height: 1.75rem;
+      text-align: center;
+    }
   }
 
   &-bubble {
@@ -182,6 +188,38 @@ $theme-bubble-out-end: .375rem;
       top: calc(1.25rem + .5rem + .25rem);
       inset-inline-start: .375rem;
     }
+
+    &.is-taken {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 .1875rem;
+    }
+
+    &-icon {
+      font-size: .875rem;
+      color: var(--secondary-text-color);
+    }
+  }
+
+  // * the tile for no theme: a plain plate with its name, as in tdesktop
+  &-container.is-empty {
+    background-color: var(--light-secondary-text-color);
+  }
+
+  // * two lines at most, so a long name in another language stops short of the emoticon
+  &-label {
+    @include text-overflow(2);
+    margin-top: 1.5rem;
+    padding: 0 .25rem;
+    max-width: 100%;
+    align-self: flex-start;
+    text-align: center;
+    font-size: .8125rem;
+    font-weight: var(--font-weight-bold);
+    line-height: 1.125rem;
+    color: var(--secondary-text-color);
+    pointer-events: none;
   }
 }
 

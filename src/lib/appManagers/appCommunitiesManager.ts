@@ -36,6 +36,7 @@ from '@appManagers/utils/communities/isAdminCandidate';
 import isCommunityChat from '@appManagers/utils/communities/isCommunity';
 import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import CoalescedRefresh from '@appManagers/utils/coalescedRefresh';
+import KeyedQueue from '@appManagers/utils/keyedQueue';
 
 export type CommunityPermission = Extract<
   ChatRights,
@@ -130,7 +131,7 @@ export class AppCommunitiesManager extends AppManager {
   private evictedCommunityIds: Set<ChatId> = new Set();
   private peerLinkRequests: Map<ChatId, CommunityPeerLinkRequestsState> = new Map();
   private peerLinkRequestsGeneration: Map<ChatId, number> = new Map();
-  private communityMutationQueues: Map<ChatId, Promise<void>> = new Map();
+  private communityMutationQueues = new KeyedQueue<ChatId>();
   private communityDataGeneration: Map<ChatId, number> = new Map();
   private dataGenerationCounter = 0;
   private dataGenerationFloor = 0;
@@ -237,7 +238,7 @@ export class AppCommunitiesManager extends AppManager {
     this.evictedCommunityIds = new Set();
     this.peerLinkRequests = new Map();
     this.peerLinkRequestsGeneration = new Map();
-    this.communityMutationQueues = new Map();
+    this.communityMutationQueues.clear();
     this.linkedPeersBatchDepth = 0;
     this.pendingLinkedCommunities = new Set();
     this.pendingCommunityDialogRecomputes = new Set();
@@ -1043,7 +1044,7 @@ export class AppCommunitiesManager extends AppManager {
     this.invalidateCommunityData(communityId);
     this.invalidateJoinedCommunitiesFetch();
     this.invalidatePeerLinkRequestsFetch(communityId);
-    this.communityMutationQueues.delete(communityId);
+    this.communityMutationQueues.forget(communityId);
     this.communityFullRefresh.forget(communityId);
     this.kickedCountMutations.delete(communityId);
 
@@ -1683,8 +1684,7 @@ export class AppCommunitiesManager extends AppManager {
   ): Promise<T> {
     communityId = communityId.toChatId();
     const generation = this.getCommunityDataGeneration(communityId);
-    const previous = this.communityMutationQueues.get(communityId);
-    const run = () => {
+    return this.communityMutationQueues.run(communityId, () => {
       if(
         canRun ?
           !canRun(generation) :
@@ -1694,21 +1694,7 @@ export class AppCommunitiesManager extends AppManager {
       }
 
       return callback(generation);
-    };
-    let result: Promise<T>;
-    try {
-      result = previous ? previous.then(run) : run();
-    } catch(error) {
-      result = Promise.reject(error);
-    }
-    const settle = (): void => {
-      if(this.communityMutationQueues.get(communityId) === queue) {
-        this.communityMutationQueues.delete(communityId);
-      }
-    };
-    const queue = result.then(settle, settle);
-    this.communityMutationQueues.set(communityId, queue);
-    return result;
+    });
   }
 
   public togglePeerLink(options: {

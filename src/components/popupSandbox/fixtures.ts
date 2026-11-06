@@ -30,6 +30,7 @@ import type {
   StarsAmount,
   StarsGiveawayOption,
   User,
+  WallPaper,
   WalletNftItem,
   WebDocument,
   WebPage
@@ -911,3 +912,26 @@ export const walletSandboxTonConnectSessions = [
   manifest: {_: 'tonConnectManifest' as const, url, name},
   date: WALLET_NOW - index * 86400
 }));
+
+// * colour-only wallpapers: nothing to download, so the sandbox draws them as they are
+const gradientWallPaper = (id: number, colors: number[]): WallPaper.wallPaperNoFile => ({
+  _: 'wallPaperNoFile',
+  id,
+  pFlags: {},
+  settings: {
+    _: 'wallPaperSettings',
+    pFlags: {},
+    background_color: colors[0],
+    second_background_color: colors[1],
+    third_background_color: colors[2],
+    fourth_background_color: colors[3]
+  }
+});
+
+export const gradientWallPapers: WallPaper[] = [
+  gradientWallPaper(101, [0xdbddbb, 0x6ba587, 0xd5d88d, 0x88b884]),
+  gradientWallPaper(102, [0x85d685, 0x67a3f2, 0x8fe1d6, 0xdceb92]),
+  gradientWallPaper(103, [0xffc3b2, 0xe2c0ff, 0xffe7b2, 0xf8cece]),
+  gradientWallPaper(104, [0x4f5bd5, 0x962fbf, 0xdd6cb9, 0xfec496]),
+  gradientWallPaper(105, [0x0a4b7a, 0x2a7898, 0x0d6e93, 0x46a3c4])
+];

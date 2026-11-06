@@ -21,7 +21,7 @@ import {StarGiftBackdrop} from '@components/stargifts/stargiftBackdrop';
 import MediaHeader from '@components/mediaHeader';
 import {ButtonMenuToggleTsx} from '@components/buttonMenuToggleTsx';
 import {copyTextToClipboard} from '@helpers/clipboard';
-import {showSharingPicker2Popup} from '@components/popups/pickUser';
+import {showPickUser2Popup, showSharingPicker2Popup} from '@components/popups/pickUser';
 import {I18nTsx} from '@helpers/solid/i18n';
 import tsNow from '@helpers/tsNow';
 import {useAppState} from '@stores/appState';
@@ -939,6 +939,30 @@ export default function showStarGiftInfoPopup(options: {
       });
     }
 
+    // * as tdesktop does it: the chat is picked, the theme set there and the chat opened
+    const handleSetAsTheme = async() => {
+      let peerId: PeerId;
+      try {
+        peerId = await showPickUser2Popup({
+          peerType: ['dialogs', 'contacts'],
+          filterPeerTypeBy: ['isRegularUser', 'isBot'],
+          titleLangKey: 'SelectChat'
+        });
+      } catch(err) {
+        return;
+      }
+
+      context.managers.appThemesManager.setChatTheme(peerId, {
+        _: 'chatThemeUniqueGift',
+        gift,
+        theme_settings: []
+      }).catch(() => {
+        toastNew({langPackKey: 'Error.AnError'});
+      });
+      hotReloadGuard.appImManager.setInnerPeer({peerId});
+      context.hide();
+    };
+
     const handleSell = async(changePrice = false) => {
       if(!isEditableUniqueGift || !saved) return;
 
@@ -1090,6 +1114,14 @@ export default function showStarGiftInfoPopup(options: {
                     gift: myGift,
                     onFinish: (res) => res === 'created' && context.hide()
                   })
+                },
+                {
+                  icon: 'image',
+                  text: 'GiftThemesSetIn',
+                  // * a gift of this account's, owned or hosted, as Android offers it
+                  verify: () => !!gift.pFlags.theme_available &&
+                    [gift.owner_id, gift.host_id].some((peer) => peer && getPeerId(peer) === rootScope.myId),
+                  onClick: handleSetAsTheme
                 },
                 {
                   icon: 'forward',

@@ -6,16 +6,40 @@ import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
 import windowSize from '@helpers/windowSize';
 import IS_IMAGE_BITMAP_SUPPORTED from '@environment/imageBitmapSupport';
 import {IS_FIREFOX} from '@environment/userAgent';
+import {getMiddleware} from '@helpers/middleware';
+import noop from '@helpers/noop';
+import type {MyDocument} from '@appManagers/appDocsManager';
+import {chooseGiftSymbolIndex, GiftPatternSymbol, parseGiftPatternSymbols} from '@components/chat/giftPatternSymbols';
 
 const SCALE_PATTERN = false;
 const USE_BITMAP = IS_IMAGE_BITMAP_SUPPORTED && IS_FIREFOX;
+// * as tdesktop draws them
+const GIFT_SYMBOL_ALPHA = .8;
+const GIFT_SYMBOL_SIZE = 128;
 
 type ChatBackgroundPatternRendererInitOptions = {
   element: HTMLElement;
   url: string,
   width: number,
   height: number,
-  mask?: boolean
+  mask?: boolean,
+  // * the gift's pattern emoji, put into the slots the gift theme's pattern marks
+  giftSymbol?: MyDocument
+};
+
+/** Where the gift itself goes on a canvas, in CSS pixels. */
+export type GiftPatternArea = {
+  left: number,
+  top: number,
+  width: number,
+  height: number,
+  rotation: number
+};
+
+type GiftSymbols = {
+  symbols: GiftPatternSymbol[],
+  image: HTMLCanvasElement,
+  giftIndex: number
 };
 
 export default class ChatBackgroundPatternRenderer {
@@ -30,9 +54,14 @@ export default class ChatBackgroundPatternRenderer {
   private renderImageFromUrlPromise: Promise<HTMLImageElement>;
   private image: HTMLImageElement;
   private imageBitmap: ImageBitmap;
+  private giftSymbolsPromise: Promise<void>;
+  private giftSymbols: GiftSymbols;
+  private giftSymbolsMiddlewareHelper: ReturnType<typeof getMiddleware>;
+  private giftAreaListeners: Map<HTMLCanvasElement, (area: GiftPatternArea | undefined) => void>;
 
   constructor() {
     this.canvases = new Set();
+    this.giftAreaListeners = new Map();
   }
 
   public static getInstance(options: ChatBackgroundPatternRendererInitOptions) {
@@ -67,9 +96,53 @@ export default class ChatBackgroundPatternRenderer {
     // return this.fillCanvas(canvas);
     // });
 
+    // * the gift's symbols come later, drawn over again once they are here: their download must not
+    // * hold up the chat the background belongs to
+    this.loadGiftSymbols();
     return this.renderImageFromUrl(this.options.url).then(() => {
       return this.fillCanvas(canvas);
     });
+  }
+
+  /** Tells where the gift goes on `canvas` after every render of it. */
+  public setGiftAreaListener(canvas: HTMLCanvasElement, listener: (area: GiftPatternArea | undefined) => void) {
+    this.giftAreaListeners.set(canvas, listener);
+  }
+
+  private loadGiftSymbols() {
+    const {giftSymbol, url} = this.options;
+    if(!giftSymbol || this.giftSymbolsPromise) {
+      return;
+    }
+
+    const middlewareHelper = this.giftSymbolsMiddlewareHelper = getMiddleware();
+    const middleware = middlewareHelper.get();
+    const symbolsPromise = fetch(url).then((response) => response.text()).then(parseGiftPatternSymbols);
+    // * the symbol painted black, the colour of the pattern itself
+    const imagePromise = import('@components/wrappers/emojiPattern').then(({default: wrapEmojiPattern}) => {
+      return wrapEmojiPattern({
+        docId: giftSymbol,
+        middleware,
+        color: '#000000',
+        positions: [[0, 0, GIFT_SYMBOL_SIZE, 1]],
+        canvasWidth: GIFT_SYMBOL_SIZE,
+        canvasHeight: GIFT_SYMBOL_SIZE,
+        emojiSize: GIFT_SYMBOL_SIZE
+      });
+    });
+
+    this.giftSymbolsPromise = Promise.all([symbolsPromise, imagePromise, this.renderImageFromUrl(url)]).then(([symbols, image]) => {
+      if(!middleware() || !symbols.length || !image) {
+        return;
+      }
+
+      this.giftSymbols = {symbols, image, giftIndex: chooseGiftSymbolIndex(symbols)};
+      for(const canvas of this.canvases) {
+        // * resizing resets the canvas, so the pattern is drawn anew rather than over itself
+        this.setCanvasDimensions(canvas);
+        this.fillCanvas(canvas);
+      }
+    }).catch(noop);
   }
 
   private renderImageFromUrl(url: string) {
@@ -128,12 +201,14 @@ export default class ChatBackgroundPatternRenderer {
 
   public cleanup(canvas: HTMLCanvasElement) {
     this.canvases.delete(canvas);
+    this.giftAreaListeners.delete(canvas);
 
     if(!this.canvases.size) {
       indexOfAndSplice(ChatBackgroundPatternRenderer.INSTANCES, this);
 
       this.imageBitmap?.close();
       this.image && clearMediaElementSource(this.image);
+      this.giftSymbolsMiddlewareHelper?.destroy();
       // if(this.objectUrl) {
       //   URL.revokeObjectURL(this.objectUrl);
       // }
@@ -166,13 +241,46 @@ export default class ChatBackgroundPatternRenderer {
       context.globalCompositeOperation = 'source-over';
     }
 
+    const centerY = (height - imageHeight) / 2;
+    const giftSymbols = this.giftSymbols;
+    // * the gift goes into its slot of the tile in the middle, the symbol everywhere else
+    const giftColumn = Math.floor(width / 2 / imageWidth);
+    let giftArea: GiftPatternArea;
+    const drawSymbols = (column: number, y: number) => {
+      const x = column * imageWidth;
+      giftSymbols.symbols.forEach((symbol, idx) => {
+        const symbolWidth = symbol.width * imageWidth;
+        const symbolHeight = symbol.height * imageHeight;
+        const left = x + symbol.x * imageWidth;
+        const top = y + symbol.y * imageHeight;
+        if(idx === giftSymbols.giftIndex && column === giftColumn && y === centerY) {
+          const dpr = canvas.dpr || 1;
+          giftArea = {
+            left: left / dpr,
+            top: top / dpr,
+            width: symbolWidth / dpr,
+            height: symbolHeight / dpr,
+            rotation: symbol.rotation
+          };
+          return;
+        }
+
+        context.save();
+        context.translate(left + symbolWidth / 2, top + symbolHeight / 2);
+        context.rotate(symbol.rotation * Math.PI / 180);
+        context.globalAlpha = GIFT_SYMBOL_ALPHA;
+        context.drawImage(giftSymbols.image, -symbolWidth / 2, -symbolHeight / 2, symbolWidth, symbolHeight);
+        context.restore();
+      });
+    };
+
     const d = (y: number) => {
-      for(let x = 0; x < width; x += imageWidth) {
+      for(let column = 0, x = 0; x < width; x = ++column * imageWidth) {
         context.drawImage(source, x, y, imageWidth, imageHeight);
+        giftSymbols && drawSymbols(column, y);
       }
     };
 
-    const centerY = (height - imageHeight) / 2;
     d(centerY);
 
     if(centerY > 0) {
@@ -186,6 +294,8 @@ export default class ChatBackgroundPatternRenderer {
     for(let bottomY = centerY + imageHeight; bottomY < endY; bottomY += imageHeight) {
       d(bottomY);
     }
+
+    this.giftAreaListeners.get(canvas)?.(giftArea);
 
     // for(let x = 0; x < width; x += imageWidth) {
     //   for(let y = 0; y < height; y += imageHeight) {

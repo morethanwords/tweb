@@ -3,6 +3,8 @@
 
 $chat-helper-size: 3rem;
 $chat-input-box-shadow: 0px 1px 8px 1px rgb(0 0 0 / 12%);
+// * a button of the composer's: its send, its attach, the one standing in its place
+$chat-input-button-size: 2.5rem;
 
 $input-transition-time: .2s;
 $input-half-transition-time: math.div($input-transition-time, 2);

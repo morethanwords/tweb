@@ -1162,6 +1162,8 @@ export default class ChatSelection extends AppSelection {
   }
 
   protected onToggleSelection = async(forwards: boolean, animate: boolean) => {
+    // * the selection's actions stand in the composer, which the theme picker stands in for
+    if(forwards) this.chat.themeChooser?.close();
     // Every plate is the same width now, so this just cross-fades.
     await this.chat.input.center(animate);
 

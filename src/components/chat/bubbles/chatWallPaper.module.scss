@@ -1,0 +1,22 @@
+.thumb {
+  position: relative;
+  flex: 0 0 auto;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  overflow: hidden;
+
+  :global(.background-item),
+  :global(.background-item-media) {
+    position: absolute;
+    inset: 0;
+  }
+}
+
+.drawing {
+  visibility: hidden;
+}
+
+.clickable {
+  cursor: pointer;
+}

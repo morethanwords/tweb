@@ -1,5 +1,6 @@
-import {JSX, onMount} from 'solid-js';
-import {ChatBackground} from '@components/chat/bubbles/chatBackground';
+import {createEffect, JSX, on, onMount} from 'solid-js';
+import {WallPaper} from '@layer';
+import {ChatBackground, ChatBackgroundTheme} from '@components/chat/bubbles/chatBackground';
 import rootScope from '@lib/rootScope';
 import themeController from '@helpers/themeController';
 
@@ -12,15 +13,18 @@ export function FakeBubbles(props: {
   class?: string
   contentClass?: string
   peerId?: PeerId
+  // * shown instead of the peer's or the app's own: the colours from the theme, the background
+  // * from the wallpaper (or the theme's own)
+  theme?: ChatBackgroundTheme
+  wallPaper?: WallPaper
 }) {
   let container!: HTMLDivElement;
 
+  const applyTheme = () => themeController.applyTheme(props.theme ?? themeController.getTheme(), container);
   onMount(() => {
-    themeController.applyTheme(themeController.getTheme(), container);
-    subscribeOn(rootScope)('theme_changed', () => {
-      themeController.applyTheme(themeController.getTheme(), container);
-    })
-  })
+    subscribeOn(rootScope)('theme_changed', applyTheme);
+    createEffect(on(() => props.theme, applyTheme));
+  });
 
   return (
     <div ref={container} class={classNames(styles.root, props.class)}>
@@ -28,6 +32,8 @@ export function FakeBubbles(props: {
         managers={rootScope.managers}
         themeController={themeController}
         peerId={props.peerId}
+        theme={props.theme}
+        wallPaper={props.wallPaper}
         onHighlightColor={hsla => themeController.applyHighlightingColor({hsla, element: container})}
       />
       <div class={classNames(styles.content, props.contentClass)}>

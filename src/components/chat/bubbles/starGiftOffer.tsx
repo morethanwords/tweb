@@ -13,9 +13,7 @@ import formatDuration, {DurationType} from '@helpers/formatDuration';
 import {createCurrentTime} from '@helpers/solid/createCurrentTime';
 
 import styles from '@components/chat/bubbles/starGiftOffer.module.scss';
-import {MyDocument} from '@appManagers/appDocsManager';
-import {StarGiftBackdrop} from '@components/stargifts/stargiftBackdrop';
-import {StickerTsx} from '@components/wrappers/sticker';
+import {StarGiftPreview} from '@components/stargifts/starGiftPreview';
 import Icon from '@components/icon';
 import ReplyMarkupLayout from '@components/chat/bubbleParts/replyMarkupLayout';
 import Chat from '@components/chat/chat';
@@ -58,21 +56,12 @@ export function StarGiftOfferBubble(props: {
       }}
       onKeyDown={buttonKeyDown}
     >
-      <div class={/* @once */ styles.giftWrap}>
-        <StarGiftBackdrop
-          backdrop={props.gift.collectibleAttributes.backdrop}
-          patternEmoji={props.gift.collectibleAttributes.pattern.document as MyDocument}
-          small
-          canvasClass={/* @once */ styles.giftBackdropCanvas}
-        />
-        <StickerTsx
-          sticker={props.gift.collectibleAttributes.model.document as MyDocument}
-          width={48}
-          height={48}
-          autoStyle
-          extraOptions={{play: true}}
-        />
-      </div>
+      <StarGiftPreview
+        gift={props.gift}
+        class={/* @once */ styles.giftWrap}
+        canvasClass={/* @once */ styles.giftBackdropCanvas}
+        stickerSize={48}
+      />
 
       <div class={/* @once */ styles.title}>
         {props.title}

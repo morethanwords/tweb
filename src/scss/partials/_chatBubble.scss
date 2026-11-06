@@ -3610,6 +3610,12 @@
 .bubble.service, .bubble.has-fake-service {
   .service-msg {
     --link-plate-color: #{$link-plate-service-color};
+
+    // * a chat theme change, which opens the theme picker
+    &.is-clickable {
+      cursor: pointer;
+    }
+
     color: #fff;
     //background-color: rgba(0, 0, 0, .24);
     background-color: var(--message-highlighting-color);

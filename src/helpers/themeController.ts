@@ -15,6 +15,7 @@ import customProperties from '@helpers/dom/customProperties';
 import {TelegramWebViewTheme} from '@types';
 import windowSize from '@helpers/windowSize';
 import liteMode from '@helpers/liteMode';
+import {untrack} from 'solid-js';
 import {useAppSettings} from '@stores/appSettings';
 import {joinDeepPath} from '@helpers/object/setDeepProperty';
 import {logger} from '@lib/logger';
@@ -891,12 +892,19 @@ export class ThemeController {
       applyAppColor({name: 'secondary-text-color', hex: mainSecondaryTextColor!});
     }
 
+    // * a theme that leaves the bubbles alone (a gift's, say) gets the app's own for this base —
+    // * not whatever the theme applied before it left on the element
+    const bubbleSettings = themeSettings.message_colors?.length ?
+      themeSettings :
+      untrack(() => this.getThemeSettings(this.getTheme(themeName)));
+    const messageColors = bubbleSettings?.message_colors;
+
     // * increased contrast keeps the bubbles of the one colour it adjusts for the text
     const outgoingTextColor = hexToRgb(baseColors['primary-text-color']);
-    const outgoingGradient = this.isHighContrast() ? undefined : getOutgoingMessageGradient(themeSettings.message_colors, !!themeSettings.pFlags?.message_colors_animated, outgoingTextColor);
+    const outgoingGradient = this.isHighContrast() ? undefined : getOutgoingMessageGradient(messageColors, !!bubbleSettings?.pFlags?.message_colors_animated, outgoingTextColor);
     applyOutgoingMessageGradient(element, outgoingGradient);
 
-    if(!themeSettings.message_colors?.length) {
+    if(!messageColors?.length) {
       return;
     }
 
@@ -908,13 +916,13 @@ export class ThemeController {
     const surfaceForMessage = tintedSurfaceRgb ?? hexToRgb(baseColors['surface-color']);
     const baseMessageOutBackgroundColor = mixColors(baseMessageColor, surfaceForMessage, messageLightenAlpha);
 
-    const firstColor = getRgbColorFromTelegramColor(themeSettings.message_colors[0]);
+    const firstColor = getRgbColorFromTelegramColor(messageColors[0]);
 
     let myMessagesAccent = firstColor;
-    if(themeSettings.message_colors.length > 1) {
+    if(messageColors.length > 1) {
       // const w = getAccentColor(hsvTemp1, baseMessageOutBackgroundColor, myMessagesAccent);
 
-      themeSettings.message_colors.slice(1).forEach((nextColor) => {
+      messageColors.slice(1).forEach((nextColor) => {
         myMessagesAccent = getAverageColor(myMessagesAccent, getRgbColorFromTelegramColor(nextColor));
       });
 

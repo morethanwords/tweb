@@ -8,6 +8,18 @@
   align-items: center;
 }
 
+// * a smaller picture of its own instead of the sticker: no room kept for one
+.withMedia {
+  min-height: 0;
+  gap: .5rem;
+  padding-top: .625rem !important;
+
+  // * with the gap, the 10px from the text the other cards have, as tdesktop's
+  :global(.bubble-service-button) {
+    margin-top: .125rem;
+  }
+}
+
 .sticker {
   position: relative;
   width: 160px;

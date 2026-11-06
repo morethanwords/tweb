@@ -16,6 +16,7 @@ import tsNow from '@helpers/tsNow';
 import wrapPlainText from '@lib/richTextProcessor/wrapPlainText';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import rootScope from '@lib/rootScope';
+import isOwnMessage from '@appManagers/utils/messages/isOwnMessage';
 import topicAvatar from '@components/topicAvatar';
 import {wrapCustomEmojiAwaited} from '@components/wrappers/customEmoji';
 import getPeerTitle from '@components/wrappers/getPeerTitle';
@@ -658,7 +659,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
       }
 
       case 'messageActionSetChatTheme': {
-        const isMe = !!message.pFlags.out;
+        const isMe = isOwnMessage(message, rootScope.myId);
         let authorElement: ReturnType<typeof getNameDivHTML>;
         if(!isMe) {
           authorElement = getNameDivHTML(message.fromId, plain);
@@ -668,7 +669,8 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
 
         const theme = action.theme;
         if(theme._ === 'chatThemeUniqueGift') {
-          // * unsupported now
+          args.push(wrapSomeText(getCollectibleName(theme.gift as StarGift.starGiftUnique), plain));
+          langPackKey = isMe ? 'GiftThemesSetByYou' : 'GiftThemesSetByOther';
         } else if(theme.emoticon) {
           args.push(wrapSomeText(theme.emoticon, plain));
           langPackKey = isMe ? 'ChatThemeChangedYou' : 'ChatThemeChangedTo';
@@ -800,7 +802,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         ];
 
         if(isUser) {
-          if(message.pFlags.out) {
+          if(isOwnMessage(message, rootScope.myId)) {
             langPackKey = action.pFlags.for_both ?
               'ActionSetWallpaperForThisChatSelfBoth' : (
                 action.pFlags.same ?

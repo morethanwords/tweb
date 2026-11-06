@@ -6,6 +6,7 @@ import {AppManager} from '@appManagers/manager';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {nanotonToJsNumber} from '@helpers/nanoton';
 import {inputStarGiftEquals} from '@appManagers/utils/gifts/inputStarGiftEquals';
+import getUniqueGiftAttributes from '@appManagers/utils/gifts/getUniqueGiftAttributes';
 import {randomLong} from '@helpers/random';
 import createSerializedQueue, {SerializedQueue} from '@helpers/createSerializedQueue';
 import noop from '@helpers/noop';
@@ -175,29 +176,14 @@ export default class AppGiftsManager extends AppManager {
         sticker: this.appDocsManager.saveDoc(gift.sticker)
       };
     } else {
-      let attrModel: StarGiftAttribute.starGiftAttributeModel;
-      let attrBackdrop: StarGiftAttribute.starGiftAttributeBackdrop;
-      let attrPatern: StarGiftAttribute.starGiftAttributePattern;
-      let attrOrig: StarGiftAttribute.starGiftAttributeOriginalDetails;
-
-      for(const attr of gift.attributes) {
-        switch(attr._) {
-          case 'starGiftAttributeModel':
-            attr.document = this.appDocsManager.saveDoc(attr.document);
-            attrModel = attr;
-            break;
-          case 'starGiftAttributeBackdrop':
-            attrBackdrop = attr;
-            break;
-          case 'starGiftAttributePattern':
-            attr.document = this.appDocsManager.saveDoc(attr.document);
-            attrPatern = attr;
-            break;
-          case 'starGiftAttributeOriginalDetails':
-            attrOrig = attr;
-            break;
-        }
-      }
+      const {
+        model: attrModel,
+        backdrop: attrBackdrop,
+        pattern: attrPatern,
+        original: attrOrig
+      } = getUniqueGiftAttributes(gift);
+      if(attrModel) attrModel.document = this.appDocsManager.saveDoc(attrModel.document);
+      if(attrPatern) attrPatern.document = this.appDocsManager.saveDoc(attrPatern.document);
 
       let resellPriceStars: Long | undefined;
       let resellPriceTon: Long | undefined;

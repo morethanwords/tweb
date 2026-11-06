@@ -5,7 +5,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {Document, DocumentAttribute, PhotoSize, WallPaper} from '@layer';
+import {Document, DocumentAttribute, PhotoSize, WallPaper, WallPaperSettings} from '@layer';
 import {ReferenceContext} from '@lib/storages/references';
 import {getFullDate} from '@helpers/date/getFullDate';
 import isObject from '@helpers/object/isObject';
@@ -397,16 +397,21 @@ export class AppDocsManager extends AppManager {
     return wallpaper;
   }
 
-  public uploadWallPaper(id: WallPaperId) {
+  /**
+   * `forChat` — a wallpaper for one chat (messages.setChatWallPaper), which stays out of the
+   * account's own list.
+   */
+  public uploadWallPaper(id: WallPaperId, options: {forChat?: boolean, settings?: WallPaperSettings} = {}) {
     const {document, file} = this.uploadingWallPapers[id];
     delete this.uploadingWallPapers[id];
 
     const upload = this.apiFileManager.upload({file, fileName: file.name});
     return upload.then((inputFile) => {
       return this.apiManager.invokeApi('account.uploadWallPaper', {
+        for_chat: options.forChat || undefined,
         file: inputFile,
         mime_type: file.type,
-        settings: {
+        settings: options.settings || {
           _: 'wallPaperSettings',
           pFlags: {}
         }
@@ -421,6 +426,17 @@ export class AppDocsManager extends AppManager {
       this.thumbsStorage.deleteCacheContext(document);
       throw error;
     });
+  }
+
+  /** A prepared wallpaper that will not be uploaded after all. */
+  public discardWallPaperUpload(id: WallPaperId) {
+    const uploading = this.uploadingWallPapers[id];
+    if(!uploading) {
+      return;
+    }
+
+    delete this.uploadingWallPapers[id];
+    this.thumbsStorage.deleteCacheContext(uploading.document);
   }
 
   public requestDocPart(docId: DocId, dcId: number, offset: number, limit: number) {
