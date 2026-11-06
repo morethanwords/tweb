@@ -7384,6 +7384,7 @@ export class AppMessagesManager extends AppManager {
         justClear,
         revoke,
         threadOrSavedId,
+        participantPeerId,
         monoforumThreadId,
         minDate,
         maxDate,
