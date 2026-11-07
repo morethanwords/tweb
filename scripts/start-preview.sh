@@ -803,8 +803,10 @@ fi
 # as Vite's publicDir, and `node server.js --dist` layers it under dist/ — a bare
 # `vite preview` would serve neither, and the app would boot without its 38 MB of
 # runtime assets (chat pattern, fonts, tgs, emoji). Symlink, don't copy: per-id
-# copies of the same 38 MB add up, and sirv resolves through the link.
+# copies of the same 38 MB add up, and sirv resolves through the link. Instant View's
+# HTML embeds load public/embed.html (components/telegramWebView.ts), which no build emits.
 ln -sfn "$REPO/public/assets" "$OUT/assets"
+ln -sfn "$REPO/public/embed.html" "$OUT/embed.html"
 
 # `vite preview` is a plain static server: no /@vite/client, no websocket, so a
 # backgrounded mobile tab has nothing to lose and nothing to reload for.

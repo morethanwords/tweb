@@ -150,3 +150,11 @@ export async function openMediaEditor(page: Page, story = 'newMedia') {
   await expect(editor).toHaveAttribute('aria-busy', 'false', {timeout: 30_000});
   return editor;
 }
+
+/** A computed colour, `color(srgb r g b / a)` or `rgba(…)` → [r, g, b, a] in 0…1 */
+export function parseColor(value: string) {
+  const srgb = value.match(/color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)(?: \/ ([\d.]+))?\)/);
+  if(srgb) return [+srgb[1], +srgb[2], +srgb[3], srgb[4] === undefined ? 1 : +srgb[4]];
+  const rgb = value.match(/rgba?\(([\d.]+), ([\d.]+), ([\d.]+)(?:, ([\d.]+))?\)/);
+  return [+rgb[1] / 255, +rgb[2] / 255, +rgb[3] / 255, rgb[4] === undefined ? 1 : +rgb[4]];
+}

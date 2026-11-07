@@ -2,7 +2,7 @@ import type AppMediaViewerBase from '@components/mediaViewer/base';
 import showSharedFolderInvitePopup from '@components/popups/sharedFolderInvite';
 import showJoinChatInvitePopup from '@components/popups/joinChatInvite';
 import {createPaymentPopup} from '@components/popups/payment';
-import showPeerPopup from '@components/popups/peer';
+import confirmOpenUrl from '@components/popups/confirmOpenUrl';
 import {showPickUser3Popup, showSharingPicker2Popup} from '@components/popups/pickUser';
 import showStickersPopup from '@components/popups/stickers';
 import {toastNew, hideToast} from '@components/toast';
@@ -111,24 +111,9 @@ export class InternalLinkProcessor {
    * this client cannot open - and Open follows it as a plain link, within that press of the button.
    */
   private showOpenUrlAlert(element: HTMLAnchorElement) {
-    const href = element.href;
-
     const a = element.cloneNode(true) as HTMLAnchorElement;
-    a.className = 'anchor-url';
-    a.innerText = href;
     a.removeAttribute('onclick');
-
-    showPeerPopup('popup-masked-url', {
-      titleLangKey: 'OpenUrlTitle',
-      descriptionLangKey: 'OpenUrlAlert2',
-      descriptionLangArgs: [a],
-      buttons: [{
-        langKey: 'Open',
-        callback: () => {
-          a.click();
-        }
-      }]
-    });
+    confirmOpenUrl(a);
   }
 
   public construct(managers: TabManagers) {

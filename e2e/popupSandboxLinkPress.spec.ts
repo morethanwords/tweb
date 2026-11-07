@@ -1,6 +1,6 @@
 import {expect, Locator, Page} from '@playwright/test';
 import {test} from './workerContext';
-import {fontsLoaded, openStory, popupSettled, preparePopupSandbox} from './popupSandbox.helpers';
+import {fontsLoaded, openStory, parseColor, popupSettled, preparePopupSandbox} from './popupSandbox.helpers';
 
 /*
  * A text link held under the pointer gets a ripple that fills a rounded plate of its own colour
@@ -105,14 +105,6 @@ function readLink(page: Page) {
       over: (window as any).plateOverLines(a)
     };
   });
-}
-
-/** `color(srgb r g b / a)` or `rgba(…)` → [r, g, b, a] in 0…1 */
-function parseColor(value: string) {
-  const srgb = value.match(/color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)(?: \/ ([\d.]+))?\)/);
-  if(srgb) return [+srgb[1], +srgb[2], +srgb[3], srgb[4] === undefined ? 1 : +srgb[4]];
-  const rgb = value.match(/rgba?\(([\d.]+), ([\d.]+), ([\d.]+)(?:, ([\d.]+))?\)/);
-  return [+rgb[1] / 255, +rgb[2] / 255, +rgb[3] / 255, rgb[4] === undefined ? 1 : +rgb[4]];
 }
 
 test('a held text link fills with a ripple of its colour, gone once its wave has faded', async({page}) => {

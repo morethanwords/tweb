@@ -13,7 +13,7 @@
  */
 
 import {loadEnv, mergeConfig} from 'vite';
-import {existsSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync} from 'fs';
+import {existsSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync} from 'fs';
 import {createHash} from 'crypto';
 import {basename, dirname, join, normalize, resolve} from 'path';
 import {execFileSync, spawn, ChildProcess} from 'child_process';
@@ -106,9 +106,9 @@ function pruneSupersededBuilds() {
     const cutoff = Math.min(statSync(index).mtimeMs - 1000, Date.now() - PRUNE_GRACE_MS);
     for(const name of readdirSync(staticDir)) {
       const path = join(staticDir, name);
-      // statSync follows `assets` (a symlink into public/) to a directory, so
-      // isFile() is what keeps it — and every other non-file — out of this.
-      const stat = statSync(path, {throwIfNoEntry: false});
+      // lstatSync keeps what start-preview.sh links in from public/ (`assets`,
+      // `embed.html`) out of this, with every other non-file: a link is no build's.
+      const stat = lstatSync(path, {throwIfNoEntry: false});
       if(!stat?.isFile() || stat.mtimeMs >= cutoff) continue;
       unlinkSync(path);
     }

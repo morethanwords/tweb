@@ -1,0 +1,17 @@
+// A message's time over its media's bottom corner (a photo's, a widget's with no caption below it): where it stands,
+// and the backing it is drawn on
+@mixin floating-time {
+  position: absolute;
+  bottom: .1875rem;
+  inset-inline-end: .1875rem;
+  z-index: 2;
+  display: flex;
+  height: calc(var(--messages-time-text-size) + .375rem);
+  white-space: nowrap;
+}
+
+@mixin floating-time-backing {
+  color: #fff;
+  border-radius: .75rem;
+  background-color: var(--message-time-background);
+}

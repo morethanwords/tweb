@@ -226,7 +226,7 @@ function getEmbedPageUrl(href: string) {
 }
 
 function getEmbedSandbox(html: string, url: string) {
-  if(html) { // srcdoc — allow-same-origin would hand it this origin, which is the whole problem
+  if(html) { // the embed document is ours — allow-same-origin would hand it this origin, which is the whole problem
     return EMBED_SANDBOX_ATTRIBUTES;
   }
 

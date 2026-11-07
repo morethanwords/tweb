@@ -641,6 +641,10 @@ class ApiUpdatesManager {
       /* case 'updateDeleteChannelMessages':
         channelId = update.channel_id;
         break; */
+      // a widget's state in a channel's pts sequence, if the server ever sends it there (it edits the post instead)
+      case 'updateMessageWidgetData':
+        channelId = (update.peer as Peer.peerChannel).channel_id;
+        break;
       case 'updateChannelTooLong':
         channelId = update.channel_id;
         if(!(channelId in this.channelStates)) {

@@ -448,7 +448,9 @@ class ApiManagerProxy extends MTProtoMessagePort {
       'account_logged_in',
       'notification_cancel',
       'notification_cancel_up_to',
-      'toggle_using_passcode'
+      'toggle_using_passcode',
+      'widget_storage_delete',
+      'widget_storage_remap'
     ]);
 
     // const perf = performance.now();

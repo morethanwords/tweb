@@ -1,4 +1,4 @@
-import {IS_POPUP_SANDBOX, IS_PREVIEW} from '@config/debug';
+import {IS_PREVIEW, IS_SANDBOX_PAGE} from '@config/debug';
 
 /*
  * A preview tab frequently isn't painting (it runs backgrounded / headless),
@@ -17,7 +17,7 @@ import {IS_POPUP_SANDBOX, IS_PREVIEW} from '@config/debug';
  * rAF call. Production builds fold the branch away — IS_PREVIEW is a literal
  * `false` there.
  */
-if((IS_PREVIEW || IS_POPUP_SANDBOX) && typeof window !== 'undefined') {
+if((IS_PREVIEW || IS_SANDBOX_PAGE) && typeof window !== 'undefined') {
   const FRAME_MS = 1000 / 60;
   // a tab whose last frame came longer ago than this is taken for one that does not paint
   const STALL_MS = 100;

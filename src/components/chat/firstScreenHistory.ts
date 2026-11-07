@@ -1,4 +1,4 @@
-import type {Document, DocumentAttribute, Message, MessageEntity, PageBlock, PageListItem, PageListOrderedItem, Photo, RichText} from '@layer';
+import type {Document, DocumentAttribute, Message, MessageEntity, MessageMedia, PageBlock, PageListItem, PageListOrderedItem, Photo, RichText} from '@layer';
 import type {LocalTextWithOptionalEntities} from '@types';
 import calcImageInBox from '@helpers/calcImageInBox';
 import mediaSizes from '@helpers/mediaSizes';
@@ -203,11 +203,23 @@ function getMediaSize(message: Message.message) {
 }
 
 /**
+ * The height a widget message's block has at least, as the chat knows it before the widget runs; nothing where the
+ * chat does not draw widgets
+ */
+export type GetWidgetHeight = (message: Message.message, media: MessageMedia.messageMediaWidget) => number;
+
+function getWidgetBlockHeight(message: Message.message, getWidgetHeight?: GetWidgetHeight) {
+  const media = message.media;
+  return media?._ === 'messageMediaWidget' && getWidgetHeight ? getWidgetHeight(message, media) : 0;
+}
+
+/**
  * A height the bubble of a message has at least - never more than it gets, the bubble's frame left out, when nothing
  * is known of how this chat lays text out: the text in as many lines as it has paragraphs, or as its length makes at
- * the smallest font in the widest bubble; a photo or a video no taller than a phone shows it, in an album a tile
+ * the smallest font in the widest bubble; a photo or a video no taller than a phone shows it, in an album a tile; a
+ * widget as high as `getWidgetHeight` knows it
  */
-export function getBubbleHeightAtLeast(message: HistoryMessage, inAlbum?: boolean) {
+export function getBubbleHeightAtLeast(message: HistoryMessage, inAlbum?: boolean, getWidgetHeight?: GetWidgetHeight) {
   const LINE = 16, SMALL_LINE = 14, LINE_CHARS = 200, MEDIA_SIZE = 240, ALBUM_TILE_SIZE = 120;
   if(message?._ !== 'message') {
     return 0;
@@ -226,7 +238,7 @@ export function getBubbleHeightAtLeast(message: HistoryMessage, inAlbum?: boolea
     height += Math.min(size.h, size.h * MEDIA_SIZE / size.w, inAlbum ? ALBUM_TILE_SIZE : MEDIA_SIZE);
   }
 
-  return height;
+  return height + getWidgetBlockHeight(message, getWidgetHeight);
 }
 
 let measureContext: CanvasRenderingContext2D, measureFont: string;
@@ -243,11 +255,11 @@ export function measureTextWidth(text: string, font: string) {
  * The height of a message's bubble laid out the way the chat lays out its text, still at least: each paragraph in as
  * many lines as its width at the regular weight fills at the widest a line gets (wrapping on words only adds lines),
  * a quote's and a code block's at four fifths of the size,
- * a photo or a video in the box a bubble gives it (less a tenth: a narrow chat shrinks the box), a row of reactions at
- * its lowest, everything else - the frame, a link preview, the comments button, which not every post with comments
- * shows - left out
+ * a photo or a video in the box a bubble gives it (less a tenth: a narrow chat shrinks the box), a widget as high as
+ * `getWidgetHeight` knows it, a row of reactions at its lowest, everything else - the frame, a link preview, the
+ * comments button, which not every post with comments shows - left out
  */
-export function estimateBubbleHeight(message: HistoryMessage, metrics: MessageTextMetrics, inAlbum?: boolean) {
+export function estimateBubbleHeight(message: HistoryMessage, metrics: MessageTextMetrics, inAlbum?: boolean, getWidgetHeight?: GetWidgetHeight) {
   const REACTIONS = 32, POLL_OPTION = 32, ALBUM_TILE_SIZE = 120, SMALL_SCALE = .8;
   if(message?._ !== 'message') {
     return 0;
@@ -278,6 +290,8 @@ export function estimateBubbleHeight(message: HistoryMessage, metrics: MessageTe
   if(media?._ === 'messageMediaPoll') {
     height += media.poll.answers.length * POLL_OPTION;
   }
+
+  height += getWidgetBlockHeight(message, getWidgetHeight);
 
   if(message.reactions?.results?.length) {
     height += REACTIONS;

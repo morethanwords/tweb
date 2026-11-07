@@ -11,15 +11,19 @@
 // First import on purpose: it seeds the stores before any app module that reads them on evaluation.
 import {isLiveSession, mockManagers} from './bootstrapState';
 import PopupElementTsx from '@components/popups/indexTsx';
+import appNavigationController, {USE_NAVIGATION_API} from '@components/appNavigationController';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import I18n from '@lib/langPack';
 import Modes from '@config/modes';
 import themeController from '@helpers/themeController';
+import {readStoredChoice, storeChoice} from '@helpers/storedChoice';
 import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import appDownloadManager from '@lib/appDownloadManager';
 import rootScope from '@lib/rootScope';
 import {createLiveManagers, LiveManagersController} from './liveManagers';
 import type {AppManagers, TabManagers} from '@lib/managers';
+import type {UpdatePayload} from 'vite';
 import {setAppSettingsSilent} from '@stores/appSettings';
 import {AppTheme, SETTINGS_INIT} from '@config/state';
 
@@ -36,25 +40,15 @@ export function getMockManagers() {
  */
 const THEME_STORAGE_KEY = 'popup-sandbox-theme';
 
-const isKnownTheme = (name: string): name is AppTheme['name'] =>
-  name === 'system' || SETTINGS_INIT.themes.some((theme) => theme.name === name);
-
 export function setSandboxTheme(name: AppTheme['name']) {
-  try {
-    localStorage.setItem(THEME_STORAGE_KEY, name);
-  } catch{}
-
+  storeChoice(THEME_STORAGE_KEY, name);
   return themeController.switchTheme(name);
 }
 
 function restoreSandboxTheme() {
-  let stored: string;
-  try {
-    stored = localStorage.getItem(THEME_STORAGE_KEY);
-  } catch{}
-
+  const stored = readStoredChoice<AppTheme['name']>(THEME_STORAGE_KEY, ['system', ...SETTINGS_INIT.themes.map((theme) => theme.name)]);
   // Silent: applied before the theme controller reads it, and there is nowhere to persist it to.
-  if(stored && isKnownTheme(stored)) setAppSettingsSilent('theme', stored);
+  if(stored) setAppSettingsSilent('theme', stored);
 }
 
 /*
@@ -70,22 +64,15 @@ export function getSandboxDirection(): SandboxDirection {
 }
 
 export function setSandboxDirection(dir: SandboxDirection) {
-  try {
-    localStorage.setItem(DIRECTION_STORAGE_KEY, dir);
-  } catch{}
-
+  storeChoice(DIRECTION_STORAGE_KEY, dir);
   I18n.forceRTL(dir === 'rtl');
 }
 
 function restoreSandboxDirection() {
-  let stored: string;
-  try {
-    stored = localStorage.getItem(DIRECTION_STORAGE_KEY);
-  } catch{}
-
+  const stored = readStoredChoice<SandboxDirection>(DIRECTION_STORAGE_KEY, ['ltr', 'rtl']);
   // * `?rtl=1` wins over what was stored; the language's own direction does not, or a choice of LTR
   // * would not survive a reload over a right-to-left language
-  if(stored === 'rtl' || stored === 'ltr') I18n.forceRTL(Modes.rtl || stored === 'rtl');
+  if(stored) I18n.forceRTL(Modes.rtl || stored === 'rtl');
 }
 
 /** The real managers of the session the sandbox opened on top of; undefined when standalone. */
@@ -177,4 +164,90 @@ export function installSandboxEnvironment() {
 
     return restoreManagers;
   })();
+}
+
+/*
+ * Reload on an edit.
+ *
+ * Vite hot-swaps the edited module in its own graph, but a story re-imports the popup by a URL the
+ * browser has already cached, so `open()` keeps building the popup from the code you just changed
+ * away from — silently. Popup modules also carry module-level state (kind symbols, the current-popup
+ * registry) that a second copy would fork. So take the reload: the open story is in the hash and
+ * comes straight back. The widget sandbox reloads the same way.
+ *
+ * CSS is left alone — Vite swaps stylesheets in place and that already works.
+ *
+ * Over a running app (`storiesOnly`) only for an edit a story module takes — the app's own edits stay hot. A story
+ * accepts its own updates (so that a popup's edit stops there), and run again it would leave the panel's rows
+ * holding the previous story and list one the edit removed.
+ */
+export function watchForEdits(storiesOnly?: boolean) {
+  if(!import.meta.hot) {
+    return;
+  }
+
+  const onUpdate = ({updates}: UpdatePayload) => {
+    if(updates.some((update) => /\.[jt]sx?($|\?)/.test(update.path) && (!storiesOnly || update.path.includes('/popupSandbox/stories/')))) {
+      location.reload();
+    }
+  };
+  import.meta.hot.on('vite:afterUpdate', onUpdate);
+  return () => import.meta.hot.off('vite:afterUpdate', onUpdate);
+}
+
+/*
+ * The story in the hash.
+ *
+ * A standalone sandbox (`?popups=1`, `?widgets=1`) keeps the story it shows in the hash: the reload of an edit comes back
+ * to it, and a hash that is typed switches stories — a same-document hash change never reloads the page.
+ */
+
+export function getSandboxHash() {
+  return decodeURIComponent(location.hash.slice(1));
+}
+
+/**
+ * The hash is the navigation controller's to keep, as the app's own hash is: a closed popup or toast takes its history
+ * entry back, and that entry still holds the story it was opened in — the controller puts the current one back, which a
+ * bare `replaceState` it does not know about would not get.
+ */
+export function setSandboxHash(id: string) {
+  appNavigationController.overrideHash('#' + encodeURIComponent(id));
+}
+
+/**
+ * Calls `open` with the story a typed hash names. A history step lands on whatever story its entry was made in: Back, and
+ * the navigation controller taking back a closed popup's or toast's entry — which happens a moment after the next story
+ * has opened, and would put the previous one back over it. Only a hash that is typed switches stories; the controller
+ * restores the current one after its own steps (`setSandboxHash`). Where each pending step lands: other navigations (the
+ * next popup's own entry) can come between a step and its `hashchange`. Returns what stops it.
+ */
+export function watchSandboxHash(open: (id: string) => void) {
+  const traversals: string[] = [];
+  const onNavigate = (event: NavigateEvent) => {
+    // a step to the entry it is on already changes no hash: no `hashchange` comes for it
+    if(event.navigationType !== 'traverse' || event.destination.url === location.href) return;
+    const url = event.destination.url;
+    traversals.push(url);
+    // nor for one the controller cancels (a step forward), once every listener has had it
+    queueMicrotask(() => {
+      if(event.defaultPrevented) indexOfAndSplice(traversals, url);
+    });
+  };
+  const onHashChange = (event: HashChangeEvent) => {
+    const traversal = traversals.indexOf(event.newURL);
+    if(traversal !== -1) {
+      traversals.splice(0, traversal + 1);
+      return;
+    }
+
+    open(getSandboxHash());
+  };
+
+  if(USE_NAVIGATION_API) navigation.addEventListener('navigate', onNavigate);
+  window.addEventListener('hashchange', onHashChange);
+  return () => {
+    if(USE_NAVIGATION_API) navigation.removeEventListener('navigate', onNavigate);
+    window.removeEventListener('hashchange', onHashChange);
+  };
 }

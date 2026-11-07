@@ -6,7 +6,7 @@ import {join, resolve} from 'node:path';
 import {build} from 'vite';
 
 // scripts/check-bundle-mangling.mjs fails `pnpm build` when the minifier binds a read in a default
-// value to the wrong symbol. It runs here against a small module built the way the app is: the
+// value to the wrong symbol, or a string literal comes out with a U+FFFD its source does not have. It runs here against a small module built the way the app is: the
 // bundle as built has to pass, and each misbinding written into it has to fail. A rewrite keeps every
 // name's length, so the source map still lines up.
 
@@ -44,7 +44,12 @@ function sameParameter({first, second = first} = {}) {
   return second;
 }
 
-globalThis.fixture = {pickServer, captionOf, others, shadowed, renamed, sameParameter};
+// a replacement character the source writes itself, as CSS serializers do for NUL
+function escapeNul(text) {
+  return text.replace(/\0/g, '\\uFFFD');
+}
+
+globalThis.fixture = {pickServer, captionOf, others, shadowed, renamed, sameParameter, escapeNul};
 `;
 
 // `function t(e,t,n,r=t===\`client\`)`
@@ -52,33 +57,68 @@ const PICK_SERVER = /function \w+\((\w+),(\w+),(\w+),(\w+)=(\w+)===`client`\)/;
 // `function n(t,{caption:n=\`\`,entities:r=[]}={},i=e(n,r))`
 const CAPTION_OF = /function \w+\((\w+),\{caption:(\w+)=``,entities:(\w+)=\[\]\}=\{\},(\w+)=(\w+)\((\w+),(\w+)\)\)/;
 
-let dir: string;
-let bundle: string;
+// a replacement character named once and used far from there, as parse5's tokenizer does for NUL: the minifier
+// inlines it where it is used, lines away from the escape (a module of its own: next to another U+FFFD the minifier
+// shares one variable instead)
+const INLINED_SOURCE = `
+const REPLACEMENT_CHARACTER = '\\uFFFD';
 
-beforeAll(async() => {
-  dir = mkdtempSync(join(tmpdir(), 'check-bundle-mangling-'));
-  writeFileSync(join(dir, 'entry.js'), SOURCE);
+const TAGS = ['a', 'b'];
+
+function emitNul(chars) {
+  chars.push('nul', REPLACEMENT_CHARACTER);
+  return chars;
+}
+
+globalThis.fixture = {emitNul, TAGS};
+`;
+
+// a replacement character the source writes itself, on the same line as other literals: a word, and one character (last:
+// a test puts one code unit in the place of its two); and one in a regular expression, which the minifier prints as it is
+const NEIGHBOUR_SOURCE = `
+globalThis.fixture = {replace: '\\uFFFD', label: 'client', pattern: /a\uFFFDb/, emoji: '😀'};
+`;
+
+let dir: string;
+let inlinedDir: string;
+let neighbourDir: string;
+let bundle: string;
+let inlinedBundle: string;
+let neighbourBundle: string;
+
+/** Builds `source` the way the app is built into `out/bundle.js` (with its map) in a directory of its own. */
+async function buildFixture(source: string) {
+  const root = mkdtempSync(join(tmpdir(), 'check-bundle-mangling-'));
+  writeFileSync(join(root, 'entry.js'), source);
   await build({
     configFile: false,
-    root: dir,
+    root,
     logLevel: 'silent',
     build: {
-      outDir: join(dir, 'out'),
+      outDir: join(root, 'out'),
       minify: true,
       sourcemap: true,
-      rolldownOptions: {input: join(dir, 'entry.js'), output: {entryFileNames: 'bundle.js'}}
+      rolldownOptions: {input: join(root, 'entry.js'), output: {entryFileNames: 'bundle.js'}}
     }
   });
-  bundle = readFileSync(join(dir, 'out/bundle.js'), 'utf8');
+  return {root, code: readFileSync(join(root, 'out/bundle.js'), 'utf8')};
+}
+
+beforeAll(async() => {
+  ({root: dir, code: bundle} = await buildFixture(SOURCE));
+  ({root: inlinedDir, code: inlinedBundle} = await buildFixture(INLINED_SOURCE));
+  ({root: neighbourDir, code: neighbourBundle} = await buildFixture(NEIGHBOUR_SOURCE));
 }, 60_000);
 
 afterAll(() => {
   rmSync(dir, {recursive: true, force: true});
+  rmSync(inlinedDir, {recursive: true, force: true});
+  rmSync(neighbourDir, {recursive: true, force: true});
 });
 
-function check(code: string) {
-  writeFileSync(join(dir, 'out/bundle.js'), code);
-  const {status, stdout, stderr} = spawnSync(process.execPath, [checker, join(dir, 'out')], {encoding: 'utf8'});
+function check(code: string, root = dir) {
+  writeFileSync(join(root, 'out/bundle.js'), code);
+  const {status, stdout, stderr} = spawnSync(process.execPath, [checker, join(root, 'out')], {encoding: 'utf8'});
   return {status, output: stdout + stderr};
 }
 
@@ -130,4 +170,43 @@ test('fails a default that reads its own parameter', () => {
   const {status, output} = check(captionOfReading(({wrapped}) => wrapped));
   expect(status).toBe(1);
   expect(output).toContain(`'caption'`);
+});
+
+test('passes a replacement character the source writes itself', () => {
+  // the minifier prints the escape as the character, which is what the check has to tell apart
+  expect(bundle).toContain('\uFFFD');
+  expect(check(bundle).status).toBe(0);
+});
+
+test('passes a replacement character a source defines as a constant, inlined where it is used', () => {
+  expect(inlinedBundle, 'the constant is no longer inlined').toMatch(/`nul`,`\uFFFD`|"nul","\uFFFD"|'nul','\uFFFD'/);
+  expect(check(inlinedBundle, inlinedDir).status).toBe(0);
+});
+
+test('fails a literal that lost its content next to a use of such a constant', () => {
+  const {status, output} = check(inlinedBundle.replace(/([`"'])nul\1/, '$1n\uFFFDl$1'), inlinedDir);
+  expect(status).toBe(1);
+  expect(output).toContain('1 U+FFFD');
+});
+
+test('fails a literal that lost its content next to a replacement character the source writes itself', () => {
+  expect(neighbourBundle, 'the regular expression is no longer printed as it is').toContain('/a\uFFFDb/');
+  expect(check(neighbourBundle, neighbourDir).status).toBe(0);
+  const {status, output} = check(neighbourBundle.replace(/([`"'])client\1/, '$1cli\uFFFDnt$1'), neighbourDir);
+  expect(status).toBe(1);
+  expect(output).toContain('1 U+FFFD');
+});
+
+test('fails a one-character literal that came out as a replacement character next to one the source writes itself', () => {
+  expect(neighbourBundle, 'the emoji is no longer printed as itself').toContain('😀');
+  const {status, output} = check(neighbourBundle.replace('😀', '\uFFFD'), neighbourDir);
+  expect(status).toBe(1);
+  expect(output).toContain('1 U+FFFD');
+});
+
+test('fails a replacement character the source does not have: a literal that lost its content', () => {
+  expect(bundle).toContain('`client`');
+  const {status, output} = check(bundle.replace('`client`', '`cli\uFFFDnt`'));
+  expect(status).toBe(1);
+  expect(output).toContain('1 U+FFFD');
 });

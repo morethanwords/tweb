@@ -308,6 +308,7 @@ declare global {
     | 'PHONE_CODE_EMPTY'
     | 'PHONE_CODE_EXPIRED'
     | 'PHONE_CODE_INVALID'
+    | 'WIDGET_RESPONSE_TIMEOUT'
   ;
 
   type WalletErrorType =

@@ -35,7 +35,7 @@ import {parseUriParamsLine} from '@helpers/string/parseUriParams';
 import getWebAuthImport from '@lib/accounts/getWebAuthImport';
 import Modes from '@config/modes';
 import {AuthState} from '@types';
-import DEBUG, {IS_BETA, IS_POPUP_SANDBOX} from '@config/debug';
+import DEBUG, {IS_BETA, IS_POPUP_SANDBOX, IS_WIDGET_SANDBOX} from '@config/debug';
 import IS_INSTALL_PROMPT_SUPPORTED from '@environment/installPrompt';
 import cacheInstallPrompt from '@helpers/dom/installPrompt';
 import {fillLocalizedDates} from '@helpers/date';
@@ -426,6 +426,11 @@ if(import.meta.env.DEV || import.meta.env.VITE_PREVIEW) {
     if(show !== loadBubbleSandbox) show();
   };
   (window as any)['showBubbleSandbox'] = loadBubbleSandbox;
+
+  // widgets from fixtures in the open chat, `(await widgetSandbox()).inject()`, and the widget sandbox over the app
+  // (`?widgets=1` boots straight into it instead)
+  (window as any)['widgetSandbox'] = async() => (await import('@lib/widgetSandbox/debug')).default;
+  (window as any)['showWidgetSandbox'] = async() => (await import('@lib/widgetSandbox/debug')).default.show();
 }
 
 /* false &&  */document.addEventListener('DOMContentLoaded', async() => {
@@ -454,6 +459,15 @@ if(import.meta.env.DEV || import.meta.env.VITE_PREVIEW) {
     await import('@components/popupSandbox/bootstrapState');
     const {startPopupSandbox} = await import('@components/popupSandbox');
     await startPopupSandbox();
+    return;
+  }
+
+  // ?widgets=1 — the widget sandbox, on the popup sandbox's mock environment; the preview's built bundle
+  // has it too (VITE_PREVIEW is a literal there, as DEV is on the dev server).
+  if((import.meta.env.DEV || import.meta.env.VITE_PREVIEW) && IS_WIDGET_SANDBOX) {
+    await import('@components/popupSandbox/bootstrapState');
+    const {startWidgetSandbox} = await import('@components/widgetSandbox/sandbox');
+    await startWidgetSandbox();
     return;
   }
 

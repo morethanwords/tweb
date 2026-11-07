@@ -140,6 +140,109 @@ Either way every `rootScope.managers` call is answered from
   fixture without being marked `fixtureOnly` — that mark is what keeps live mode
   from quietly showing made-up data.
 
+### Widget sandbox
+
+HTML widgets — messages whose media is `messageMediaWidget` (layer 233), a zlib stream of
+the widget's source — run on widget-sandbox v0.6.0, vendored in `src/vendor/widget-sandbox`
+(its `UPSTREAM.md` lists tweb's own changes, with the measurements behind them). In every
+browser the engine runs **off the page's thread** (the `worker` transport): one engine
+worker per page runs every widget, each in a copy of a QuickJS VM (wasm) warmed once there
+(a few milliseconds and ~5 MB a widget), with its validator beside it; the page only applies
+what the widget draws to a shadow root and answers its layout queries. The widget's code
+waits for those answers without knowing — JSPI where the engine has it (Chromium, Safari),
+an asyncify build of the same QuickJS elsewhere (Firefox;
+`src/vendor/widget-sandbox-quickjs/scripts/asyncify.mjs`). Nothing of a widget's own code
+may run on the page's thread: keep new work for it in the engine worker. The engine in the
+page (`inline`, also what a page without workers gets), a worker per widget (`sab`) and
+the engine in an iframe (`frame`) are debug switches; `sab` needs a cross-origin isolated
+page, which the dev server gives Chromium for a page opened with `?isolate=1`
+(`Document-Isolation-Policy`).
+
+**The time over a widget.** With no caption below the widget (none, or one shown above it) the message's time is
+drawn over the widget's bottom corner, as over a photo, and the widget is told the band and the corner the time takes
+(the content safe area: `env(safe-area-inset-*)` and `TelegramWidget.contentSafeAreaInset` in the widget,
+`lib/widgetSandbox/safeArea.ts` here); the widget sandbox's Time switch draws it the same way.
+
+**A widget enters its bubble drawn.** While the bubble is built the widget runs its first
+task in a hidden copy of the bubble — the same classes and inline styles from the chat's
+bubbles column down, laid out at the column's width (`components/widgetSandbox/staging.ts`)
+— and the chat waits for that (the bubble's `loadPromises`; the start waits until the chat
+waits, by when the classes that set the bubble's width are on it). The frame moves into the
+bubble in the moment it enters (a custom element's `connectedCallback`), so the chat lays
+the bubble out — and keeps its scroll — with the widget's content and height already in
+it. That holds for the widgets in sight; the chat waits for no other. An opening chat counts
+its first screen with each widget's height known in advance (`lib/widgetSandbox/sizing.ts`:
+the bot's, else the one it reported when it last ran at this width and text size, kept per
+message on the account's disk beside the widgets' storage (`lib/widgetSandbox/heights.ts`), else the lowest a
+widget is), counts again as the widgets it
+waits for report theirs, and lets go of one whose message falls out of sight; a bubble that
+goes in out of sight (the rest of the page, history loaded by scrolling) keeps the widget's
+place at that height and the widget starts a screen before it comes into view
+(`WidgetBlock`'s `lazy`). A height change above the screen keeps what is on screen in
+place: the chat's scroller does not anchor its content by itself. A widget that starts
+again where its picture is (shown after it was parked, new HTML) starts hidden over the
+picture and takes its place once it has drawn. Past
+`MAX_LIVE_WIDGETS` the widgets hidden the longest keep their last picture without an
+engine (`WidgetHost.suspend()`) and come back to life when shown.
+
+The client side follows upstream's `docs/client-checklist.md`: the bubble
+(`components/chat/bubbles.ts`, `components/widgetSandbox/widgetBlock.tsx`) sizes the
+widget from the bot's `width` / `height` (200 px minimum width, heights in 50…600,
+clipped), passes the bubble's colours as the theme, confirms every external link with
+the whole URL (`lib/widgetSandbox/actions.ts`) and keeps each message's Web Storage on
+disk (`appWidgetsManager`, deleted with the message, the history, the account and on
+Clear cache). Rendering is the client's own switch (`isWidgetRenderingEnabled`): on in every
+build; `localStorage['tweb-widgets'] = '0'` turns it off in a browser.
+
+A widget is fixed code plus changeable state. The bubble hands it the message's chat
+state and shared state and the server's flags as they are (`lib/widgetSandbox/messageWidget.ts`);
+the bot's edits of the state (`updateMessageWidgetData`, or an edit of a supergroup's post)
+reach the running widget through the bubble's edit path (`WidgetHost.setData`, nothing
+restarts); its requests go out like a callback button's press
+(`appWidgetsManager.getBotWidgetQueryAnswer`); a shared widget (`widget_id`) that watches its
+shared state is polled while in view, through one message per `widget_id` at the server's
+period (`lib/widgetSandbox/publicData.ts`); and a message with `can_query` shows the network
+marker in its time, which explains itself on a tap or hover. A height change on screen
+keeps the edge the widget chose (`setResizeAnchor`) where it is. Widgets get no Gram Wallet
+yet, so the client passes no `context.wallet`: `TelegramWidget.wallet` is null and the
+framework refuses wallet calls and requests for the wallet (`onWallet`, the wallet window
+and `with_wallet` come with the wallet's side of it).
+
+A widget's DOM lives in the app's page, so `index.html` carries a Content-Security-Policy
+that keeps markup from reaching the network (images, media, fonts and style sheets only
+from the app, `data:` and `blob:`; no form submissions, no plugins). Frames, scripts and
+connections are not restricted: mini apps, games and payment forms are third-party
+frames. A new feature that loads an image, a font or a media file from another host
+has to go through the app (as Telegram's files do, by MTProto into `blob:`) or widen the
+policy deliberately. Instant View's HTML embeds are written into `public/embed.html`
+(a sandboxed frame without `allow-same-origin`), not a `srcdoc` frame, which would
+inherit the policy.
+
+They have a sandbox of their own on the popup sandbox's panel and mock environment:
+`?widgets=1` on a dev or preview build (the preview's built bundle included), or over a
+running app: Settings → Experimental → Widget Sandbox, `(await widgetSandbox()).show()`.
+It lists every fixture widget (`src/lib/widgetSandbox/fixtures/`, a copy of part of
+upstream's corpus, all of its attack corpus and its conformance set, and tweb's bench
+widgets) and shows the one picked
+— or, in the **All in a row** view, every listed widget one after another, scrolled
+(filter first: each one starts). The engine (worker / inline / sab / frame), sab's
+renderer and the worker's suspension (JSPI / asyncify) and number of engine workers switch
+live; what widgets ask the client for (a link, a t.me link, a haptic) is listed in the
+panel instead of done, and their storage lives in memory. A mock bot answers their
+requests, and a mock Gram Wallet their wallet calls (the Wallet switch: none, or a window
+the user confirms or declines, or a wallet that refuses). The **Bench** view measures
+every engine this browser can run against the others on the same widgets
+(`lib/widgetSandbox/bench.ts`: starts, a batch, animations, script work, layout queries,
+a large DOM, memory where the browser tells it) and gives the table as Markdown.
+`window.widgetSandbox()` drives it from a script (`open`, `setView`, `setRenderer`,
+`setTransport`, `setSuspend`, `setEngines`, `setWidth`, `setTheme`, `actions`, `bench`),
+and also puts fixture widgets into the open chat as messages nobody sent (`inject()`: all
+of them; `inject(name, {width, height})` with the bot's size). It is
+covered by `e2e/popupSandboxWidgets.spec.ts`, part of `pnpm test:popups`, which also runs
+the whole attack corpus against a canary on a port of the checkout's own
+(`e2e/widgetCanary.mts`, started by the popups config, whose servers aim the corpus,
+written for 127.0.0.1:9999, at it).
+
 ### Bubble sandbox
 
 A bubble of the open chat put in any state by click, as many times as it takes

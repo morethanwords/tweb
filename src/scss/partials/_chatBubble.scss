@@ -1142,6 +1142,32 @@
     }
   }
 
+  // An HTML widget: as wide as it was sent (`width` on the attachment), else as wide as a bubble may be;
+  // as tall as its content or its declared height. It has no intrinsic size, so the media limits above do
+  // not apply.
+  &.widget-message {
+    // the content too: an outgoing one (pushed to the end by its margin) is not stretched, and a widget, as wide as its
+    // box, would take the width it started at
+    &.is-full-width {
+      .bubble-content-wrapper,
+      .bubble-content {
+        width: 100%;
+      }
+    }
+
+    .attachment {
+      width: 100%;
+      max-width: 100%;
+      max-height: none;
+    }
+
+    // the network marker explains itself on a tap, and on hover (its title): a time icon takes no pointer otherwise
+    .time-widget-network {
+      cursor: pointer;
+      pointer-events: auto;
+    }
+  }
+
   img:not(.emoji):not(.custom-emoji-placeholder),
   video {
     object-fit: cover;
@@ -1971,18 +1997,12 @@
     }
 
     &.is-floating {
+      @include floating-time;
       margin-left: 0;
-      display: flex;
       align-items: center;
       padding: 0 .3125rem !important;
       margin: 0 !important;
-      white-space: nowrap;
-      height: calc(var(--messages-time-text-size) + .375rem);
       max-width: inherit;
-      position: absolute;
-      bottom: .1875rem;
-      inset-inline-end: .1875rem;
-      z-index: 2;
       opacity: 1;
 
       @include animation-level(1) {
@@ -1990,11 +2010,9 @@
       }
 
       .time-inner {
-        color: #fff;
+        @include floating-time-backing;
         margin: inherit;
         max-width: inherit;
-        border-radius: .75rem;
-        background-color: var(--message-time-background);
         // padding: 0 .3125rem;
         height: inherit;
         bottom: 0 !important;
@@ -2265,7 +2283,8 @@
 
   &:not(.has-webpage) {
     &.photo,
-    &.video {
+    &.video,
+    &.widget-message {
       &:not(.is-reply) .bubble-content > .name {
         margin-bottom: $message-padding-top;
       }

@@ -2,7 +2,8 @@
  * Side-effect module: builds the mock managers and merges the fixtures into the app's state.
  *
  * Everything here is ADDITIVE, because the sandbox has two homes:
- *  - `?popups=1`, where the app never booted and the stores and mirrors are empty;
+ *  - `?popups=1` (and the widget sandbox's `?widgets=1`), where the app never booted and the stores
+ *    and mirrors are empty;
  *  - `showPopupSandbox()` inside a live, signed-in session, where they are full of real data that
  *    must survive untouched.
  * So the fixture peers and messages are merged in one key at a time (never as a whole-mirror
@@ -25,7 +26,7 @@ import {joinDeepPath} from '@helpers/object/setDeepProperty';
 import {setAppSettingsSilent} from '@stores/appSettings';
 import {appState, setAppStateSilent} from '@stores/appState';
 import {SETTINGS_INIT, STATE_INIT} from '@config/state';
-import {IS_POPUP_SANDBOX} from '@config/debug';
+import {IS_SANDBOX_PAGE} from '@config/debug';
 import {createMockManagers, mockAppConfig} from './mockManagers';
 import {messages, peers, selfUser, SELF_PEER_ID} from './fixtures';
 
@@ -69,7 +70,7 @@ function seedFixtureMirrors() {
  * login page it can still be empty, and the standalone branch below would then overwrite the running
  * app's settings, state and managers with fixtures and never put them back.
  */
-export const isLiveSession = !IS_POPUP_SANDBOX;
+export const isLiveSession = !IS_SANDBOX_PAGE;
 
 if(!isLiveSession) {
   rootScope.managers = mockManagers.managers;

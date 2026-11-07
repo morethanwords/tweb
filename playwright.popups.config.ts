@@ -6,13 +6,16 @@ import e2ePort from './e2e/ports';
 const PORT = e2ePort('popups');
 // the modules as they are, for popupSandboxHotRerun.spec.ts: it runs every module again by its URL
 const MODULES_PORT = e2ePort('popupsModules');
+// what the widget attack corpus aims at (popupSandboxWidgets.spec.ts): a hit there is a leak. The corpus is written
+// for 127.0.0.1:9999; the app's servers aim it at this port instead (scripts/widget-sandbox-plugin.mjs)
+const CANARY_PORT = e2ePort('widgetCanary');
 
 // The app's server for the sandbox suites (vite.popups-e2e.config.ts): a bundle, ready once it is built, which
 // /__e2e/ready says — or, `bundled` false, the modules as they are
 export const appServer = (port = PORT, bundled = true) => ({
   command: `node_modules/.bin/vite --config vite.popups-e2e.config.ts --host 127.0.0.1 --port ${port} --strictPort`,
   url: `http://127.0.0.1:${port}/__e2e/ready`,
-  env: {TWEB_PREVIEW: '1', TWEB_E2E: '1', ...(!bundled && {TWEB_E2E_BUNDLED: '0'})},
+  env: {TWEB_PREVIEW: '1', TWEB_E2E: '1', TWEB_WIDGET_CANARY: String(CANARY_PORT), ...(!bundled && {TWEB_E2E_BUNDLED: '0'})},
   reuseExistingServer: false,
   timeout: 180_000
 });
@@ -53,5 +56,11 @@ export default defineConfig<{freshContext: boolean, modulesURL: string}>({
       {name: 'webkit', use: {...devices['Desktop Safari']}}
     ] : [])
   ],
-  webServer: [appServer(), appServer(MODULES_PORT, false)]
+  webServer: [appServer(), appServer(MODULES_PORT, false), {
+    command: `node e2e/widgetCanary.mts ${CANARY_PORT}`,
+    url: `http://127.0.0.1:${CANARY_PORT}/__hits`,
+    // the checkout's own: one found there was left by a killed run of it (a run beside it stops at the app's ports)
+    reuseExistingServer: true,
+    timeout: 30_000
+  }]
 });

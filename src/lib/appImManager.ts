@@ -1959,6 +1959,11 @@ export class AppImManager extends EventListenerBase<{
           element = node.parentElement;
         }
 
+        // a widget's text sits in its shadow root (one it lets be selected): the bubble is around the root's host
+        for(let root = element?.getRootNode(); root instanceof ShadowRoot; root = element.getRootNode()) {
+          element = root.host as HTMLElement;
+        }
+
         if(!findUpClassName(element, 'no-forwards')) {
           return false;
         }

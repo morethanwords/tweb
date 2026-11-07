@@ -20,16 +20,13 @@
 
 // First import on purpose — see the note in `bootstrapState.ts`.
 import './bootstrapState';
-import type {UpdatePayload} from 'vite';
 import {createSignal} from 'solid-js';
 import {render} from 'solid-js/web';
 import rootScope from '@lib/rootScope';
 import I18n from '@lib/langPack';
 import PopupElementTsx from '@components/popups/indexTsx';
-import appNavigationController, {USE_NAVIGATION_API} from '@components/appNavigationController';
-import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import PopupSandboxPanel from './sandbox';
-import {installSandboxEnvironment, getLiveManagers, getMockManagers, useLiveManagers, useMockManagers} from './environment';
+import {installSandboxEnvironment, getLiveManagers, getMockManagers, getSandboxHash, setSandboxHash, useLiveManagers, useMockManagers, watchForEdits, watchSandboxHash} from './environment';
 import {isLiveSession} from './bootstrapState';
 import {createLiveContext, mockContext, PopupStoryContext, StoryPeerKind} from './context';
 import {getStories, getStory, PopupStory} from './registry';
@@ -110,46 +107,11 @@ export async function openStory(story: PopupStory) {
   }
 
   setActiveId(story.id);
-  // The hash is what brings the story back after a reload — and the sandbox reloads on every edit
-  // (see `watchForEdits`). It is the navigation controller's to keep, as the app's own hash is: a
-  // closed popup takes its history entry back, and that entry still holds the story the popup was
-  // opened in — the controller puts the current one back, which a bare `replaceState` it does not
-  // know about would not get.
-  if(ownsLocationHash) {
-    appNavigationController.overrideHash('#' + encodeURIComponent(story.id));
-  }
+  // the hash brings the story back after a reload, and the sandbox reloads on every edit (`watchForEdits`)
+  if(ownsLocationHash) setSandboxHash(story.id);
 
   const teardown = await story.open(ctx);
   if(typeof teardown === 'function') closeSurface = teardown;
-}
-
-/*
- * Reload on an edit.
- *
- * Vite hot-swaps the edited module in its own graph, but a story re-imports the popup by a URL the
- * browser has already cached, so `open()` keeps building the popup from the code you just changed
- * away from — silently. Popup modules also carry module-level state (kind symbols, the current-popup
- * registry) that a second copy would fork. So take the reload: the open story is in the hash and
- * comes straight back.
- *
- * CSS is left alone — Vite swaps stylesheets in place and that already works.
- *
- * Over a running app (`storiesOnly`) only for an edit a story module takes — the app's own edits stay hot. A story
- * accepts its own updates (so that a popup's edit stops there), and run again it would leave the panel's rows
- * holding the previous story and list one the edit removed.
- */
-function watchForEdits(storiesOnly?: boolean) {
-  if(!import.meta.hot) {
-    return;
-  }
-
-  const onUpdate = ({updates}: UpdatePayload) => {
-    if(updates.some((update) => /\.[jt]sx?($|\?)/.test(update.path) && (!storiesOnly || update.path.includes('/popupSandbox/stories/')))) {
-      location.reload();
-    }
-  };
-  import.meta.hot.on('vite:afterUpdate', onUpdate);
-  return () => import.meta.hot.off('vite:afterUpdate', onUpdate);
 }
 
 /**
@@ -229,43 +191,18 @@ export function startPopupSandbox() {
     MarkupTooltip.getInstance().handleSelection();
     MarkupTooltip.showDatePickerPopup = showDatePickerPopup;
 
-    // Deep-link straight into a story: ?popups=1#deleteMessages/private. Editing the hash on an
-    // open sandbox switches stories too — a same-document hash change never reloads the page.
-    // A history step lands on whatever story its entry was made in: Back, and the navigation
-    // controller taking back a closed popup's entry — which happens a moment after the next story
-    // has opened, and would put the previous one back over it. Only a hash that is typed switches
-    // stories; the controller restores the current one after its own steps (`overrideHash` above).
-    // Where each pending step lands: other navigations (the next popup's own entry) can come
-    // between a step and its `hashchange`.
-    const traversals: string[] = [];
-    const onNavigate = (event: NavigateEvent) => {
-      // a step to the entry it is on already changes no hash: no `hashchange` comes for it
-      if(event.navigationType !== 'traverse' || event.destination.url === location.href) return;
-      const url = event.destination.url;
-      traversals.push(url);
-      // nor for one the controller cancels (a step forward), once every listener has had it
-      queueMicrotask(() => {
-        if(event.defaultPrevented) indexOfAndSplice(traversals, url);
-      });
-    };
-    const openFromHash = (event?: HashChangeEvent) => {
-      const traversal = event ? traversals.indexOf(event.newURL) : -1;
-      if(traversal !== -1) {
-        traversals.splice(0, traversal + 1);
-        return;
-      }
-
-      const story = getStory(decodeURIComponent(location.hash.slice(1)));
+    // Deep-link straight into a story: ?popups=1#deleteMessages/private; a typed hash switches stories
+    // (`watchSandboxHash`).
+    const openFromHash = (id = getSandboxHash()) => {
+      const story = getStory(id);
       // Closing nested menus can restore the current hash through browser
       // history. It must not reopen the same story the user is closing.
       return story && story.id !== activeId() && openStory(story);
     };
 
-    if(USE_NAVIGATION_API) navigation.addEventListener('navigate', onNavigate);
-    window.addEventListener('hashchange', openFromHash);
+    const stopWatchingHash = watchSandboxHash(openFromHash);
     closePanel = () => {
-      if(USE_NAVIGATION_API) navigation.removeEventListener('navigate', onNavigate);
-      window.removeEventListener('hashchange', openFromHash);
+      stopWatchingHash();
       ownsLocationHash = false;
       close();
     };

@@ -190,6 +190,10 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
         case 'messageMediaContact':
           addPart('AttachContact');
           break;
+        case 'messageMediaWidget':
+          // the caption is the preview of a widget; the stub only stands in for a missing one
+          if(!options.text) addPart('AttachWidget');
+          break;
         case 'messageMediaGame': {
           const f = '🎮' + ' ' + media.game.title;
           addPart(undefined, plain ? f : wrapEmojiText(f));

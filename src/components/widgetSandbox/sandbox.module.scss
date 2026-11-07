@@ -1,0 +1,190 @@
+@use "../../scss/shared" as *;
+
+// the room kept on the left for the popup sandbox's panel: its width as it is drawn, which its handle changes (20rem
+// at first; mountSandbox sets the variable from the panel's onWidth), and the width below which the panel stands over
+// the stage instead
+$panel-room: calc(var(--sandbox-panel-width, 20rem) + 1rem);
+$narrow: 50rem;
+
+// The widget sandbox's stage: the widgets in a column of a message's width, clear of the panel on the left
+// (the popup sandbox's, $panel-room) and over a running app when opened from inside one. The panel stands at the left
+// edge in either direction (popupSandbox/sandbox.module.scss, .Dock), so the room kept for it is on the left too.
+.Stage {
+  position: fixed;
+  inset: 0;
+  // under the panel (1000000), over everything the app has
+  z-index: 999999;
+  overflow-y: auto;
+  padding: 1rem 1rem 4rem $panel-room;
+  background-color: var(--background-color);
+
+  @media (max-width: $narrow) {
+    padding-left: 1rem;
+  }
+}
+
+// the page while a sandbox is mounted (on its body): the client's toasts (a widget's copyText) stand over the stage and
+// the panel, not hidden under them while they still take the next click
+.Open :global(.toasts-container) {
+  z-index: 1000001;
+}
+
+.Column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: min(30rem, 100%);
+  margin-inline: auto;
+}
+
+.Item {
+  scroll-margin-top: 1rem;
+}
+
+.ChatInput {
+  display: block;
+  width: min(30rem, 100%);
+  margin: 0 auto 1rem;
+}
+
+// what a message draws around its widget: the time over it is placed against it
+.Bubble {
+  position: relative;
+}
+
+// the time over the widget's bottom corner, as the chat's floating time over media (`.time.is-floating`)
+.Time {
+  @include floating-time;
+  font-size: var(--messages-time-text-size);
+}
+
+.TimeInner {
+  @include floating-time-backing;
+  display: flex;
+  align-items: center;
+  padding: 0 .3125rem;
+}
+
+.Caption {
+  margin-bottom: .25rem;
+  font-family: var(--font-monospace);
+  font-size: .8125rem;
+  color: var(--secondary-text-color);
+
+  .Active & {
+    color: var(--primary-color);
+  }
+}
+
+.Empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--secondary-text-color);
+}
+
+// The Bench view (benchView.tsx): its switches and the table, and the box its widgets run in while it measures them (a
+// grid of the bench's own, bench.ts).
+.Bench {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  max-width: 72rem;
+  // clear of the panel's Hide toggle
+  margin: 2rem auto 0;
+}
+
+.BenchGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem 1rem;
+  margin: 0;
+  padding: .5rem .75rem;
+  border: 1px solid var(--border-color);
+  border-radius: .5rem;
+
+  label {
+    display: inline-flex;
+    align-items: center;
+    gap: .375rem;
+  }
+}
+
+.BenchActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+}
+
+.BenchButton {
+  padding: .375rem 1rem;
+  border-radius: .5rem;
+  border: 1px solid var(--border-color);
+  background-color: var(--surface-color);
+  color: var(--primary-text-color);
+  font-size: .875rem;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: .5;
+    cursor: default;
+  }
+}
+
+.BenchProgress {
+  color: var(--secondary-text-color);
+  font-size: .875rem;
+}
+
+.BenchTableWrap {
+  overflow-x: auto;
+}
+
+.BenchTable {
+  border-collapse: collapse;
+  font-size: .8125rem;
+  font-variant-numeric: tabular-nums;
+
+  caption {
+    caption-side: top;
+    padding-bottom: .5rem;
+    text-align: start;
+    color: var(--secondary-text-color);
+  }
+
+  th,
+  td {
+    padding: .25rem .5rem;
+    border-bottom: 1px solid var(--border-color);
+    text-align: end;
+    white-space: nowrap;
+  }
+
+  th:nth-child(-n + 2),
+  td:nth-child(-n + 2) {
+    text-align: start;
+  }
+}
+
+.BenchBest {
+  font-weight: var(--font-weight-bold);
+  color: var(--primary-color);
+}
+
+.BenchDeaths {
+  margin: .5rem 0 0;
+  color: var(--danger-color);
+  font-size: .8125rem;
+}
+
+// the lower half of the window, clear of the panel as the stage's content is (.Stage's room for it): the widgets measured
+// all in sight, none under the panel, which stands over the stage
+.BenchBox {
+  position: fixed;
+  inset: 50vh 0 0 $panel-room;
+  pointer-events: none;
+
+  @media (max-width: $narrow) {
+    left: 1rem;
+  }
+}

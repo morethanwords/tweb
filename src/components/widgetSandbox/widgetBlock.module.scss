@@ -1,0 +1,114 @@
+@use "../../scss/partials/chatVariables" as *;
+
+// An HTML widget: the sandbox's renderer (a shadow host, or an iframe on the debug transports) in `.Frame`, in
+// `.Slot`. A widget has drawn by the time its bubble enters the chat; only a start that took longer, or an engine that
+// boots on its own (or cannot), shows a placeholder over it, keeping its place (a spinner while it starts, a message
+// if it cannot).
+.Widget {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  // a bubble's attachment zeroes its font size and draws a pointer for opening media
+  font-size: var(--font-size-16);
+  line-height: var(--line-height);
+  cursor: auto;
+  // text is selectable only where the widget says `user-select: text` (docs/sdk-v1.md §5.10), not the placeholder's
+  user-select: none;
+  // the inset of a message's text in its bubble: the widget's body margin (its text tokens, theme.ts)
+  --widget-text-padding: #{$message-padding-top} #{$message-padding-horizontal} #{$message-padding-bottom};
+}
+
+// the height the widget had when it ran, or a default one before it ever ran
+.IsWaiting {
+  min-height: var(--widget-height, 10rem);
+}
+
+// In the flow and at the block's width from the first moment, so the renderer measures the real size and the
+// widget's own hit testing (elementFromPoint, which with the shadow renderer is the page's) finds its elements
+// instead of a clip; out of sight while an engine boots on its own.
+.Frame {
+  display: block;
+
+  .IsStarting & {
+    opacity: 0;
+  }
+
+  > :global(.widget-frame) {
+    display: block;
+    width: 100%;
+    border: 0;
+    background: transparent;
+  }
+
+  // the shadow root's `:host{all:initial}` would take presses back where the bubble turns them off (messages being
+  // selected: a press selects the message)
+  > :global(.widget-shadow) {
+    pointer-events: inherit;
+  }
+
+  // the bot's height wins over the content's, which is clipped (no inner scrolling, docs/sdk-v1.md §5.6)
+  .IsFixedHeight & {
+    height: 100%;
+
+    > :global(.widget-frame),
+    > :global(.widget-shadow) {
+      height: 100% !important;
+    }
+  }
+}
+
+.Placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  box-sizing: border-box;
+  padding: 1rem;
+  text-align: center;
+  background-color: color-mix(in srgb, var(--primary-color) 8%, transparent);
+}
+
+// a start that takes long enough to notice (a cold engine, a big library) shows it
+.Preloader {
+  width: 2.5rem;
+  height: 2.5rem;
+  animation: global(fade-in-opacity) .2s .3s both;
+}
+
+.PlaceholderIcon {
+  font-size: 2.5rem;
+  color: var(--primary-color);
+}
+
+.PlaceholderTitle {
+  font-weight: var(--font-weight-bold);
+}
+
+.PlaceholderText {
+  color: var(--secondary-text-color);
+  font-size: var(--font-size-14);
+}
+
+.Button {
+  --page-button-border-radius: 1000px;
+  flex: 0 0 auto;
+  min-width: 7.5rem;
+}
+
+// where the frame sits (WidgetSlotElement); a frame starting again waits hidden over it (staging.ts)
+.Slot {
+  display: block;
+
+  .IsFixedHeight & {
+    height: 100%;
+  }
+}
+
+// an inline result shown before it is sent: its presses are the result's (the list picks it), not the widget's (where
+// `inert` on it is not known yet)
+.IsPreview {
+  pointer-events: none;
+}

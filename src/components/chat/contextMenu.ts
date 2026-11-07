@@ -14,6 +14,7 @@ import getSelectionElementFromTarget from '@components/chat/getSelectionElementF
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import isSelectionEmpty from '@helpers/dom/isSelectionEmpty';
+import {getWidgetSelectedText} from '@lib/widgetSandbox/selection';
 import {Message, Poll, Chat as MTChat, MessageEntity, MessageMedia, InputStickerSet, StickerSet, Document, Reaction, Photo, SponsoredMessage, TextWithEntities, TodoItem, TodoCompletion, MessageReplyHeader, PollAnswer} from '@layer';
 import assumeType from '@helpers/assumeType';
 import showSponsoredPopup from '@components/popups/sponsored';
@@ -223,6 +224,8 @@ export default class ChatContextMenu {
    */
   private richMedia: CopyableMedia;
   private isTextSelected: boolean;
+  /** Text selected in the message's widget (getWidgetSelectedText): copied as it is, none of the text actions take it. */
+  private isWidgetTextSelected: boolean;
   private isTextFromMultipleMessagesSelected: boolean;
   private isAnchorTarget: boolean;
   private isUsernameTarget: boolean;
@@ -343,7 +346,8 @@ export default class ChatContextMenu {
           '.bubble-view-button',
           '.webpage',
           '.bubbles-group-avatar',
-          '.bubble-service-button'
+          '.bubble-service-button',
+          '.time-widget-network'
         ];
         const good = !(e.target as HTMLElement).closest(badSelectors.join(', '));
         if(good) {
@@ -484,7 +488,9 @@ export default class ChatContextMenu {
       this.messagePeerId = bubble ? bubble.dataset.peerId.toPeerId() : undefined;
       this.peerId = this.messagePeerId ?? this.chat.peerId;
       this.target = e.target as HTMLElement;
-      this.isTextSelected = !isSelectionEmpty();
+      // a widget's selected text is not the message's: copying it is all there is to do with it
+      this.isWidgetTextSelected = !!(bubble && getWidgetSelectedText(bubble));
+      this.isTextSelected = !this.isWidgetTextSelected && !isSelectionEmpty();
       this.isAnchorTarget = this.target.tagName === 'A' && (
         (this.target as HTMLAnchorElement).target === '_blank' ||
         this.target.classList.contains('anchor-url')
@@ -1170,6 +1176,7 @@ export default class ChatContextMenu {
       verify: () => this.canCopyText() &&
         !!this.selectedMessagesText &&
         !this.isTextSelected &&
+        !this.isWidgetTextSelected &&
         (!this.isAnchorTarget || (this.message as Message.message).message !== this.target.innerText)
     }, {
       icon: 'copy',
@@ -1181,7 +1188,7 @@ export default class ChatContextMenu {
       text: 'Chat.CopySelectedText',
       welcome: true,
       onClick: this.onCopyClick,
-      verify: canCopySelectedText
+      verify: () => (this.isWidgetTextSelected && this.canCopyText()) || canCopySelectedText()
     }, this.copyMediaButton = {
       icon: 'copy',
       text: 'MediaViewer.Context.Copy',
@@ -2579,7 +2586,7 @@ export default class ChatContextMenu {
   }
 
   private onCopyClick = async() => {
-    if(isSelectionEmpty()) {
+    if(!this.isWidgetTextSelected && isSelectionEmpty()) {
       const {text, html} = this.selectedMessagesText;
       copyTextToClipboard(text, html);
     } else {

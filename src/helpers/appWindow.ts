@@ -41,6 +41,14 @@ export function getOverlayRoot(): HTMLElement {
   return activeWindow.document.body;
 }
 
+/** A new `div` at the end of the overlay root, made by that window's own document: what an overlay mounts in. */
+export function appendToOverlayRoot(): HTMLDivElement {
+  const root = getOverlayRoot();
+  const element = root.ownerDocument.createElement('div');
+  root.append(element);
+  return element;
+}
+
 export function setAppWindow(win: Window): void {
   const prev = activeWindow;
   if(!win || win === prev) return;

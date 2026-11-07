@@ -176,6 +176,10 @@ function makeRichMessagesHarness() {
       resetPeerTranslationsByChannelCutoff: vi.fn(() => new Set<number>()),
       clearSummaries: vi.fn()
     },
+    appWidgetsManager: {
+      deleteWidgetStorage: vi.fn(),
+      deleteWidgetStorageByChannelCutoff: vi.fn()
+    },
     getMessageByPeer: vi.fn(),
     saveApiResult
   });

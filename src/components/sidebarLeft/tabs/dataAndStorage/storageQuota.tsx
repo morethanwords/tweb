@@ -10,6 +10,7 @@ import {DurationType} from '@helpers/formatDuration';
 import namedPromises from '@helpers/namedPromises';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import {cachedFilesStorageName, cachedVideoChunksStorageNames, HTTPHeaderNames, oneDayInSeconds, oneMonthInSeconds, oneWeekInSeconds, oneYearInSeconds, watchedCachedStorageNames} from '@lib/constants';
 import CacheStorageController from '@lib/files/cacheStorage';
 import type {FormatterArgument, FormatterArguments, LangPackKey} from '@lib/langPack';
@@ -235,7 +236,7 @@ type Props = {
 };
 
 export const StorageQuota = (props: Props) => {
-  const {Row, confirmationPopup, i18n, useAppSettings, apiManagerProxy} = useHotReloadGuard();
+  const {Row, confirmationPopup, i18n, useAppSettings, apiManagerProxy, rootScope} = useHotReloadGuard();
 
   const cacheSizeOptions = getCacheSizeOptions(() => i18n('StorageQuota.CacheSizeLimitAuto'));
 
@@ -315,12 +316,17 @@ export const StorageQuota = (props: Props) => {
   });
 
   const onClearAllCachedData = wrapAsyncClickHandler(async() => {
+    const managers = bindManagersToSession(rootScope.managers);
     if(!(await getConfirmation(getClearAllArgs()))) return;
 
     cachedFilesSizesActions.mutate(getZeroedCollectedCachedFilesSizes());
     cachedVideoStreamChunksSizeActions.mutate(0);
 
-    await apiManagerProxy.clearCacheStoragesByNames(watchedCachedStorageNames);
+    await Promise.all([
+      apiManagerProxy.clearCacheStoragesByNames(watchedCachedStorageNames),
+      // what widgets keep for their messages goes with the cache (docs/sdk-v1.md §5.4)
+      managers.appWidgetsManager.clearWidgetStorage()
+    ]);
 
     const {newCachedFilesSizes, newCachedVideoStreamChunksSize} = await namedPromises({
       newCachedFilesSizes: collectCachedFilesSizes(),

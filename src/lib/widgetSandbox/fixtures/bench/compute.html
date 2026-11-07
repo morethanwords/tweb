@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<!-- Bench (lib/widgetSandbox/bench.ts): pure script work in the engine — numbers, strings, objects, a Map — in ten
+     short tasks a quarter of a second apart (under the CPU slice and quota on every engine). Reports the time spent
+     in them, in the widget's own clock, as localStorage `bench`. -->
+<html><head><meta charset="utf-8"><style>
+  body { font: 14px system-ui, sans-serif; margin: 0; padding: 12px; background: #fff; color: #222; }
+  #out { font-variant-numeric: tabular-nums; }
+</style></head><body>
+<div><b>bench/compute</b> · <span id="out">running…</span></div>
+<script>
+  var CHUNKS = 10, total = 0, done = 0, sink = 0;
+  function chunk() {
+    var t0 = performance.now();
+    var s = 0, list = [];
+    for (var i = 0; i < 20000; i++) {
+      s = (s + i * i) % 1000003;
+      if (i % 50 === 0) list.push({ i: i, s: String(s) });
+    }
+    var text = '';
+    for (var j = 0; j < list.length; j++) text += list[j].s.slice(0, 2);
+    var map = new Map();
+    for (var k = 0; k < 2000; k++) map.set('k' + k, k);
+    map.forEach(function (v) { s += v; });
+    sink += s + text.length;
+    total += performance.now() - t0;
+    if (++done < CHUNKS) return setTimeout(chunk, 250);
+    document.getElementById('out').textContent = total.toFixed(1) + ' ms';
+    localStorage.setItem('bench', JSON.stringify({ computeMs: total, sink: sink % 7 }));
+  }
+  setTimeout(chunk, 100);
+</script>
+</body></html>

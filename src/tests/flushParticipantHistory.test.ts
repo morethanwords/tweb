@@ -20,6 +20,7 @@ function createManager(offsets: number[]) {
     })
   };
   manager.apiUpdatesManager = {processLocalUpdate: vi.fn()};
+  manager.appWidgetsManager = {deleteWidgetStorageOf: vi.fn()};
   manager.appPeersManager = {
     isSavedDialog: () => false,
     isBotforum: () => false,

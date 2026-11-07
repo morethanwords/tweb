@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<script>
+// Instant View's HTML embeds (src/components/telegramWebView.ts) are written here rather than into a srcdoc frame,
+// which would take the app page's Content-Security-Policy along and break their images, fonts and players. Only ever
+// in a sandboxed frame without allow-same-origin: anywhere else — opened on its own, framed by another site — this
+// document has the app's origin and writes nothing.
+if(self.origin === 'null') {
+  addEventListener('message', function onMessage(e) {
+    var data = e.data;
+    if(e.source !== parent || !data || data.type !== 'tweb-embed-html' || typeof data.html !== 'string') return;
+    removeEventListener('message', onMessage);
+    document.open();
+    document.write(data.html);
+    document.close();
+  });
+  parent.postMessage({type: 'tweb-embed-ready'}, '*');
+}
+</script>
+</head>
+</html>

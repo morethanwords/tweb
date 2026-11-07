@@ -41,7 +41,8 @@ describe.each([false, true])('a message appended at the bottom (short history: %
 
     await (harness as any)._renderNewMessage(message);
 
-    expect(render).toHaveBeenCalledWith({history: [message]}, false);
+    // * an ad the list does not go to goes in out of sight (a widget's sight)
+    expect(render).toHaveBeenCalledWith({history: [message]}, false, undefined, sponsored ? expect.objectContaining({isOutOfSight: expect.any(Function)}) : undefined);
     expect(scrollToEnd).toHaveBeenCalledTimes(sponsored ? 0 : 1);
     expect(cancelPreservePaddingScroll).toHaveBeenCalledTimes(sponsored ? 0 : 2);
     expect(setScrollPositionSilently).toHaveBeenCalledTimes(shortHistory && !sponsored ? 1 : 0);

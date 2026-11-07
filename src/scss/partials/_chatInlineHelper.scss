@@ -61,6 +61,15 @@
     }
   }
 
+  // a widget result: its title and description over the widget, run as a preview, at the list's width — in a gallery
+  // too, a row of its own (after the list's rows, which it overrides)
+  &-results #{$parent}-result.is-widget {
+    grid-column: 1 / -1;
+    height: auto;
+    padding: .5rem;
+    line-height: var(--line-height);
+  }
+
   .media-container {
     border-radius: inherit;
   }
@@ -101,6 +110,13 @@
 
   &-result {
     position: relative;
+
+    &-widget {
+      margin-top: .5rem;
+      border-radius: .75rem;
+      overflow: hidden;
+      background-color: var(--surface-color);
+    }
 
     &-title {
       font-weight: var(--font-weight-bold);

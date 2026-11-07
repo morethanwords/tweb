@@ -42,7 +42,7 @@ import Modes from '@config/modes';
 import {SliceEnd} from '@helpers/slicedArray';
 import PeerTitle from '@components/peerTitle';
 import findUpClassName from '@helpers/dom/findUpClassName';
-import {countFirstScreen, estimateBubbleHeight, FirstScreenPlace, getAlbumBubbleMessage, getBubbleHeightAtLeast, joinHistories, keepFrom, keepRange, measureTextWidth, MessageTextMetrics} from '@components/chat/firstScreenHistory';
+import {countFirstScreen, estimateBubbleHeight, FirstScreenPlace, getAlbumBubbleMessage, getBubbleHeightAtLeast, GetWidgetHeight, joinHistories, keepFrom, keepRange, measureTextWidth, MessageTextMetrics} from '@components/chat/firstScreenHistory';
 import findUpTag from '@helpers/dom/findUpTag';
 import {hideToast, toastNew} from '@components/toast';
 import {getMiddleware, Middleware, MiddlewareHelper} from '@helpers/middleware';
@@ -146,7 +146,7 @@ import {canHaveMemberTags, getMemberTagRole} from '@appManagers/utils/chats/memb
 import createBubbleNameRank, {BubbleNameRank} from '@components/chat/bubbleParts/bubbleNameRank';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
-import SwipeHandler from '@components/swipeHandler';
+import SwipeHandler, {getEvent} from '@components/swipeHandler';
 import getSelectedText from '@helpers/dom/getSelectedText';
 import {render} from 'solid-js/web';
 import {createRoot, createEffect, createSignal, Signal, onCleanup, batch, on} from 'solid-js';
@@ -173,7 +173,7 @@ import shouldDisplayGiftCodeAsGift from '@helpers/shouldDisplayGiftCodeAsGift';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import SimilarChannels from '@components/chat/similarChannels';
 import clearMessageId from '@appManagers/utils/messageId/clearMessageId';
-import {ChatType} from './chatType';
+import {ChatType, getNonHistoryStore, isHistoryMessage} from './chatType';
 import {isSavedDialog} from '@appManagers/utils/dialogs/isDialog';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
 import isForwardOfForward from '@appManagers/utils/messages/isForwardOfForward';
@@ -274,8 +274,13 @@ import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
 import {linkToPollOption} from './bubbleParts/pollMessageContent/pollToOptionLink';
 import {getSimulatedEvent} from '@helpers/dom/dispatchEvent';
 import {richMessageToPage} from '@lib/richMessage';
+import {getWidgetSource, isWidgetRenderingEnabled} from '@lib/widgetSandbox/payload';
+import {getWidgetHeightAtLeast, getWidgetKey, onWidgetHeightRemembered, WIDGET_MIN_WIDTH} from '@lib/widgetSandbox/sizing';
+import {getManagersSession} from '@lib/accounts/getCurrentAccount';
 import {RichMessageBubble, isRichMessageButtonTarget, isRichMessageTarget} from '@components/chat/bubbles/richMessage';
 import {isPagingSlideshowTarget} from '@components/slideshow';
+import {isWidgetHorizontalDragTarget} from '@lib/widgetSandbox/gestures';
+import {keepWidgetHeights} from '@lib/widgetSandbox/heights';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 import isAnchoredEphemeralMessage from '@appManagers/utils/messages/isAnchoredEphemeralMessage';
 import canReplyToEphemeralMessage from '@appManagers/utils/messages/canReplyToEphemeralMessage';
@@ -292,6 +297,7 @@ import {
   getSolidMessageBodyStructure,
   hasMessageTextSpoilers
 } from '@components/chat/bubbleParts/solidMessageShell';
+import createWidgetEditHandler, {createPendingWidgetEditHandler} from '@components/chat/bubbleParts/widgetEdit';
 import useReducedMotion from '@stores/reducedMotion';
 import wheelDeltaToPixels from '@helpers/dom/wheelDeltaToPixels';
 import {TEXT_LINK_ATTRIBUTE} from '@helpers/dom/linkPress';
@@ -437,6 +443,16 @@ type FirstScreen =
   {at: 'message', mid: number} |
   {at: 'unread', readMaxId: number} |
   {at: 'position', mid: number, top: number};
+
+// * which of the messages a render puts in go in out of sight: above or below what the screen shows. Of an opening
+// * chat's first screen more go out of sight while it renders (`watch`), as its widgets report their heights
+type RenderSight = {
+  isOutOfSight: (mid: number) => boolean,
+  watch?: (mid: number, onOutOfSight: () => void) => () => void
+};
+
+// * all of them: history loaded by scrolling, the rest of an opening chat's page
+const OUT_OF_SIGHT: RenderSight = {isOutOfSight: () => true};
 
 // * how each kind of chat lays out the text of a message, at the width and the text size it was laid out at: an opening
 // * chat counts by it how many of its messages fill its screen. Not the heights of the bubbles it showed: one
@@ -828,6 +844,7 @@ type RenderMessageArgs = {
   bubble: HTMLElement;
   middleware: Middleware;
   previewOnly?: boolean;
+  sight?: RenderSight;
 };
 
 type BubblesResolveAdminLogArgs = {
@@ -1058,7 +1075,8 @@ export default class ChatBubbles {
   private canShowRanks: boolean;
   // private reactions: Map<number, ReactionsElement>;
 
-  private updateLocalOnEdit: Map<HTMLElement, (message: Message.message) => void> = new Map();
+  /** Applies an edit to a bubble in place; `false` leaves it to the usual re-render. */
+  private updateLocalOnEdit: Map<HTMLElement, (message: Message.message) => void | false> = new Map();
   public replySwipeHandler: SwipeHandler;
 
   private remover: HTMLDivElement;
@@ -1103,6 +1121,9 @@ export default class ChatBubbles {
     // this.chat.log.error('Bubbles construction');
 
     this.listenerSetter = new ListenerSetter();
+
+    // the heights widgets had where they last ran, off the account's disk before a chat of it counts its first screen
+    if(isWidgetRenderingEnabled()) keepWidgetHeights(this.managers);
 
     // --- scroll preservation across viewport reflows (window/PiP-window resize, PiP pop-in/out) ---
     this.saveReflowScrollDebounced = debounce(this.saveReflowScroll, 200, false, true);
@@ -1369,8 +1390,10 @@ export default class ChatBubbles {
         });
       }
 
-      if(this.updateLocalOnEdit.has(_bubble)) {
-        this.updateLocalOnEdit.get(_bubble)(message as Message.message);
+      // a bubble that cannot take the sent message as it stands (a widget's is bound to its message's id) is rendered
+      // again, as an edit it cannot take is (editInPlace)
+      if(this.updateLocalOnEdit.get(_bubble)?.(message as Message.message) === false) {
+        this.safeRenderMessage({message, reverse: true, bubble: _bubble});
       }
 
       if(_bubble && message._ === 'message') {
@@ -1522,17 +1545,7 @@ export default class ChatBubbles {
       const bubble = this.getBubble(fullMid);
       if(!bubble) return;
 
-      const updateLocalOnEdit = this.updateLocalOnEdit.get(bubble);
-      let updatedLocally = false;
-      if(updateLocalOnEdit) {
-        updateLocalOnEdit(message as Message.message);
-        updatedLocally = true;
-      }
-
-      if(message._ === 'message' && this.updateSolidMessageBody(bubble, message)) {
-        updatedLocally = true;
-      }
-      if(updatedLocally) return;
+      if(this.editInPlace(bubble, message)) return;
 
       // do not edit geo messages
       if(bubble.querySelector('.geo-container')) {
@@ -2079,7 +2092,8 @@ export default class ChatBubbles {
             bubble.classList.contains('service') ||
             bubble.classList.contains('is-sending') ||
             !this.canReplyToBubble(bubble) ||
-            isPagingSlideshowTarget(e.target)) { // * pages through its items instead
+            isPagingSlideshowTarget(e.target) || // * pages through its items instead
+            isWidgetHorizontalDragTarget(e.target, getEvent(e).clientX)) { // * a widget drags its own knob, or back
             return false;
           }
 
@@ -2921,6 +2935,11 @@ export default class ChatBubbles {
     });
   }
 
+  /** The key a widget message's height and crash count go by: one out of the chat's history by its store's own ids. */
+  private getMessageWidgetKey(message: Message.message, accountNumber = getManagersSession(this.chat.managers).accountNumber) {
+    return getWidgetKey(accountNumber, message.peerId, message.mid, getNonHistoryStore(this.chat.type, message));
+  }
+
   /**
    * What an opening chat counts its first screen by: the messages of a history (newest first), the height of its
    * screen, and the height of a message's bubble by how this kind of chat lays out text, else the lowest a bubble can
@@ -2929,13 +2948,16 @@ export default class ChatBubbles {
   private measureFirstScreen(historyResult: LocalHistoryResult | {history: number[]}) {
     const items: (number | MyMessage | AdminLog)[] = (historyResult as LocalHistoryResult).messages || historyResult.history;
     const messages = items.map((item) => (typeof(item) === 'number' ? this.chat.getMessage(item) : item) as Message.message | Message.messageService);
-    const {width, height} = this.scrollableSize ?? {
-      width: this.scrollable.container.clientWidth,
-      height: this.scrollable.container.clientHeight
-    };
+    const {width, height} = this.getScrollableSize();
 
+    const layout = this.getLayoutKey(width);
     const metrics = messageTextMetrics.get(this.getTextMetricsKind());
-    const textMetrics = !this.isTextTranslated() && metrics?.layout === this.getLayoutKey(width) ? metrics : undefined;
+    const textMetrics = !this.isTextTranslated() && metrics?.layout === layout ? metrics : undefined;
+    // * a widget is as high as its bot says, else as it was at this layout when it last ran, else as low as one gets
+    const accountNumber = getManagersSession(this.chat.managers).accountNumber;
+    const getWidgetHeight: GetWidgetHeight = isWidgetRenderingEnabled() ? (message, media) => {
+      return getWidgetHeightAtLeast(media, this.getMessageWidgetKey(message, accountNumber), layout);
+    } : undefined;
     const getHeight = (message: Message.message | Message.messageService, inAlbum: boolean) => {
       // * an album as the chat has it, whole: a history may hold some of its items only (a saved position has its main
       // * one), and the caption its bubble shows is the only one of all its items
@@ -2944,7 +2966,7 @@ export default class ChatBubbles {
         message = getAlbumBubbleMessage(album);
       }
 
-      return textMetrics ? estimateBubbleHeight(message, textMetrics, inAlbum) : getBubbleHeightAtLeast(message, inAlbum);
+      return textMetrics ? estimateBubbleHeight(message, textMetrics, inAlbum, getWidgetHeight) : getBubbleHeightAtLeast(message, inAlbum, getWidgetHeight);
     };
 
     return {items, messages, height, getHeight};
@@ -3018,53 +3040,109 @@ export default class ChatBubbles {
   /**
    * Splits a history at where the chat opens. What fills its screen there and the scroll triggers on both sides stays,
    * for the first frame; what fills two screens more each way - as much as viewport slicing keeps - is returned with
-   * the oldest message it goes to, to render after that frame; the rest is left to scrolling
+   * the oldest message it goes to (`cut`), to render after that frame; the rest is left to scrolling. Of what stays,
+   * the scroll triggers' part is out of sight (`sight`): beyond the screen's edge even with every message before it as
+   * low as it gets - and more of it goes out of sight while it renders, as its widgets report their heights
    */
-  private cutToFirstScreen(historyResult: LocalHistoryResult | {history: number[]}, firstScreen: FirstScreen): {beyond?: LocalHistoryResult | {history: number[]}, oldestMid: number} {
+  private cutToFirstScreen(historyResult: LocalHistoryResult | {history: number[]}, firstScreen: FirstScreen): {
+    cut?: {beyond?: LocalHistoryResult | {history: number[]}, oldestMid: number},
+    sight?: RenderSight & {dispose: () => void}
+  } {
     const {items, messages, height, getHeight} = this.measureFirstScreen(historyResult);
     // * a screen not laid out has nothing to count by, a message that is gone nothing to count around
     const placed = height && items.length ? this.placeFirstScreen(messages, firstScreen, height) : undefined;
     if(!placed) {
-      return;
+      return {};
     }
 
     const isEnd = (historyResult as LocalHistoryResult).isEnd || {};
     const count = (margin: number) => countFirstScreen(messages, placed.index, placed.place, height, margin, isEnd, getHeight);
+    const getItemMid = (item: typeof items[number]) => typeof(item) === 'number' ? item : (item as MyMessage).mid;
+    const sight = this.watchFirstScreenSight(items.map(getItemMid), () => count(0));
+
     const first = count(this.scrollable.onScrollOffset);
     if(first.newest === 0 && first.oldest === items.length - 1) {
-      return;
+      return {sight};
     }
 
     const beyond = count(height * 2);
     const whole = {...historyResult};
     Object.assign(historyResult, keepRange(whole, first.newest, first.oldest));
-    const oldest = items[beyond.oldest];
     return {
-      beyond: beyond.newest === first.newest && beyond.oldest === first.oldest ? undefined : joinHistories(
-        keepRange(whole, beyond.newest, first.newest - 1),
-        keepRange(whole, first.oldest + 1, beyond.oldest)
-      ),
-      oldestMid: typeof(oldest) === 'number' ? oldest : (oldest as MyMessage).mid
+      cut: {
+        beyond: beyond.newest === first.newest && beyond.oldest === first.oldest ? undefined : joinHistories(
+          keepRange(whole, beyond.newest, first.newest - 1),
+          keepRange(whole, first.oldest + 1, beyond.oldest)
+        ),
+        oldestMid: getItemMid(items[beyond.oldest])
+      },
+      sight
     };
   }
 
   /**
-   * Renders a history from where the chat opens (`getFirstScreen`): what fills its screen there first, by `render`,
-   * and once that frame is up what fills two screens more each way. No scroll trigger loads more until it is in
+   * What of an opening chat's first screen is out of sight: of the messages counted (`mids`, newest first), those
+   * outside the range `countInSight` gives by the heights known now - not one added to the history after (the chat's
+   * last message). A widget's height comes to be known as it runs, so they are counted again then, for as long as
+   * messages are watched - until `dispose`, once the first screen is in
+   */
+  private watchFirstScreenSight(mids: number[], countInSight: () => {newest: number, oldest: number}): RenderSight & {dispose: () => void} {
+    const counted = new Set(mids);
+    let inSight: Set<number>;
+    const countSight = () => {
+      const {newest, oldest} = countInSight();
+      inSight = new Set(mids.slice(newest, oldest + 1));
+    };
+    const isOutOfSight = (mid: number) => counted.has(mid) && !inSight.has(mid);
+    countSight();
+
+    const watchers = new Map<number, () => void>();
+    let stopListening: () => void;
+    const recount = () => {
+      countSight();
+      for(const [mid, onOutOfSight] of watchers) {
+        if(isOutOfSight(mid)) {
+          watchers.delete(mid);
+          onOutOfSight();
+        }
+      }
+    };
+
+    return {
+      isOutOfSight,
+      watch: (mid, onOutOfSight) => {
+        watchers.set(mid, onOutOfSight);
+        // * once for every height reported in one task
+        stopListening ??= onWidgetHeightRemembered(throttleWith(queueMicrotask, recount));
+
+        return () => watchers.delete(mid);
+      },
+      dispose: () => {
+        watchers.clear();
+        stopListening?.();
+      }
+    };
+  }
+
+  /**
+   * Renders a history from where the chat opens (`getFirstScreen`): what fills its screen there first, by `render`
+   * (which is told what of it is out of sight), and once that frame is up what fills two screens more each way, out of
+   * sight. No scroll trigger loads more until it is in
    */
   private renderFirstScreen<T extends LocalHistoryResult | {history: number[]}>(
     historyResult: T,
     firstScreen: FirstScreen,
-    render: (historyResult: T) => Promise<void>
+    render: (historyResult: T, sight?: RenderSight) => Promise<void>
   ) {
-    const cut = firstScreen ? this.cutToFirstScreen(historyResult, firstScreen) : undefined;
-    const promise = render(historyResult);
+    const {cut, sight} = firstScreen ? this.cutToFirstScreen(historyResult, firstScreen) : {};
+    const promise = render(historyResult, sight);
+    if(sight) promise.finally(sight.dispose).catch(noop);
     let restPromise: Promise<void>;
     if(cut?.beyond) {
       const middleware = this.getMiddleware();
       restPromise = this.firstScreenRestPromise = promise.then(() => new Promise<void>((resolve) => fastRaf(() => setTimeout(resolve, 0)))).then(async() => {
         if(!middleware()) return;
-        await this.performHistoryResult(cut.beyond, true, true);
+        await this.performHistoryResult(cut.beyond, true, true, OUT_OF_SIGHT);
         if(!middleware()) return;
         // * the browser keeps what is on screen in place as bubbles go in above it: that is no scroll of the user's,
         // * which would show the date over the list
@@ -3100,6 +3178,14 @@ export default class ChatBubbles {
 
   private getLayoutKey(width: number) {
     return width + '_' + this.chat.appSettings.messagesTextSize;
+  }
+
+  // * as the observer last saw it, or as it is laid out before the observer has seen it (a chat being opened)
+  private getScrollableSize() {
+    return this.scrollableSize ?? {
+      width: this.scrollable.container.clientWidth,
+      height: this.scrollable.container.clientHeight
+    };
   }
 
   /**
@@ -4059,6 +4145,18 @@ export default class ChatBubbles {
         }
       }
 
+      return;
+    }
+
+    // the network marker of a widget explains itself on a tap, as on hover (its title)
+    const widgetNetwork = findUpClassName(target, 'time-widget-network');
+    if(widgetNetwork) {
+      showTooltip({
+        element: widgetNetwork,
+        container: this.container,
+        vertical: 'top',
+        textElement: i18n('Widget.NetworkMarker')
+      });
       return;
     }
 
@@ -5280,7 +5378,7 @@ export default class ChatBubbles {
         this.log('Will load more (up) history by id:', history[0], 'maxId:', history[history.length - 1], justLoad/* , history */);
       }
 
-      this.getHistory1(history[0], true, undefined, undefined, justLoad);
+      this.getHistory1(history[0], true, undefined, undefined, justLoad, undefined, undefined, true);
     } else {
       // let dialog = this.appMessagesManager.getDialogByPeerId(this.peerId)[0];
       // const historyMaxId = await this.chat.getHistoryMaxId();
@@ -5295,7 +5393,7 @@ export default class ChatBubbles {
         this.log('Will load more (down) history by id:', history[history.length - 1], justLoad/* , history */);
       }
 
-      this.getHistory1(history[history.length - 1], false, true, undefined, justLoad);
+      this.getHistory1(history[history.length - 1], false, true, undefined, justLoad, undefined, undefined, true);
     }
   }
 
@@ -5932,9 +6030,11 @@ export default class ChatBubbles {
       this.chat.cancelPreservePaddingScroll();
     }
 
+    // * at the end the list goes to the message, which goes in in sight; anywhere else it goes in out of sight (sight is
+    // * a widget's: it keeps its place and starts as it comes near the screen, holding none of the queue up)
     const promise = groupedBubbleRender ?
       groupedBubbleRender.then(() => this.messagesQueuePromise) :
-      this.performHistoryResult({history: [message]}, false);
+      this.performHistoryResult({history: [message]}, false, undefined, scrolledDown ? undefined : OUT_OF_SIGHT);
     if(scrolledDown) {
       promise.then(() => {
         if(!middleware()) return;
@@ -6018,9 +6118,11 @@ export default class ChatBubbles {
     const margin = 4 + (position === 'end' ? containerRect.bottom - bubblesViewportRect.bottom : 0);
 
     // * a bubble that does not fit the screen is centered by its start, so the part we are
-    // * jumping to can stay far below it — center that part instead then
-    const focus = position === 'center' && focusOn ?
-      this.measureFocus(element, focusOn, bubblesViewportRect.height, {
+    // * jumping to can stay far below it — center that part instead then: measured as the scroll
+    // * starts and again on the way, a widget above it in the bubble starting moves it, and may make
+    // * the bubble taller than the screen
+    const measureFocus = position === 'center' && focusOn ?
+      () => this.measureFocus(element, focusOn, bubblesViewportRect.height, {
         startElement: fallbackToElementStartWhenCentering || element,
         margin
       }) :
@@ -6040,7 +6142,10 @@ export default class ChatBubbles {
       forceDuration,
       transitionFunction,
       axis: 'y',
-      getElementSize: focus && (() => focus.height),
+      // a jump to a message: what changes height on the way — a widget starting as it comes near the screen — moves the
+      // bubble, and the scroll lands where the bubble is then; the end of the list keeps itself (sending, new messages)
+      follow: position !== 'end',
+      getFocus: measureFocus,
       getNormalSize: isChangingHeight ? ({rect}) => {
         // return rect.height;
 
@@ -6057,11 +6162,10 @@ export default class ChatBubbles {
         const diff = rowsWrapperHeight - 54;
         return rect.height + diff; */
       } : () => bubblesViewportRect.height,
-      // * the position is read again when the scroll starts, the offset of the focused part
-      // * inside the bubble survives the bubble moving until then
-      getElementPosition: ({elementRect}) => elementRect.top + (focus?.offset || 0) - bubblesViewportRect.top,
-      // * the fallback would scroll to the date group instead of the part we are centering on
-      fallbackToElementStartWhenCentering: focus ? undefined : fallbackToElementStartWhenCentering,
+      // * the position is read again when the scroll starts
+      getElementPosition: ({elementRect}) => elementRect.top - bubblesViewportRect.top,
+      // * not where there is a part to center (getFocus)
+      fallbackToElementStartWhenCentering,
       startCallback: (dimensions) => {
         // this.onScroll(true, this.scrolledDown && dimensions.distanceToEnd <= SCROLLED_DOWN_THRESHOLD ? undefined : dimensions);
         this.onScroll(true, dimensions);
@@ -7075,8 +7179,8 @@ export default class ChatBubbles {
         await m(Promise.resolve());
       }
 
-      const {promise, restPromise} = this.renderFirstScreen({history: savedPosition.mids}, firstScreen, (historyResult) => {
-        return getHeavyAnimationPromise().then(() => this.performHistoryResult(historyResult, true, true));
+      const {promise, restPromise} = this.renderFirstScreen({history: savedPosition.mids}, firstScreen, (historyResult, sight) => {
+        return getHeavyAnimationPromise().then(() => this.performHistoryResult(historyResult, true, true, sight));
       });
 
       result = {
@@ -8183,12 +8287,6 @@ export default class ChatBubbles {
     const previewMiddleware = middlewareHelper.get();
     middleware.onDestroy(() => middlewareHelper.destroy());
 
-    const bubble = document.createElement('div');
-    bubble.middlewareHelper = middlewareHelper;
-    bubble.dataset.mid = '' + message.mid;
-    bubble.dataset.peerId = '' + message.peerId;
-    bubble.dataset.timestamp = '' + message.date;
-
     const url = media.webpage._ === 'webPage' ? media.webpage.url : '';
     const urlEntity: MessageEntity.messageEntityUrl = {
       _: 'messageEntityUrl',
@@ -8221,19 +8319,26 @@ export default class ChatBubbles {
       totalEntities: [urlEntity]
     };
 
-    await this.renderMessage({
-      message: previewMessage,
-      bubble,
-      middleware: previewMiddleware,
-      previewOnly: true
-    });
-
-
+    const {bubble} = await this.renderPreviewBubble(previewMessage, middlewareHelper);
     if(!middleware() || !previewMiddleware()) return;
 
     const box = bubble.querySelector<HTMLAnchorElement>('.webpage');
     box?.remove();
     return box;
+  }
+
+  /**
+   * A message rendered by the regular renderer into a bubble of its own, outside the list (`previewOnly`), alive while
+   * `middlewareHelper` is
+   */
+  public async renderPreviewBubble(message: Message.message, middlewareHelper: MiddlewareHelper) {
+    const bubble = document.createElement('div');
+    bubble.middlewareHelper = middlewareHelper;
+    bubble.dataset.mid = '' + message.mid;
+    bubble.dataset.peerId = '' + message.peerId;
+    bubble.dataset.timestamp = '' + message.date;
+    const result = await this.renderMessage({message, bubble, middleware: middlewareHelper.get(), previewOnly: true});
+    return {bubble, result};
   }
 
   /** Dispatch the same webpage action used by the chat's delegated listener. */
@@ -8276,14 +8381,16 @@ export default class ChatBubbles {
     bubble,
     updatePosition = true,
     processResult,
-    canAnimateLadder
+    canAnimateLadder,
+    sight
   }: {
     message: Message.message | Message.messageService | AdminLog,
     reverse?: boolean,
     bubble?: HTMLElement,
     updatePosition?: boolean,
     processResult?: (result: ReturnType<ChatBubbles['renderMessage']>, bubble: HTMLElement) => typeof result,
-    canAnimateLadder?: boolean
+    canAnimateLadder?: boolean,
+    sight?: RenderSight
   }) {
     const fullMid = this.makeFullMid(message);
     if(!message) {
@@ -8454,7 +8561,7 @@ export default class ChatBubbles {
       let originalPromise: ReturnType<ChatBubbles['renderMessage']>;
 
       if(isMessage(message)) {
-        originalPromise = this.renderMessage({message, reverse, bubble, middleware});
+        originalPromise = this.renderMessage({message, reverse, bubble, middleware, sight});
       } else {
         originalPromise = this.renderLog({log: message, bubble, reverse, middleware})
         .then(ret => {
@@ -8785,6 +8892,17 @@ export default class ChatBubbles {
     return this.solidMessageBodies.get(bubble)?.get(entry.message.mid) === entry;
   }
 
+  /**
+   * Takes an edit into the bubble as it stands, where its parts can: false when it is to be rendered anew — nothing takes
+   * it, or a part says it cannot (`updateLocalOnEdit` gives `false`: a widget's), whatever the others would take.
+   */
+  private editInPlace(bubble: HTMLElement, message: Message.message | Message.messageService) {
+    const updateLocalOnEdit = this.updateLocalOnEdit.get(bubble);
+    if(updateLocalOnEdit?.(message as Message.message) === false) return false;
+    const updatedBody = message._ === 'message' && this.updateSolidMessageBody(bubble, message);
+    return !!updateLocalOnEdit || updatedBody;
+  }
+
   private updateSolidMessageBody(bubble: HTMLElement, message: Message.message) {
     const entry = this.getSolidMessageBody(bubble, message.mid);
     if(!entry) return false;
@@ -8992,6 +9110,8 @@ export default class ChatBubbles {
     .find((status) => bubble.classList.contains('is-' + status));
     // the count of the replies it shows in its time is put there by itself (`setBubbleRepliesCount`)
     const hadReplies = !!previous.querySelector('.time-replies');
+    // drawn over the media's corner (a caption above it, a widget with none): where the bubble put it, not the time's own
+    const floating = previous.classList.contains('is-floating');
     const next = MessageRender.setTime({
       chat: this.chat,
       chatType: this.chat.type,
@@ -9009,6 +9129,7 @@ export default class ChatBubbles {
       previous.setAttribute(attribute.name, attribute.value);
     }
     previous.replaceChildren(...Array.from(next.childNodes));
+    previous.classList.toggle('is-floating', floating);
     placeBubbleTime(previous, message.message || '');
     if(status) this.setBubbleSendingStatus(bubble, status);
     // as in a group the bubble shows them when it is rendered, if not as a footer of comments: an edit may bring the
@@ -9193,7 +9314,8 @@ export default class ChatBubbles {
     logId,
     bubble,
     middleware,
-    previewOnly = false
+    previewOnly = false,
+    sight
   }: RenderMessageArgs) {
     // if(DEBUG) {
     //   this.log('message to render:', message);
@@ -9208,6 +9330,14 @@ export default class ChatBubbles {
     const loadPromises: Promise<any>[] = [...additionalPromises];
 
     const isMessage = message._ === 'message';
+    // * a widget's bubble takes no change of its widget in place until the widget runs (createWidgetEditHandler, below):
+    // * till then, or if it does not load, such a change, and the id a sent one gets, have the bubble made anew
+    if(message._ === 'message' && message.media?._ === 'messageMediaWidget') {
+      this.updateLocalOnEdit.set(bubble, createPendingWidgetEditHandler(message));
+      middleware.onClean(() => {
+        this.updateLocalOnEdit.delete(bubble);
+      });
+    }
     const isEphemeral = isEphemeralMessage(message);
     // layer 229: an ordinary message an ephemeral one is currently standing in for. What it shows
     // is not really its content, so it must not be forwarded, quoted, linked to or selected.
@@ -11659,7 +11789,9 @@ export default class ChatBubbles {
           content.classList.add('checklist-content');
 
           const messageSignal = createSignal(message);
-          this.updateLocalOnEdit.set(bubble, msg => messageSignal[1](msg));
+          this.updateLocalOnEdit.set(bubble, (msg) => {
+            messageSignal[1](msg);
+          });
           middleware.onClean(() => {
             this.updateLocalOnEdit.delete(bubble);
           });
@@ -12077,6 +12209,98 @@ export default class ChatBubbles {
 
             bubble.append(fakeServiceMessage);
           }
+          break;
+        }
+
+        case 'messageMediaWidget': {
+          const media = context.messageMedia;
+          const loaded = isWidgetRenderingEnabled() && await Promise.all([
+            getWidgetSource(media),
+            import('@components/widgetSandbox/widgetBlock'),
+            import('@lib/widgetSandbox/storage'),
+            import('@lib/widgetSandbox/messageWidget')
+          ]).catch((err) => {
+            this.log.error('widget source', err, message);
+          });
+
+          // the bubble gone meanwhile (the chat left, the bubble rendered anew): nothing more is set up for it — what its
+          // render set up went with it (the pending edit handler with its middleware)
+          if(!middleware()) {
+            break;
+          }
+
+          if(loaded) {
+            const [html, {default: WidgetBlock}, {createMessageWidgetStorage}, messageWidget] = loaded;
+            // an edit of its widget while that loaded had the bubble made anew (createPendingWidgetEditHandler): the
+            // message is as it was rendered from
+            const widgetMessage = message as Message.message;
+            // with no caption below it the time is drawn over the widget's corner, as over a photo, and the widget is told
+            // what it covers (`timeOver`: the content safe area, widget-sandbox docs/sdk-v1.md §2.17)
+            bubble.classList.add('widget-message');
+            context.attachmentDiv.classList.add('no-background');
+            // * no preview that opens media (makeMediaPreviewsAccessible): the widget's controls are its own, in its frame
+            context.attachmentDiv.setAttribute('role', 'none');
+            // a width of its own sizes the bubble (as a photo's does); none takes all a bubble may have
+            if(media.width) context.attachmentDiv.style.width = Math.max(media.width, WIDGET_MIN_WIDTH) + 'px';
+            else bubble.classList.add('is-full-width');
+
+            const [source, setSource] = createSignal(html);
+            const [data, setData] = createSignal(messageWidget.getWidgetData(media), {equals: deepEqual});
+            this.updateLocalOnEdit.set(bubble, createWidgetEditHandler(widgetMessage, {
+              data: (edited) => setData(messageWidget.getWidgetData(edited)),
+              source: (edited) => getWidgetSource(edited).then(setSource, noop),
+              // the time says it was edited ("edited", its date): a caption's body makes it anew with the edit it takes,
+              // a widget with no caption has it made here
+              dated: (edited) => {
+                if(this.getSolidMessageBody(bubble, edited.mid)?.ownsTime) return;
+                this.modifyBubble(() => this.updateSolidMessageBodyTime(bubble, edited), bubble, 'meta');
+              }
+            }));
+
+            // a message of the chat's history, as the server keeps it (tdesktop's isRegular): a scheduled message is
+            // another one once it is sent, an admin log's entry or a preview names a message it is not, and an ephemeral
+            // one the server keeps no history of — none is asked through, polled or kept for, beyond the bubble
+            const historyEntry = isHistoryMessage(this.chat.type, widgetMessage);
+            this.wrapSomeSolid(() => WidgetBlock({
+              get html() {
+                return source();
+              },
+              width: media.width,
+              height: media.height,
+              chat: this.chat,
+              widgetKey: this.getMessageWidgetKey(widgetMessage),
+              storage: historyEntry ? createMessageWidgetStorage(this.chat.managers, message.peerId, message.mid) : undefined,
+              get data() {
+                return data();
+              },
+              context: messageWidget.getWidgetContext(widgetMessage, media, historyEntry),
+              onRequest: historyEntry ? messageWidget.createWidgetRequestHandler(this.chat.managers, message.peerId, message.mid) : undefined,
+              onCopyText: messageWidget.copyWidgetText,
+              publicData: media.widget_id && historyEntry ? {
+                widgetId: '' + media.widget_id,
+                peerId: message.peerId,
+                mid: message.mid,
+                managers: this.chat.managers
+              } : undefined,
+              // the engine copy and the storage come before the bubble enters the chat: the widget draws as it enters; out
+              // of sight it starts as it comes near the screen, at the height the first screen was counted by
+              loadPromises: context.loadPromises,
+              lazy: sight?.isOutOfSight(message.mid),
+              whenOutOfSight: sight?.watch && ((onOutOfSight) => sight.watch(message.mid, onOutOfSight)),
+              layout: () => this.getLayoutKey(this.getScrollableSize().width),
+              // read when the widget starts, by when the bubble has placed its time
+              timeOver: () => bubble.classList.contains('has-floating-time') ? bubble.timeSpan : undefined
+            }), context.attachmentDiv, middleware);
+            break;
+          }
+
+          // turned off, or a source that does not inflate: unsupported media, over the caption
+          context.attachmentDiv = undefined;
+          context.mediaRequiresMessageDiv = true;
+          noAttachmentDivNeeded = true;
+          const unsupported = document.createElement('div');
+          unsupported.append(i18n(UNSUPPORTED_LANG_PACK_KEY));
+          messageDiv.prepend(unsupported);
           break;
         }
 
@@ -13244,7 +13468,8 @@ export default class ChatBubbles {
   public async performHistoryResult(
     historyResult: LocalHistoryResult | {history: (Message.message | Message.messageService | number)[]},
     reverse: boolean,
-    includeEphemeralHistory = false
+    includeEphemeralHistory = false,
+    sight?: RenderSight
   ) {
     const log = false || true ? this.log.bindPrefix('perform-' + (Math.random() * 1000 | 0)) : undefined;
     log?.('start', this.chatInner.parentElement, historyResult);
@@ -13277,7 +13502,8 @@ export default class ChatBubbles {
         return this.safeRenderMessage({
           message,
           reverse,
-          canAnimateLadder: true
+          canAnimateLadder: true,
+          sight
         });
       }
     };
@@ -14719,12 +14945,12 @@ export default class ChatBubbles {
     }
   }
 
-  public getHistory1(maxId?: FullMid, reverse?: boolean, isBackLimit?: boolean, additionalFullMid?: FullMid, justLoad?: boolean, firstScreen?: FirstScreen, onCachedHistoryReady?: () => void) {
+  public getHistory1(maxId?: FullMid, reverse?: boolean, isBackLimit?: boolean, additionalFullMid?: FullMid, justLoad?: boolean, firstScreen?: FirstScreen, onCachedHistoryReady?: () => void, outOfSight?: boolean) {
     const middleware = this.getMiddleware(justLoad ? undefined : () => {
       return (reverse ? this.getHistoryTopPromise : this.getHistoryBottomPromise) === waitPromise;
     });
 
-    const result = this.getHistory(maxId, reverse, isBackLimit, additionalFullMid, justLoad, middleware, firstScreen, onCachedHistoryReady);
+    const result = this.getHistory(maxId, reverse, isBackLimit, additionalFullMid, justLoad, middleware, firstScreen, onCachedHistoryReady, outOfSight);
     const waitPromise = result.then((res) => res && (res.waitPromise || res.promise));
 
     // * the load is over, and the next one of this end may go: not when the next one has taken over, nor in a chat left
@@ -14785,6 +15011,7 @@ export default class ChatBubbles {
    * @param additionalFullMid for the last message
    * @param justLoad do not render
    * @param firstScreen where an opening chat opens: only what surely fills its screen there is rendered first
+   * @param outOfSight the history goes in above or below what the screen shows (loaded by scrolling)
    */
   public async getHistory(
     maxId: FullMid = EMPTY_FULL_MID,
@@ -14794,7 +15021,8 @@ export default class ChatBubbles {
     justLoad = false,
     middleware?: () => boolean,
     firstScreen?: FirstScreen,
-    onCachedHistoryReady?: () => void
+    onCachedHistoryReady?: () => void,
+    outOfSight?: boolean
   ): Promise<{cached: boolean, promise: Promise<void>, waitPromise: Promise<any>}> {
     const peerId = this.peerId;
 
@@ -14898,7 +15126,7 @@ export default class ChatBubbles {
       // }
     };
 
-    const sup = (historyResult: Awaited<typeof result['result']>) => {
+    const sup = (historyResult: Awaited<typeof result['result']>, sight?: RenderSight) => {
       return getHeavyAnimationPromise().then(() => {
         return processResult(historyResult);
       }).then(() => {
@@ -14906,13 +15134,13 @@ export default class ChatBubbles {
           historyResult.history.unshift(splitFullMid(additionalFullMid).mid);
         }
 
-        return this.performHistoryResult(historyResult, reverse, true);
+        return this.performHistoryResult(historyResult, reverse, true, sight ?? (outOfSight ? OUT_OF_SIGHT : undefined));
       });
     };
 
     // * the first frame gets what fills the screen where the chat opens: the bubbles of the rest of a page cost it as
     // * much again, for messages nobody sees before scrolling. As much as viewport slicing keeps comes right after it
-    let cut: ReturnType<ChatBubbles['cutToFirstScreen']>, restPromise: Promise<void>;
+    let cut: ReturnType<ChatBubbles['cutToFirstScreen']>['cut'], restPromise: Promise<void>;
     const renderFirstScreen = (historyResult: Awaited<typeof result['result']>) => {
       const rendered = this.renderFirstScreen(historyResult, firstScreen, sup);
       cut = rendered.cut;

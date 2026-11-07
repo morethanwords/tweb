@@ -111,6 +111,7 @@ import {makeMessageMediaInputForSuggestedPost} from '@appManagers/utils/messages
 import createObservedState, {wrapObject} from '@helpers/createObservedState';
 import createHistoryStorage, {createHistoryStorageSearchSlicedArray} from '@appManagers/utils/messages/createHistoryStorage';
 import {isTempId} from '@appManagers/utils/messages/isTempId';
+import forwardKeepsAuthor from '@appManagers/utils/messages/forwardKeepsAuthor';
 import fitSymbols from '@helpers/string/fitSymbols';
 import isObject from '@helpers/object/isObject';
 import pickKeys from '@helpers/object/pickKeys';
@@ -943,6 +944,10 @@ export class AppMessagesManager extends AppManager {
       updateDeleteScheduledMessages: this.onUpdateDeleteScheduledMessages,
 
       updateMessageExtendedMedia: this.onUpdateMessageExtendedMedia,
+
+      updateMessageWidgetData: this.onUpdateMessageWidgetData,
+
+      updateEditForumTopic: this.onUpdateEditForumTopic,
 
       updateTranscribedAudio: this.onUpdateTranscribedAudio
     });
@@ -4622,7 +4627,9 @@ export class AppMessagesManager extends AppManager {
       queryId: string
       resultId: string,
       geoPoint: GeoPoint,
-      webDocument?: WebDocument
+      webDocument?: WebDocument,
+      /** The text under the media as the server will send it (an inline widget's): the bubble shows it from the start. */
+      caption: {message: string, entities?: MessageEntity[]}
     }>
   ) {
     let {peerId, inputMedia} = options;
@@ -4816,6 +4823,11 @@ export class AppMessagesManager extends AppManager {
     }
 
     message.media = media;
+    if(options.caption) {
+      message.message = options.caption.message;
+      message.entities = options.caption.entities;
+      if(options.invertMedia) message.pFlags.invert_media = true;
+    }
 
     const toggleError = (error?: ApiError, repayRequest?: RepayRequest) => {
       this.onMessagesSendError([message], error, repayRequest);
@@ -6339,11 +6351,12 @@ export class AppMessagesManager extends AppManager {
     const config = await this.apiManager.getConfig();
     const overflowMids = mids.splice(config.forwarded_count_max, mids.length - config.forwarded_count_max);
 
-    const hasProtectedRichMessages = !options.allowDropRichAuthor && mids.some((mid) => (
-      !!(this.getMessageByPeer(fromPeerId, mid) as Message.message).rich_message
+    const keepsAuthor = mids.some((mid) => forwardKeepsAuthor(
+      this.getMessageByPeer(fromPeerId, mid) as Message.message,
+      !!options.allowDropRichAuthor
     ));
-    const dropCaptions = !!options.dropCaptions && !hasProtectedRichMessages;
-    const dropAuthor = (!!options.dropAuthor || dropCaptions) && !hasProtectedRichMessages;
+    const dropCaptions = !!options.dropCaptions && !keepsAuthor;
+    const dropAuthor = (!!options.dropAuthor || dropCaptions) && !keepsAuthor;
 
     const groups: {
       [groupId: string]: {
@@ -6422,6 +6435,13 @@ export class AppMessagesManager extends AppManager {
             (message.media as MessageMedia.messageMediaDocument).pFlags.nopremium = true;
           }
         }
+      }
+
+      // a widget forwarded is a copy (widget-sandbox docs/tgw-format.md): never the original's chat state, and whether it
+      // may ask the bot is the server's to say (fwd_allow_queries, which the original does not show)
+      if(message.media?._ === 'messageMediaWidget') {
+        message.media.pFlags = {is_copy: true};
+        delete message.media.chat_data;
       }
 
       if(originalMessage.grouped_id) {
@@ -7355,6 +7375,8 @@ export class AppMessagesManager extends AppManager {
       }
 
       if(filterMessage) {
+        // a widget's storage goes with its message, also one that is not loaded here
+        this.appWidgetsManager.deleteWidgetStorageOf(peerId, filterMessage);
         const messagesStorage = this.getHistoryMessagesStorage(peerId);
         const ephemeralIds: number[] = [];
         for(const [mid, message] of messagesStorage) {
@@ -7497,6 +7519,8 @@ export class AppMessagesManager extends AppManager {
         // and a history too big to enumerate comes back as `updateChannelTooLong`, which
         // `processUpdateMessage` turns into a difference fetch.
         this.apiUpdatesManager.processUpdateMessage(updates);
+        // a widget's storage goes with the history up to `max_id`, including messages that were never loaded here
+        this.appWidgetsManager.deletePeerWidgetStorage(peerId, maxId);
 
         // ephemeral messages live on the client alone, so no update can mention them
         this.forgetAnchoredEphemeralsForPeer(peerId);
@@ -7530,6 +7554,9 @@ export class AppMessagesManager extends AppManager {
 
       if(!threadOrSavedId) {
         this.flushStoragesByPeerId(peerId);
+        // here, not in flushStoragesByPeerId: that one also runs when a channel only reloads (a deleted chat's go with
+        // its dialog, dropDialogOnDeletion)
+        if(justClear) this.appWidgetsManager.deletePeerWidgetStorage(peerId);
       }
 
       if(justClear) {
@@ -8410,6 +8437,11 @@ export class AppMessagesManager extends AppManager {
   public isMessageIdUnavailableByChannelCutoff(peerId: PeerId, mid: number) {
     const availableMinId = this.channelAvailableMinIds.get(peerId);
     return availableMinId !== undefined && this.isChannelServerMidAtOrBefore(mid, availableMinId);
+  }
+
+  /** Whether an update deleted the message while this session ran. */
+  public isMessageDeleted(peerId: PeerId, mid: number) {
+    return this.deletedMessages.has(`${this.getMessageIdPeerId(peerId, mid)}_${mid}`);
   }
 
   public getChannelAvailableMinIdGeneration(peerId?: PeerId) {
@@ -11363,33 +11395,8 @@ export class AppMessagesManager extends AppManager {
         this.dispatchTonConnectRequest(message);
       }
 
-      if(action._ === 'messageActionTopicEdit' && !isLocalThreadUpdate) {
-        const topic = this.dialogsStorage.getForumTopic(peerId, threadId);
-        if(!topic) {
-          this.dialogsStorage.getForumTopicById(peerId, threadId);
-        } else {
-          const oldTopic = copy(topic);
-
-          if(action.title !== undefined) {
-            topic.title = action.title;
-          }
-
-          if(action.closed !== undefined) {
-            setBooleanFlag(topic.pFlags, 'closed', action.closed);
-          }
-
-          if(action.hidden !== undefined) {
-            setBooleanFlag(topic.pFlags, 'hidden', action.hidden);
-          }
-
-          if(action.icon_emoji_id !== undefined) {
-            topic.icon_emoji_id = action.icon_emoji_id;
-          }
-
-          this.scheduleHandleNewDialogs(peerId, topic);
-
-          this.dialogsStorage.processTopicUpdate(topic, oldTopic);
-        }
+      if(action._ === 'messageActionTopicEdit' && !isLocalThreadUpdate && !this.applyForumTopicEdit(peerId, threadId, action)) {
+        this.dialogsStorage.getForumTopicById(peerId, threadId);
       }
 
       if(action._ === 'messageActionPaidMessagesPrice' && this.appPeersManager.isBroadcast(message?.peerId)) {
@@ -12472,6 +12479,7 @@ export class AppMessagesManager extends AppManager {
     this.markChannelCutoffHistoryCountsUnknown(peerId);
     addDeleted(this.invalidateRichMessagesAtOrBefore(peerId, availableMinId));
     addDeleted(this.appTranslationsManager.resetPeerTranslationsByChannelCutoff(peerId));
+    this.appWidgetsManager.deleteWidgetStorageByChannelCutoff(peerId, availableMinId);
 
     const pendingSingles = this.needSingleMessages.get(peerId);
     const singleMessageMaps = [
@@ -12518,6 +12526,14 @@ export class AppMessagesManager extends AppManager {
     const channelId = (update as Update.updateDeleteChannelMessages).channel_id;
     let mids = (update as any as Update.updateDeleteChannelMessages).messages.map((id) => this.appMessagesIdsManager.generateMessageId(id, channelId));
     const peerId: PeerId = channelId ? channelId.toPeerId(true) : (update as LocalUpdateDeleteMessages).peerId ?? this.findPeerIdByMids(mids);
+
+    // a widget's storage goes with its message, loaded or not, once for the batch: private chats' and basic groups'
+    // server ids are the account's, so a batch may name messages of several chats (a temporary id is only its chat's)
+    if(channelId) {
+      this.appWidgetsManager.deleteWidgetStorage(peerId, mids);
+    } else {
+      this.appWidgetsManager.deleteWidgetStorageByLegacyMids(mids, peerId);
+    }
 
     if(!peerId) {
       return new Set<number>();
@@ -12912,6 +12928,96 @@ export class AppMessagesManager extends AppManager {
     });
   };
 
+  /**
+   * A forum topic edited: what is given changes, the rest stays as it is (its service message, messageActionTopicEdit,
+   * or updateEditForumTopic). Returns whether the topic is here to take it.
+   */
+  private applyForumTopicEdit(
+    peerId: PeerId,
+    topicId: number,
+    edit: Pick<MessageAction.messageActionTopicEdit, 'title' | 'icon_emoji_id' | 'closed' | 'hidden'>
+  ) {
+    const topic = this.dialogsStorage.getForumTopic(peerId, topicId);
+    if(!topic) {
+      return false;
+    }
+
+    const oldTopic = copy(topic);
+
+    if(edit.title !== undefined) {
+      topic.title = edit.title;
+    }
+
+    if(edit.closed !== undefined) {
+      setBooleanFlag(topic.pFlags, 'closed', edit.closed);
+    }
+
+    if(edit.hidden !== undefined) {
+      setBooleanFlag(topic.pFlags, 'hidden', edit.hidden);
+    }
+
+    if(edit.icon_emoji_id !== undefined) {
+      topic.icon_emoji_id = edit.icon_emoji_id;
+    }
+
+    this.scheduleHandleNewDialogs(peerId, topic);
+
+    this.dialogsStorage.processTopicUpdate(topic, oldTopic);
+    return true;
+  }
+
+  /** A topic edited with no service message to tell of it; one not loaded here is not asked for, as desktop does. */
+  private onUpdateEditForumTopic = (update: Update.updateEditForumTopic) => {
+    const peerId = this.appPeersManager.getPeerId(update.peer);
+    const channelId = peerId.isAnyChat() ? peerId.toChatId() : undefined;
+    this.applyForumTopicEdit(peerId, this.appMessagesIdsManager.generateMessageId(update.topic_id, channelId), update);
+  };
+
+  /**
+   * A widget's state, without its HTML: the bot edited the chat state or the shared state of one message (in a
+   * supergroup it comes as an edit of the post instead).
+   */
+  private onUpdateMessageWidgetData = (update: Update.updateMessageWidgetData) => {
+    const channelId = (update.peer as Peer.peerChannel).channel_id;
+    const peerId = this.appPeersManager.getPeerId(update.peer);
+    const mid = this.appMessagesIdsManager.generateMessageId(update.msg_id, channelId);
+    this.setMessagesWidgetData([{peerId, mid}], update);
+  };
+
+  /**
+   * A widget's state changed (docs/tgw-format.md, "The widget's state and requests"): the bot's edit, or a shared
+   * widget's public_data polled for the messages that show it. Kept in each loaded message, whose bubble hands it to
+   * the running widget (an edit that keeps the HTML). A field not given stays; an empty string clears it. Under an
+   * anchored ephemeral message standing in for it, it goes into the message kept to put back on Revert.
+   */
+  public setMessagesWidgetData(
+    messages: {peerId: PeerId, mid: number}[],
+    data: Partial<Pick<MessageMedia.messageMediaWidget, 'public_data' | 'public_data_hash' | 'chat_data'>>
+  ) {
+    for(const {peerId, mid} of messages) {
+      const message = this.getMessageByPeer(peerId, mid) as Message.message;
+      const covered = message?.pFlags?.ephemeral_anchored ?
+        [...(this.anchoredEphemerals?.get(peerId)?.values() ?? [])].find((anchored) => anchored.mid === mid) :
+        undefined;
+      const media = covered ? covered.backup.media : message?.media;
+      if(media?._ !== 'messageMediaWidget') continue;
+      if(data.public_data !== undefined) {
+        if(data.public_data) media.public_data = data.public_data;
+        else delete media.public_data;
+        // a shared widget's hash goes with it, an emptied state's too (it is what a poll asks with)
+        if(data.public_data_hash) media.public_data_hash = data.public_data_hash;
+        else delete media.public_data_hash;
+      }
+
+      if(data.chat_data !== undefined) {
+        if(data.chat_data) media.chat_data = data.chat_data;
+        else delete media.chat_data;
+      }
+
+      if(!covered) this.runTempUpdateForMessageEdit(message);
+    }
+  }
+
   private onUpdateTranscribedAudio = (update: Update.updateTranscribedAudio) => {
     const channelId = (update.peer as Peer.peerChannel).channel_id;
     const peerId = this.appPeersManager.getPeerId(update.peer);
@@ -13137,6 +13243,11 @@ export class AppMessagesManager extends AppManager {
 
     delete this.pendingByRandomId[randomId];
     this.deletePendingTopMsg(peerId, tempId);
+
+    // what its widget kept goes under the server's id, also with no temporary copy left (a flush) to tell a bubble
+    if((finalMessage as Message.message).media?._ === 'messageMediaWidget') {
+      this.appWidgetsManager.onWidgetMessageSent(peerId, tempId, finalMessage.mid);
+    }
 
     this.finalizePendingMessageCallbacks(storage, tempId, finalMessage);
 

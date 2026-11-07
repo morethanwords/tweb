@@ -299,6 +299,7 @@ export class AppInlineBotsManager extends AppManager {
       });
     } else {
       let caption = '';
+      let widgetCaption: Parameters<AppMessagesManager['sendOther']>[0]['caption'];
       let inputMedia: Parameters<AppMessagesManager['sendOther']>[0]['inputMedia'], messageMedia: MessageMedia;
       const sendMessage = inlineResult.send_message;
       switch(sendMessage._) {
@@ -401,6 +402,25 @@ export class AppInlineBotsManager extends AppManager {
           break;
         }
 
+        // a widget sent from the results: the message shows it from the start, with its caption; its flags come with the
+        // server's
+        case 'botInlineMessageWidget': {
+          widgetCaption = {message: sendMessage.message, entities: sendMessage.entities};
+          options.invertMedia = !!sendMessage.pFlags.invert_media;
+          messageMedia = {
+            _: 'messageMediaWidget',
+            pFlags: {},
+            width: sendMessage.width,
+            height: sendMessage.height,
+            payload: sendMessage.payload,
+            public_data: sendMessage.public_data,
+            public_data_hash: sendMessage.public_data_hash,
+            chat_data: sendMessage.chat_data,
+            widget_id: sendMessage.widget_id
+          };
+          break;
+        }
+
         case 'botInlineMessageMediaInvoice': {
           // const photo = sendMessage.photo;
           // inputMedia = {
@@ -446,7 +466,7 @@ export class AppInlineBotsManager extends AppManager {
         };
       }
 
-      this.appMessagesManager.sendOther({...options, peerId, inputMedia});
+      this.appMessagesManager.sendOther({...options, peerId, inputMedia, caption: widgetCaption});
     }
 
     return true;

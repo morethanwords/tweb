@@ -1,5 +1,5 @@
 import copy from '@helpers/object/copy';
-import {Message} from '@layer';
+import {Message, MessageMedia} from '@layer';
 import {hasRichMessageSpoilers} from '@lib/richMessage';
 import countEmojiOnly from '@lib/richTextProcessor/countEmojiOnly';
 
@@ -11,7 +11,8 @@ import countEmojiOnly from '@lib/richTextProcessor/countEmojiOnly';
  * reactions (`messages_reactions`), the views and shares (in the time, made anew with every edit)
  * and the comments' count (`replies_updated`) - as part of the shell, an edit made after any of them
  * changed would render the whole bubble anew. A pin shows in the time too (`peer_pinned_messages`).
- * Whether there are views at all is the shell's still: a post that has them is made as one.
+ * Whether there are views at all is the shell's still: a post that has them is made as one. An HTML
+ * widget's source and state reach its running widget by a way of their own as well (`widgetEdit.ts`).
  */
 export function getSolidMessageBodyStructure(message: Message.message) {
   const bigEmoji = getBigEmojiShellSignature(message);
@@ -53,12 +54,27 @@ export function getSolidMessageBodyStructure(message: Message.message) {
   } = pFlags;
   return copy({
     ...structure,
+    ...(structure.media?._ === 'messageMediaWidget' && {media: getWidgetShellSignature(structure.media)}),
     pFlags: structuralFlags,
     bigEmoji,
     hasBodyContent,
     hasViews: !!views,
     replies: replies && getRepliesShellSignature(replies)
   });
+}
+
+// a widget without its source (`payload`) and its state (`chat_data`, `public_data`, and the bits of `flags` that say
+// which there are): its size, its flags, a shared widget's id
+function getWidgetShellSignature(media: MessageMedia.messageMediaWidget) {
+  const {
+    flags: _flags,
+    payload: _payload,
+    chat_data: _chatData,
+    public_data: _publicData,
+    public_data_hash: _publicDataHash,
+    ...shell
+  } = media;
+  return shell;
 }
 
 // what kind of a thread the message opens, not how much is in it

@@ -3,16 +3,13 @@ import type {Node as ProseMirrorNode} from '@tiptap/pm/model';
 import {Plugin, PluginKey, type Transaction} from '@tiptap/pm/state';
 import {AddMarkStep, RemoveMarkStep} from '@tiptap/pm/transform';
 import {Decoration, DecorationSet} from '@tiptap/pm/view';
-import emojiRegExp from '@vendor/emoji/regex';
-import getEmojiUnified from '@lib/richTextProcessor/getEmojiUnified';
-import {areAllEmojiNative, getEmojiImageUrl, isEmojiNative} from '@lib/richTextProcessor/emojiImage';
+import {areAllEmojiNative, getEmojiImageUrl, getImageEmojis} from '@lib/richTextProcessor/emojiImage';
 import {COPIED_ATTRIBUTE} from '@helpers/prepareTextWithEntitiesForCopying';
 
 export const CHAT_INPUT_EMOJI_IMAGE_CLASS = 'chat-input-emoji-image';
 const CHAT_INPUT_EMOJI_IMAGE_SELECTED_CLASS = 'chat-input-emoji-image-selected';
 const CHAT_INPUT_EMOJI_IMAGE_REST_CLASS = 'chat-input-emoji-image-rest';
 
-const EMOJI_REG_EXP = new RegExp(emojiRegExp, 'g');
 const EMOJI_IMAGE_TAG_REG_EXP = /<img\b[^>]*>/gi;
 const EMOJI_IMAGE_CLASS_REG_EXP = /\sclass\s*=\s*(?:"[^"]*\bemoji-image\b[^"]*"|'[^']*\bemoji-image\b[^']*')/i;
 const EMOJI_IMAGE_ALT_REG_EXP = /\salt\s*=\s*(?:"([^"<]*)"|'([^'<]*)')/i;
@@ -23,12 +20,9 @@ const EMOJI_IMAGE_ALT_REG_EXP = /\salt\s*=\s*(?:"([^"<]*)"|'([^'<]*)')/i;
  * image on its first part, the parts after it folded away.
  */
 function addRunDecorations(text: string, start: number, boundaries: number[], decorations: Decoration[]) {
-  EMOJI_REG_EXP.lastIndex = 0;
-  for(let match: RegExpExecArray; match = EMOJI_REG_EXP.exec(text);) {
-    const unicode = getEmojiUnified(match[0]);
-    if(!unicode || isEmojiNative(unicode)) continue;
-    const from = start + match.index;
-    const to = from + match[0].length;
+  for(const {index, emoji, unicode} of getImageEmojis(text)) {
+    const from = start + index;
+    const to = from + emoji.length;
     const ends = [...boundaries.filter((boundary) => boundary > from && boundary < to), to];
     decorations.push(Decoration.inline(from, ends[0], {
       'class': CHAT_INPUT_EMOJI_IMAGE_CLASS,

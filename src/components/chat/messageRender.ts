@@ -15,7 +15,7 @@ import Icon from '@components/icon';
 import PeerTitle from '@components/peerTitle';
 import wrapReply from '@components/wrappers/reply';
 import Chat from '@components/chat/chat';
-import {ChatType} from './chatType';
+import {ChatType, isHistoryMessage} from './chatType';
 import RepliesElement from '@components/chat/replies';
 import ChatBubbles from '@components/chat/bubbles';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
@@ -32,6 +32,7 @@ import {makeTime} from '@components/chat/utils';
 import {useAppConfig} from '@stores/appState';
 import {formatNanoton} from '@helpers/paymentsWrapCurrencyAmount';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import {isWidgetRenderingEnabled} from '@lib/widgetSandbox/payload';
 
 const NBSP = '&nbsp;';
 
@@ -285,6 +286,23 @@ export namespace MessageRender {
         const icon = Icon('gram_filled', 'time-icon', 'time-part');
 
         args.push(span, icon);
+      }
+
+      // the network marker (docs/integration.md): a tap on this widget may send data to the bot's server; a message
+      // that is not of the chat's history asks nothing (bubbles.ts)
+      if(
+        messageMedia?._ === 'messageMediaWidget' &&
+        messageMedia.pFlags.can_query &&
+        isHistoryMessage(chatType, message) &&
+        isWidgetRenderingEnabled()
+      ) {
+        const marker = Icon('web_filled', 'time-icon', 'time-part', 'time-widget-network');
+        const explanation = I18n.format('Widget.NetworkMarker', true);
+        marker.removeAttribute('aria-hidden');
+        marker.setAttribute('role', 'img');
+        marker.setAttribute('aria-label', explanation);
+        args.push(marker);
+        title += '\n' + explanation;
       }
 
       if(message.views) {

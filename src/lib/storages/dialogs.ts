@@ -27,6 +27,7 @@ import getDialogIndexKey from '@appManagers/utils/dialogs/getDialogIndexKey';
 import isObject from '@helpers/object/isObject';
 import getDialogIndex from '@appManagers/utils/dialogs/getDialogIndex';
 import getPeerIdsFromMessage from '@appManagers/utils/messages/getPeerIdsFromMessage';
+import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
 import {AppStoragesManager} from '@appManagers/appStoragesManager';
 import defineNotNumerableProperties from '@helpers/object/defineNotNumerableProperties';
 import setDialogIndex from '@appManagers/utils/dialogs/setDialogIndex';
@@ -1357,6 +1358,10 @@ export default class DialogsStorage extends AppManager {
    */
   public dropDialogOnDeletion(peerId: PeerId, topicOrSavedId?: number) {
     this.dropDialogWithEvent(peerId, topicOrSavedId);
+    // the chat's widgets keep nothing more; a topic's or a saved dialog's go with their messages (deleteWidgetStorageOf)
+    if(topicOrSavedId === undefined) {
+      this.appWidgetsManager.deletePeerWidgetStorage(peerId);
+    }
 
     // * drop 'you joined this channel' service message
     if(this.appPeersManager.isBroadcast(peerId)) {
@@ -2244,11 +2249,18 @@ export default class DialogsStorage extends AppManager {
       // error, or a topic merely ABSENT from the response (e.g. a brand-new topic not yet queryable
       // by id right after creation — a replication-lag race), must stay refetchable.
       const resolveLeft = (isDeleted: (encodedTopicId: number) => boolean) => {
+        const deleted = new Set<number>();
         for(const topicId in promises) {
           promises[topicId].resolve(undefined);
           if(isDeleted(+topicId)) {
             cache.deletedTopics.add(+topicId);
+            deleted.add(+topicId);
           }
+        }
+
+        // the widgets of their messages keep nothing more, loaded or not (topics deleted elsewhere)
+        if(deleted.size) {
+          this.appWidgetsManager.deleteWidgetStorageOf(peerId, (message) => deleted.has(getMessageThreadId(message, {isForum: true})));
         }
       };
 

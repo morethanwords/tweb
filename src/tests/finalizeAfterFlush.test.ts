@@ -47,4 +47,16 @@ describe('a message sent while its chat\'s history was flushed', () => {
     expect(handleReleasingMessage).not.toHaveBeenCalled();
     expect(dispatchEvent).not.toHaveBeenCalledWith('message_sent', expect.anything());
   });
+
+  test('a widget\'s: what its widget kept under the temporary id goes under the server\'s all the same', () => {
+    const {manager, dispatchEvent, sent} = setup();
+    const onWidgetMessageSent = vi.fn();
+    (manager as any).appWidgetsManager = {onWidgetMessageSent};
+    sent.media = {_: 'messageMediaWidget', pFlags: {}} as any;
+
+    manager.finalizePendingMessage('7', sent);
+
+    expect(onWidgetMessageSent).toHaveBeenCalledWith(peerId, 1.0001, 2);
+    expect(dispatchEvent).not.toHaveBeenCalledWith('message_sent', expect.anything());
+  });
 });

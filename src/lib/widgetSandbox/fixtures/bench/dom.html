@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<!-- Bench (lib/widgetSandbox/bench.ts): building and changing a large DOM. 400 elements in one task, then 60 frames
+     that each change 40 texts and styles (600 and 60 went over the CPU limits in Firefox on every transport). Reports the script time of the build and of a frame, and the frames the
+     widget got per second (what the page's pace and the transport let through), as localStorage `bench`. -->
+<html><head><meta charset="utf-8"><style>
+  body { font: 12px system-ui, sans-serif; margin: 0; padding: 12px; background: #fff; color: #222; }
+  #grid { display: grid; grid-template-columns: repeat(20, 1fr); gap: 1px; height: 180px; overflow: hidden; }
+  .c { background: #e8eef7; text-align: center; font-size: 9px; line-height: 12px; overflow: hidden; }
+  #out { font-variant-numeric: tabular-nums; }
+</style></head><body>
+<div><b>bench/dom</b> · <span id="out">running…</span></div>
+<div id="grid"></div>
+<script>
+  var grid = document.getElementById('grid'), cells = [];
+  var FRAMES = 60, CHANGED = 40;
+  var t0 = performance.now();
+  for (var i = 0; i < 400; i++) {
+    var c = document.createElement('div');
+    c.className = 'c';
+    c.textContent = i % 100;
+    grid.appendChild(c);
+    cells.push(c);
+  }
+  var buildMs = performance.now() - t0;
+  var frame = 0, frameMs = 0, first = 0, last = 0;
+  function step(time) {
+    if (!first) first = time;
+    last = time;
+    var s = performance.now();
+    for (var j = 0; j < CHANGED; j++) {
+      var cell = cells[(frame * 7 + j * 4) % cells.length];
+      cell.textContent = (frame + j) % 100;
+      cell.style.background = (frame + j) % 2 ? '#e8eef7' : '#cfe0f5';
+    }
+    frameMs += performance.now() - s;
+    if (++frame < FRAMES) return requestAnimationFrame(step);
+    var fps = (FRAMES - 1) / ((last - first) / 1000);
+    document.getElementById('out').textContent = 'build ' + buildMs.toFixed(1) + ' ms, frame ' + (frameMs / FRAMES).toFixed(2) + ' ms, ' + fps.toFixed(0) + ' fps';
+    localStorage.setItem('bench', JSON.stringify({ buildMs: buildMs, frameMs: frameMs / FRAMES, fps: fps }));
+  }
+  requestAnimationFrame(step);
+</script>
+</body></html>

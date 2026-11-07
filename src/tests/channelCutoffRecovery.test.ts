@@ -16,6 +16,7 @@ function makeMessagesManager(appProfileManager: unknown): any {
     appMessagesIdsManager: {generateMessageId},
     appProfileManager,
     appTranslationsManager: {resetPeerTranslationsByChannelCutoff: () => new Set<number>()},
+    appWidgetsManager: {deleteWidgetStorageByChannelCutoff: () => {}},
     dialogsStorage: {getForumTopicsCacheIfExists: (): undefined => undefined, clear: () => {}},
     filtersStorage: {clear: () => {}},
     monoforumDialogsStorage: {getDialogsByParentIfExists: (): undefined => undefined},

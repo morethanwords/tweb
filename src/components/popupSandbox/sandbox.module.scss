@@ -1,8 +1,24 @@
-.Panel {
+// Holds the panel and its toggle against the left edge and slides out with both. The toggle sits past
+// the panel's edge, so it belongs to this box: the panel's `overflow: hidden` (which `resize` needs)
+// would clip it, and did — it was neither visible nor clickable. The left edge in either direction: the
+// panel's border and the toggle's gap are on its right, physically, and a stage kept clear of it keeps
+// its room on the left (widgetSandbox/sandbox.module.scss).
+.Dock {
   position: fixed;
   top: 0;
   left: 0;
   bottom: 0;
+  z-index: 1000000;
+  display: flex;
+  transform: translateX(0);
+  transition: transform .2s ease;
+
+  &.Collapsed {
+    transform: translateX(-100%);
+  }
+}
+
+.Panel {
   // Narrow enough to leave the popup itself unobstructed, but it is the reviewer's window into a
   // 99-entry list — let them widen it, and never let it eat a small viewport whole.
   width: 20rem;
@@ -10,22 +26,17 @@
   max-width: 60vw;
   resize: horizontal;
   overflow: hidden;
-  z-index: 1000000;
   display: flex;
   flex-direction: column;
   background-color: var(--surface-color);
-  border-inline-end: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
   box-shadow: 0 0 1rem rgba(0, 0, 0, .2);
-  transform: translateX(0);
-  transition: transform .2s ease;
+}
 
-  &.Collapsed {
-    transform: translateX(-100%);
-  }
-
-  // The app hides every raw checkbox and radio so it can draw its own chrome over them. This panel
-  // is plain dev furniture with no such chrome, so it takes the native controls back — otherwise
-  // its checkboxes and its data-source radios are invisible.
+// The app hides every raw checkbox and radio so it can draw its own chrome over them. The sandboxes'
+// furniture (this panel, the widget sandbox's bench) is plain dev UI with no such chrome, so it takes
+// the native controls back — otherwise its checkboxes and radios are invisible.
+.NativeControls {
   input[type="checkbox"],
   input[type="radio"] {
     appearance: auto;
@@ -41,7 +52,7 @@
   position: absolute;
   top: .5rem;
   left: 100%;
-  margin-inline-start: .5rem;
+  margin-left: .5rem;
   padding: .25rem .75rem;
   border-radius: .5rem;
   border: none;
@@ -171,8 +182,16 @@
   color: #fff;
 }
 
+// A sandbox's own switches and notes (the widget sandbox has a screenful): on a short screen they scroll in a box of
+// their own, and the list keeps room enough to pick from
+.Controls {
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .List {
   flex: 1;
+  min-height: 12rem;
   overflow-y: auto;
   padding-bottom: .5rem;
 }

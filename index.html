@@ -2,6 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <!-- What the page itself may load besides its own files: no remote images, media, fonts or style sheets, no form
+    submissions, no plugins. Interactive widgets draw their DOM into this page (a shadow root per widget, their code
+    never runs here); this keeps a markup that got past their validator from reaching the network. Frames stay open
+    (mini apps, games, payment forms, embeds), and so do scripts and connections. -->
+    <meta http-equiv="Content-Security-Policy" content="img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; form-action 'none'; object-src 'none'; base-uri 'self'">
     <title>{{title}}</title>
     <meta name="description" content="{{description}}">
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,shrink-to-fit=no,viewport-fit=cover">

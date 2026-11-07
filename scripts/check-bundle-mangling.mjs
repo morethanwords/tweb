@@ -23,16 +23,23 @@
  *    functions is two variables, which the minifier spells independently.
  *
  * 2. A lone surrogate in a folded string constant gets re-encoded as U+FFFD,
- *    which is what silently killed every astral emoji in the worker chunk. Any
- *    replacement character in a chunk means some literal lost its content — we
- *    author none of them, so the count must stay zero.
+ *    which is what silently killed every astral emoji in the worker chunk. A
+ *    replacement character in a chunk means some literal lost its content — unless
+ *    the source spells one there itself (`\uFFFD` or the character, as CSS
+ *    serializers do for NUL), which the minifier prints as the character, or uses
+ *    a constant some source defines as one (parse5's REPLACEMENT_CHARACTER), which
+ *    the minifier inlines where it is used.
  *
  * Usage: node scripts/check-bundle-mangling.mjs [dist]
  */
 
 import fs from 'fs';
 import path from 'path';
+import {createRequire} from 'module';
 import {parseAst} from 'vite';
+
+// the app's own, its types stripped by Node
+const escapeRegExp = createRequire(import.meta.url)('../src/helpers/string/escapeRegExp.ts').default;
 
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 const B64_INDEX = new Map([...B64].map((char, index) => [char, index]));
@@ -183,6 +190,13 @@ function collectReferences(node, out, own = new Set()) {
   forEachChild(node, (child) => collectReferences(child, out, own));
 }
 
+// * a replacement character as a source may write it: an escape, or itself
+const REPLACEMENT_SOURCE = String.raw`(?:\\u(?:fffd|\{fffd\})|\uFFFD)`;
+const STRING_START = String.raw`(?:['"\`]|\})`;
+const STRING_END = String.raw`(?:['"\`]|\$\{)`;
+// * a constant a source defines as the replacement character, and its name
+const REPLACEMENT_CONSTANT = new RegExp(String.raw`\b([A-Za-z_$][\w$]*)\s*=\s*(['"\`])${REPLACEMENT_SOURCE}\2`, 'gi');
+
 // * every read inside a scope the minifier resolves separately from the surrounding function body —
 // * with the node holding it, the functions around it (innermost first) and the names bound next to
 // * it — and every function in source order, with the function it sits in
@@ -190,9 +204,26 @@ function analyze(ast) {
   const reads = [];
   const functions = [];
   const parents = new Map();
+  // * the strings a replacement character is in: where it stands in the code, the string's value and where the literal
+  // * holding it starts (a template's quasi starts after its backtick); and the regular expressions
+  const replacementStrings = [];
+  const replacementRegExps = [];
   const stack = [];
   const visit = (node, siblings) => {
     if(!node || typeof node.type !== 'string') return;
+
+    const parts = node.type === 'Literal' ? [[node, node.value]] :
+      node.type === 'TemplateLiteral' ? node.quasis.map((quasi) => [quasi, quasi.value.cooked]) :
+      [];
+    for(const [part, text] of parts) {
+      if(typeof(text) === 'string' && text.includes('\uFFFD')) {
+        replacementStrings.push({start: part.start, end: part.end, value: text, literalStart: node.start});
+      }
+    }
+
+    if(node.type === 'Literal' && node.regex && node.raw.includes('\uFFFD')) {
+      replacementRegExps.push({start: node.start, end: node.end, raw: node.raw});
+    }
 
     const value = node.type === 'AssignmentPattern' ? node.right :
       node.type === 'PropertyDefinition' ? node.value :
@@ -222,7 +253,7 @@ function analyze(ast) {
   };
 
   visit(ast);
-  return {reads, functions, parents};
+  return {reads, functions, parents, replacementStrings, replacementRegExps};
 }
 
 const dominant = (counts) => [...counts].sort((a, b) => b[1] - a[1])[0];
@@ -231,7 +262,7 @@ function checkChunk(dir, file) {
   const code = fs.readFileSync(path.join(dir, file), 'utf8');
   const map = JSON.parse(fs.readFileSync(path.join(dir, file + '.map'), 'utf8'));
   const lineStarts = getLineStarts(code);
-  const {reads, functions, parents} = analyze(parseAst(code));
+  const {reads, functions, parents, replacementStrings, replacementRegExps} = analyze(parseAst(code));
 
   // * the bindings next to a default, whose source name a mapping without a name may have to tell
   const siblingOffsets = new Set();
@@ -258,17 +289,22 @@ function checkChunk(dir, file) {
     list.push({offset, token});
   }
 
-  // * the source variable an emitted binding stands for: its name in the map, or else the
-  // * identifier at the source position it maps to
+  // * where in its source a segment points: the source's text and the offset in it
   const sourceLineStarts = new Map();
-  const sourceNameAt = (offset) => {
-    if(named.has(offset)) return named.get(offset).name;
-    const segment = siblingSegments.get(offset);
+  const sourcePosition = (segment) => {
     const content = segment && map.sourcesContent?.[segment.srcIdx];
     if(!content) return;
     let starts = sourceLineStarts.get(segment.srcIdx);
     if(!starts) sourceLineStarts.set(segment.srcIdx, starts = getLineStarts(content));
-    return readIdentifierAt(content, starts[segment.srcLine] + segment.srcCol);
+    return {content, offset: starts[segment.srcLine] + segment.srcCol};
+  };
+
+  // * the source variable an emitted binding stands for: its name in the map, or else the
+  // * identifier at the source position it maps to
+  const sourceNameAt = (offset) => {
+    if(named.has(offset)) return named.get(offset).name;
+    const position = sourcePosition(siblingSegments.get(offset));
+    return position && readIdentifierAt(position.content, position.offset);
   };
 
   // * the innermost function an offset sits in
@@ -370,7 +406,86 @@ function checkChunk(dir, file) {
     );
   }
 
-  const replacementCharacters = (code.match(/�/g) || []).length;
+  // * constants the sources define as the replacement character: the minifier inlines them where they are used
+  const replacementConstants = new Set();
+  for(const content of map.sourcesContent ?? []) {
+    for(const match of (content ?? '').matchAll(REPLACEMENT_CONSTANT)) {
+      replacementConstants.add(match[1]);
+    }
+  }
+  const usesReplacementConstant = replacementConstants.size ?
+    new RegExp(`(?<![\\w$])(?:${[...replacementConstants].map(escapeRegExp).join('|')})(?![\\w$])`) :
+    undefined;
+
+  const segments = [...decodeMappings(map.mappings)].map((segment) => ({...segment, offset: lineStarts[segment.genLine - 1] + segment.genCol}));
+  // * the mapping an emitted offset is in (the last one at or before it), or (`exact`) only one right at it
+  const segmentAt = (offset, exact) => {
+    let segment;
+    for(const candidate of segments) {
+      if(candidate.offset > offset) break;
+      segment = candidate;
+    }
+
+    return !exact || segment?.offset === offset ? segment : undefined;
+  };
+
+  // * the lines of the source around where an emitted offset maps to
+  const sourceAround = (offset) => {
+    const segment = segmentAt(offset);
+    const content = segment && map.sourcesContent?.[segment.srcIdx];
+    return content ? content.split('\n').slice(Math.max(0, segment.srcLine - 1), segment.srcLine + 2).join('\n') : '';
+  };
+
+  // * where a string of the bundle comes from, by its own mapping: the source's literal (from its quote to the quote that
+  // * closes it), or — a constant the minifier inlined, whose mapping is one of the line using it — that line
+  const stringSource = (string) => {
+    const position = sourcePosition(segmentAt(string.literalStart, true));
+    if(!position) return {};
+    const {content, offset} = position;
+    const quote = content[offset];
+    if(!['\'', '"', '`'].includes(quote)) {
+      const end = content.indexOf('\n', offset);
+      return {line: content.slice(content.lastIndexOf('\n', offset) + 1, end === -1 ? undefined : end)};
+    }
+
+    for(let i = offset + 1; i < content.length; ++i) {
+      if(content[i] === '\\') ++i;
+      else if(content[i] === quote) return {literal: content.slice(offset, i + 1)};
+    }
+
+    return {};
+  };
+
+  // * A replacement character the source writes itself: in a string, the source's literal of it has it there too, as an
+  // * escape or as itself, between the same neighbours (three characters each way, or the string's edge) — or the string
+  // * is that one character, a constant the source defines as it inlined from the line using it; in a regular
+  // * expression, the source's is the same; elsewhere (a comment), the source's lines have one
+  const authoredInString = (string, index) => {
+    const {literal, line} = stringSource(string);
+    if(line !== undefined) return string.value === '\uFFFD' && !!usesReplacementConstant?.test(line);
+    if(!literal) return false;
+    const neighbours = (text) => [...text].map((char) => char === '\uFFFD' ? REPLACEMENT_SOURCE : escapeRegExp(char)).join('');
+    const pattern = (index < 3 ? STRING_START : '') + neighbours(string.value.slice(Math.max(0, index - 3), index)) +
+      REPLACEMENT_SOURCE + neighbours(string.value.slice(index + 1, index + 4)) + (index + 4 > string.value.length ? STRING_END : '');
+    return new RegExp(pattern, 'i').test(literal);
+  };
+
+  let replacementCharacters = 0;
+  for(const match of code.matchAll(/\uFFFD/g)) {
+    const string = replacementStrings.find(({start, end}) => start <= match.index && match.index < end);
+    if(!string) {
+      const regExp = replacementRegExps.find(({start, end}) => start <= match.index && match.index < end);
+      const position = regExp && sourcePosition(segmentAt(regExp.start, true));
+      const authored = regExp ? !!position && position.content.startsWith(regExp.raw, position.offset) :
+        new RegExp(REPLACEMENT_SOURCE, 'i').test(sourceAround(match.index));
+      if(!authored) ++replacementCharacters;
+      continue;
+    }
+
+    // * the how many-th of the string's it is (the minifier prints the character itself, never an escape of it)
+    const index = [...string.value.matchAll(/\uFFFD/g)][[...code.slice(string.start, match.index).matchAll(/\uFFFD/g)].length]?.index;
+    if(index === undefined || !authoredInString(string, index)) ++replacementCharacters;
+  }
   if(replacementCharacters) {
     offenders.push(
       `${file}: ${replacementCharacters} U+FFFD — a string literal lost content, most likely a lone ` +

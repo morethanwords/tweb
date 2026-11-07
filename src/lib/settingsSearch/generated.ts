@@ -243,6 +243,7 @@ const generated: GeneratedSettingsSearchData = {
     {id: 'AppExperimentalTab:Experimental.Transport.Auto', sectionId: 'AppExperimentalTab', kind: 'option', titleLangKey: 'Experimental.Transport.Auto'},
     {id: 'AppExperimentalTab:Experimental.Transport.HTTP', sectionId: 'AppExperimentalTab', kind: 'option', titleLangKey: 'Experimental.Transport.HTTP'},
     {id: 'AppExperimentalTab:Experimental.Transport.WebSocket', sectionId: 'AppExperimentalTab', kind: 'option', titleLangKey: 'Experimental.Transport.WebSocket'},
+    {id: 'AppExperimentalTab:Experimental.WidgetSandbox', sectionId: 'AppExperimentalTab', kind: 'option', titleLangKey: 'Experimental.WidgetSandbox'},
     {id: 'AppExperimentalTab:Experimental.Worker', sectionId: 'AppExperimentalTab', kind: 'row', titleLangKey: 'Experimental.Worker'},
     {id: 'AppGeneralSettingsTab:AutoNightSystemDefault', sectionId: 'AppGeneralSettingsTab', kind: 'option', titleLangKey: 'AutoNightSystemDefault'},
     {id: 'AppGeneralSettingsTab:ChatBackground', sectionId: 'AppGeneralSettingsTab', kind: 'row', titleLangKey: 'ChatBackground'},

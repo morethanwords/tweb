@@ -57,6 +57,8 @@ export type BroadcastEvents = {
   'peer_block': {peerId: PeerId, blocked?: boolean, blockedMyStoriesFrom?: boolean},
   'peer_title_edit': {peerId: PeerId, threadId?: number},
   'peer_deleted': PeerId, // left chat, deleted user dialog, left channel
+  'widget_storage_delete': {accountNumber: ActiveAccountNumber, peerId?: PeerId, maxId?: number, mids?: number[]}, // widgets' storage of the account is gone: of messages (of a chat, or by private chats' and basic groups' ids), a chat's with its history (up to a server id), or all of it ("Clear cache")
+  'widget_storage_remap': {accountNumber: ActiveAccountNumber, peerId: PeerId, tempId: number, mid: number}, // a widget message of the account was sent: what its widget kept goes under the server's id
   'peer_full_update': PeerId,
   'peer_settings': {peerId: PeerId, settings: PeerSettings},
   'chat_automation_update': ConnectedBot.connectedBot | undefined,

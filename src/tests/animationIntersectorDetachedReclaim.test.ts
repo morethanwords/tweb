@@ -248,4 +248,30 @@ describe('animationIntersector held subtree', () => {
     release();
     expect(held.paused).toBe(false);
   });
+
+  it('keeps a root held by two until both let go: one release does not undo the other\'s hold', () => {
+    const root = document.createElement('div');
+    const under = document.createElement('div');
+    root.append(under);
+    document.body.append(root);
+    const held = playing();
+    add(under, held);
+    intersect(under, true);
+    expect(held.paused).toBe(false);
+
+    // * the sign-in holds the app, and a sandbox opened over it holds it too
+    const releaseSignIn = animationIntersector.holdUnder(root);
+    const releaseSandbox = animationIntersector.holdUnder(root);
+    expect(held.paused).toBe(true);
+
+    // * the sandbox goes, twice over: the sign-in's hold stands
+    releaseSandbox();
+    releaseSandbox();
+    animationIntersector.checkAnimations2(false);
+    intersect(under, true);
+    expect(held.paused).toBe(true);
+
+    releaseSignIn();
+    expect(held.paused).toBe(false);
+  });
 });

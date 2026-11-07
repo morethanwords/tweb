@@ -1,5 +1,6 @@
 import {Message, MessageEntity, MessageMedia, PageBlock, PageTableCell, RichText} from '@layer';
 import {countFirstScreen, estimateBubbleHeight, getBubbleHeightAtLeast, joinHistories, keepFrom, keepRange} from '@components/chat/firstScreenHistory';
+import {makeWidgetMedia} from '@/tests/helpers/widgetFixtures';
 
 let nextId = 1;
 const message = (options: {text?: string, entities?: MessageEntity[], media?: MessageMedia, groupedId?: string} = {}): Message.message => ({
@@ -53,6 +54,9 @@ const video = (w: number, h: number, sticker?: boolean): MessageMedia.messageMed
     ]
   }
 });
+
+// * as the chat knows a widget before it runs: the bot's height, else (here) one it remembered for the message
+const getWidgetHeight = (message: Message.message, media: MessageMedia.messageMediaWidget) => media.height || (message.mid % 2 ? 300 : 50);
 
 describe('getBubbleHeightAtLeast', () => {
   it('counts a line for each paragraph, or for each 200 characters', () => {
@@ -146,6 +150,13 @@ describe('getBubbleHeightAtLeast', () => {
     expect(getBubbleHeightAtLeast(message({media: video(512, 512, true)}))).toBe(0);
     expect(getBubbleHeightAtLeast({_: 'messageService'} as Message.messageService)).toBe(0);
   });
+
+  it('counts a widget as high as the chat knows it, with its caption, and nothing where widgets are not drawn', () => {
+    expect(getBubbleHeightAtLeast(message({media: makeWidgetMedia({height: 120})}), false, getWidgetHeight)).toBe(120);
+    const captioned = message({text: 'one', media: makeWidgetMedia()});
+    expect(getBubbleHeightAtLeast(captioned, false, getWidgetHeight)).toBe(16 + getWidgetHeight(captioned, makeWidgetMedia()));
+    expect(getBubbleHeightAtLeast(message({text: 'one', media: makeWidgetMedia({height: 120})}))).toBe(16);
+  });
 });
 
 describe('estimateBubbleHeight', () => {
@@ -175,6 +186,11 @@ describe('estimateBubbleHeight', () => {
       ...message({text: 'a'}),
       reactions: {_: 'messageReactions', pFlags: {}, results: [{_: 'reactionCount', count: 1, reaction: {_: 'reactionEmoji', emoticon: '🔥'}}]}
     }, metrics)).toBe(21 + 32);
+  });
+
+  it('counts a widget as high as the chat knows it', () => {
+    expect(estimateBubbleHeight(message({text: 'a', media: makeWidgetMedia({height: 120})}), metrics, false, getWidgetHeight)).toBe(21 + 120);
+    expect(estimateBubbleHeight(message({text: 'a', media: makeWidgetMedia({height: 120})}), metrics)).toBe(21);
   });
 });
 

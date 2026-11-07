@@ -1802,6 +1802,14 @@
 "AttachAudio" = "Voice message";
 "AttachRound" = "Video message";
 "AttachGame" = "Game";
+"AttachWidget" = "Widget";
+"Widget.Title" = "Interactive widget";
+"Widget.Stopped" = "Widget stopped";
+"Widget.Restart" = "Restart";
+"Widget.Failed" = "The widget couldn't be started.";
+"Widget.Unsupported" = "This browser can't run widgets yet.";
+"Widget.NetworkMarker" = "Tapping this widget may send data to the bot.";
+"Widget.Copied" = "Copied: %1$s";
 "Map" = "Map";
 "AccDescrCollage" = "Collage";
 "AccDescrIVSlideshow" = "Slideshow";
@@ -6124,6 +6132,7 @@
 "Experimental.Tools" = "Developer Tools";
 "Experimental.PopupSandbox" = "Popup Sandbox";
 "Experimental.BubbleSandbox" = "Bubble Sandbox";
+"Experimental.WidgetSandbox" = "Widget Sandbox";
 "Experimental.IconLibrary" = "Icon Library";
 "Experimental.CopyDebugInfo" = "Copy Debug Info";
 "Experimental.CopyDebugInfo.Subtitle" = "Version, browser and the settings above, for a bug report";

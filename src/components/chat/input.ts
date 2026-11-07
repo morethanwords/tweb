@@ -170,6 +170,7 @@ import {showReplyPickerPopup} from '@components/popups/pickUser';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {isSavedDialog} from '@appManagers/utils/dialogs/isDialog';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
+import forwardKeepsAuthor from '@appManagers/utils/messages/forwardKeepsAuthor';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import showTooltip from '@components/tooltip';
 import createContextMenu from '@helpers/dom/createContextMenu';
@@ -490,7 +491,7 @@ export default class ChatInput {
   public forwarding: {[fromPeerId: PeerId]: number[]};
   /** the second the forwarded video starts at ("Share at 0:42") */
   public forwardingVideoTimestamp: number;
-  private forwardingHasProtectedRichMessages = false;
+  private forwardingKeepsAuthor = false;
   public replyToMsgId: MessageSendingParams['replyToMsgId'];
   public replyToStoryId: MessageSendingParams['replyToStoryId'];
   public replyToQuote: MessageSendingParams['replyToQuote'];
@@ -5811,10 +5812,10 @@ export default class ChatInput {
       chatType: chat.type,
       forwarding,
       forwardParams: forwarding ? {
-        dropAuthor: !this.forwardingHasProtectedRichMessages &&
+        dropAuthor: !this.forwardingKeepsAuthor &&
           this.forwardElements &&
           this.forwardElements.hideSender.checkboxField.checked,
-        dropCaptions: !this.forwardingHasProtectedRichMessages && this.isDroppingCaptions(),
+        dropCaptions: !this.forwardingKeepsAuthor && this.isDroppingCaptions(),
         videoTimestamp: this.forwardingVideoTimestamp
       } : undefined,
       sendTextParams: {
@@ -6291,7 +6292,7 @@ export default class ChatInput {
       const fromPeerIds = Object.keys(fromPeerIdsMids).map((fromPeerId) => fromPeerId.toPeerId());
       const smth: Set<string> = new Set();
       let length = 0, messagesWithCaptionsLength = 0;
-      let hasRichMessages = false;
+      let keepsAuthor = false;
 
       const p = fromPeerIds.map(async(fromPeerId) => {
         const mids = fromPeerIdsMids[fromPeerId];
@@ -6303,7 +6304,7 @@ export default class ChatInput {
             smth.add('P' + message.fromId);
           }
 
-          hasRichMessages ||= !!message.rich_message;
+          keepsAuthor ||= forwardKeepsAuthor(message, rootScope.premium);
 
           if(
             message.media &&
@@ -6320,7 +6321,6 @@ export default class ChatInput {
       });
 
       await Promise.all(p);
-      const hasProtectedRichMessages = hasRichMessages && !rootScope.premium;
 
       const onlyFirstName = smth.size > 2;
       const peerTitles = [...smth].map((smth) => {
@@ -6335,13 +6335,13 @@ export default class ChatInput {
       });
 
       const {forwardElements} = this;
-      this.forwardingHasProtectedRichMessages = hasProtectedRichMessages;
+      this.forwardingKeepsAuthor = keepsAuthor;
       const authorForm = findUpTag(forwardElements.showSender.checkboxField.label, 'FORM');
       const captionForm = findUpTag(forwardElements.showCaption.checkboxField.label, 'FORM');
-      authorForm.classList.toggle('hide', hasProtectedRichMessages);
-      captionForm.classList.toggle('hide', hasProtectedRichMessages || !messagesWithCaptionsLength);
+      authorForm.classList.toggle('hide', keepsAuthor);
+      captionForm.classList.toggle('hide', keepsAuthor || !messagesWithCaptionsLength);
       const hideCaption = forwardElements.hideCaption.checkboxField.checked;
-      if(hasProtectedRichMessages) {
+      if(keepsAuthor) {
         forwardElements.showSender.checkboxField.setValueSilently(true);
         forwardElements.showCaption.checkboxField.setValueSilently(true);
       } else if(messagesWithCaptionsLength && hideCaption) {
@@ -6621,7 +6621,7 @@ export default class ChatInput {
       this.setReplyTo(undefined);
       this.forwarding = undefined;
       this.forwardingVideoTimestamp = undefined;
-      this.forwardingHasProtectedRichMessages = false;
+      this.forwardingKeepsAuthor = false;
     }
 
     if(type !== 'suggested') {

@@ -90,6 +90,8 @@ export default function getMessagePreviewIcon(
       return MESSAGE_PREVIEW_ICON_FALLBACKS.giveaway;
     case 'messageMediaToDo':
       return 'checklist_done';
+    case 'messageMediaWidget':
+      return 'apps';
     case 'messageMediaCall':
       return 'phone';
   }

@@ -35,6 +35,13 @@ export const SEND_PAID_REACTION_ANONYMOUS_PEER_ID: PeerId = -1;
 export const SUGGESTED_POST_WAIT_FOR_REWARD_HOURS = 24;
 export const SUGGESTED_POST_DEFAULT_STARS_COMMISSION = 850;
 export const PEER_FULL_TTL = 3 * 60e3;
+/**
+ * A shared widget's poll (appWidgetsManager.pollWidgetPublicData): the period before the server's first answer gives
+ * one, and the periods it may ask for, in seconds — anything else is taken as the nearest of them
+ */
+export const WIDGET_POLL_DEFAULT_PERIOD = 30;
+export const WIDGET_POLL_MIN_PERIOD = 5;
+export const WIDGET_POLL_MAX_PERIOD = 3600;
 // A request that raced updateChannelAvailableMessages is reissued so its answer cannot describe
 // history the client has already purged. The cutoff generation only moves when available_min_id
 // really changes, so this normally costs at most one extra round trip; the cap turns a peer whose

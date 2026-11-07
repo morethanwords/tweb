@@ -122,6 +122,9 @@
     "src/solid",
     "src/opus-recorder",
     "src/vendor/**/*.js",
+    /* written for strictNullChecks and its own tsconfig; reached through the Vite-only
+       `widget-sandbox` alias and typed by src/lib/widgetSandbox/vendor.d.ts */
+    "src/vendor/widget-sandbox",
     "*.js",
     "*.cjs",
     "tweb-design"

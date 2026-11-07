@@ -61,6 +61,7 @@ import lottieLoader from '@lib/lottie/lottieLoader';
 import type LottiePlayer from '@lib/lottie/lottiePlayer';
 import {getSendingStatusIconState, setSendingStatusIconState, settleSendingStatusIconCopy} from '@components/sendingStatusIcon';
 import {getOutgoingMessageGradientColorAt, OutgoingMessageGradientPlace, readOutgoingMessageGradient} from '@helpers/outgoingMessageGradient';
+import shallowCopy from '@helpers/dom/shallowCopy';
 import {
   Axes,
   bubbleShapeStyles,
@@ -453,9 +454,7 @@ function borrow(element: HTMLElement, into: HTMLElement, bubble: HTMLElement, si
   // as big, any other (the big emoji, laid out by their pictures and their line) by a copy of it
   let placeholder: HTMLElement;
   if(element.style.width && element.style.height) {
-    placeholder = document.createElement(element.tagName);
-    placeholder.className = element.className;
-    placeholder.style.cssText = element.style.cssText;
+    placeholder = shallowCopy(element);
     placeholder.style.boxSizing = 'border-box';
     placeholder.style.width = `${size.width}px`;
     placeholder.style.height = `${size.height}px`;
@@ -477,9 +476,7 @@ function borrow(element: HTMLElement, into: HTMLElement, bubble: HTMLElement, si
   }
 
   for(const ancestor of chain) {
-    const shell = document.createElement(ancestor.tagName);
-    shell.className = ancestor.className;
-    shell.style.cssText = ancestor.style.cssText;
+    const shell = shallowCopy(ancestor);
     shell.classList.add(styles.context);
     // under what else the box shows
     holder.insertBefore(shell, holder === into ? into.firstChild : null);

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<!-- Bench (lib/widgetSandbox/bench.ts): layout queries. Each one follows a style write, so the renderer has to lay
+     out again and answer (no query cache): its cost is the transport's round trip plus the layout. Then as many reads
+     with nothing written in between, which the engine answers from its cache. Five tasks of 40 each, apart.
+     Reports the time per query, in the widget's own clock, as localStorage `bench`. -->
+<html><head><meta charset="utf-8"><style>
+  body { font: 14px system-ui, sans-serif; margin: 0; padding: 12px; background: #fff; color: #222; }
+  #box { height: 20px; background: #2481cc; border-radius: 4px; margin-top: 8px; }
+  #out { font-variant-numeric: tabular-nums; }
+</style></head><body>
+<div><b>bench/queries</b> · <span id="out">running…</span></div>
+<div id="box" style="width: 100px"></div>
+<script>
+  var box = document.getElementById('box');
+  var CHUNKS = 5, PER = 40, fresh = 0, cached = 0, done = 0, sink = 0;
+  function chunk() {
+    var t0 = performance.now();
+    for (var i = 0; i < PER; i++) {
+      box.style.width = (100 + (done * PER + i) % 120) + 'px';
+      sink += box.getBoundingClientRect().width;
+    }
+    var t1 = performance.now();
+    for (var j = 0; j < PER; j++) sink += box.getBoundingClientRect().width + box.offsetHeight;
+    var t2 = performance.now();
+    fresh += t1 - t0;
+    cached += t2 - t1;
+    if (++done < CHUNKS) return setTimeout(chunk, 200);
+    var n = CHUNKS * PER;
+    document.getElementById('out').textContent = (fresh / n * 1000).toFixed(0) + ' µs per query, ' + (cached / n / 2 * 1000).toFixed(0) + ' µs cached';
+    localStorage.setItem('bench', JSON.stringify({ queryUs: fresh / n * 1000, cachedQueryUs: cached / n / 2 * 1000, sink: sink % 7 }));
+  }
+  setTimeout(chunk, 100);
+</script>
+</body></html>

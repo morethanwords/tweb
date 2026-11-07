@@ -147,7 +147,10 @@ describe('a topic of a bot\'s forum', () => {
 describe('a pending message called off in a private chat', () => {
   test('is deleted in the chat it names, not in one found by its temporary id, which another chat may share', () => {
     const manager = new AppMessagesManager();
-    Object.assign(manager as any, {appMessagesIdsManager: {generateMessageId: (id: number) => id}});
+    Object.assign(manager as any, {
+      appMessagesIdsManager: {generateMessageId: (id: number) => id},
+      appWidgetsManager: {deleteWidgetStorageByLegacyMids: () => {}}
+    });
     const findPeerIdByMids = vi.spyOn(manager as any, 'findPeerIdByMids');
     // * found there, it is taken out the short way (as an ephemeral one): the lookup is what is checked
     const getMessageByPeer = vi.spyOn(manager, 'getMessageByPeer').mockReturnValue({ephemeral_id: 1} as any);

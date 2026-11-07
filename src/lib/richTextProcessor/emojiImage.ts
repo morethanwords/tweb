@@ -2,6 +2,8 @@ import type {EMOJI_VERSION} from '@environment/emojiVersionsSupport';
 import {EmojiVersions} from '@config/emoji';
 import IS_EMOJI_SUPPORTED from '@environment/emojiSupport';
 import EMOJI_VERSIONS_SUPPORTED from '@environment/emojiVersionsSupport';
+import emojiRegExp from '@vendor/emoji/regex';
+import getEmojiUnified from '@lib/richTextProcessor/getEmojiUnified';
 
 /**
  * Whether the platform draws this emoji itself. Apple's font does, up to the
@@ -29,4 +31,23 @@ export function areAllEmojiNative() {
 
 export function getEmojiImageUrl(unicode: string) {
   return `assets/img/emoji/${unicode}.png`;
+}
+
+let emojiRegExpGlobal: RegExp;
+
+/** An emoji the app draws as its image (not isEmojiNative): where it is in its text, as typed, and its image's name. */
+export type ImageEmoji = {index: number, emoji: string, unicode: string};
+
+/** The emoji of `text` the app draws as its images, in order: the first `limit` of them. */
+export function getImageEmojis(text: string, limit = Infinity): ImageEmoji[] {
+  const found: ImageEmoji[] = [];
+  // made at first use: the pattern is long, and most importers never scan
+  const regExp = emojiRegExpGlobal ??= new RegExp(emojiRegExp, 'g');
+  regExp.lastIndex = 0;
+  for(let match: RegExpExecArray; found.length < limit && (match = regExp.exec(text));) {
+    const unicode = getEmojiUnified(match[0]);
+    if(unicode && !isEmojiNative(unicode)) found.push({index: match.index, emoji: match[0], unicode});
+  }
+
+  return found;
 }

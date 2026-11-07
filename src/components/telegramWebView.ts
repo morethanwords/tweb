@@ -3,6 +3,14 @@ import {TelegramWebViewEvent, TelegramWebViewEventMap, TelegramWebViewSendEventM
 import {hotEffect} from '@helpers/hotModule';
 
 const weakMap: WeakMap<Window, TelegramWebView> = new WeakMap();
+
+/**
+ * The document HTML embeds are written into (public/embed.html): a srcdoc frame would inherit the app page's
+ * Content-Security-Policy. It asks for the markup once it has loaded.
+ */
+const EMBED_DOCUMENT = 'embed.html';
+const EMBED_READY = 'tweb-embed-ready';
+const EMBED_HTML = 'tweb-embed-html';
 hotEffect(import.meta.hot, () => {
   const onMessage = (e: MessageEvent) => {
     weakMap.get(e.source as Window)?.onMessage(e.origin, e.data);
@@ -53,8 +61,14 @@ export default class TelegramWebView extends EventListenerBase<{
     this.origin = origin;
   }
 
-  public onMessage(origin: string, data: string) {
-    if(this.origin && origin !== this.origin) {
+  public onMessage(origin: string, data: string | {type?: string}) {
+    if(this.html && typeof(data) === 'object' && data?.type === EMBED_READY) {
+      // the embed document's origin is opaque (no allow-same-origin): only '*' reaches it
+      this.iframe.contentWindow.postMessage({type: EMBED_HTML, html: this.html}, '*');
+      return;
+    }
+
+    if(this.origin && origin !== this.origin || typeof(data) !== 'string') {
       return;
     }
 
@@ -62,14 +76,13 @@ export default class TelegramWebView extends EventListenerBase<{
   }
 
   public onMount() {
-    // ! the WindowProxy stays the same object across the srcdoc navigation, so registering
-    // ! before assigning it keeps the bridge working and avoids missing an early event
-    // ! from the frame
+    // ! the WindowProxy stays the same object across the navigation to the embed document, so
+    // ! registering before it keeps the bridge working and avoids missing an early event from the frame
     weakMap.set(this.iframe.contentWindow, this);
     if(this.html) {
       // ! never write into contentWindow.document — a no-src iframe inherits this origin,
       // ! which would run the embedded third-party scripts as web.telegram.org
-      this.iframe.srcdoc = this.html;
+      this.iframe.src = EMBED_DOCUMENT;
     }
   }
 

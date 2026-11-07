@@ -1,6 +1,6 @@
 import type Chat from '@components/chat/chat';
 import debounce from '@helpers/schedulers/debounce';
-import {WebDocument} from '@layer';
+import {BotInlineMessage, WebDocument} from '@layer';
 import {MyDocument} from '@appManagers/appDocsManager';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import Scrollable from '@components/scrollable';
@@ -26,6 +26,9 @@ import wrapPhoto from '@components/wrappers/photo';
 import {i18n} from '@lib/langPack';
 import {POSTING_NOT_ALLOWED_MAP} from '@components/chat/postingNotAllowedMap';
 import liteMode from '@helpers/liteMode';
+import noop from '@helpers/noop';
+import type {Middleware} from '@helpers/middleware';
+import {getWidgetSource, isWidgetRenderingEnabled} from '@lib/widgetSandbox/payload';
 
 const ANIMATION_GROUP: AnimationItemGroup = 'INLINE-HELPER';
 // const GRID_ITEMS = 5;
@@ -144,13 +147,20 @@ export default class InlineHelper extends AutocompleteHelper {
 
       const loadPromises: Promise<any>[] = [];
       const isGallery = !!botResults.pFlags.gallery;
+      let hasWidgets = false;
+      // * the widget previews of this set go with it: as the helper hides (another helper's suggestions in its place)
+      // * or shows the next set — the helper's own middleware, which both clean
+      const previews = this.getMiddleware();
       // botResults.results.length = 3;
       for(const item of botResults.results) {
         const container = document.createElement('div');
         container.classList.add('inline-helper-result');
         container.dataset.resultId = item.id;
 
-        const preview = isGallery ? undefined : document.createElement('div');
+        // a widget result is no tile: its title and description over the widget, run as a preview, as in the list — in
+        // a gallery too, a row of its own
+        const widget = item.send_message._ === 'botInlineMessageWidget' ? item.send_message : undefined;
+        const preview = isGallery || widget ? undefined : document.createElement('div');
         if(preview) {
           preview.classList.add('inline-helper-result-preview');
 
@@ -159,9 +169,11 @@ export default class InlineHelper extends AutocompleteHelper {
 
         list.append(container);
 
-        if(!isGallery) {
-          preview.classList.add('empty');
-          setInnerHTML(preview, wrapEmojiText([...item.title.trim()][0]));
+        if(!isGallery || widget) {
+          if(preview) {
+            preview.classList.add('empty');
+            setInnerHTML(preview, wrapEmojiText([...item.title.trim()][0]));
+          }
 
           const title = document.createElement('div');
           title.classList.add('inline-helper-result-title');
@@ -176,13 +188,24 @@ export default class InlineHelper extends AutocompleteHelper {
 
           container.append(title, description);
 
-          const separator = document.createElement('div');
-          separator.classList.add('inline-helper-separator');
+          if(widget) {
+            hasWidgets = true;
+            container.classList.add('is-widget');
+            this.renderWidgetPreview(widget, container, `${botResults.query_id}_${item.id}`, previews);
+          }
 
-          list.append(separator);
+          if(!isGallery) {
+            const separator = document.createElement('div');
+            separator.classList.add('inline-helper-separator');
+
+            list.append(separator);
+          }
         } else {
           container.classList.add('grid-item');
         }
+
+        // the widget shows itself: no thumbnail stands for it
+        if(widget) continue;
 
         if(item._ === 'botInlineResult') {
           // (preview || container).style.backgroundColor = '#ff00ff';
@@ -263,7 +286,8 @@ export default class InlineHelper extends AutocompleteHelper {
 
         list.classList.toggle('is-gallery', isGallery);
         list.classList.toggle('super-stickers', isGallery);
-        this.container.classList.toggle('is-gallery', isGallery);
+        // as wide as its tiles; one with a widget's row is as wide as a list
+        this.container.classList.toggle('is-gallery', isGallery && !hasWidgets);
 
         /* if(isGallery) {
           list.style.gridTemplateColumns = `repeat(${Math.min(botResults.results.length, 4)}, 1fr)`;
@@ -304,7 +328,7 @@ export default class InlineHelper extends AutocompleteHelper {
 
         if(!this.onChangeScreen) {
           this.onChangeScreen = () => {
-            if(this.list.classList.contains('is-gallery')) {
+            if(this.container.classList.contains('is-gallery')) {
               const width = (this.list.childElementCount * mediaSizes.active.popupSticker.width) + (this.list.childElementCount - 1 * 1);
               this.list.style.width = width + 'px';
             } else {
@@ -323,6 +347,36 @@ export default class InlineHelper extends AutocompleteHelper {
 
     return {user: peer, renderPromise, guestChat: false};
   };
+
+  /**
+   * A widget result (layer 233) runs as a preview (docs/sdk-v1.md §2.16): with its state, but no input — a tap on it
+   * picks the result — no requests and nothing about the user. Once sent it is a message's widget.
+   */
+  private async renderWidgetPreview(widget: BotInlineMessage.botInlineMessageWidget, container: HTMLElement, key: string, middleware: Middleware) {
+    if(!isWidgetRenderingEnabled()) return;
+    const loaded = await Promise.all([
+      getWidgetSource(widget),
+      import('@components/widgetSandbox/widgetBlock'),
+      import('solid-js/web'),
+      import('@lib/widgetSandbox/messageWidget')
+    ]).catch(noop);
+    if(!loaded || !middleware()) return;
+    const [html, {default: WidgetBlock}, {render}, {getWidgetData}] = loaded;
+    const div = document.createElement('div');
+    div.classList.add('inline-helper-result-widget');
+    container.append(div);
+    middleware.onClean(render(() => WidgetBlock({
+      html,
+      width: widget.width,
+      height: widget.height,
+      widgetKey: 'inline_' + key,
+      data: getWidgetData(widget),
+      context: {preview: true},
+      // * the results below the helper's few rows start as they come near what it shows, in a gallery too
+      lazy: true,
+      scrollable: this.scrollable
+    }), div));
+  }
 
   public init() {
     this.list = document.createElement('div');
