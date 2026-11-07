@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{i as e,r as t}from"./icon-BHUTk2fd.js";import{A as n,I as r}from"./solid-B0Du5GQu.js";import{c as i,g as a,m as o}from"./web-FH1QzTRi.js";import{t as s}from"./classNames-HGN7N_ne.js";var c=a(`<span aria-hidden=true>`),l=a=>{let[l,u]=r(a,[`icon`,`class`]);return(()=>{var r=c();return o(r,n({get class(){return s(`tgico`,e(l.icon),l.class)}},u),!1,!0),i(r,()=>t(l.icon)),r})()};export{l as t};
+//# sourceMappingURL=iconTsx-BRufHQtf.js.map

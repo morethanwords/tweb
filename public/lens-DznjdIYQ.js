@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{i as e,r as t}from"./geometry-DeM_O1fT.js";var n=class{constructor(e){this.gem=e,this.outline=t().outline,this.on=!1,this.dirty=!1}changed(){this.dirty=!0}update(t,n,r,i,a){let o=this.gem;if(!t||i<=.002){this.on&&(o.setLens(null),this.on=!1);return}this.dirty&&(this.dirty=!1,o.setText(t));let s=o.pose,c=e(this.outline,s.yaw,s.pitch,r/2*.96).map(e=>[n[0]+e[0],n[1]+e[1]]);o.setLens({hull:c,center:n,strength:Math.min(1,i),spin:s.yaw,textScale:1,textShift:0,opacity:a}),this.on=!0}};export{n as t};
+//# sourceMappingURL=lens-DznjdIYQ.js.map

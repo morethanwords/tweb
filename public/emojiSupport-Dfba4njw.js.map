@@ -1,0 +1,1 @@
+{"version":3,"file":"emojiSupport-Dfba4njw.js","names":["IS_EMOJI_SUPPORTED"],"sources":["../src/environment/emojiSupport.ts"],"sourcesContent":["const IS_EMOJI_SUPPORTED = navigator.userAgent.search(/OS X|iPhone|iPad|iOS/i) !== -1/*  && false *//*  || true */;\n\nexport default IS_EMOJI_SUPPORTED;\n"],"mappings":";AAAA,IAAMA,EAAqB,UAAU,UAAU,OAAO,uBAAuB,IAAM"}

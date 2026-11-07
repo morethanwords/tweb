@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+var e=new class{constructor(){this.manual=!1,this.t=0,this.timers=[]}now(){return this.manual?this.t:performance.now()/1e3}after(e,t){let n={at:this.now()+e,fn:t,cancelled:!1};return this.timers.push(n),()=>{n.cancelled=!0;let e=this.timers.indexOf(n);e!==-1&&this.timers.splice(e,1)}}run(e){if(!this.timers.length)return;let t=this.timers.filter(t=>t.at<=e).sort((e,t)=>e.at-t.at);if(t.length){this.timers=this.timers.filter(t=>t.at>e);for(let e of t)e.cancelled||e.fn()}}};export{e as t};
+//# sourceMappingURL=clock-Cd61zBie.js.map

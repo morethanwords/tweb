@@ -1,4 +1,4 @@
-### Unreleased
+### 2.3 (685)
 <!-- animated emoji: 👋 5472055112702629499, 🎨 5431456208487716895, 👥 5372926953978341366, 🖼️ 5375074927252621134, ✨ 5472164874886846699, 📞 5467539229468793355, 🔐 5472308992514464048, 🐞 5368487491097601104, 💬 5465300082628763143, 📁 5433653135799228968, 🎁 5199749070830197566, 🎬 5375464961822695044, 🔍 5188217332748527444, 📣 5469903029144657419, 🧰 5449428597922079323 -->
 It's been a while since our last post 👋 Web K has changed a lot since then, so here's the best of it, each with a short video.
 
@@ -55,6 +55,8 @@ Turn it on in **Privacy and Security**. While it's on, what Telegram keeps on yo
 - Messages that [repeat](https://telegram.org/blog/live-stories-gift-auctions) every day, week or month, and ones that delete themselves after a while.
 - Translate any message, or a whole chat with Telegram Premium.
 - Hold a photo, a video or a sticker to take a closer look.
+- Give a private chat its own theme or wallpaper, even [one made from a collectible gift](https://telegram.org/blog/profile-music-gift-themes#gift-themes).
+- Spoilers open with a new effect: the text gathers out of its dust, and a photo comes into focus out of its blur.
 - 🎲 Dice, 🎰 slot machines and games from bots play right in the chat.
 
 </details>
@@ -76,6 +78,7 @@ Turn it on in **Privacy and Security**. While it's on, what Telegram keeps on yo
 - Video profile photos play everywhere, and your profile can have [its own music](https://telegram.org/blog/profile-music-gift-themes).
 - Stories: change their speed, sort them into [albums](https://telegram.org/blog/post-search-story-albums-and-more), and see who viewed yours.
 - Birthday reminders, and private notes on your contacts.
+- A new look for your QR code: pick its colors, an emoji pattern or a gift, and share it as a picture.
 
 </details>
 
@@ -103,6 +106,7 @@ Turn it on in **Privacy and Security**. While it's on, what Telegram keeps on yo
 - [Direct messages to channels](https://telegram.org/blog/direct-to-channel-trim-voice-and-more), and [suggested posts](https://telegram.org/blog/checklists-suggested-posts).
 - [Welcome messages](https://telegram.org/blog/welcome-messages-buttons-TG-13) greet new members of a group.
 - A bot's answer appears as it is being written.
+- Bots can send interactive widgets that work right inside their messages.
 - [Mini apps](https://telegram.org/blog/fullscreen-miniapps-and-more) go full screen, or open in a window you can move around.
 - [Telegram Business](https://telegram.org/blog/telegram-business): opening hours, location and an intro on your profile.
 
@@ -121,6 +125,8 @@ We squashed hundreds of bugs. A few you may have run into:
 </details>
 
 Spotted a bug? 🐞 Tell us on the [Bugs and Suggestions Platform](https://bugs.telegram.org/?tag_ids=40&type=issues&sort=time).
+
+[Videos and details in our channel](https://t.me/WebK_en/18)
 
 ### 2.1.0 (491)
 You can see the full list of new features and improvements here: https://t.me/WebK_en/16

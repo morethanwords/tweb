@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+var e=class{constructor(e,t){this.pointerId=e.pointerId,this.start=[e.clientX,e.clientY],this.last=[e.clientX,e.clientY],this.startTime=t,this.samples=[[t,e.clientX]]}move(e,t){let n=[e.clientX-this.last[0],e.clientY-this.last[1]];for(this.last=[e.clientX,e.clientY],this.samples.push([t,e.clientX]);this.samples.length>2&&t-this.samples[0][0]>.08;)this.samples.shift();return n}velocity(e,t){let n=this.samples[0];return n&&t-n[0]>.005?(e.clientX-n[1])/(t-n[0]):0}isTap(e,t){return e.type!==`pointercancel`&&t-this.startTime<.25&&Math.hypot(e.clientX-this.start[0],e.clientY-this.start[1])<10}};export{e as t};
+//# sourceMappingURL=pull-DBZA4Ouj.js.map

@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+function e(e){try{e()}catch(e){console.error(`fastRaf callback error:`,e)}}var t;function n(n){t?t.push(n):(t=[n],requestAnimationFrame(()=>{let n=t;t=void 0,n.forEach(e)}))}var r;function i(){return r||(r=new Promise(e=>n(()=>e())),r.then(()=>{r=void 0}),r)}function a(){return new Promise(e=>{n(()=>{n(e)})})}function o(e,t){let n=e.ownerDocument?.defaultView||window,r=n.requestAnimationFrame(t);return()=>n.cancelAnimationFrame(r)}export{o as i,n,i as r,a as t};
+//# sourceMappingURL=schedulers-BmXlhWxK.js.map

@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+var e=typeof window<`u`?window:void 0,t=new Set,n=new Set;function r(){return e}function i(t){let n=e,r=n.requestAnimationFrame(t);return()=>n.cancelAnimationFrame(r)}function a(){return e.document.body}function o(r){let i=e;r&&r!==i&&(n.forEach(e=>{try{e(r,i)}catch{}}),e=r,t.forEach(e=>{try{e(r,i)}catch{}}))}function s(e){return t.add(e),()=>t.delete(e)}function c(e){return n.add(e),()=>n.delete(e)}function l(t,n,r,i){let a,o=e=>{a=t(e),a.addEventListener(n,r,i)},c=()=>a?.removeEventListener(n,r,i);o(e);let l=s(e=>{c(),o(e)});return()=>{c(),l()}}export{c as a,s as i,r as n,i as o,a as r,o as s,l as t};
+//# sourceMappingURL=appWindow-DIkXTT2w.js.map

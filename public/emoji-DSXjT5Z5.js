@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{n as e,r as t}from"./emojiImage-CkC8ylzm.js";var n=/[^\u0000-¨ª-­¯-῿]/;function r(r,i=1/0){if(!n.test(r))return;let a=t(r,i+1);if(!a.length||a.length>i)return;let o=[],s=0;for(let{index:t,emoji:n,unicode:i}of a)t>s&&o.push(r.slice(s,t)),o.push({emoji:n,src:new URL(e(i),location.href).href}),s=t+n.length;return s<r.length&&o.push(r.slice(s)),o}export{r as splitWidgetEmoji};
+//# sourceMappingURL=emoji-DSXjT5Z5.js.map

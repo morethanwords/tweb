@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{y as e}from"./solid-B0Du5GQu.js";import{c as t,g as n,o as r}from"./web-FH1QzTRi.js";import{t as i}from"./classNames-HGN7N_ne.js";var a=n(`<div><div class=chat-input-plate-side></div><div class=chat-input-plate-center></div><div class=chat-input-plate-side>`),o=`chat-input-plate`,s=`is-single`;function c(n){return(()=>{var s=a(),c=s.firstChild,l=c.nextSibling,u=l.nextSibling;return t(c,()=>n.left),t(l,()=>n.center),t(u,()=>n.right),e(()=>r(s,i(o,`rows-wrapper-row`,n.class))),s})()}export{c as n,s as t};
+//# sourceMappingURL=controlPlate-CAciojI_.js.map

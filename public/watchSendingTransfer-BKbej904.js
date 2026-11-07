@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{n as e}from"./rootScope-DKL92oUL.js";function t(t,n){let r=({tempId:e,tempMessage:r,message:i})=>{e===t.mid&&r?.peerId===t.peerId&&n.onSent(i)},i=({tempId:e,peerId:r,error:i})=>{e===t.mid&&r===t.peerId&&n.onError(i)};return e.addEventListener(`message_sent`,r),e.addEventListener(`message_error`,i),()=>{e.removeEventListener(`message_sent`,r),e.removeEventListener(`message_error`,i)}}export{t};
+//# sourceMappingURL=watchSendingTransfer-BKbej904.js.map

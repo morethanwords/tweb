@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{C as e,x as t}from"./solid-B0Du5GQu.js";var[n,r]=t(()=>e(new Map)),i=n;function a(e,t){r(n=>{let r=new Map(n);return t?r.set(e,t):r.delete(e),r})}function o(e,t){let n=t.video||t.file;if(!n)return;let r=t.file?.cancel?.bind(t.file),i=t.video?.cancel?.bind(t.video);n.cancel=()=>{r?.(),i?.()},a(e,{promise:n}),Promise.all([t.file,t.video].filter(Boolean)).catch(()=>{}).finally(()=>a(e,null))}export{o as n,i as t};
+//# sourceMappingURL=avatarUpload-X7mlbgsj.js.map

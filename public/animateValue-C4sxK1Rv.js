@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{t as e}from"./lerp-DntFbA3F.js";import{t}from"./easings-BWhDqqVj.js";import{t as n}from"./requestRAF-tfYz3awG.js";function r(r,i,a,o,{easing:s=t,onEnd:c=()=>{}}={}){let l,u=!1;function d(){if(u)return;let t=performance.now();l||(l=t);let f=t-l,p=a?Math.min(f/a,1):1,m=s(p);r instanceof Array&&i instanceof Array?o(r.map((t,n)=>e(t,i[n],m))):o(e(r,i,m)),p<1?n(d):c()}return n(d),()=>{u=!0}}export{r as t};
+//# sourceMappingURL=animateValue-C4sxK1Rv.js.map

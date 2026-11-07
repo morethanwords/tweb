@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{n as e,t}from"./browser-DiPVYfgT.js";function n(n,r,i){let a;if(i===void 0)a=e(new Uint8Array(n));else{let e=[],r=0,o=!1;if(new t(t=>{o||(r+=t.length,r>i?o=!0:e.push(t))}).push(new Uint8Array(n),!0),o)throw Error(`GZIP_MAX_SIZE_EXCEEDED`);a=new Uint8Array(r);let s=0;for(let t of e)a.set(t,s),s+=t.length}return r?new TextDecoder().decode(a):a}export{n as t};
+//# sourceMappingURL=gzipUncompress-WTyayUlq.js.map
