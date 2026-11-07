@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   wrapPeerTitle: vi.fn(),
   showPeerPopup: vi.fn(),
   importContactToken: vi.fn(),
+  importNoPaidMessagesToken: vi.fn(),
   getDeepLinkInfo: vi.fn(),
   resolveUserByUsername: vi.fn(),
   resolveUsername: vi.fn(),
@@ -67,6 +68,7 @@ vi.mock('@components/popups/giftLink', () => ({default: vi.fn()}));
 vi.mock('@components/popups/stars', () => ({default: vi.fn(), showGiftStarsPicker: vi.fn()}));
 vi.mock('@components/popups/sendGift', () => ({default: vi.fn()}));
 vi.mock('@components/popups/sendGiftPicker', () => ({default: vi.fn()}));
+vi.mock('@components/popups/myQrCode', () => ({default: vi.fn()}));
 vi.mock('@stores/stars', () => ({prefetchStars: vi.fn()}));
 vi.mock('@components/popups/starGiftInfo', () => ({default: vi.fn()}));
 vi.mock('@components/sidebarRight', () => ({default: {}}));
@@ -99,6 +101,7 @@ beforeAll(async() => {
   processor.construct({
     appUsersManager: {
       importContactToken: mocks.importContactToken,
+      importNoPaidMessagesToken: mocks.importNoPaidMessagesToken,
       resolveUserByUsername: mocks.resolveUserByUsername,
       resolveUsername: mocks.resolveUsername
     },
@@ -133,8 +136,30 @@ describe('contact token links', () => {
 
   test('read the token of the tg:// form too', async() => {
     mocks.importContactToken.mockResolvedValue({_: 'user', id: USER_ID, pFlags: {}});
-    await click('tg_contact', 'tg://contact?token=AbCd&free=1');
+    await click('tg_contact', 'tg://contact?token=AbCd');
     expect(mocks.importContactToken).toHaveBeenCalledWith('AbCd');
+  });
+
+  test.each([
+    ['https://t.me/contact/AbCd?free=Fr1', 'contact'],
+    ['tg://contact?token=AbCd&free=Fr1', 'tg_contact']
+  ])('spend the ?free= code of %s on its owner, then open their chat', async(href, handler) => {
+    mocks.importContactToken.mockResolvedValue({_: 'user', id: USER_ID, pFlags: {}});
+    mocks.importNoPaidMessagesToken.mockResolvedValue(true);
+    await click(handler, href);
+
+    expect(mocks.importContactToken).toHaveBeenCalledWith('AbCd');
+    expect(mocks.importNoPaidMessagesToken).toHaveBeenCalledWith(USER_ID, 'Fr1');
+    expect(mocks.setInnerPeer).toHaveBeenCalledWith({peerId: USER_ID.toPeerId(false)});
+    expect(mocks.toastNew).toHaveBeenCalledWith(expect.objectContaining({langPackKey: 'NoPaidMessagesToken.Imported'}));
+  });
+
+  test('spend no code on a dead contact link', async() => {
+    mocks.importContactToken.mockRejectedValue({type: 'CONTACT_TOKEN_INVALID'});
+    await click('contact', 'https://t.me/contact/AbCd?free=Fr1');
+
+    expect(mocks.importNoPaidMessagesToken).not.toHaveBeenCalled();
+    expect(mocks.toastNew).toHaveBeenCalledWith({langPackKey: 'ContactLinkInvalid'});
   });
 
   test.each([

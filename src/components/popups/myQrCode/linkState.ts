@@ -3,10 +3,10 @@ import {User} from '@layer';
 import {AppManagers} from '@lib/managers';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {buildTelegramUserQrUrl} from '@helpers/qrCode/paintQrCode';
-import {Caption} from './caption';
-import {createCountdown} from './countdown';
-import createFeeCode from './feeCode';
-import {buildPhoneUrl, chooseOwnLink, linkCaption, OwnLinkKind} from './link';
+import {Caption} from '@components/popups/myQrCode/caption';
+import {createCountdown} from '@components/popups/myQrCode/countdown';
+import createFeeCode from '@components/popups/myQrCode/feeCode';
+import {buildPhoneUrl, chooseOwnLink, linkCaption, OwnLinkKind} from '@components/popups/myQrCode/link';
 
 // `QrShareServer.CONTACT_TOKEN_RETRY`
 const RETRY_MS = 5000;

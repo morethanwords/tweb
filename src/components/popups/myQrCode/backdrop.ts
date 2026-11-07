@@ -1,5 +1,5 @@
-import {BACKDROP_MID_OFFSET, BACKDROP_VERTICAL_MID_OFFSET, BackdropColors} from './colors';
-import {BACKDROP_TILT, SurfaceGeometry} from './layout';
+import {BACKDROP_MID_OFFSET, BACKDROP_VERTICAL_MID_OFFSET, BackdropColors} from '@components/popups/myQrCode/colors';
+import {BACKDROP_TILT, SurfaceGeometry} from '@components/popups/myQrCode/layout';
 
 /**
  * The backdrop gradient, described once: the screen sets it as CSS, the exported picture draws it on a canvas, both

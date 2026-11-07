@@ -4,8 +4,8 @@ import {attachPickerGrid} from '@helpers/dom/attachListNavigation';
 import {rgbIntToHex} from '@helpers/color';
 import I18n from '@lib/langPack';
 import Scrollable from '@components/scrollable2';
-import {DEFAULT_BACKDROP_NAME} from './colors';
-import {getDefaultBackdrop} from './theme';
+import {DEFAULT_BACKDROP_NAME} from '@components/popups/myQrCode/colors';
+import {getDefaultBackdrop} from '@components/popups/myQrCode/theme';
 import styles from '@components/popups/myQrCode.module.scss';
 
 /** The default circle, then the served colours in their order */

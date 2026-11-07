@@ -1,9 +1,10 @@
 import type {MyDocument} from '@appManagers/appDocsManager';
-import {getStandardEmojiUrl} from './emojiPresets';
+import {getStandardEmojiUrl} from '@components/popups/myQrCode/emojiPresets';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import wrapSticker from '@components/wrappers/sticker';
 import liteMode from '@helpers/liteMode';
 import safePlay from '@helpers/dom/safePlay';
+import LottiePlayer from '@lib/lottie/lottiePlayer';
 import easeOutBack from '@helpers/easing/easeOutBack';
 import rootScope from '@lib/rootScope';
 import {Accessor, createEffect, on, onCleanup, onMount} from 'solid-js';
@@ -12,10 +13,10 @@ import {rgbIntToHex} from '@helpers/color';
 import applyColorOnContext from '@helpers/canvas/applyColorOnContext';
 import {loadEmojiStill} from '@components/wrappers/emojiPattern';
 import {FontFamily} from '@config/font';
-import {Appearance, themeEmojiKey, ThemeEmoji} from './theme';
-import createLayerStack from './layerStack';
-import {EDGE_BAND, GIFT_PERIOD, modelNodes, Node, placeEmojiField, symbolNodes} from './fieldNodes';
-import attachFieldMotion, {fieldCanvasSize} from './fieldMotion';
+import {Appearance, themeEmojiKey, ThemeEmoji} from '@components/popups/myQrCode/theme';
+import createLayerStack from '@components/popups/myQrCode/layerStack';
+import {EDGE_BAND, GIFT_PERIOD, modelNodes, Node, placeEmojiField, symbolNodes} from '@components/popups/myQrCode/fieldNodes';
+import attachFieldMotion, {fieldCanvasSize} from '@components/popups/myQrCode/fieldMotion';
 import styles from '@components/popups/myQrCode.module.scss';
 
 /**
@@ -150,6 +151,9 @@ function createLiveEmojiField(options: {
 
   const managers = bindManagersToSession(rootScope.managers);
   const tinted: ReturnType<typeof createCanvas>[] = [];
+  // the animated emoji's players: they play while the field's frames are read (`setPlaying`), and stand still otherwise
+  const sources: {play: () => void, pause: () => void}[] = [];
+  let playing = liteMode.isAvailable('motion');
   const holders = emojis.map((emoji, index) => {
     const div = document.createElement('div');
     players.append(div);
@@ -168,12 +172,19 @@ function createLiveEmojiField(options: {
     })
     .then((doc) => wrapSticker({doc, div, middleware, width: LIVE_EMOJI_SIZE, height: LIVE_EMOJI_SIZE, play: liteMode.isAvailable('motion'), loop: true, group: 'none', withThumb: false, exportLoad: 2, noOffscreen: true}))
     .then(({load}) => load())
-    .then(() => {
+    .then((loaded) => {
       if(!middleware()) return;
       // Chrome holds a muted video that autoplays out of sight on its first frame, as the players stand here: a video
       // emoji is played by the script, which it lets run
       const video = div.querySelector('video');
-      if(video && liteMode.isAvailable('motion')) safePlay(video);
+      const source = video ?
+        {play: () => safePlay(video), pause: () => video.pause()} :
+        loaded instanceof LottiePlayer ? loaded : undefined;
+      if(source) {
+        sources.push(source);
+        playing ? source.play() : source.pause();
+      }
+
       options.onLoad();
     })
     .catch(() => {});
@@ -257,6 +268,11 @@ function createLiveEmojiField(options: {
   return {
     canvas,
     draw: (x: number, y: number, time: number) => paint(ctx, x, y, time, performance.now()),
+    setPlaying: (next: boolean) => {
+      if(playing === next) return;
+      playing = next;
+      sources.forEach((source) => next ? source.play() : source.pause());
+    },
     /** The field at rest (not moved, every copy in), for the exported picture */
     still() {
       if(stillCanvas) return stillCanvas;
@@ -346,7 +362,7 @@ export function PatternField(props: {
           motion.update(layout);
         }
       });
-      const layout = {draw: live.draw};
+      const layout = {draw: live.draw, setPlaying: live.setPlaying};
       stillField = live.still;
       if(!stack.current) show();
       else setTimeout(show, 1000);

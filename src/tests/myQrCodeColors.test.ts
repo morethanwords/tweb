@@ -97,4 +97,16 @@ describe('myQrCode colors', () => {
     expect(surfaceGeometry(376, 560, {captioned: false}).card.height).toBe(280);
     expect(surfaceGeometry(376, 560, {pill: true}).cardTop).toBeCloseTo(surface.cardTop - 16);
   });
+
+  // the close button ends 49 px down (9 + 40); the bar of buttons starts 60 px up (20 + 40)
+  it.each([
+    [568, 320, true],
+    [568, 320, false],
+    [376, 400, true]
+  ])('keeps the whole card and its pill between the close button and the buttons on a %ix%i screen (pill: %s)', (width, height, pill) => {
+    const surface = surfaceGeometry(width, height, {pill});
+    expect(surface.cardTop).toBeGreaterThanOrEqual(49);
+    expect(surface.cardTop + surface.card.height + surface.pillExtra).toBeLessThanOrEqual(height - 60);
+    expect(surface.card.width).toBeGreaterThan(100);
+  });
 });

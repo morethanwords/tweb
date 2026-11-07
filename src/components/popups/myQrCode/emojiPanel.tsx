@@ -10,8 +10,8 @@ import noop from '@helpers/noop';
 import I18n from '@lib/langPack';
 import {AppManagers} from '@lib/managers';
 import pause from '@helpers/schedulers/pause';
-import {addAppliedEmoji, getAppliedEmoji, getStandardEmojiUrl, loadPresetIds, resolvePresetIds} from './emojiPresets';
-import {ThemeEmoji, themeEmojiKey} from './theme';
+import {addAppliedEmoji, getAppliedEmoji, getStandardEmojiUrl, loadPresetIds, resolvePresetIds} from '@components/popups/myQrCode/emojiPresets';
+import {ThemeEmoji, themeEmojiKey} from '@components/popups/myQrCode/theme';
 import styles from '@components/popups/myQrCode.module.scss';
 
 const CHOSEN_EMOJI_SIZE = 26;
@@ -112,6 +112,7 @@ function stripItem(emoji: ThemeEmoji, fresh: boolean): StripItem {
  * circle growing in and goes the same way.
  */
 export function ChosenEmojiStrip(props: {
+  managers: AppManagers,
   emojis: Accessor<ThemeEmoji[]>,
   onRemove: (emoji: ThemeEmoji) => void
 }) {
@@ -146,12 +147,13 @@ export function ChosenEmojiStrip(props: {
 
   return (
     <Show when={items().length}>
-      <StripIsland items={items} appear={!opening} onRemove={props.onRemove} onGone={gone} />
+      <StripIsland managers={props.managers} items={items} appear={!opening} onRemove={props.onRemove} onGone={gone} />
     </Show>
   );
 }
 
 function StripIsland(props: {
+  managers: AppManagers,
   items: Accessor<StripItem[]>,
   /** It comes with its first emoji, not with the panel */
   appear: boolean,
@@ -212,12 +214,19 @@ function StripIsland(props: {
             else props.onGone(item);
           }, {defer: true}));
 
+          // * the emoji each button takes off, said with it: a custom one by the emoji it stands for
+          const [emoticon, setEmoticon] = createSignal(item.emoji.emoticon);
+          if(!emoticon() && item.emoji.documentId) {
+            Promise.resolve(props.managers.appEmojiManager.getCustomEmojiDocument(item.emoji.documentId))
+            .then((doc) => setEmoticon(doc?.stickerEmojiRaw), noop);
+          }
+
           return (
             <button
               ref={cell}
               type="button"
               class={styles.chosenEmoji}
-              aria-label={I18n.format('Remove', true)}
+              aria-label={emoticon() ? I18n.format('QRCode.RemoveEmoji', true, [emoticon()]) : I18n.format('Remove', true)}
               disabled={item.leaving()}
               onClick={() => props.onRemove(item.emoji)}
             >

@@ -1,6 +1,7 @@
 import type {InputSavedStarGift, Reaction, ShareTheme, ShareThemeBackdropOption, StarGift, StarGiftAttribute} from '@layer';
-import {BackdropInput, DEFAULT_BACKDROP, DEFAULT_BACKDROP_NAME} from './colors';
-import {BUILT_IN_BACKDROPS, isBuiltInBackdropId} from './backdropTable';
+import {BackdropInput, DEFAULT_BACKDROP, DEFAULT_BACKDROP_NAME} from '@components/popups/myQrCode/colors';
+import {BUILT_IN_BACKDROPS, isBuiltInBackdropId} from '@components/popups/myQrCode/backdropTable';
+import getUniqueGiftAttributes from '@appManagers/utils/gifts/getUniqueGiftAttributes';
 
 /**
  * What a share theme looks like, apart from how it is drawn. Pure: the screen reads the served `ShareTheme` and the
@@ -84,11 +85,9 @@ export function shareThemeToAppearance(theme: ShareTheme | undefined, backdrops?
       const gift = theme.stargift;
       if(gift._ !== 'starGiftUnique') break;
 
-      const backdrop = gift.attributes.find((attribute) => attribute._ === 'starGiftAttributeBackdrop') as StarGiftAttribute.starGiftAttributeBackdrop;
+      const {backdrop, model, pattern} = getUniqueGiftAttributes(gift);
       if(!backdrop) break;
 
-      const model = gift.attributes.find((attribute) => attribute._ === 'starGiftAttributeModel') as StarGiftAttribute.starGiftAttributeModel;
-      const pattern = gift.attributes.find((attribute) => attribute._ === 'starGiftAttributePattern') as StarGiftAttribute.starGiftAttributePattern;
       return {
         kind: 'gift',
         // a gift's backdrop is never the tuned one: only the palette's own is

@@ -1,14 +1,4 @@
 {
-  "constructorsFromUnions": [
-    "messageActionGramTransfer",
-    "messageActionWalletTonConnectRequest",
-    "updateWalletState",
-    "updateSentWalletTransaction",
-    "updateWalletGaslessInfo",
-    "updateWalletTonConnectSession",
-    "updateWalletTonConnectPendingDisconnect",
-    "messageEntityTonAddress",
-    "textTonAddress"
-  ],
+  "constructorsFromUnions": [],
   "constructorParams": {}
 }

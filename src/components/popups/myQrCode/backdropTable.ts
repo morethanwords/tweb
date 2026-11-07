@@ -1,5 +1,5 @@
 import type {ShareThemeBackdropOption} from '@layer';
-import {DEFAULT_BACKDROP_NAME} from './colors';
+import {DEFAULT_BACKDROP, DEFAULT_BACKDROP_NAME} from '@components/popups/myQrCode/colors';
 
 /**
  * The colours the screen offers before the server's list has come, or when it is of no use: Android's built-in table
@@ -80,7 +80,8 @@ const TABLE: [string, number, number, number, number][] = [
   ['Mexican Pink', 0xE36692, 0xC9497C, 0x750230, 0xFFD6E6],
   ['Burgundy', 0xA35E66, 0x6D414A, 0x340307, 0xE7BCC0],
   ['Raspberry', 0xE07B85, 0xB65980, 0x890638, 0xFFD6E6],
-  ['Black', 0x363738, 0x0E0F0F, 0x6C6868, 0x8C8F91],
+  // the backdrop of a theme without one
+  [DEFAULT_BACKDROP_NAME, DEFAULT_BACKDROP.center_color, DEFAULT_BACKDROP.edge_color, DEFAULT_BACKDROP.pattern_color, DEFAULT_BACKDROP.text_color],
   ['Onyx Black', 0x464A4D, 0x282C2E, 0x000000, 0x9EA1A2],
   ['Rifle Green', 0x64695C, 0x4B5241, 0x0F120B, 0xC3C7BD],
   ['Battleship Grey', 0x8C8C85, 0x6C6C66, 0x2B2A20, 0xCFCEC4],

@@ -7,10 +7,10 @@ import liteMode from '@helpers/liteMode';
 import {nodeFrame} from '@helpers/schedulers';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import {IconTsx} from '@components/iconTsx';
-import createFeeCode, {FREE_SECONDS} from './feeCode';
-import {formatCountdown} from './link';
-import {burnAdopt, burnCut, burnFront, burnLiquid, burnParticles, burnRestart, BurnState, isPouring, REFILL} from './pillBurn';
-import styles from './feePill.module.scss';
+import createFeeCode, {FREE_SECONDS} from '@components/popups/myQrCode/feeCode';
+import {formatCountdown} from '@components/popups/myQrCode/link';
+import {burnAdopt, burnCut, burnFront, burnLiquid, burnParticles, burnRestart, BurnState, isPouring, REFILL} from '@components/popups/myQrCode/pillBurn';
+import styles from '@components/popups/myQrCode/feePill.module.scss';
 
 type FeeCode = ReturnType<typeof createFeeCode>;
 

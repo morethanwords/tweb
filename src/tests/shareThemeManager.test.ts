@@ -84,6 +84,8 @@ describe('getCachedShareTheme', () => {
 
 describe('setShareTheme', () => {
   const theme: ShareTheme = {_: 'shareThemeEmojiBackdrop', flags: 1, backdrop_id: 5};
+  // * a save is sent once the ones before it for the peer are answered: a turn of the event loop lets it go
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
   it('writes the full peer before the answer, tells the app, and sends the own profile as inputPeerSelf', async() => {
     let seenByRequest: ShareTheme;
@@ -95,8 +97,9 @@ describe('setShareTheme', () => {
 
     const promise = manager.setShareTheme(SELF.toPeerId(false), theme);
     expect(getFull().share_theme).toBe(theme);
-    expect(seenByRequest).toBe(theme);
     expect(dispatchEvent).toHaveBeenCalledWith('user_full_update', SELF);
+    await flush();
+    expect(seenByRequest).toBe(theme);
 
     resolveRequest(true);
     expect(await promise).toBe(true);
@@ -135,6 +138,7 @@ describe('setShareTheme', () => {
 
     const promise = manager.setShareTheme(SELF.toPeerId(false), theme);
     getFull().share_theme = later;
+    await flush();
     fail(new Error('fail'));
     await expect(promise).rejects.toThrow('fail');
     expect(getFull().share_theme).toBe(later);
@@ -151,10 +155,12 @@ describe('setShareTheme', () => {
     const next = manager.setShareTheme(SELF.toPeerId(false), second);
     expect(getFull().share_theme).toBe(second);
 
+    await flush();
     fails[0](new Error('first'));
     await expect(first).rejects.toThrow('first');
     expect(getFull().share_theme).toBe(second);
 
+    await flush();
     fails[1](new Error('second'));
     await expect(next).rejects.toThrow('second');
     expect(getFull().share_theme).toBe(previous);
@@ -169,30 +175,36 @@ describe('setShareTheme', () => {
     const first = manager.setShareTheme(SELF.toPeerId(false), theme);
     const next = manager.setShareTheme(SELF.toPeerId(false), second);
 
+    await flush();
     answers[0].resolve(true);
     await first;
+    await flush();
     answers[1].reject(new Error('second'));
     await expect(next).rejects.toThrow('second');
     expect(getFull().share_theme).toBe(theme);
   });
 
-  it('shows an earlier choice the server took after a later one failed first', async() => {
-    const previous: ShareTheme = {_: 'shareThemeDefault'};
+  // * an earlier save still unanswered (retried by the network, say) must not land on the server after a later one
+  it('sends a later choice only once the earlier one is answered, so the latest is the server\'s', async() => {
     const second: ShareTheme = {_: 'shareThemeEmojiBackdrop', flags: 1, backdrop_id: 6};
-    const answers: {resolve: (value: boolean) => void, reject: (error: Error) => void}[] = [];
-    const {manager, getFull} = makeProfileManager(() => new Promise((resolve, reject) => answers.push({resolve, reject})));
+    const answers: ((value: boolean) => void)[] = [];
+    const {manager, apiManager, getFull} = makeProfileManager(() => new Promise((resolve) => answers.push(resolve)));
 
-    getFull().share_theme = previous;
     const first = manager.setShareTheme(SELF.toPeerId(false), theme);
     const next = manager.setShareTheme(SELF.toPeerId(false), second);
+    await flush();
+    expect(apiManager.invokeApi).toHaveBeenCalledTimes(1);
+    expect(getFull().share_theme).toBe(second);
 
-    answers[1].reject(new Error('second'));
-    await expect(next).rejects.toThrow('second');
-    expect(getFull().share_theme).toBe(previous);
-
-    answers[0].resolve(true);
+    answers[0](true);
     await first;
-    expect(getFull().share_theme).toBe(theme);
+    await flush();
+    expect(apiManager.invokeApi).toHaveBeenCalledTimes(2);
+    expect(apiManager.invokeApi.mock.calls[1][1].theme).toBe(second);
+
+    answers[1](true);
+    await next;
+    expect(getFull().share_theme).toBe(second);
   });
 
   it('keeps an input gift out of the cache and shows the gift in its place', async() => {
@@ -216,7 +228,7 @@ describe('setShareTheme', () => {
 });
 
 describe('no paid messages token', () => {
-  function makeUsersManager(invokeApi: (method: string, params: any) => Promise<any>, fullUser: Partial<UserFull.userFull> = {}) {
+  function makeUsersManager(invokeApi: (method: string, params: any) => Promise<any>, fullUser: Partial<UserFull.userFull> = {}, serverTimeOffset = 0) {
     const manager = new AppUsersManager();
     const state: any = {noPaidMessagesToken: null};
     const apiManager = makeApiManager(invokeApi);
@@ -229,7 +241,8 @@ describe('no paid messages token', () => {
           state[key] = value;
         })
       },
-      appProfileManager: {getProfile: vi.fn(async() => ({_: 'userFull', ...fullUser}))}
+      appProfileManager: {getProfile: vi.fn(async() => ({_: 'userFull', ...fullUser}))},
+      timeManager: {getServerTimeOffset: () => serverTimeOffset}
     });
     (manager as any).saveApiUser = saveApiUser;
     (manager as any).getUserInput = (id: UserId) => ({_: 'inputUser', user_id: id});
@@ -295,6 +308,12 @@ describe('no paid messages token', () => {
     expect(state.noPaidMessagesToken).toBeNull();
   });
 
+  it('gives a code\'s end by this device\'s clock, whatever the server\'s says', async() => {
+    // * the device is 2 minutes ahead of the server: the server's 1000 is the device's 1120
+    const {manager} = makeUsersManager(async() => ({_: 'exportedNoPaidMessagesToken', token: 't', url: 'u', expires: 1000}), {}, -120);
+    expect((await manager.exportNoPaidMessagesToken({temporary: true})).expires).toBe(1120);
+  });
+
   it('sends only the flags that are set', async() => {
     const {manager, apiManager} = makeUsersManager(async() => ({_: 'exportedNoPaidMessagesToken', token: 't', url: 'u'}));
     await manager.exportNoPaidMessagesToken({revoke: true});
@@ -318,6 +337,12 @@ describe('no paid messages token', () => {
   it('says the fee stays when the full user still has one', async() => {
     const {manager} = makeUsersManager(async() => ({_: 'user', id: OTHER}), {send_paid_messages_stars: 10});
     expect(await manager.importNoPaidMessagesToken(OTHER, 'tok')).toBe(false);
+  });
+
+  it('takes the code when the server has, even if the full user cannot be asked after it', async() => {
+    const {manager} = makeUsersManager(async() => ({_: 'user', id: OTHER}));
+    (manager as any).appProfileManager.getProfile.mockRejectedValue({type: 'FLOOD_WAIT_5'});
+    expect(await manager.importNoPaidMessagesToken(OTHER, 'tok')).toBe(true);
   });
 
   it('joins two imports of the same code', async() => {

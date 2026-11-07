@@ -1,6 +1,8 @@
 import type {PrivacyRule} from '@layer';
+import getPrivacyRulesDetails from '@appManagers/utils/privacy/getPrivacyRulesDetails';
+import PrivacyType from '@appManagers/utils/privacy/privacyType';
 import toHHMMSS from '@helpers/string/toHHMMSS';
-import type {Caption} from './caption';
+import type {Caption} from '@components/popups/myQrCode/caption';
 
 /**
  * Which link the own profile's code carries, and the arithmetic of a code that expires. Pure, so it is tested alone;
@@ -12,9 +14,8 @@ export type OwnLinkKind = 'username' | 'phone' | 'contact';
 /** A copy, a share or a save this close to the end of a code is refused: it would be dead on arrival */
 export const EXPIRY_CUTOFF_SECONDS = 3;
 
-/** The rules that decide a privacy setting; the first of them in the list does, any other is passed over */
-const DECIDING = new Set<PrivacyRule['_']>(['privacyValueAllowAll', 'privacyValueDisallowAll', 'privacyValueAllowContacts']);
-const decidingRule = (rules: PrivacyRule[]) => rules.find((rule) => DECIDING.has(rule._))?._;
+/** Who a privacy setting is for: the first rule of everybody, nobody or contacts decides, any other is passed over */
+const decidingType = (rules: PrivacyRule[]) => getPrivacyRulesDetails(rules).type;
 
 /**
  * Whether `t.me/+<phone>` reaches us, as `QrShareServer.isPhonePublic` decides: a number shown to everybody or to
@@ -23,10 +24,10 @@ const decidingRule = (rules: PrivacyRule[]) => rules.find((rule) => DECIDING.has
  */
 export function isPhonePublic(phoneRules: PrivacyRule[] | undefined, addedByPhoneRules: PrivacyRule[] | undefined) {
   if(!phoneRules) return false;
-  const shown = decidingRule(phoneRules);
-  if(shown === 'privacyValueAllowAll' || shown === 'privacyValueAllowContacts') return true;
+  const shown = decidingType(phoneRules);
+  if(shown === PrivacyType.Everybody || shown === PrivacyType.Contacts) return true;
   if(!addedByPhoneRules?.length) return true;
-  return decidingRule(addedByPhoneRules) === 'privacyValueAllowAll';
+  return decidingType(addedByPhoneRules) === PrivacyType.Everybody;
 }
 
 /** The link of the own profile: the username, else the phone when it reaches us, else a temporary contact link */

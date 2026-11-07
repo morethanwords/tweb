@@ -1,6 +1,6 @@
 import {FontFamily, FontWeightBold} from '@config/font';
 import getTextWidth from '@helpers/canvas/getTextWidth';
-import {CAPTION_LINE_HEIGHT, CAPTION_MAX_LINES, CardGeometry} from './layout';
+import {CAPTION_LINE_HEIGHT, CAPTION_MAX_LINES, CardGeometry} from '@components/popups/myQrCode/layout';
 
 /**
  * The text under the code, as `QrShareView.nameLayout` sets it: the largest of three sizes that fits on one line,

@@ -7,6 +7,7 @@
 import noop from '@helpers/noop';
 import {defineStories} from '../registry';
 import {NOW, botUser} from '../fixtures';
+import type {PopupStoryContext} from '@components/popupSandbox/context';
 
 
 const reportOptions = {
@@ -51,6 +52,12 @@ const QR_EMOJI_ANSWERS = {
   appStickersManager: {getStickerSet: (): {documents: any[]} => ({documents: []})},
   // the installed packs as the server lists them: none
   appEmojiManager: {getCustomEmojis: () => ({_: 'messages.allStickers', hash: 0, sets: [] as any[]}), getCachedCustomEmojiDocuments: (): any[] => []}
+};
+
+/** The own QR code; its stories differ only in what the managers answer */
+const openOwnQrCode = async(ctx: PopupStoryContext) => {
+  const {default: showMyQrCodePopup} = await import('@components/popups/myQrCode');
+  await showMyQrCodePopup(ctx.peer('self'));
 };
 
 defineStories('Chat & moderation', [
@@ -228,10 +235,7 @@ defineStories('Chat & moderation', [
     id: 'myQrCode',
     title: 'My QR code',
     managers: {appProfileManager: QR_PROFILE_ANSWERS, ...QR_EMOJI_ANSWERS},
-    open: async(ctx) => {
-      const {default: showMyQrCodePopup} = await import('@components/popups/myQrCode');
-      await showMyQrCodePopup(ctx.peer('self'));
-    }
+    open: openOwnQrCode
   },
   {
     // a theme with emoji on a colour: the pattern turns and drifts, and the backdrop drags it
@@ -248,10 +252,7 @@ defineStories('Chat & moderation', [
       },
       ...QR_EMOJI_ANSWERS
     },
-    open: async(ctx) => {
-      const {default: showMyQrCodePopup} = await import('@components/popups/myQrCode');
-      await showMyQrCodePopup(ctx.peer('self'));
-    }
+    open: openOwnQrCode
   },
   {
     // a message fee: the pill under the card takes it off with a temporary code
@@ -275,10 +276,7 @@ defineStories('Chat & moderation', [
         })
       }
     },
-    open: async(ctx) => {
-      const {default: showMyQrCodePopup} = await import('@components/popups/myQrCode');
-      await showMyQrCodePopup(ctx.peer('self'));
-    }
+    open: openOwnQrCode
   },
   {
     // no collectible to style the code with: the gifts sheet says so, and offers the gift store
@@ -289,10 +287,7 @@ defineStories('Chat & moderation', [
       ...QR_EMOJI_ANSWERS,
       appGiftsManager: {getProfileGifts: () => ({next: undefined as string, gifts: [] as any[], count: 0, collections: [] as any[]})}
     },
-    open: async(ctx) => {
-      const {default: showMyQrCodePopup} = await import('@components/popups/myQrCode');
-      await showMyQrCodePopup(ctx.peer('self'));
-    }
+    open: openOwnQrCode
   },
   {
     // somebody else's code: their theme, nothing to change

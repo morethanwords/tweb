@@ -1,6 +1,6 @@
 import type {ShareTheme} from '@layer';
 import debounce from '@helpers/schedulers/debounce';
-import type {ShareThemeToSave} from './theme';
+import type {ShareThemeToSave} from '@components/popups/myQrCode/theme';
 
 /**
  * Saving the theme the way the Android client does (`QrShareServer`): every choice shows at once and is sent 700 ms

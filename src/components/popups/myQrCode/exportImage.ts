@@ -1,9 +1,9 @@
 import roundRect from '@helpers/canvas/roundRect';
 import canvasToBlob from '@helpers/canvas/canvasToBlob';
 import isRTL from '@helpers/string/isRTL';
-import {BackdropGradient, paintBackdrop} from './backdrop';
-import {Caption, captionFont, captionPlacement} from './caption';
-import {SurfaceGeometry} from './layout';
+import {BackdropGradient, paintBackdrop} from '@components/popups/myQrCode/backdrop';
+import {Caption, captionFont, captionPlacement} from '@components/popups/myQrCode/caption';
+import {SurfaceGeometry} from '@components/popups/myQrCode/layout';
 
 /**
  * The picture the screen is copied, shared and saved as: the card on its backdrop, with a margin round it. It is the

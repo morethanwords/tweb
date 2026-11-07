@@ -4935,6 +4935,7 @@ const lang = {
   'QRCode.PremiumGiftsToast': 'Subscribe to Premium to use\ngifts in your QR code.',
   'QRCode.PremiumSubscribe': 'Subscribe',
   'QRCode.NoPaid.RemoveStarsFee': 'Remove %s fee',
+  'QRCode.RemoveEmoji': 'Remove %s',
   'QRCode.NoPaid.Free': 'Free',
   'QRCode.NoPaid.ExpiresIn': 'Expires in %s',
   'QRCode.NoPaid.NoTimeLimit': 'No time limit',

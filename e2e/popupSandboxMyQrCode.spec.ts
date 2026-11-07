@@ -339,6 +339,8 @@ test('The chosen emoji stand at the bottom of their panel, and a panel keeps its
   await page.locator('.popup button[aria-controls="qr-sheet"]').nth(1).click();
   const strip = page.locator('#qr-sheet [class*="_chosenStrip_"]');
   await expect(strip.locator('button')).toHaveCount(3);
+  // each button says which emoji it takes off
+  expect(await strip.locator('button').evaluateAll((buttons) => buttons.map((button) => button.getAttribute('aria-label')))).toEqual(['Remove 🚀', 'Remove ⭐', 'Remove 🔥']);
   await page.waitForTimeout(600);
   await shot(page, 'desktop-emoji-strip');
   // inside the sheet, over the keyboard, near its bottom

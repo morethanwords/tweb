@@ -9,7 +9,8 @@ const getQRCodeStyling = () => constructorPromise ??= import('qr-code-styling' a
 /** The code's modules, row by row: which hold ink. What the open's intro builds the code from. */
 export type QrModules = {count: number, dark: boolean[]};
 
-export type RenderedQr = {canvas: HTMLCanvasElement, modules?: QrModules};
+/** The code drawn, the link it was drawn for, and its modules */
+export type RenderedQr = {canvas: HTMLCanvasElement, url: string, modules?: QrModules};
 
 /** The modules the drawing was made of, read off the library's encoder once it has drawn */
 function readModules(qrCode: any): QrModules | undefined {
@@ -42,5 +43,5 @@ export default async function renderQr(url: string, ink: string): Promise<Render
   });
 
   const canvas = host.lastChild;
-  if(canvas instanceof HTMLCanvasElement) return {canvas, modules: readModules(qrCode)};
+  if(canvas instanceof HTMLCanvasElement) return {canvas, url, modules: readModules(qrCode)};
 }

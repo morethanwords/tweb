@@ -4,8 +4,9 @@
  * comes from its place in the tile, and a shift by the period gives the same picture. The emoji are placed anew every
  * frame on a lattice that does not repeat (`placeEmojiField`). Pure, so a test needs no DOM.
  */
+import smoothstep01 from '@helpers/number/smoothstep01';
 
-export type Rect = {left: number, top: number, width: number, height: number};
+export type Rect = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>;
 
 /** The picture repeats every `width` across and `height` down; `cols` and `rows` (even) count the cells of the tile */
 export type FieldPeriod = {width: number, height: number, cols: number, rows: number};
@@ -46,8 +47,7 @@ function walkLattice(width: number, height: number, tile: {width: number, height
 
 /** 0 to 1 as `value` goes from `from` to `to`, easing at both ends */
 export function smoothStep(from: number, to: number, value: number) {
-  const t = Math.min(1, Math.max(0, (value - from) / (to - from)));
-  return t * t * (3 - 2 * t);
+  return smoothstep01((value - from) / (to - from));
 }
 
 // Android's emoji lattice (`drawEmojiFieldInner`): 86 x 70, odd rows a half cell along

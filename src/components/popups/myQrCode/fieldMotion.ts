@@ -1,14 +1,15 @@
 import liteMode from '@helpers/liteMode';
 import {nodeFrame} from '@helpers/schedulers';
+import {onAppWindowChange} from '@helpers/appWindow';
 
 /**
  * The field's tile and its canvas, in px: the canvas is centred on the surface and covers it at any shift. A field
  * drawn anew every frame gives `draw` instead, which takes the shift (not wrapped: its lattice does not repeat) and the
- * idle clock.
+ * idle clock, and `setPlaying`, told whether its frames are read: its sources play only while they are.
  */
 export type FieldLayout =
   {surfaceWidth: number, surfaceHeight: number, canvasWidth: number, canvasHeight: number, periodWidth: number, periodHeight: number} |
-  {draw: (x: number, y: number, time: number) => void};
+  {draw: (x: number, y: number, time: number) => void, setPlaying: (playing: boolean) => void};
 
 /** The canvas that covers a surface shifted by up to a period either way (it must not show an edge) */
 export function fieldCanvasSize(width: number, height: number, periodWidth: number, periodHeight: number) {
@@ -41,9 +42,9 @@ export default function attachFieldMotion(surface: HTMLElement, mover: HTMLEleme
   let gliding = false, glideStart = 0, glideFromX = 0, glideFromY = 0, glideVX = 0, glideVY = 0;
 
   // the surface's own window and its clock: the popup may stand in a Document PiP window, whose frames come while the
-  // tab is in the background, and whose times count from its own start
-  const doc = surface.ownerDocument, view = doc.defaultView || window;
-  const canMove = () => !!layout && !doc.hidden && liteMode.isAvailable('motion');
+  // tab is in the background, and whose times count from its own start. It follows the app when it moves between them
+  let view: Window = surface.ownerDocument.defaultView || window;
+  const canMove = () => !!layout && !view.document.hidden && liteMode.isAvailable('motion');
 
   const apply = () => {
     if(!layout) {
@@ -192,16 +193,40 @@ export default function attachFieldMotion(surface: HTMLElement, mover: HTMLEleme
     gliding = true;
   };
 
-  const onVisibility = () => doc.hidden ? stop() : start();
+  // a field drawn live plays its sources while the loop may run, so a hidden tab or the motion gone stops them too
+  const syncPlaying = () => {
+    if(layout && 'setPlaying' in layout) layout.setPlaying(canMove());
+  };
+
+  const onVisibility = () => {
+    view.document.hidden ? stop() : start();
+    syncPlaying();
+  };
 
   /** The field drawn again where it stands, and moving if it may */
   const refresh = () => {
     apply();
     start();
+    syncPlaying();
   };
 
   surface.addEventListener('pointerdown', onDown);
-  doc.addEventListener('visibilitychange', onVisibility);
+  view.document.addEventListener('visibilitychange', onVisibility);
+
+  // the app goes into a Document PiP window or back: the window is told before the screen moves there, so a press and a
+  // glide end where they stand, and the loop starts again in the new window once the screen stands in it
+  const offWindowChange = onAppWindowChange((next) => {
+    drop();
+    gliding = false;
+    stop();
+    view.document.removeEventListener('visibilitychange', onVisibility);
+    view = next;
+    view.document.addEventListener('visibilitychange', onVisibility);
+    queueMicrotask(() => {
+      last = 0;
+      refresh();
+    });
+  });
 
   return {
     /** A new canvas, or `undefined` for a theme without a pattern: no pattern, no loop */
@@ -217,7 +242,8 @@ export default function attachFieldMotion(surface: HTMLElement, mover: HTMLEleme
       stop();
       drop();
       surface.removeEventListener('pointerdown', onDown);
-      doc.removeEventListener('visibilitychange', onVisibility);
+      view.document.removeEventListener('visibilitychange', onVisibility);
+      offWindowChange();
     }
   };
 }

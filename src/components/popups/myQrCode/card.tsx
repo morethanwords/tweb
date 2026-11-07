@@ -1,11 +1,11 @@
 import {Accessor, createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show} from 'solid-js';
 import {getMiddleware} from '@helpers/middleware';
 import liteMode from '@helpers/liteMode';
-import {Caption, captionPlacement} from './caption';
-import {CardGeometry} from './layout';
-import createLayerStack from './layerStack';
-import renderQr, {RenderedQr} from './qr';
-import createQrIntro from './qrIntro';
+import {Caption, captionPlacement} from '@components/popups/myQrCode/caption';
+import {CardGeometry} from '@components/popups/myQrCode/layout';
+import createLayerStack from '@components/popups/myQrCode/layerStack';
+import renderQr, {RenderedQr} from '@components/popups/myQrCode/qr';
+import createQrIntro from '@components/popups/myQrCode/qrIntro';
 import styles from '@components/popups/myQrCode.module.scss';
 
 // a code that comes this long after the open has begun shows as it is, not built
@@ -34,8 +34,8 @@ export function QrCard(props: {
   let qrHost: HTMLDivElement;
   let stack: ReturnType<typeof createLayerStack<HTMLCanvasElement>>;
   let middleware = getMiddleware();
-  // the code on the card (the one being built too), and the build while it runs
-  let code: HTMLCanvasElement;
+  // the code on the card (the one being built too) and the link it was drawn for, and the build while it runs
+  let code: HTMLCanvasElement, codeUrl: string;
   let intro: {replace: (rendered: RenderedQr, ink: string) => void, stop: () => void};
   // the first code, until the open says how it comes
   const [first, setFirst] = createSignal<RenderedQr>();
@@ -45,7 +45,8 @@ export function QrCard(props: {
     stack = createLayerStack(qrHost, {className: styles.qrCanvas});
   });
 
-  props.qrRef?.(() => code);
+  // a code of the link before, still on the card while the new one is drawn, is not handed out with the new link
+  props.qrRef?.(() => codeUrl === props.url() ? code : undefined);
 
   // the code is drawn again for a new link or ink, and fades in over the old one
   createEffect(on(() => [props.url(), props.ink()] as const, ([url, ink]) => {
@@ -67,6 +68,7 @@ export function QrCard(props: {
       }
 
       code = rendered.canvas;
+      codeUrl = rendered.url;
       // a code that comes while the first one builds is what is built
       if(intro && rendered.modules) intro.replace(rendered, ink);
       else {
@@ -82,6 +84,7 @@ export function QrCard(props: {
     if(!rendered || start === undefined || firstShown) return;
     firstShown = true;
     code = rendered.canvas;
+    codeUrl = rendered.url;
     if(!start || !rendered.modules || !liteMode.isAvailable('motion') || performance.now() - start > INTRO_LATE_MS) {
       stack.set(rendered.canvas);
       return;

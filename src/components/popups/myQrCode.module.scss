@@ -407,10 +407,6 @@
   @include animation-level-global(1) {
     transition-delay: 0s;
   }
-
-  @include animation-level-global(2) {
-    transition-delay: 0s;
-  }
 }
 
 .sheetPanel {

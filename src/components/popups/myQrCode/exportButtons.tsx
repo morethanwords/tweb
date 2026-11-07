@@ -7,7 +7,7 @@ import createDownloadAnchor from '@helpers/dom/createDownloadAnchor';
 import {ObjectURLScope} from '@helpers/objectUrl';
 import classNames from '@helpers/string/classNames';
 import {onCleanup} from 'solid-js';
-import {isExpiring, secondsLeft} from './link';
+import {isExpiring, secondsLeft} from '@components/popups/myQrCode/link';
 
 export type ExportActionsOptions = {
   /** The picture, made at the call (inside the click for copy: the clipboard takes the promise) */

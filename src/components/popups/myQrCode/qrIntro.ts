@@ -1,9 +1,9 @@
 import {easeOutCubicApply} from '@helpers/easing/easeOutCubic';
 import clamp from '@helpers/number/clamp';
 import {nodeFrame} from '@helpers/schedulers';
-import {hash} from './fieldNodes';
-import {QrModules} from './qr';
-import {revealSpring} from './reveal';
+import {hash} from '@components/popups/myQrCode/fieldNodes';
+import {QrModules} from '@components/popups/myQrCode/qr';
+import {revealSpring} from '@components/popups/myQrCode/reveal';
 
 /**
  * The code building itself as the screen opens (`QrCodeLayer`'s first build): every module starts as a small dot of a

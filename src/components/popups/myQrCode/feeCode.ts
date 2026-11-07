@@ -5,8 +5,8 @@ import type {LangPackKey} from '@lib/langPack';
 import tsNow from '@helpers/tsNow';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {toastNew} from '@components/toast';
-import {freeLink, isExpiring} from './link';
-import {createCountdown} from './countdown';
+import {freeLink, isExpiring} from '@components/popups/myQrCode/link';
+import {createCountdown} from '@components/popups/myQrCode/countdown';
 
 export type FeeMode = 'fee' | 'temporary' | 'permanent';
 

@@ -11,7 +11,6 @@ import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import cleanSearchText, {ProcessSearchTextOptions, processSearchText} from '@helpers/cleanSearchText';
 import cleanUsername from '@helpers/cleanUsername';
 import tsNow from '@helpers/tsNow';
-import noop from '@helpers/noop';
 import isObject from '@helpers/object/isObject';
 import safeReplaceObject from '@helpers/object/safeReplaceObject';
 import {AccountEmojiStatuses, Chat, ContactsResolvedPeer, EmojiStatus, InputContact, InputGeoPoint, InputMedia, InputPeer, InputUser, User as MTUser, RequirementToContact, Update, UserProfilePhoto, UserStatus} from '@layer';
@@ -33,6 +32,7 @@ import {NULL_PEER_ID, TEST_NO_STORIES} from '@appManagers/constants';
 import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import pause from '@helpers/schedulers/pause';
 import createSerializedQueue from '@helpers/createSerializedQueue';
+import type {State} from '@config/state';
 
 export type User = MTUser.user;
 const TOP_PEER_TYPES = ['correspondents', 'bots_inline', 'bots_app', 'bots_guestchat'] as const;
@@ -85,7 +85,7 @@ export class AppUsersManager extends AppManager {
   // * whether the permanent code is the mode, as last chosen on the screen: a code that comes after the screen has gone
   // * is kept in the mode chosen, as Android writes the mode when it is chosen
   private noPaidTokenPermanent: boolean;
-  private noPaidTokenWrites: Promise<unknown> = Promise.resolve();
+  private noPaidTokenWrites = createSerializedQueue();
   // * until when the server asked to wait, per list: nothing is asked again before that
   private topPeersFloods: {[type in TopPeerType]?: number};
   // * moves on every flip of `contacts.toggleTopPeers`: a list asked for before it is of the other setting
@@ -438,7 +438,12 @@ export class AppUsersManager extends AppManager {
   // One-time `t.me/contact/<token>` link to add the current user as a contact —
   // used by the My QR popup when you have no username (mirrors iOS).
   public exportContactToken() {
-    return this.apiManager.invokeApiSingle('contacts.exportContactToken', {});
+    return this.apiManager.invokeApiSingle('contacts.exportContactToken', {}).then((token) => this.withLocalExpiry(token));
+  }
+
+  /** A code's end, which the server gives by its own clock, as this device's clock reads it (as a status's) */
+  private withLocalExpiry<T extends {expires?: number}>(token: T): T {
+    return token.expires ? {...token, expires: token.expires - this.timeManager.getServerTimeOffset()} : token;
   }
 
   /**
@@ -469,7 +474,7 @@ export class AppUsersManager extends AppManager {
     });
 
     if(!token.expires || options.revoke) {
-      await this.changeKeptNoPaidMessagesToken(async() => {
+      await this.noPaidTokenWrites.enqueue(async() => {
         if(ask <= this.noPaidTokenKeptAsk) return;
         this.noPaidTokenKeptAsk = ask;
         if(!token.expires) {
@@ -483,18 +488,11 @@ export class AppUsersManager extends AppManager {
       });
     }
 
-    return token;
-  }
-
-  /** What is kept changes one change at a time */
-  private changeKeptNoPaidMessagesToken(change: () => Promise<unknown>) {
-    const done = this.noPaidTokenWrites.then(change);
-    this.noPaidTokenWrites = done.catch(noop);
-    return done;
+    return this.withLocalExpiry(token);
   }
 
   /** The kept permanent code, and whether permanent was the mode last: only then it comes back as the mode */
-  public async getKeptNoPaidMessagesToken(): Promise<{token: string, url: string, permanent?: boolean} | null> {
+  public async getKeptNoPaidMessagesToken(): Promise<State['noPaidMessagesToken']> {
     const state = await this.appStateManager.getState();
     return state.noPaidMessagesToken || null;
   }
@@ -502,7 +500,7 @@ export class AppUsersManager extends AppManager {
   /** Going back to the fee or to a temporary code revokes nothing: the token stays, only the mode is not permanent */
   public setKeptNoPaidMessagesTokenPermanent(permanent: boolean) {
     this.noPaidTokenPermanent = permanent;
-    return this.changeKeptNoPaidMessagesToken(async() => {
+    return this.noPaidTokenWrites.enqueue(async() => {
       const kept = await this.getKeptNoPaidMessagesToken();
       if(kept && !!kept.permanent !== permanent) {
         await this.appStateManager.pushToState('noPaidMessagesToken', {...kept, permanent});
@@ -512,10 +510,10 @@ export class AppUsersManager extends AppManager {
 
   /**
    * Uses someone's code. Resolves with whether the user can be messaged for free now (their fee for us is gone);
-   * rejects with the server's error (`USER_*`, `TOKEN_*` …).
+   * rejects with the server's error (`USER_*`, `TOKEN_*` …) only: the code is taken once the server has said so.
    */
   public async importNoPaidMessagesToken(userId: UserId, token: string) {
-    const user = await this.apiManager.invokeApiSingleProcess({
+    await this.apiManager.invokeApiSingleProcess({
       method: 'contacts.importNoPaidMessagesToken',
       params: {
         user_id: this.getUserInput(userId),
@@ -527,7 +525,8 @@ export class AppUsersManager extends AppManager {
       }
     });
 
-    const fullUser = await this.appProfileManager.getProfile(userId, true);
+    // * the fee comes with the full user, asked anew as Android does; one that cannot be had now says nothing of the code
+    const fullUser = await Promise.resolve(this.appProfileManager.getProfile(userId, true)).catch((): undefined => undefined);
     return !fullUser?.send_paid_messages_stars;
   }
 

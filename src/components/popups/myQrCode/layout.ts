@@ -92,10 +92,22 @@ export type SurfaceGeometry = {
   pillExtra: number
 };
 
-/** The card's place on a screen of this size: a function of nothing else, so it is read once and on resize. */
+// the bar of buttons at the bottom (20 px up, 40 px high) and the gap the card keeps from it
+const BAR_ROOM = 20 + 40 + 13;
+
+/**
+ * The card's place on a screen of this size: a function of nothing else, so it is read once and on resize. The card
+ * and the pill under it stand between the close button and the bar of buttons: on a short screen (a phone on its side)
+ * the card is as large as fits there, never cut by the screen's edge.
+ */
 export function surfaceGeometry(width: number, height: number, options: {captioned?: boolean, pill?: boolean} = {}): SurfaceGeometry {
-  const card = cardGeometry(Math.round(width * CARD_WIDTH_RATIO), options.captioned !== false);
-  const cardTop = height * CARD_CENTER_RATIO - card.height / 2 - CARD_RAISE + (options.pill ? 0 : CARD_NO_PILL_DROP);
+  const captioned = options.captioned !== false;
+  const pillExtra = options.pill ? PILL_GAP + PILL_HEIGHT : 0;
+  const room = height - SHEET_TOP_INSET - BAR_ROOM - pillExtra;
+  const fitWidth = Math.floor(Math.max(0, room) / (captioned ? CARD_HEIGHT_RATIO : 1));
+  const card = cardGeometry(Math.min(Math.round(width * CARD_WIDTH_RATIO), fitWidth), captioned);
+  const centredTop = height * CARD_CENTER_RATIO - card.height / 2 - CARD_RAISE + (options.pill ? 0 : CARD_NO_PILL_DROP);
+  const cardTop = Math.max(SHEET_TOP_INSET, Math.min(centredTop, height - BAR_ROOM - pillExtra - card.height));
   return {
     width,
     height,
@@ -103,7 +115,7 @@ export function surfaceGeometry(width: number, height: number, options: {caption
     cardTop,
     cardCenterY: cardTop + card.height / 2,
     backdropRadius: Math.hypot(width, height) * BACKDROP_RADIUS_RATIO,
-    pillExtra: options.pill ? PILL_GAP + PILL_HEIGHT : 0
+    pillExtra
   };
 }
 
@@ -122,7 +134,7 @@ export const SHEET_CARD_GAP = 13;
 const MIN_CARD_SCALE = 0.5;
 
 // Android's `sheetH`: from the card, its chip's place and the gap down to the bottom; at the least 160
-export const sheetHeightFor = (surfaceHeight: number, surfaceWidth: number) => Math.round(Math.max(160, surfaceHeight - SHEET_BOTTOM - (SHEET_TOP_INSET + surfaceWidth * 0.745 * 1.07 + 24 + 11 + SHEET_CARD_GAP)));
+export const sheetHeightFor = (surfaceHeight: number, surfaceWidth: number) => Math.round(Math.max(160, surfaceHeight - SHEET_BOTTOM - (SHEET_TOP_INSET + surfaceWidth * CARD_WIDTH_RATIO * CARD_HEIGHT_RATIO + 24 + 11 + SHEET_CARD_GAP)));
 
 export type OpenLayout = {
   /** The card's scale, about its top middle */

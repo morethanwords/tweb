@@ -22,6 +22,7 @@ import assumeType from '@helpers/assumeType';
 import makeError from '@helpers/makeError';
 import callbackify from '@helpers/callbackify';
 import noop from '@helpers/noop';
+import createSerializedQueue, {SerializedQueue} from '@helpers/createSerializedQueue';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import isSuspiciousPeer, {endSuspiciousPeerSettings} from '@appManagers/utils/peers/isSuspiciousPeer';
 import getParticipantsCount from '@appManagers/utils/chats/getParticipantsCount';
@@ -70,6 +71,8 @@ export class AppProfileManager extends AppManager {
   // * the share theme saves of a peer still on their way: the theme the server last took, which a failed latest
   // * choice goes back to (an older choice still on its way is not one the server has)
   private shareThemeSaves: Map<PeerId, ShareThemeSaves> = new Map();
+  // * and the saves themselves, one after another by peer: an older one the network retried must not land after a newer
+  private shareThemeWrites: Map<PeerId, SerializedQueue> = new Map();
 
   protected after() {
     this.apiUpdatesManager.addMultipleEventsListeners({
@@ -398,11 +401,13 @@ export class AppProfileManager extends AppManager {
       save.rolledBack = false;
     }
 
+    let writes = this.shareThemeWrites.get(peerId);
+    if(!writes) this.shareThemeWrites.set(peerId, writes = createSerializedQueue());
     try {
-      const result = await this.apiManager.invokeApi('messages.setShareTheme', {
+      const result = await writes.enqueue(() => this.apiManager.invokeApi('messages.setShareTheme', {
         peer: peerId === this.rootScope.myId ? this.appPeersManager.getInputPeerSelf() : this.appPeersManager.getInputPeerById(peerId),
         theme
-      });
+      }));
       // * an answer to an older choice coming after a newer one's does not take its place
       if(tracked && id > save.confirmedId) {
         // * the latest choice failed and went back to what the server had then: it has this one since

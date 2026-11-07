@@ -1,5 +1,5 @@
 import BezierEasing from '@vendor/bezierEasing';
-import {smoothStep} from './fieldNodes';
+import {smoothStep} from '@components/popups/myQrCode/fieldNodes';
 
 /**
  * The curves of the screen's motion as Android has them (`QrShareView.setReveal`, `QrShareActivity`, `stepSheet`), and

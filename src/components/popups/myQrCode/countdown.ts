@@ -1,5 +1,5 @@
 import {Accessor, createEffect, createSignal, onCleanup} from 'solid-js';
-import {secondsLeft} from './link';
+import {secondsLeft} from '@components/popups/myQrCode/link';
 
 /**
  * Seconds left to a moment (unix seconds), counted by one timer that exists only while there is a moment. It writes a

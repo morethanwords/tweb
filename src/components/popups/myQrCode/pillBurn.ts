@@ -5,6 +5,8 @@
  * trail flying on from it that the air lifts. Everything is a function of the time and a hash, so a frame needs no
  * state of the frames before. Pure: in the pill's own box, px, left to right; time in seconds.
  */
+import clamp from '@helpers/number/clamp';
+import smoothstep01 from '@helpers/number/smoothstep01';
 
 /** How far past the pill's end the front starts (the ragged edge clears the round end), and how deep it is ragged */
 const BAND = 10, EDGE = 4;
@@ -24,11 +26,7 @@ export type BurnState = {issuedAt: number, pourFrom: number, lifetime: number};
 /** A particle where it stands, its velocity (px/s, which it is drawn out along), and whether it is the glow under the others */
 export type BurnParticle = {x: number, y: number, vx: number, vy: number, radius: number, alpha: number, halo: boolean};
 
-const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
-const smooth = (x: number) => {
-  x = clamp01(x);
-  return x * x * (3 - 2 * x);
-};
+const clamp01 = (x: number) => clamp(x, 0, 1);
 
 /** iOS's `QrStudioSweep.hash`: 0 to 1 for two integers */
 export function burnHash(x: number, y: number) {
@@ -69,7 +67,7 @@ export function burnFront(state: BurnState, width: number, time: number) {
 
 /** 1 while the fill pours in, its front a meniscus; it hardens into the ragged burning edge over 150 ms after */
 export function burnLiquid(state: BurnState, time: number) {
-  return 1 - smooth((time - state.issuedAt - REFILL) / 0.15);
+  return 1 - smoothstep01((time - state.issuedAt - REFILL) / 0.15);
 }
 
 /** Whether the fill pours: the front then moves every frame, and the pour's sparks fly */

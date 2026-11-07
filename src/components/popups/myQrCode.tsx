@@ -15,7 +15,7 @@ import {buildTelegramUserQrUrl} from '@helpers/qrCode/paintQrCode';
 import {useObserveResize} from '@hooks/useObserveResize';
 import {getMiddleware} from '@helpers/middleware';
 import {flashControl} from '@lib/settingsSearch/highlight';
-import {createExportActions, ExportCopyButton, ExportShareSaveButtons} from './myQrCode/exportButtons';
+import {createExportActions, ExportCopyButton, ExportShareSaveButtons} from '@components/popups/myQrCode/exportButtons';
 import classNames from '@helpers/string/classNames';
 import liteMode from '@helpers/liteMode';
 import {lerp} from '@helpers/lerp';
@@ -24,29 +24,29 @@ import {nodeFrame} from '@helpers/schedulers';
 import {useMediaSizes} from '@helpers/mediaSizes';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {Chat, InputSavedStarGift, ShareTheme, ShareThemeBackdropOption, User} from '@layer';
-import {backdropGradient, backdropToCss} from './myQrCode/backdrop';
-import {Caption} from './myQrCode/caption';
-import {QrCard} from './myQrCode/card';
-import {backdropColors} from './myQrCode/colors';
-import exportImage from './myQrCode/exportImage';
-import {PatternField} from './myQrCode/field';
-import {ExpiryPill, FeePill} from './myQrCode/feePill';
-import createQrLink from './myQrCode/linkState';
-import createLayerStack from './myQrCode/layerStack';
-import {BUILT_IN_BACKDROPS, usableBackdrops} from './myQrCode/backdropTable';
-import {buildPhoneUrl, linkCaption} from './myQrCode/link';
-import {Rect} from './myQrCode/fieldNodes';
-import {openLayout, PILL_GAP, SHEET_BOTTOM, SHEET_INSET, sheetHeightFor, surfaceGeometry} from './myQrCode/layout';
-import {appearanceToShareTheme, Appearance, giftToInput, isDefaultBackdrop, shareThemeToAppearance, ThemeEmoji, themeEmojiKey, withBackdrop, waitsForServedId, withEmojiToggled, withGift} from './myQrCode/theme';
-import {createThemeSaver, getHeldTheme} from './myQrCode/themeSaver';
-import {ColorsPanel} from './myQrCode/colorsPanel';
-import {ChosenEmojiStrip, EmojiPanel} from './myQrCode/emojiPanel';
-import {preloadAppliedEmoji} from './myQrCode/emojiPresets';
-import {GiftsLayout, GiftsPanel, giftsSheetHeight, ThemeGift} from './myQrCode/giftsPanel';
+import {backdropGradient, backdropToCss} from '@components/popups/myQrCode/backdrop';
+import {Caption} from '@components/popups/myQrCode/caption';
+import {QrCard} from '@components/popups/myQrCode/card';
+import {backdropColors} from '@components/popups/myQrCode/colors';
+import exportImage from '@components/popups/myQrCode/exportImage';
+import {PatternField} from '@components/popups/myQrCode/field';
+import {ExpiryPill, FeePill} from '@components/popups/myQrCode/feePill';
+import createQrLink from '@components/popups/myQrCode/linkState';
+import createLayerStack from '@components/popups/myQrCode/layerStack';
+import {BUILT_IN_BACKDROPS, usableBackdrops} from '@components/popups/myQrCode/backdropTable';
+import {buildPhoneUrl, linkCaption} from '@components/popups/myQrCode/link';
+import {Rect} from '@components/popups/myQrCode/fieldNodes';
+import {openLayout, PILL_GAP, SHEET_BOTTOM, SHEET_INSET, sheetHeightFor, surfaceGeometry} from '@components/popups/myQrCode/layout';
+import {appearanceToShareTheme, Appearance, giftToInput, isDefaultBackdrop, shareThemeToAppearance, ThemeEmoji, themeEmojiKey, withBackdrop, waitsForServedId, withEmojiToggled, withGift} from '@components/popups/myQrCode/theme';
+import {createThemeSaver, getHeldTheme} from '@components/popups/myQrCode/themeSaver';
+import {ColorsPanel} from '@components/popups/myQrCode/colorsPanel';
+import {ChosenEmojiStrip, EmojiPanel} from '@components/popups/myQrCode/emojiPanel';
+import {preloadAppliedEmoji} from '@components/popups/myQrCode/emojiPresets';
+import {GiftsLayout, GiftsPanel, giftsSheetHeight, ThemeGift} from '@components/popups/myQrCode/giftsPanel';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
-import {showPremiumGiftsToast} from './myQrCode/premiumToast';
-import {OPEN_MS, revealOpening, sampledKeyframes, SHEET_CLOSE_MS, SHEET_EASING, SHEET_OPEN_MS, sheetEase} from './myQrCode/reveal';
-import styles from './myQrCode.module.scss';
+import {showPremiumGiftsToast} from '@components/popups/myQrCode/premiumToast';
+import {OPEN_MS, revealOpening, sampledKeyframes, SHEET_CLOSE_MS, SHEET_EASING, SHEET_OPEN_MS, sheetEase} from '@components/popups/myQrCode/reveal';
+import styles from '@components/popups/myQrCode.module.scss';
 
 // `QrShareView`'s wave: a new colour spreads from the card over 600 ms, quick at first and gliding long (1 - (1 - t)^2.4)
 const WAVE_MS = 600;
@@ -642,7 +642,7 @@ function MyQrCodePopup(props: {
                         size={sheetSize}
                         onPick={pickEmoji}
                       />
-                      <ChosenEmojiStrip emojis={() => appearance().emojis} onRemove={toggleEmoji} />
+                      <ChosenEmojiStrip managers={managers} emojis={() => appearance().emojis} onRemove={toggleEmoji} />
                     </>
                   )}
                   {id === 'gifts' && (
