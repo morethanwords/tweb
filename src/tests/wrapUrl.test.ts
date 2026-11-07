@@ -5,6 +5,15 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe('wrapUrl contact links', () => {
+  test('hands a contact link to its own handler', () => {
+    vi.stubGlobal('contact', vi.fn());
+    vi.stubGlobal('tg_contact', vi.fn());
+    expect(wrapUrl('https://t.me/contact/AbCdEf?free=xyz').onclick).toBe('contact');
+    expect(wrapUrl('tg://contact?token=AbCdEf&free=xyz').onclick).toBe('tg_contact');
+  });
+});
+
 describe('wrapUrl Telegram links', () => {
   test.each([
     'https://t.me/durov',

@@ -89,3 +89,13 @@ export function doubleRaf() {
     });
   });
 }
+
+/**
+ * A frame of the window `node` stands in, and the way to call it off. The app's DOM moves into a Document PiP window and
+ * back: a frame asked of the tab while that is in the background may never come
+ */
+export function nodeFrame(node: Node, callback: FrameRequestCallback) {
+  const view = node.ownerDocument?.defaultView || window;
+  const id = view.requestAnimationFrame(callback);
+  return () => view.cancelAnimationFrame(id);
+}

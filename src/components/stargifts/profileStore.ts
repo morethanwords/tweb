@@ -3,6 +3,7 @@ import {StarGiftCollection} from '@layer';
 import {batch, onMount} from 'solid-js';
 import {MyStarGift} from '@appManagers/appGiftsManager';
 import rootScope from '@lib/rootScope';
+import type {AppManagers} from '@lib/managers';
 import createListenerSetter from '@helpers/solid/createListenerSetter';
 import {updateStarGift} from '@appManagers/utils/gifts/updateStarGift';
 import {inputStarGiftEquals} from '@appManagers/utils/gifts/inputStarGiftEquals';
@@ -59,6 +60,8 @@ export function createProfileGiftsStore(props: {
   onCountChange?: (count: number) => void
   /** a change shown at once was refused, and is put back */
   onSaveFailed?: () => void
+  // a screen's own, bound to its account session; the tab's by default
+  managers?: AppManagers
 }): [StarGiftsProfileStore, StarGiftsProfileActions] {
   const initialState: StarGiftsProfileStore = {
     collections: undefined,
@@ -92,7 +95,7 @@ export function createProfileGiftsStore(props: {
 
   // * the manager sends each setting's writes in turn, whichever store asked, and reads it after them; a refusal
   // * with no newer change behind it puts back what the server holds then
-  const managers = bindManagersToSession(rootScope.managers);
+  const managers = props.managers ?? bindManagersToSession(rootScope.managers);
   const getCollectionId = (collection: StarGiftCollection) => collection.collection_id;
   const saveCollectionsOrder = createOptimisticSave((ids: number[]) => {
     return managers.appGiftsManager.reorderCollections(props.peerId, ids);
@@ -126,7 +129,7 @@ export function createProfileGiftsStore(props: {
     const notificationsRevisionAtStart = notificationsRevision
     const collectionId = store.chosenCollection === ALL_COLLECTIONS_ID ? undefined : store.chosenCollection
     const [res, canManageGifts] = await Promise.all([
-      rootScope.managers.appGiftsManager.getProfileGifts({
+      managers.appGiftsManager.getProfileGifts({
         peerId: props.peerId,
         offset: currentOffset,
         sort: store.sort,

@@ -6,25 +6,10 @@ import {applyColorOnContext} from '@lib/lottie/lottiePlayer';
 import rootScope from '@lib/rootScope';
 import wrapSticker from '@components/wrappers/sticker';
 
-export default async function wrapEmojiPattern({
-  docId,
-  middleware,
-  container,
-  color,
-  positions,
-  canvasWidth,
-  canvasHeight,
-  emojiSize,
-  onCacheStatus: onCacheStatus
-}: {
+/** The still frame of a custom emoji, loaded once for drawing it on a canvas. */
+export async function loadEmojiStill({docId, middleware, emojiSize, onCacheStatus}: {
   docId: DocId | MyDocument,
   middleware: Middleware,
-  container?: HTMLElement,
-  // * left out to keep the emoji's own colours, e.g. when the pattern is used as a mask
-  color?: string,
-  positions: [x: number, y: number, size: number, alpha: number][],
-  canvasWidth: number,
-  canvasHeight: number,
   emojiSize: number,
   onCacheStatus?: (cached: boolean) => void
 }) {
@@ -59,7 +44,32 @@ export default async function wrapEmojiPattern({
       return pause(100).then(() => image);
     }
     return image;
-  }).then((image) => {
+  });
+}
+
+export default async function wrapEmojiPattern({
+  docId,
+  middleware,
+  container,
+  color,
+  positions,
+  canvasWidth,
+  canvasHeight,
+  emojiSize,
+  onCacheStatus: onCacheStatus
+}: {
+  docId: DocId | MyDocument,
+  middleware: Middleware,
+  container?: HTMLElement,
+  // * left out to keep the emoji's own colours, e.g. when the pattern is used as a mask
+  color?: string,
+  positions: [x: number, y: number, size: number, alpha: number][],
+  canvasWidth: number,
+  canvasHeight: number,
+  emojiSize: number,
+  onCacheStatus?: (cached: boolean) => void
+}) {
+  return loadEmojiStill({docId, middleware, emojiSize, onCacheStatus}).then((image) => {
     const canvas = document.createElement('canvas');
     canvas.classList.add('emoji-pattern-canvas');
     canvas.style.width = `${canvasWidth}px`;

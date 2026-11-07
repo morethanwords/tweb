@@ -7,6 +7,7 @@ import {EMOJI_ELEMENT_SIZE} from '@components/emoticonsDropdown/tabs/emoji';
 import {attachPickerGrid} from '@helpers/dom/attachListNavigation';
 import I18n from '@lib/langPack';
 import Tabs from '@components/tabs';
+import autoFillGridHeight from '@components/emoticonsDropdown/gridHeight';
 
 export type StickersTabCategoryItem = {element: HTMLElement};
 export type StickersTabStyles = {
@@ -123,16 +124,7 @@ export default class StickersTabCategory<Item extends StickersTabCategoryItem, A
 
   public setCategoryItemsHeight(itemsLength = this.items.length) {
     const {width: containerWidth} = this.getContainerSize();
-    const elementSize = this.getElementMediaSize().width;
-
-    let itemsPerRow = containerWidth / elementSize;
-    if(this.gapX) itemsPerRow -= Math.floor(itemsPerRow - 1) * this.gapX / elementSize;
-    itemsPerRow = Math.floor(itemsPerRow);
-
-    const rows = Math.ceil(itemsLength / itemsPerRow);
-    let height = rows * elementSize;
-    if(this.gapY) height += (rows - 1) * this.gapY;
-
+    const height = autoFillGridHeight(containerWidth, itemsLength, this.getElementMediaSize().width, this.gapX, this.gapY);
     this.elements.items.style.minHeight = height + 'px';
   }
 }

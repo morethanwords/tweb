@@ -1,0 +1,125 @@
+@use "../../../scss/mixins" as *;
+@use "./glass" as *;
+
+// The pill under the card: a glass button over the backdrop, in the card's foreground
+// Under the card, in its box: centred on it, as wide as it needs
+.place {
+  position: absolute;
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  height: 2.25rem;
+  padding-block: 0;
+  padding-inline: 1rem;
+  border: 0;
+  border-radius: 1.125rem;
+  background-color: var(--qr-control);
+  color: var(--qr-foreground);
+  @include qr-glass;
+  font: inherit;
+  // small on the pill, as the clients' 11-12 pt
+  font-size: .875rem;
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+
+  // the card keeps its box left to right; the words in the pill follow the language
+  :global(.is-rtl) & {
+    direction: rtl;
+  }
+
+  @include animation-level-global(1) {
+    transition: background-color .2s;
+  }
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+}
+
+// the fee: the app's star, smaller than the words and a little apart from the number, which stands on the words'
+// line (a flex box would set it on the star's); the star's middle on the digits' middle
+.priceStar {
+  font-size: .75rem;
+  margin-inline-end: .125rem;
+  vertical-align: -.1em;
+}
+
+.freePill {
+  position: relative;
+  overflow: hidden;
+}
+
+// the free code's white fill, the words over it in the code's ink; `--fill` is how much of the pill it covers
+.fill {
+  --fill: 0;
+
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding-inline: 1rem;
+  border-radius: inherit;
+  background-color: rgba(255, 255, 255, .97);
+  color: var(--qr-ink);
+  clip-path: inset(0 calc((1 - var(--fill)) * 100%) 0 0);
+  pointer-events: none;
+
+  :global(.is-rtl) & {
+    clip-path: inset(0 0 0 calc((1 - var(--fill)) * 100%));
+  }
+
+  @include animation-level-global(1) {
+    transition: clip-path .34s cubic-bezier(.33, 1, .68, 1);
+  }
+}
+
+// the minute burns it back second by second, in one steady line
+.fillBurning {
+  @include animation-level-global(1) {
+    transition-duration: 1s;
+    transition-timing-function: linear;
+  }
+}
+
+// the sparks of the burning fill fly round the pill and over it (`SPARKS_MARGIN_*`)
+.sparks {
+  position: absolute;
+  inset: -4.75rem -5.625rem;
+  width: calc(100% + 11.25rem);
+  height: calc(100% + 9.5rem);
+  pointer-events: none;
+}
+
+// the pill leaves while a panel is open: shrunk with the card it would not be legible, and the panel takes its room
+.away {
+  visibility: hidden;
+  opacity: 0;
+
+  @include animation-level-global(1) {
+    transition: opacity .2s, visibility 0s .2s;
+  }
+}
+
+// m:ss never reorders in a right-to-left line
+.time {
+  unicode-bidi: isolate;
+  font-variant-numeric: tabular-nums;
+}
+
+.subtitle {
+  display: block;
+  opacity: .72;
+  font-size: var(--font-size-14);
+}

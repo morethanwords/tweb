@@ -9,7 +9,7 @@ import {getWalletFiatRate, loadWalletFiatRate, WalletFiatRate} from '@components
 import {formatTransferGrams, wrapGramTransferCompactText} from '@components/wallet/transferText';
 import {ForumTopic, Message, MessageAction, MessageEntity, MessageMedia, MessageReplyHeader, StarGift, TextWithEntities} from '@layer';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
-import I18n, {FormatterArgument, FormatterArguments, i18n, join, langPack, LangPackKey, _i18n} from '@lib/langPack';
+import I18n, {FormatterArgument, FormatterArguments, i18n, join, langPack, LangPackKey, UNSUPPORTED_LANG_PACK_KEY, _i18n} from '@lib/langPack';
 import {GENERAL_TOPIC_ID, SERVICE_PEER_ID} from '@appManagers/constants';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import tsNow from '@helpers/tsNow';
@@ -103,6 +103,9 @@ type WrapTopicIconOptions = {
   topic: Pick<ForumTopic.forumTopic, 'icon_color' | 'icon_emoji_id' | 'title' | 'id'>,
   plain?: boolean
 } & WrapSomethingOptions;
+
+// * wallet service actions are left out of the `MessageAction` union, so they have no text here
+const UNSUPPORTED_ACTIONS = new Set<string>(['messageActionGramTransfer', 'messageActionWalletTonConnectRequest']);
 
 export async function wrapTopicIcon(options: WrapTopicIconOptions & {plain: true}): Promise<string>;
 export async function wrapTopicIcon(options: WrapTopicIconOptions & {plain?: false}): Promise<HTMLElement | DocumentFragment>;
@@ -842,6 +845,18 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         break;
       }
 
+      case 'messageActionNoPaidMessagesTokenUsed': {
+        if(message.pFlags.out) {
+          langPackKey = 'NoPaidMessagesToken.UsedOut';
+          args = [getNameDivHTML(message.peerId, plain)];
+        } else {
+          langPackKey = 'NoPaidMessagesToken.Used';
+          args = [getNameDivHTML(message.fromId, plain)];
+        }
+
+        break;
+      }
+
       case 'messageActionPaidMessagesRefunded': {
         langPackKey = 'PaidMessages.StarsRefundedShort';
         args = [+action.stars];
@@ -1160,7 +1175,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         break;
       }
       default:
-        langPackKey = (langPack[_] || `[${action._}]`) as any;
+        langPackKey = (langPack[_] || (UNSUPPORTED_ACTIONS.has(_) ? UNSUPPORTED_LANG_PACK_KEY : `[${action._}]`)) as any;
         break;
     }
 

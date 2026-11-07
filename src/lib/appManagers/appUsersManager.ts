@@ -11,6 +11,7 @@ import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import cleanSearchText, {ProcessSearchTextOptions, processSearchText} from '@helpers/cleanSearchText';
 import cleanUsername from '@helpers/cleanUsername';
 import tsNow from '@helpers/tsNow';
+import noop from '@helpers/noop';
 import isObject from '@helpers/object/isObject';
 import safeReplaceObject from '@helpers/object/safeReplaceObject';
 import {AccountEmojiStatuses, Chat, ContactsResolvedPeer, EmojiStatus, InputContact, InputGeoPoint, InputMedia, InputPeer, InputUser, User as MTUser, RequirementToContact, Update, UserProfilePhoto, UserStatus} from '@layer';
@@ -76,6 +77,15 @@ export class AppUsersManager extends AppManager {
   private contactsKnown: boolean;
 
   private getTopPeersPromises: {[type in TopPeerType]?: Promise<MyTopPeer[]>};
+  // * the asks for a no-paid-messages code in the order they were sent, and the newest whose answer decided what is
+  // * kept: an older answer that comes later neither brings back a code a newer one replaced nor keeps a revoked one.
+  // * Every change of what is kept waits for the one before it, and looks at the order only when its turn comes.
+  private noPaidTokenAsks = 0;
+  private noPaidTokenKeptAsk = 0;
+  // * whether the permanent code is the mode, as last chosen on the screen: a code that comes after the screen has gone
+  // * is kept in the mode chosen, as Android writes the mode when it is chosen
+  private noPaidTokenPermanent: boolean;
+  private noPaidTokenWrites: Promise<unknown> = Promise.resolve();
   // * until when the server asked to wait, per list: nothing is asked again before that
   private topPeersFloods: {[type in TopPeerType]?: number};
   // * moves on every flip of `contacts.toggleTopPeers`: a list asked for before it is of the other setting
@@ -444,6 +454,81 @@ export class AppUsersManager extends AppManager {
         return this.getUser(user.id);
       }
     });
+  }
+
+  /**
+   * The code that lets non-contacts message the own profile for free. The newest permanent one is kept in the state,
+   * to be shown at once on the next open, and a revoke drops it; whether it is the mode is the screen's to say
+   * (`setKeptNoPaidMessagesTokenPermanent`). Only the answer to a newer ask than the one that decided it touches it.
+   */
+  public async exportNoPaidMessagesToken(options: {revoke?: boolean, temporary?: boolean} = {}) {
+    const ask = ++this.noPaidTokenAsks;
+    const token = await this.apiManager.invokeApi('contacts.exportNoPaidMessagesToken', {
+      revoke: options.revoke ? true : undefined,
+      temporary: options.temporary ? true : undefined
+    });
+
+    if(!token.expires || options.revoke) {
+      await this.changeKeptNoPaidMessagesToken(async() => {
+        if(ask <= this.noPaidTokenKeptAsk) return;
+        this.noPaidTokenKeptAsk = ask;
+        if(!token.expires) {
+          const kept = await this.getKeptNoPaidMessagesToken();
+          const permanent = this.noPaidTokenPermanent ?? !!kept?.permanent;
+          await this.appStateManager.pushToState('noPaidMessagesToken', {token: token.token, url: token.url, permanent});
+        } else {
+          // * a revoke has killed every code before it, the kept one too
+          await this.appStateManager.pushToState('noPaidMessagesToken', null);
+        }
+      });
+    }
+
+    return token;
+  }
+
+  /** What is kept changes one change at a time */
+  private changeKeptNoPaidMessagesToken(change: () => Promise<unknown>) {
+    const done = this.noPaidTokenWrites.then(change);
+    this.noPaidTokenWrites = done.catch(noop);
+    return done;
+  }
+
+  /** The kept permanent code, and whether permanent was the mode last: only then it comes back as the mode */
+  public async getKeptNoPaidMessagesToken(): Promise<{token: string, url: string, permanent?: boolean} | null> {
+    const state = await this.appStateManager.getState();
+    return state.noPaidMessagesToken || null;
+  }
+
+  /** Going back to the fee or to a temporary code revokes nothing: the token stays, only the mode is not permanent */
+  public setKeptNoPaidMessagesTokenPermanent(permanent: boolean) {
+    this.noPaidTokenPermanent = permanent;
+    return this.changeKeptNoPaidMessagesToken(async() => {
+      const kept = await this.getKeptNoPaidMessagesToken();
+      if(kept && !!kept.permanent !== permanent) {
+        await this.appStateManager.pushToState('noPaidMessagesToken', {...kept, permanent});
+      }
+    });
+  }
+
+  /**
+   * Uses someone's code. Resolves with whether the user can be messaged for free now (their fee for us is gone);
+   * rejects with the server's error (`USER_*`, `TOKEN_*` …).
+   */
+  public async importNoPaidMessagesToken(userId: UserId, token: string) {
+    const user = await this.apiManager.invokeApiSingleProcess({
+      method: 'contacts.importNoPaidMessagesToken',
+      params: {
+        user_id: this.getUserInput(userId),
+        token
+      },
+      processResult: (user) => {
+        this.saveApiUser(user);
+        return user;
+      }
+    });
+
+    const fullUser = await this.appProfileManager.getProfile(userId, true);
+    return !fullUser?.send_paid_messages_stars;
   }
 
   private pushContact(id: UserId) {

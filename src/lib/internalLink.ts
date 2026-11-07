@@ -85,6 +85,7 @@ export namespace InternalLink {
     single?: string, // present (empty) when the link is to this one item of an album, not to the whole album
     text?: string,
     game?: string, // a bot's game, by its short name, to share to a chat
+    free?: string, // a code that removes the owner's message fee for the one who follows the link
     stack?: ChatSetPeerOptions['stack'] // local
   }
 
@@ -124,7 +125,8 @@ export namespace InternalLink {
   export interface InternalLinkUserPhoneNumber {
     _: INTERNAL_LINK_TYPE.USER_PHONE_NUMBER,
     phone: string,
-    text?: string
+    text?: string,
+    free?: string // a code that removes the owner's message fee for the one who follows the link
   }
 
   export interface InternalLinkInvoice {
@@ -284,7 +286,8 @@ export namespace InternalLink {
   // (`contacts.exportContactToken`): whoever opens it gets its owner as a contact
   export interface InternalLinkContactToken {
     _: INTERNAL_LINK_TYPE.CONTACT_TOKEN,
-    token: string
+    token: string,
+    free?: string // a code that removes the owner's message fee for the one who follows the link
   }
 }
 

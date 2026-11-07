@@ -32,6 +32,7 @@ import showBoostPopup from '@components/popups/boost';
 import showGiftLinkPopup from '@components/popups/giftLink';
 import showStarsPopup, {showGiftStarsPicker} from '@components/popups/stars';
 import showSendGiftPopup from '@components/popups/sendGift';
+import showMyQrCodePopup from '@components/popups/myQrCode';
 import showSendGiftPicker from '@components/popups/sendGiftPicker';
 import type {RequestWebViewOptions} from '@appManagers/appAttachMenuBotsManager';
 import {prefetchStars} from '@stores/stars';
@@ -70,6 +71,7 @@ import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import {getManagersSession, isSessionLeaving} from '@lib/accounts/getCurrentAccount';
 import {isWalletReleased} from '@lib/wallet/release';
 import {tryDecodeURIComponent} from '@helpers/string/parseUriParams';
+import type {AppManagers} from '@lib/managers';
 
 /**
  * For a lookup whose failure is only a miss: any error is one but MIDDLEWARE, the end of the account
@@ -83,6 +85,9 @@ const missUnlessSessionEnded = (err: ApiError): undefined => {
 
   return undefined;
 };
+
+// what a free-messages link says comes this long after its chat opens (Android's 300 ms)
+const NO_PAID_TOKEN_TOAST_DELAY = 300;
 
 /**
  * A link whose section we know but whose path we do not — the one thing worse
@@ -355,13 +360,13 @@ export class InternalLinkProcessor {
     }
 
     type K1 = {thread?: string, comment?: string, t?: string, option?: string, single?: string};
-    type K2 = {thread?: string, comment?: string, start?: string, startgroup?: string, startchannel?: string, admin?: string, t?: string, text?: string, option?: string, single?: string, game?: string};
+    type K2 = {thread?: string, comment?: string, start?: string, startgroup?: string, startchannel?: string, admin?: string, t?: string, text?: string, option?: string, single?: string, game?: string, free?: string};
     type K3 = {startattach?: string, attach?: string, choose?: TelegramChoosePeerType};
     type K4 = {startapp?: string, mode?: 'compact' | 'fullscreen'};
     type K5 = {story?: string};
     type K6 = {boost?: string};
     type K7 = {voicechat?: string, videochat?: string, livestream?: string};
-    type K8 = {text?: string};
+    type K8 = {text?: string, free?: string};
 
     addAnchorListener<{
     //   pathnameParams: ['c', string, string],
@@ -374,6 +379,11 @@ export class InternalLinkProcessor {
     }>({
       name: 'im',
       callback: async({pathnameParams, uriParams, element, masked}) => {
+        // t.me/s/<username> is the web page of a chat, and names it as t.me/<username> does (Android reads it so)
+        if(pathnameParams?.[0] === 's' && pathnameParams.length > 1) {
+          pathnameParams = pathnameParams.slice(1) as typeof pathnameParams;
+        }
+
         let link: InternalLink;
         if('voicechat' in uriParams || 'videochat' in uriParams || 'livestream' in uriParams) {
           assumeType<K7>(uriParams);
@@ -411,7 +421,8 @@ export class InternalLinkProcessor {
           link = {
             _: INTERNAL_LINK_TYPE.USER_PHONE_NUMBER,
             phone: pathnameParams[0],
-            text: (uriParams as K8).text
+            text: (uriParams as K8).text,
+            free: (uriParams as K8).free
           };
         } else if(pathnameParams[0] === 'c') {
           assumeType<K1>(uriParams);
@@ -456,7 +467,8 @@ export class InternalLinkProcessor {
             t: uriParams.t,
             text: uriParams.text,
             single: uriParams.single,
-            game: uriParams.game
+            game: uriParams.game,
+            free: uriParams.free
           };
         }
 
@@ -506,7 +518,8 @@ export class InternalLinkProcessor {
         startapp?: string,
         compact?: string,
         story?: string,
-        single?: string
+        single?: string,
+        free?: string
       }
     }>({
       name: 'resolve',
@@ -1049,6 +1062,13 @@ export class InternalLinkProcessor {
           case 'send-gift/self':
             return showSendGiftPopup({peerId: rootScope.myId});
 
+          // the own QR code, as tdesktop and Android open it; `/share` points at its Share button (tdesktop), where
+          // Android presses it
+          case 'qr-code':
+            return showMyQrCodePopup();
+          case 'qr-code/share':
+            return showMyQrCodePopup(rootScope.myId, {highlightShare: true});
+
           // destinations outside Settings, which the section table cannot address
           case 'saved-messages':
             return appImManager.setPeer({peerId: appImManager.myId});
@@ -1153,28 +1173,29 @@ export class InternalLinkProcessor {
       }
     });
 
-    // t.me/contact/<token>
-    addAnchorListener<{pathnameParams: ['contact', string]}>({
+    // t.me/contact/<token>?free=<code>
+    addAnchorListener<{pathnameParams: ['contact', string], uriParams: {free?: string}}>({
       name: 'contact',
-      callback: ({pathnameParams}) => {
+      callback: ({pathnameParams, uriParams}) => {
         // the path keeps the token percent-encoded; a broken escape leaves it as it came, a dead link
         const token = tryDecodeURIComponent(pathnameParams[1] || '');
 
         const link: InternalLink = {
           _: INTERNAL_LINK_TYPE.CONTACT_TOKEN,
-          token
+          token,
+          free: uriParams.free
         };
 
         return this.processInternalLink(link);
       }
     });
 
-    // tg://contact?token=<token>
-    addAnchorListener<{uriParams: {token?: string}}>({
+    // tg://contact?token=<token>&free=<code>
+    addAnchorListener<{uriParams: {token?: string, free?: string}}>({
       name: 'contact',
       protocol: 'tg',
       callback: ({uriParams}) => {
-        const link = this.makeLink(INTERNAL_LINK_TYPE.CONTACT_TOKEN, {token: uriParams.token || ''});
+        const link = this.makeLink(INTERNAL_LINK_TYPE.CONTACT_TOKEN, {token: uriParams.token || '', free: uriParams.free});
         return this.processInternalLink(link);
       }
     });
@@ -1246,7 +1267,69 @@ export class InternalLinkProcessor {
     } as any as InternalLinkTypeMap[T];
   }
 
-  public processMessageLink = (link: InternalLink.InternalLinkMessage) => {
+  /**
+   * A link's `?free=<code>`, spent on the user it names, as Android does: their chat opens whatever the answer, and a
+   * moment later says whether their message fee is gone for us. A link of one's own only opens the own chat.
+   */
+  private async importNoPaidMessagesToken(managers: AppManagers, user: User.user, token: string) {
+    const peerId = user.id.toPeerId(false);
+    if(user.pFlags.self) {
+      return appImManager.setInnerPeer({peerId});
+    }
+
+    // the account the link was opened in: once the tab has left it, the link goes no further
+    const session = getManagersSession(managers);
+    let error: ApiError;
+    try {
+      await managers.appUsersManager.importNoPaidMessagesToken(user.id, token);
+    } catch(err) {
+      error = err as ApiError;
+    }
+
+    if(isSessionLeaving(session)) return;
+    await appImManager.setInnerPeer({peerId});
+    // the toast speaks of the chat, so it comes once the chat is there
+    await pause(NO_PAID_TOKEN_TOAST_DELAY);
+    if(isSessionLeaving(session)) return;
+    if(error) {
+      toastNew({langPackKey: error.type?.startsWith('USER_') ? 'NoPaidMessagesToken.UserInvalid' : 'NoPaidMessagesToken.Invalid'});
+      return;
+    }
+
+    toastNew({
+      langPackKey: 'NoPaidMessagesToken.Imported',
+      langPackArguments: [await wrapPeerTitle({peerId, onlyFirstName: true})]
+    });
+  }
+
+  /**
+   * `t.me/<username>?free=<code>`: the code removes the message fee of the user it names; the rest of the link is not
+   * looked at. A name that is not a user's is "no account", as on Android.
+   */
+  private async useNoPaidMessagesToken(link: InternalLink.InternalLinkMessage) {
+    const managers = bindManagersToSession(this.managers);
+    let peer;
+    try {
+      peer = await managers.appUsersManager.resolveUsername(link.domain);
+    } catch(err) {
+      this.showUsernameResolveError(err as ApiError);
+      return;
+    }
+
+    if(peer?._ !== 'user') {
+      toastNew({langPackKey: 'NoUsernameFound'});
+      return;
+    }
+
+    await this.importNoPaidMessagesToken(managers, peer, link.free);
+  }
+
+  public processMessageLink = async(link: InternalLink.InternalLinkMessage) => {
+    const managers = bindManagersToSession(this.managers);
+    if(link.free) {
+      return this.useNoPaidMessagesToken(link);
+    }
+
     if(link.game) {
       return this.shareGame(link);
     }
@@ -1254,7 +1337,7 @@ export class InternalLinkProcessor {
     if(link.startgroup !== undefined || link.startchannel !== undefined) {
       const requestedRights = parseBotAdminRights(link.admin);
       const scope = getBotAddToChatScope(link, requestedRights);
-      return this.managers.appUsersManager.resolveUsername(link.domain).then(async(peer) => {
+      return managers.appUsersManager.resolveUsername(link.domain).then(async(peer) => {
         if(peer._ === 'user' && peer.pFlags.bot) {
           await showAddBotToChat({
             botId: peer.id as BotId,
@@ -1552,7 +1635,13 @@ export class InternalLinkProcessor {
   };
 
   public processUserPhoneNumberLink = (link: InternalLink.InternalLinkUserPhoneNumber) => {
-    return this.managers.appUsersManager.resolvePhone(link.phone).then((user) => {
+    const managers = bindManagersToSession(this.managers);
+    return managers.appUsersManager.resolvePhone(link.phone).then((user): Promise<unknown> => {
+      // `t.me/+<phone>?free=<code>`: the code removes the message fee of the user the number names
+      if(link.free) {
+        return this.importNoPaidMessagesToken(managers, user as User.user, link.free);
+      }
+
       return appImManager.setInnerPeer({
         peerId: user.id.toPeerId(false),
         text: link.text
@@ -1933,7 +2022,8 @@ export class InternalLinkProcessor {
 
   /**
    * Someone's "My QR code" link: the server makes its owner a contact and names them; a token that
-   * has expired, or a user who is gone, is a dead link (tdesktop's `resolveContactToken`).
+   * has expired, or a user who is gone, is a dead link (tdesktop's `resolveContactToken`). With
+   * `?free=<code>` the code is spent on them before their chat opens, as Android does.
    */
   public processContactTokenLink = async(link: InternalLink.InternalLinkContactToken) => {
     const managers = bindManagersToSession(this.managers);
@@ -1943,6 +2033,10 @@ export class InternalLinkProcessor {
     if(!user || user._ !== 'user' || user.pFlags.deleted) {
       toastNew({langPackKey: 'ContactLinkInvalid'});
       return;
+    }
+
+    if(link.free) {
+      return this.importNoPaidMessagesToken(managers, user, link.free);
     }
 
     return appImManager.setInnerPeer({peerId: user.id.toPeerId(false)});

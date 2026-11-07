@@ -37,7 +37,7 @@ import anchorCallback from '@helpers/dom/anchorCallback';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
 import {onCleanup} from 'solid-js';
-import StickersTabCategory, {EmoticonsTabStyles} from '@components/emoticonsDropdown/category';
+import StickersTabCategory, {EmoticonsTabStyles, StickersTabStyles} from '@components/emoticonsDropdown/category';
 import Tabs from '@components/tabs';
 import EmoticonsTabC from '@components/emoticonsDropdown/tab';
 import flatten from '@helpers/array/flatten';
@@ -246,7 +246,11 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
   private onClick: (emoji: EmojiTabItem) => void;
   private activeEmoji: ReturnType<typeof getEmojiFromElement>;
   private activeElements: EmojiTabItem[];
+  // the picks of a picker that holds a few, each with its place among them (from 1): their cells show it, `data-pick`
+  private activeDocIds?: Map<DocId, number>;
   private noPacks: boolean;
+  /** The main sets show as soon as they are known, without waiting for the installed packs */
+  private packsAfterMainSets?: boolean;
   private noSearch: boolean;
   private preloaderDelay: number;
   private freeCustomEmoji: Set<DocId>;
@@ -259,6 +263,8 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
   private emojiVariants: {[emoji: string]: EmojiSkinTone};
   private groupSetController: GroupSetController;
   private groupSetHidden: boolean;
+  /** The grid's sizes, for the height a category keeps while its emoji are out of sight: a host's CSS may set others */
+  private styles: StickersTabStyles;
   public initPromise: Promise<void>;
 
   constructor(options: {
@@ -272,6 +278,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     additionalLocalStickerSet?: EmojiTab['additionalLocalStickerSet'],
     onClick?: EmojiTab['onClick'],
     noPacks?: EmojiTab['noPacks'],
+    packsAfterMainSets?: EmojiTab['packsAfterMainSets'],
     noSearch?: EmojiTab['noSearch'],
     mediaPeekClass?: EmojiTab['mediaPeekClass'],
     preloaderDelay?: EmojiTab['preloaderDelay'],
@@ -281,7 +288,8 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     searchFetcher?: EmojiTab['searchFetcher'],
     groupFetcher?: EmojiTab['groupFetcher'],
     canUsePremiumEmojiAlways?: boolean,
-    showLocks?: boolean
+    showLocks?: boolean,
+    styles?: EmojiTab['styles']
   }) {
     super({
       managers: options.managers,
@@ -325,7 +333,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
         }
 
         const container = this.categoriesContainer.cloneNode(false) as HTMLElement;
-        const category = this.createCategory({styles: EmoticonsTabStyles.Emoji});
+        const category = this.createCategory({styles: this.styles});
         this.createEmojiRendererForCategory(category);
         for(const emoji of emojis) {
           this.addEmojiToCategory({
@@ -361,6 +369,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     });
 
     safeAssign(this, options);
+    this.styles ??= EmoticonsTabStyles.Emoji;
     this.container.classList.add('emoji-padding');
     this.content.id = 'content-emoji';
     this.activeElements = [];
@@ -542,7 +551,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
         title: titleLangPackKey,
         icon: icon as Icon,
         noMenuTab: !icon,
-        styles: EmoticonsTabStyles.Emoji
+        styles: this.styles
       });
       category.elements.container.classList.remove('hide');
 
@@ -581,13 +590,14 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     });
 
     const mainSetsResult = this.mainSets?.();
+    const packsPromise = !this.noPacks && Promise.resolve(apiManagerProxy.isPremiumFeaturesHidden()).then((isPremiumPurchaseHidden) => {
+      return isPremiumPurchaseHidden ? undefined : managers.appEmojiManager.getCustomEmojis();
+    });
     const promise = Promise.all([
       !this.preloaderDelay ? undefined : pause(this.preloaderDelay),
       !this.noRegularEmoji && managers.appEmojiManager.getRecentEmojis('native'),
       !this.isStandalone && managers.appEmojiManager.getRecentEmojis('custom'),
-      !this.noPacks && Promise.resolve(apiManagerProxy.isPremiumFeaturesHidden()).then((isPremiumPurchaseHidden) => {
-        return isPremiumPurchaseHidden ? undefined : managers.appEmojiManager.getCustomEmojis();
-      }),
+      !this.packsAfterMainSets && packsPromise,
       mainSetsResult && Promise.all(Array.isArray(mainSetsResult) ? mainSetsResult : [mainSetsResult]),
       this.additionalSets?.(),
       this.additionalLocalStickerSet?.(),
@@ -713,6 +723,14 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
       }
 
       this.continueInit();
+
+      if(this.packsAfterMainSets && packsPromise) {
+        const middleware = this.middlewareHelper.get();
+        packsPromise.then((packs) => {
+          if(!middleware()) return;
+          packs?.sets.forEach((set) => this.renderEmojiSet(set));
+        });
+      }
     });
 
     attachClickEvent(this.content, this.onContentClick, {listenerSetter: this.listenerSetter});
@@ -1001,7 +1019,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
       this.createCategory({
         id: GROUP_SET_CATEGORY_ID,
         title: getGroupSetTitle(undefined, true),
-        styles: EmoticonsTabStyles.Emoji
+        styles: this.styles
       });
 
     if(!set) {
@@ -1040,7 +1058,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
       stickerSet: set,
       id: isGroupSet ? GROUP_SET_CATEGORY_ID : undefined,
       title: wrapEmojiText(set.title),
-      styles: EmoticonsTabStyles.Emoji
+      styles: this.styles
     });
     this.positionCategory(category, prepend);
     const {container, menuTabPadding} = category.elements;
@@ -1215,7 +1233,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     };
 
     if(
-      options.active || (
+      options.active || (item.docId && this.activeDocIds?.has(item.docId)) || (
         this.activeEmoji && (
           item.docId ?
             this.activeEmoji.docId === item.docId :
@@ -1226,6 +1244,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
       this.activeEmoji === emoji;
       this.activeElements.push(item);
       element.classList.add('active');
+      if(item.docId && this.activeDocIds?.has(item.docId)) element.dataset.pick = '' + this.activeDocIds.get(item.docId);
     }
 
     category.items[prepend ? 'unshift' : 'push'](item);
@@ -1330,17 +1349,35 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     }
 
     this.activeEmoji = emoji;
+    this.markActive((item) => emoji.docId ? item.docId === emoji.docId : item.emoji === emoji.emoji);
+  }
 
+  /**
+   * Marks several custom emoji at once, for a picker that holds a few picks, in their order: each cell carries its
+   * place (`data-pick`). The single `setActive` is left alone.
+   */
+  public setActiveDocIds(docIds: Iterable<DocId>) {
+    this.activeDocIds = new Map([...docIds].map((docId, index) => [docId, index + 1]));
+    this.markActive(
+      (item) => !!item.docId && this.activeDocIds.has(item.docId),
+      (item) => item.element.dataset.pick = '' + this.activeDocIds.get(item.docId)
+    );
+  }
+
+  /** The items `isActive` picks are marked, and no others; `mark` adds what else a mark carries */
+  private markActive(isActive: (item: EmojiTabItem) => boolean, mark?: (item: EmojiTabItem) => void) {
     this.activeElements.forEach((item) => {
       item.element.classList.remove('active');
+      delete item.element.dataset.pick;
     });
 
     this.activeElements.length = 0;
 
     this.categoriesMap.forEach((category) => {
       category.items.forEach((item) => {
-        if(emoji.docId ? item.docId === emoji.docId : item.emoji === emoji.emoji) {
+        if(isActive(item)) {
           item.element.classList.add('active');
+          mark?.(item);
           this.activeElements.push(item);
         }
       });
