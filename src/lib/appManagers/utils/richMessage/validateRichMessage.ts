@@ -6,15 +6,9 @@ import {TLSerialization} from '@lib/mtproto/tl_utils';
 import emojiRegExp from '@vendor/emoji/regex';
 import {getOrderedListTypePresentation} from '@lib/richTextProcessor/orderedList';
 import measureTableGrid, {tableSpan} from '@lib/richTextProcessor/tableGrid';
+import {DEFAULT_RICH_MESSAGE_LIMITS, type RichMessageLimits} from '@appManagers/utils/richMessage/richMessageLimits';
 
-export type RichMessageLimits = {
-  lengthLimit: number,
-  maxBlocks: number,
-  maxDepth: number,
-  maxMedia: number,
-  maxTableColumns: number,
-  serializedSizeLimit: number
-};
+export {DEFAULT_RICH_MESSAGE_LIMITS, type RichMessageLimits};
 
 export type RichMessageMetrics = {
   textLength: number,
@@ -62,15 +56,6 @@ export type RichMessageLimitAppConfig = Pick<
 export type RichMessageBlocksSource =
   PageBlock[] |
   Pick<InputRichMessage.inputRichMessage, 'blocks'>;
-
-export const DEFAULT_RICH_MESSAGE_LIMITS: Readonly<RichMessageLimits> = Object.freeze({
-  lengthLimit: 32768,
-  maxBlocks: 500,
-  maxDepth: 16,
-  maxMedia: 50,
-  maxTableColumns: 20,
-  serializedSizeLimit: 256 * 1024
-});
 
 function configLimit(value: number, fallback: number) {
   return typeof(value) === 'number' && Number.isFinite(value) ? Math.trunc(value) : fallback;

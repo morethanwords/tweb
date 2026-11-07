@@ -1,17 +1,17 @@
 // @ts-check
 
 const fs = require('fs');
+const {getChangelogFiles, releaseChangelog} = require('./changelogs');
 
 const version = process.argv[2] || 'same';
-const changelog = process.argv[3] || 'same';
-const langVersion = process.argv[4] || 'same';
+const langVersion = process.argv[3] || 'same';
 const PREFIX = 'VITE_';
 const BUILD_KEY = PREFIX + 'BUILD';
 const VERSION_KEY = PREFIX + 'VERSION';
 const VERSION_FULL_KEY = PREFIX + 'VERSION_FULL';
 const LANG_PACK_VERSION_KEY = PREFIX + 'LANG_PACK_VERSION';
 
-console.log('Change version to:', {version, changelog, langVersion});
+console.log('Change version to:', {version, langVersion});
 
 const envStr = fs.readFileSync('./.env').toString();
 const env = {};
@@ -21,6 +21,7 @@ envStr.split('\n').forEach(line => {
   env[key] = value;
 });
 
+const isNewVersion = version !== 'same' && version !== env[VERSION_KEY];
 if(version !== 'same') {
   env[VERSION_KEY] = version;
 }
@@ -32,6 +33,18 @@ if(langVersion !== 'same') {
   env[LANG_PACK_VERSION_KEY] = langVersion;
 }
 
+// * a new version is what people are told about, so there is none without its changelog;
+// * checked before anything is written, so a refused one leaves the build number as it was
+const changelogs = [];
+for(const {fileName, filePath} of isNewVersion ? getChangelogFiles() : []) {
+  try {
+    changelogs.push({filePath, text: releaseChangelog(fs.readFileSync(filePath, 'utf-8'), env[VERSION_FULL_KEY])});
+  } catch(err) {
+    console.error(`Version ${version} is not released, ${fileName}: ${err.message}. What is new goes there first: .claude/skills/changelog/SKILL.md`);
+    process.exit(1);
+  }
+}
+
 const lines = [];
 for(const key in env) {
   lines.push(`${key}=${env[key]}`);
@@ -39,19 +52,4 @@ for(const key in env) {
 fs.writeFileSync('./.env', lines.join('\n') + '\n', 'utf-8');
 fs.writeFileSync('./public/version', env[VERSION_FULL_KEY], 'utf-8');
 
-if(changelog !== 'same') {
-  const data = fs.readFileSync('./CHANGELOG.md');
-  const fd = fs.openSync('./CHANGELOG.md', 'w+');
-  const lines = [
-    `### ${env[VERSION_FULL_KEY]}`
-  ];
-  changelog.trim().split('\n').forEach(line => {
-    lines.push(`* ${line}`);
-  });
-  const insert = Buffer.from(lines.join('\n') + '\n\n');
-  fs.writeSync(fd, insert, 0, insert.length, 0);
-  fs.writeSync(fd, data, 0, data.length, insert.length);
-  fs.close(fd, () => {
-    process.exit(0);
-  });
-}
+changelogs.forEach(({filePath, text}) => fs.writeFileSync(filePath, text, 'utf-8'));

@@ -65,11 +65,13 @@ function clearOldFiles() {
 
 function changeVersion(langVersion) {
   const version = process.argv[2] || 'same';
-  const changelog = process.argv[3] || 'same';
-  const child = spawn(npmCmd, ['run', 'change-version', version, changelog, langVersion], {shell: true});
+  const child = spawn(npmCmd, ['run', 'change-version', version, langVersion], {shell: true});
   child.stdout.on('data', (chunk) => {
     console.log(chunk.toString());
   });
+
+  // * why a version was refused
+  child.stderr.pipe(process.stderr);
 
   return new Promise((resolve, reject) => {
     child.on('close', (code) => {
@@ -191,6 +193,11 @@ function compressFolder(folderPath) {
   console.log(`stdout: ${stdout}`);
   console.log(`stderr: ${stderr}`);
 }); */
+
+if(process.argv[3]) {
+  console.error('A version\'s changelog is the "### Unreleased" section of CHANGELOG.md and CHANGELOG_ru.md, not an argument');
+  process.exit(1);
+}
 
 formatLang()
 .then(applyNewLang)

@@ -969,6 +969,31 @@ client, whose RTL support is incomplete.
   in both directions and fails on a box that does not stand mirrored, and checks
   that a value slider runs from the right.
 
+## The changelog is for the people who use the app
+
+`CHANGELOG.md` (English) and `CHANGELOG_ru.md` (Russian) are read by people who
+use Telegram, not by developers. A version's section is the post about it in
+@WebK_en / @WebK_ru, a rich message with a clip under each feature. Its
+headlines with their leads are the short message each account gets once, in its
+"Telegram" chat, when its client updates to the version (`generate_changelog.js`
+→ `public/changelogs/` → `apiUpdatesManager`); the section ends with a link to
+the post. The version line in the main menu links to the file. It is not a
+commit log:
+
+- It says what people can do now and what works better for them, in the app's
+  own names for things. No code, files, internals, protocol terms or bug links,
+  and nothing that is off by default or that only developers see.
+  `src/tests/changelog.test.ts` turns away the obvious technical words.
+- What has not been announced yet waits under `### Unreleased` at the top of
+  both files. Before a Build (`node build.js`), bring it up to date with the
+  commits since its last update and commit it with the Build. A version bump
+  (`node build.js <version>`) turns it into that version's section, and refuses
+  to bump the version without it. Before that, `scripts/changelog-draft.mjs`
+  sends it as a draft to a private channel for review; moving it to the public
+  channels is the user's, never a session's. The shape, the style and the steps
+  are in the `changelog` skill (`.claude/skills/changelog/SKILL.md`).
+- `public/changelogs/` is generated from these files; never edit it by hand.
+
 ## What NOT to Do
 
 (Style rules are in "Code Style"; the import-alias, `invokeApi`-from-UI, and
@@ -1107,7 +1132,7 @@ Re-create the Codex symlinks on a new machine (run from the repo root):
 
 ```bash
 mkdir -p ~/.codex/skills ~/.codex/prompts
-for s in graphify run-build tg-port-feature tweb-bugs tweb-mtproto-debug; do
+for s in changelog graphify run-build tg-port-feature tweb-bugs tweb-mtproto-debug; do
   ln -sfn "$(pwd)/.claude/skills/$s" ~/.codex/skills/$s
 done
 for c in planner task refactor-popup-procedural; do
