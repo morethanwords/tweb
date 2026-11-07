@@ -10,6 +10,10 @@ import Modes from '@config/modes';
 import makeError from '@helpers/makeError';
 import safeAssign from '@helpers/object/safeAssign';
 import {logger} from '@lib/logger';
+import App from '@config/app';
+import {MainBroadcastChannelEvents, unversionedMainBroadcastChannelName} from '@config/broadcastChannel';
+import {createBroadcastChannelWrapper} from '@lib/broadcastChannelWrapper';
+import pause from '@helpers/schedulers/pause';
 
 /**
  * https://developer.mozilla.org/en-US/docs/Web/API/IDBObjectStore/createIndex
@@ -34,9 +38,36 @@ export type IDBOptions = {
 };
 
 const DEBUG = false;
+// * how long an open waits for an upgrade the connections of an older version's tab or worker hold back (they do not
+// * close on versionchange): it goes on once those tabs have reloaded, which askOlderVersionsToReload asks for
+const BLOCKED_OPEN_TIMEOUT = 20e3;
+
+let askedOlderVersionsToReload = false;
+/**
+ * The tabs of older builds are asked to reload, once, on the channel every version reloads on
+ * (apiManagerProxy; a tab of this build or a newer one does not, by `olderThan`). Sent from wherever the upgrade is
+ * found held back — the worker opens the account's databases before the page does
+ */
+function askOlderVersionsToReload() {
+  if(askedOlderVersionsToReload) {
+    return;
+  }
+
+  askedOlderVersionsToReload = true;
+  try {
+    const channel = createBroadcastChannelWrapper<MainBroadcastChannelEvents>(unversionedMainBroadcastChannelName);
+    channel.emit('reload', {dropFlags: [], olderThan: App.build});
+    channel.close();
+  } catch(err) {}
+}
 
 export class IDB {
   private static INSTANCES: IDB[] = [];
+  /**
+   * An upgrade of a database is held back by connections at its older version: the tabs of older versions are asked
+   * to reload, which closes them
+   */
+  public static onUpgradeBlocked: (name: string) => void = askOlderVersionsToReload;
   private openDbPromise: MaybePromise<IDBDatabase>;
   private db: IDBDatabase;
   private storageIsAvailable: boolean;
@@ -105,12 +136,53 @@ export class IDB {
       return Promise.reject(error);
     }
 
-    let finished = false;
-    setTimeout(() => {
-      if(!finished) {
-        request.onerror(makeError('IDB_CREATE_TIMEOUT') as any as Event);
+    // * an upgrade older connections hold back is waited for longer: given up after 3 s, the account's state was read
+    // * as empty, and the start went on as a new one (no update message). The request that asked for the upgrade
+    // * hears `blocked`; one queued behind it (the page's, behind the worker's) hears nothing, and the version the
+    // * database is at tells it
+    let finished = false, waiting = false;
+    const startedAt = Date.now();
+    const waitForUpgrade = () => {
+      if(waiting) {
+        return;
       }
-    }, 3000);
+
+      waiting = true;
+      this.log.warn('the upgrade waits for the connections of an older version to close');
+      IDB.onUpgradeBlocked?.(this.name);
+    };
+    // * bounded: a storage that does not answer an open may not answer this either, and the open still gives up
+    const isUpgradePending = async() => {
+      try {
+        const databases = await Promise.race([indexedDB.databases?.(), pause(1000)]);
+        const found = databases ? databases.find((database) => database.name === this.name) : undefined;
+        return !!found && found.version < this.version;
+      } catch(err) {
+        return false;
+      }
+    };
+    const checkTimeout = async() => {
+      if(finished) {
+        return;
+      }
+
+      if(!waiting && await isUpgradePending()) {
+        waitForUpgrade();
+      }
+
+      if(finished) {
+        return;
+      }
+
+      if(waiting && Date.now() - startedAt < BLOCKED_OPEN_TIMEOUT) {
+        setTimeout(checkTimeout, 1000);
+        return;
+      }
+
+      request.onerror(makeError('IDB_CREATE_TIMEOUT') as any as Event);
+    };
+    setTimeout(checkTimeout, 3000);
+    request.onblocked = waitForUpgrade;
 
     return this.openDbPromise = new Promise<IDBDatabase>((resolve, reject) => {
       request.onsuccess = (event) => {

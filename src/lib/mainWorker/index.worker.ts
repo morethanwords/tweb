@@ -168,6 +168,14 @@ port.addMultipleEventsListeners({
     appStateManager.newVersion = newVersion;
     appStateManager.oldVersion = oldVersion;
 
+    // * a tab that knows of a new version the account's updates started without (the tab that started them could
+    // * not read the state, or came first with nothing new): the version's message comes now
+    if(newVersion) {
+      callbackify(appManagersManager.getManagersByAccount(), (managers) => {
+        managers[accountNumber]?.apiUpdatesManager.deliverChangelog();
+      });
+    }
+
     // * preserve self user
     if(userId && resetStorages.has('users')) {
       resetStorages.set('users', [userId]);

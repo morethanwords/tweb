@@ -25,6 +25,7 @@ import SuperMessagePort from '@lib/superMessagePort';
 import IS_SHARED_WORKER_SUPPORTED from '@environment/sharedWorkerSupport';
 import {IS_SAFARI} from '@environment/userAgent';
 import toggleStorages from '@helpers/toggleStorages';
+import App from '@config/app';
 import idleController from '@helpers/idleController';
 import ServiceMessagePort from '@lib/serviceWorker/serviceMessagePort';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
@@ -563,8 +564,13 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.mainBroadcastChannel = createBroadcastChannelWrapper<MainBroadcastChannelEvents>(unversionedMainBroadcastChannelName);
 
     this.mainBroadcastChannel.on('reload', (payload) => {
+      if(payload && payload.olderThan !== undefined && App.build >= payload.olderThan) {
+        return;
+      }
+
       appNavigationController.reload(payload ? getURLWithoutFlags(payload.dropFlags) : undefined);
     });
+
 
     this.cacheStorageThreadedControls = createCacheStorageThreadedControls({apiManagerProxy: this});
 
