@@ -475,7 +475,7 @@ describe('an answer older than a change made here', () => {
       appUsersManager: {getUserInput: (userId: UserId) => ({_: 'inputUserMock', userId})},
       appPeersManager: {saveApiPeers: vi.fn()},
       appNotificationsManager: manager,
-      appThemesManager: {saveWallPaper: (wallpaper: any) => wallpaper},
+      appThemesManager: {saveWallPaper: (wallpaper: any) => wallpaper, saveChatTheme: (theme: any) => theme},
       appBusinessManager: {saveBusinessIntro: (userId: UserId, intro: any) => intro},
       appSavedMusicManager: {applyTopSavedMusic: vi.fn()},
       appWalletManager: {saveWalletAddress: vi.fn()},
