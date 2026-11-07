@@ -457,7 +457,8 @@ class SuperMessagePort<
   }
 
   private isDataCloneError(error: unknown) {
-    return (error as {name?: string})?.name === 'DataCloneError';
+    // * a payload nested deeper than the clone algorithm's stack goes throws a RangeError, not a DataCloneError
+    return (error as {name?: string})?.name === 'DataCloneError' || error instanceof RangeError;
   }
 
   private sendDataCloneError(port: SendPort, taskId: number) {

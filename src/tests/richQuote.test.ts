@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import type {PageBlock, RichText} from '@layer';
+import {concat, emoji, plain} from '@/tests/helpers/richText';
 import {
   getReplyQuote,
   getRichQuoteNodes,
@@ -11,12 +12,9 @@ import {
 
 // * the cases of Telegram for iOS' RichReplyQuoteTests: what the server takes for a quote of a rich message
 
-const plain = (text: string): RichText => ({_: 'textPlain', text});
 const bold = (text: RichText): RichText => ({_: 'textBold', text});
 const italic = (text: RichText): RichText => ({_: 'textItalic', text});
-const concat = (...texts: RichText[]): RichText => ({_: 'textConcat', texts});
 const math = (source: string): RichText => ({_: 'textMath', source});
-const emoji = (alt: string): RichText => ({_: 'textCustomEmoji', document_id: 1, alt});
 const paragraph = (text: RichText): PageBlock => ({_: 'pageBlockParagraph', text});
 const caption = (text: string, credit: string) => ({_: 'pageCaption' as const, text: plain(text), credit: plain(credit)});
 const cell = (text: string): any => ({_: 'pageTableCell', pFlags: {}, text: plain(text)});

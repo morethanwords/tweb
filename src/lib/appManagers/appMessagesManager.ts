@@ -8449,6 +8449,10 @@ export class AppMessagesManager extends AppManager {
     .filter(Boolean);
 
     const blocks: PageBlock[] = [...(richMessage.blocks || [])];
+    // * one by one: a spread of a block's tens of thousands of children overflows the stack
+    const pushBlocks = (children: PageBlock[]) => {
+      for(const child of children) blocks.push(child);
+    };
     for(let index = 0; index < blocks.length; ++index) {
       const block = blocks[index];
       switch(block._) {
@@ -8461,16 +8465,16 @@ export class AppMessagesManager extends AppManager {
         case 'pageBlockEmbedPost':
         case 'pageBlockDetails':
         case 'pageBlockBlockquoteBlocks':
-          blocks.push(...block.blocks);
+          pushBlocks(block.blocks);
           break;
         case 'pageBlockCollage':
         case 'pageBlockSlideshow':
-          blocks.push(...block.items);
+          pushBlocks(block.items);
           break;
         case 'pageBlockList':
         case 'pageBlockOrderedList':
           for(const item of block.items) {
-            if('blocks' in item) blocks.push(...item.blocks);
+            if('blocks' in item) pushBlocks(item.blocks);
           }
           break;
       }

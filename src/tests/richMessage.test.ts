@@ -334,6 +334,49 @@ describe('flattenRichMessageSummary', () => {
   });
 });
 
+describe('rich text of any shape in bounded time', () => {
+  test('a summary keeps thousands of entities after thousands of formulas where they are', () => {
+    // each entity used to add up the shifts of every formula in the text
+    const texts: RichText[] = [];
+    for(let index = 0; index < 3000; ++index) {
+      texts.push({_: 'textMath', source: 'x'} as RichText, {_: 'textBold', text: text('b')});
+    }
+    const startedAt = performance.now();
+    const summary = flattenRichMessageSummary(richMessage([{_: 'pageBlockParagraph', text: {_: 'textConcat', texts}}]));
+    expect(performance.now() - startedAt).toBeLessThan(1000);
+    expect(summary.text).toBe('xb'.repeat(3000));
+    expect(summary.entities[2999]).toEqual({_: 'messageEntityBold', offset: 5999, length: 1});
+  });
+
+  test('a list item\'s marker the size of a message is not repeated the size of a message per line', () => {
+    const blocks: PageBlock[] = Array.from({length: 2000}, () => ({_: 'pageBlockParagraph', text: text('line')}));
+    const startedAt = performance.now();
+    const summary = flattenRichMessageSummary(richMessage([{
+      _: 'pageBlockOrderedList',
+      pFlags: {},
+      items: [{_: 'pageListOrderedItemBlocks', pFlags: {}, num: '9'.repeat(100000), blocks}]
+    }]));
+    expect(performance.now() - startedAt).toBeLessThan(1000);
+    const lines = summary.text.split('\n');
+    expect(lines).toHaveLength(2000);
+    expect(lines[0]).toBe('9'.repeat(16) + '.... line');
+  });
+
+  test('a text nested a thousand concatenations deep is wrapped at once', () => {
+    // every level copied every entity under it into its own list
+    let richText: RichText = text('');
+    for(let level = 0; level < 1200; ++level) {
+      richText = {_: 'textConcat', texts: [richText, ...Array.from({length: 10}, (): RichText => ({_: 'textBold', text: text('b')}))]};
+    }
+    const startedAt = performance.now();
+    const {text: wrapped, entities} = wrapTelegramRichText(richText);
+    expect(performance.now() - startedAt).toBeLessThan(500);
+    expect(wrapped).toBe('b'.repeat(12000));
+    expect(entities).toHaveLength(12000);
+    expect(entities.every((entity, index) => entity._ === 'messageEntityBold' && entity.offset === index && entity.length === 1)).toBe(true);
+  });
+});
+
 describe('layer 229 rich text', () => {
   test('shows the label of a page button until pages can draw real buttons', () => {
     const button: RichText = {

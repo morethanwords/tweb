@@ -35,6 +35,7 @@ import filterDisabledEntities, {markMessageLinkEntity} from '@lib/richTextProces
 import {RICH_TEXT_BUTTON_SELECTOR, setRichTextButton} from '@lib/richTextProcessor/richTextButtons';
 import {TEXT_LINK_ATTRIBUTE} from '@helpers/dom/linkPress';
 import type {Middleware} from '@helpers/middleware';
+import replaceNonNumber from '@helpers/string/replaceNonNumber';
 
 export type WrapRichTextOptions = Partial<{
   entities: MessageEntity[],
@@ -103,6 +104,22 @@ const ENTITY_DIRECTIONS: {[type in MessageEntity['_']]?: 'ltr' | 'auto'} = {
   messageEntityCashtag: 'ltr',
   messageEntityHashtag: 'auto'
 };
+
+// a custom emoji (and a rich text's picture) is drawn as an image, its text only standing for it; a
+// spoiler's text is drawn hidden
+const UNDRAWN_TEXT_ENTITY_TYPES: ReadonlySet<MessageEntity['_']> = new Set(['messageEntityCustomEmoji', 'messageEntitySpoiler']);
+
+/**
+ * Whether some of the text of the entity at `index` (ending at `end`) is not drawn as itself: a link made
+ * of that text goes somewhere else than it reads. What is inside an entity follows it in the sorted list.
+ */
+function hasUndrawnText(entities: MessageEntity[], index: number, end: number) {
+  for(let i = index + 1; i < entities.length && entities[i].offset < end; ++i) {
+    if(UNDRAWN_TEXT_ENTITY_TYPES.has(entities[i]._)) return true;
+  }
+
+  return false;
+}
 
 function createMarkupFormatting(formatting: string, element = document.createElement('span')) {
   const str = 'markup-' + formatting;
@@ -175,6 +192,13 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
     i: 0,
     usedLength: 0,
     text
+  };
+
+  // * a link that is not to what it reads shows where it goes before it goes there (not in a draft, nor where told not to)
+  const askBeforeOpening = (element: HTMLElement, masked: boolean) => {
+    if(masked && !options.passMaskedLinks && !options.wrappingDraft) {
+      element.setAttribute('onclick', 'showMaskedAlert(this)');
+    }
   };
 
   const wrapSomething = (wrapElement: HTMLElement, noFiller?: boolean) => {
@@ -467,6 +491,9 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           element = document.createElement('a');
           element.classList.add('phone-url');
           (element as HTMLAnchorElement).href = encodeEntities('tel:' + target);
+          // a rich text's phone has a number of its own: one that is not the number it reads asks first,
+          // showing the one it calls, as a link that is not its text does
+          askBeforeOpening(element, replaceNonNumber(target) !== replaceNonNumber(fullEntityText) || hasUndrawnText(entities, nasty.i, endOffset));
         }
         break;
       }
@@ -505,7 +532,8 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
 
       case 'messageEntityBotCommand': {
         // if(!(options.noLinks || options.noCommands || contextExternal)/*  && !entity.unsafe */) {
-        if(!options.noLinks && passEntities[entity._]) {
+        // * a press sends the command in the user's name: never one that is not the text it shows
+        if(!options.noLinks && passEntities[entity._] && !hasUndrawnText(entities, nasty.i, endOffset)) {
           let command = fullEntityText.slice(1);
           let bot: string | boolean;
           let atPos: number;
@@ -687,6 +715,11 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
             // inner = encodeEntities(replaceUrlEncodings(entityText));
           }
 
+          // * the address is the text, but not all of the text is drawn as such: what it reads is not where it goes
+          if(!masked && hasUndrawnText(entities, nasty.i, endOffset) && !isMaskedUrlTrusted(url)) {
+            masked = true;
+          }
+
           const currentContext = !!onclick;
           if(
             !onclick &&
@@ -724,6 +757,8 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           element = document.createElement('a');
           (element as HTMLAnchorElement).href = encodeEntities('mailto:' + target);
           setBlankToAnchor(element as HTMLAnchorElement);
+          // a rich text's email has an address of its own: as with a phone, another than it reads asks first
+          askBeforeOpening(element, target.trim().toLowerCase() !== fullEntityText.trim().toLowerCase() || hasUndrawnText(entities, nasty.i, endOffset));
         }
 
         break;
@@ -761,7 +796,8 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
 
       case 'messageEntityMention': {
         // const contextUrl = !options.noLinks && siteMentions[contextSite];
-        if(!options.noLinks) {
+        // * a username is letters it reads: one partly drawn as an image or hidden is not the one it shows
+        if(!options.noLinks && !hasUndrawnText(entities, nasty.i, endOffset)) {
           const username = fullEntityText.slice(1);
 
           element = wrapTelegramUrlToAnchor('t.me/' + username);

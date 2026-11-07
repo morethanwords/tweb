@@ -1,20 +1,12 @@
 import type {Node as ProseMirrorNode} from '@tiptap/pm/model';
-import {formatListItemMarker} from '@lib/richTextProcessor/orderedList';
+import {formatListItemMarker, orderedListValues} from '@lib/richTextProcessor/orderedList';
 
 type OrderedListValueSource = Pick<ProseMirrorNode, 'attrs' | 'childCount'> & {
   child(index: number): Pick<ProseMirrorNode, 'attrs'>
 };
 
-export function* orderedListItemValues(list: OrderedListValueSource) {
-  const reversed = !!list.attrs.reversed;
-  let value = Number.isInteger(list.attrs.start) ?
-    list.attrs.start : reversed ? list.childCount : 1;
-  for(let current = 0; current < list.childCount; ++current) {
-    const explicit = list.child(current).attrs.value;
-    if(Number.isInteger(explicit)) value = explicit;
-    yield value;
-    value += reversed ? -1 : 1;
-  }
+export function orderedListItemValues(list: OrderedListValueSource) {
+  return orderedListValues(list.childCount, list.attrs.start, !!list.attrs.reversed, (index) => list.child(index).attrs.value);
 }
 
 export function effectiveOrderedListItemValue(list: OrderedListValueSource, index: number) {

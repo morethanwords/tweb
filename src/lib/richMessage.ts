@@ -4,6 +4,8 @@ import wrapTelegramRichText from '@lib/richTextProcessor/wrapTelegramRichText';
 import sortEntities from '@lib/richTextProcessor/sortEntities';
 import {formatListItemMarker} from '@lib/richTextProcessor/orderedList';
 import {MATH_MARKER_RE, decodeInlineMath} from '@helpers/math/mathMarker';
+import limitSymbols from '@helpers/string/limitSymbols';
+import {lowerBound} from '@helpers/array/lowerBound';
 
 const emptyRichText: RichText = {_: 'textEmpty'};
 
@@ -161,9 +163,18 @@ export function getDocumentRowBlockId(block: DocumentRowBlock) {
 }
 
 /** The number an ordered list shows for its item, the one it carries or the one its place gives. */
+// A list's marker is a number or a few letters. A summary repeats the markers of the lists a line
+// stands in before it, so one the size of a message would be repeated for each of its lines.
+const MAX_LIST_MARKER_LENGTH = 16;
+
 export function getOrderedListItemNumber(block: PageBlock.pageBlockOrderedList, index: number) {
   const start = block.start ?? (block.pFlags.reversed ? block.items.length : 1);
-  return block.items[index].num || `${block.pFlags.reversed ? start - index : start + index}`;
+  const num = block.items[index].num;
+  if(num?.length > MAX_LIST_MARKER_LENGTH) {
+    return limitSymbols(num, MAX_LIST_MARKER_LENGTH, MAX_LIST_MARKER_LENGTH);
+  }
+
+  return num || `${block.pFlags.reversed ? start - index : start + index}`;
 }
 
 function emptySummary(): Summary {
@@ -359,12 +370,14 @@ export function wrapSummaryRichText(richText: RichText): TextWithEntities {
   }
   out += text.slice(last);
 
+  // * the sum of the deltas of the formulas up to each, so an entity finds its own in the sorted ones
+  let totalDelta = 0;
+  const shiftFroms = shifts.map((shift) => shift.from);
+  const deltasUpTo = shifts.map((shift) => totalDelta += shift.delta);
   const shiftOffset = (offset: number) => {
-    let delta = 0;
-    for(const shift of shifts) {
-      if(offset >= shift.from) delta += shift.delta;
-    }
-    return offset + delta;
+    // offsets are whole numbers: the shifts at or before one are those before the next
+    const count = lowerBound(0, shiftFroms.length - 1, offset + 1, (index) => shiftFroms[index]);
+    return offset + (count ? deltasUpTo[count - 1] : 0);
   };
 
   return {

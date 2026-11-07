@@ -24,6 +24,20 @@ export function canonicalOrderedListType(value: unknown) {
   return getOrderedListTypePresentation(type)?.htmlType || type || '1';
 }
 
+/**
+ * The number of each of a list's `count` items, as the list counts them: from its start (its first item's,
+ * when it has none), an item's own value taking over.
+ */
+export function* orderedListValues(count: number, start: unknown, reversed: boolean, itemValue: (index: number) => unknown) {
+  let value = Number.isInteger(start) ? start as number : reversed ? count : 1;
+  for(let index = 0; index < count; ++index) {
+    const explicit = itemValue(index);
+    if(Number.isInteger(explicit)) value = explicit as number;
+    yield value;
+    value += reversed ? -1 : 1;
+  }
+}
+
 export function isDecimalOrderedListType(value: unknown) {
   return canonicalOrderedListType(value) === '1';
 }

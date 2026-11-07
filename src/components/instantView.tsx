@@ -30,7 +30,7 @@ import {
   type InstantViewHeadingLevel
 } from '@components/instantViewFormatting';
 import {orderedListCounterStyle, orderedListItemStyle} from '@components/instantViewList';
-import {canonicalOrderedListType, getOrderedListTypePresentation} from '@lib/richTextProcessor/orderedList';
+import {canonicalOrderedListType, getOrderedListTypePresentation, orderedListValues} from '@lib/richTextProcessor/orderedList';
 import wrapRichText, {makeQuoteCollapsable} from '@lib/richTextProcessor/wrapRichText';
 import classNames from '@helpers/string/classNames';
 import {isWebPageUrl} from '@lib/richTextProcessor/matchUrlProtocol';
@@ -146,7 +146,7 @@ type InstantViewContextValue = {
   revealCoordinator?: MessageTextRevealCoordinator,
   onTextLayout?: (event: MessageTextLayoutEvent) => void,
   richTextOptions?: InstantViewRichTextOptions,
-  randomId: string,
+  anchorPrefix: string,
   openNewPage: (url: string) => void,
   collapse: () => void,
   scrollToAnchor: (anchor: string, instantly: boolean) => void,
@@ -172,17 +172,24 @@ const FRAGMENT_HREF_RE = /^(?:[a-z]+:\/\/)?(#[^#?]+)$/i;
 // Without a sandbox the frame keeps every capability it is given by default, and an
 // `html` embed additionally inherits this origin, so its scripts would run as
 // web.telegram.org with access to the parent document and its storage.
+// No `allow-modals`: a frame's alert() stops the whole tab until it is answered, and a loop of them
+// never lets it go — an embed's markup is whatever its sender wrote.
 const EMBED_SANDBOX_ATTRIBUTES = [
   'allow-scripts',
   'allow-popups',
   'allow-popups-to-escape-sandbox', // links inside the embed must open as normal pages
-  'allow-forms',
-  'allow-modals'
+  'allow-forms'
 ].join(' ');
 
 // A cross-origin `url` embed already loads under the provider's own origin, so keeping it
 // costs nothing here and preserves the provider's cookies and storage.
 const EMBED_URL_SANDBOX_ATTRIBUTES = EMBED_SANDBOX_ATTRIBUTES + ' allow-same-origin';
+
+// A page's anchors are ids in the document, which every rich message of the chat shares: each page
+// prefixes its own with a number no other page has, ended by a `-` a number never holds, so no
+// prefix and name of one page spell another's.
+let lastAnchorPrefix = 0;
+const createAnchorPrefix = () => `iv${++lastAnchorPrefix}-`;
 
 // The height in a `resize_frame` event is authored by the embedded document — a third-party page,
 // and after a navigation away not even the one the block asked for — so it only ever grows the
@@ -261,7 +268,7 @@ function onClick(context: InstantViewContextValue, e: MouseEvent) {
     const m = href.match(FRAGMENT_HREF_RE);
     if(m) {
       cancelEvent(e);
-      const target = document.getElementById(context.randomId + m[1].slice(1));
+      const target = document.getElementById(context.anchorPrefix + m[1].slice(1));
       if(target?.classList.contains('tg-reference')) {
         const textElement = document.createDocumentFragment();
         textElement.append(...Array.from(target.childNodes, (node) => node.cloneNode(true)));
@@ -350,7 +357,7 @@ export function InstantViewBlocks(props: {
     onTextLayout: props.onTextLayout,
     revealCoordinator: props.revealCoordinator,
     ready: true,
-    randomId: '' + (Math.random() * 1000 | 0),
+    anchorPrefix: createAnchorPrefix(),
     openNewPage: (url) => {
       if(!hasDisabledNavigation(value)) props.openNewPage(url);
     },
@@ -360,7 +367,7 @@ export function InstantViewBlocks(props: {
         return;
       }
 
-      const element = document.getElementById(value.randomId + anchor.slice(1)) as HTMLElement;
+      const element = document.getElementById(value.anchorPrefix + anchor.slice(1)) as HTMLElement;
       if(!element) {
         return;
       }
@@ -471,7 +478,7 @@ export function InstantView(props: {
     },
     sourceRevision: 0,
     phase: 'final',
-    randomId: '' + (Math.random() * 1000 | 0),
+    anchorPrefix: createAnchorPrefix(),
     openNewPage: props.openNewPage,
     collapse: props.collapse,
     scrollToAnchor: (anchor, instantly) => {
@@ -481,7 +488,7 @@ export function InstantView(props: {
         return;
       }
 
-      const element = document.getElementById(value.randomId + anchor.slice(1)) as HTMLElement;
+      const element = document.getElementById(value.anchorPrefix + anchor.slice(1)) as HTMLElement;
       if(!element) {
         return;
       }
@@ -1188,19 +1195,6 @@ function createMediaSpoilerAttacher(
   };
 }
 
-function orderedListItemValue(block: PageBlock.pageBlockOrderedList, index: number) {
-  const step = block.pFlags.reversed ? -1 : 1;
-  let value = block.start ?? (block.pFlags.reversed ? block.items.length : 1);
-  for(let i = 0; i <= index; ++i) {
-    value = block.items[i].value ?? value;
-    if(i === index) {
-      return value;
-    }
-
-    value += step;
-  }
-}
-
 function toRoman(value: number) {
   if(value <= 0 || value >= 4000) {
     return '' + value;
@@ -1240,13 +1234,12 @@ function toAlpha(value: number) {
 function getOrderedListMarker(
   block: PageBlock.pageBlockOrderedList,
   item: PageListOrderedItem,
-  index: number
+  value: number
 ) {
   if(item.num !== undefined && item.num !== '') {
     return '' + item.num;
   }
 
-  const value = orderedListItemValue(block, index);
   const type = canonicalOrderedListType(item.type || block.type);
   switch(type) {
     case 'a':
@@ -1360,6 +1353,13 @@ function Block(props: {
       const orderedBlock = block as PageBlock.pageBlockOrderedList;
       const isChecklist = createMemo(() => block.items.length > 0 && block.items.every((item) => item.pFlags?.checkbox));
       const shouldHaveOwnNumbers = createMemo(() => isOrdered && orderedBlock.items.some((item) => item.num !== undefined && item.num !== ''));
+      // * counted once for all the items: each counting from the first would be items² for a long list
+      const orderedValues = createMemo(() => shouldHaveOwnNumbers() ? [...orderedListValues(
+        orderedBlock.items.length,
+        orderedBlock.start,
+        !!orderedBlock.pFlags.reversed,
+        (index) => orderedBlock.items[index].value
+      )] : []);
       const {i18n, wrapEmojiText} = useHotReloadGuard();
       const context = useContext(InstantViewContext);
       return (
@@ -1396,7 +1396,7 @@ function Block(props: {
               >
                 {shouldHaveOwnNumbers() && (
                   <span class={styles.ListItemNumber}>
-                    {wrapEmojiText(getOrderedListMarker(orderedBlock!, orderedItem!, idx()))}
+                    {wrapEmojiText(getOrderedListMarker(orderedBlock!, orderedItem!, orderedValues()[idx()]))}
                     {`. `}
                   </span>
                 )}
@@ -1483,12 +1483,20 @@ function Block(props: {
           </blockquote>
         </div>
       );
-    case 'pageBlockCover':
+    case 'pageBlockCover': {
+      // * a cover only presents its block, and a cover's cover the same one (tdesktop appends the cover's
+      // * block in its place): a chain of them is one level, not one copy of the rest of it per cover
+      const cover = createMemo(() => {
+        let inner = block.cover;
+        while(inner?._ === 'pageBlockCover') inner = inner.cover;
+        return inner;
+      });
       return (
         <div>
-          <StablePageBlocks blocks={[block.cover]} paddings={props.paddings} render={(cover) => <Block block={cover} paddings={props.paddings} path={props.path} />} />
+          <StablePageBlocks blocks={[cover()]} paddings={props.paddings} render={(cover) => <Block block={cover} paddings={props.paddings} path={props.path} />} />
         </div>
       );
+    }
     case 'pageBlockPhoto': {
       const context = useContext(InstantViewContext);
       const {PhotoTsx} = useHotReloadGuard();
@@ -1608,7 +1616,7 @@ function Block(props: {
       return (
         <div
           class={styles.Anchor}
-          id={useContext(InstantViewContext).randomId + block.name}
+          id={useContext(InstantViewContext).anchorPrefix + block.name}
         />
       );
     case 'pageBlockTable': {
@@ -2012,6 +2020,8 @@ function Block(props: {
       const map: Map<HTMLDivElement, {width: number, height: number}> = new Map();
       const [sizeRevision, setSizeRevision] = createSignal(0);
       const items = createStablePageBlockEntries(() => block.items);
+      // * one owner for every item, wherever the layout puts it (prepareAlbum lays more than an album holds out an
+      // * album at a time): an item moved from one part to another keeps its media, a video its playback
       const ret = (
         <div
           ref={ref}
@@ -2061,7 +2071,7 @@ function Block(props: {
         .filter(Boolean)
         .map(({width, height}) => ({w: width, h: height}));
         if(!length || sizes.length !== length) return;
-        const {width, height} = prepareAlbum({
+        const {width, height, stacked} = prepareAlbum({
           container: ref,
           items: sizes,
           maxWidth: layoutWidth() || (ref.isConnected && ref.clientWidth) || 400,
@@ -2072,8 +2082,8 @@ function Block(props: {
           // * context menu read a mid off a `grouped-item`, and these have none
           noGroupedItem: true
         });
+        ref.classList.toggle(styles.CollageStacked, stacked);
         _onMediaResult(ref, width, height, props.paddings);
-        // console.warn('collage map', map, ref.childElementCount);
       });
 
       return (
@@ -2376,7 +2386,7 @@ function RichTextRenderer(props: {text: RichText, customEmojiRenderer?: () => Cu
   const value = createMemo(() => {
     return wrapTelegramRichText(
       props.text,
-      {webPageId: context.webPageId, url: context.page.url, randomId: context.randomId, displayTextDiff: context.displayTextDiff}
+      {webPageId: context.webPageId, url: context.page.url, anchorPrefix: context.anchorPrefix, displayTextDiff: context.displayTextDiff}
     );
   });
   const hasInlineMath = createMemo(() => value().text.includes('\x02'));

@@ -788,6 +788,30 @@ function makeDifferenceUpdateManager(result: any) {
   };
 }
 
+describe('a difference this client cannot read', () => {
+  // it reads the same way on every try, and the updates after it would wait for it for good
+  const unreadable = () => Object.assign(new Error('unreadable'), {type: 'NETWORK_RESULT_UNREADABLE', code: 400});
+
+  test('goes on from the server\'s current state, as from a difference too long', async() => {
+    const {manager} = makeDifferenceUpdateManager([unreadable(), {_: 'updates.state', pts: 77, qts: 0, date: 3, seq: 5, unread_count: 0}]);
+    await manager.getDifference();
+
+    expect(manager.apiManager.invokeApi.mock.calls.map(([method]: [string]) => method)).toEqual(['updates.getDifference', 'updates.getState']);
+    expect(manager.updatesState.pts).toBe(77);
+    expect(manager.rootScope.dispatchEvent).toHaveBeenCalledWith('state_cleared');
+  });
+
+  test('of a channel reloads the channel', async() => {
+    const {manager} = makeDifferenceUpdateManager([unreadable()]);
+    manager.addChannelState(50, 10);
+    await manager.getChannelDifference(50);
+
+    expect(manager.apiManager.invokeApi).toHaveBeenCalledTimes(1);
+    expect(manager.channelStates[50]).toBeUndefined();
+    expect(manager.dispatchEvent).toHaveBeenCalledWith('updateChannelReload', expect.objectContaining({channel_id: 50}));
+  });
+});
+
 describe('streamed draft difference ordering', () => {
   const draftUpdate = userTyping(textAction('complete'));
   const finalMessage = {

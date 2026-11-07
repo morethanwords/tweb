@@ -1187,6 +1187,12 @@
   position: relative;
   overflow: hidden;
 
+  // * more items than an album holds, laid out an album at a time under one another (prepareAlbum): each part is
+  // * held to a media's height, the whole is as tall as they are
+  &Stacked {
+    max-height: none;
+  }
+
   &Item {
     position: absolute;
 

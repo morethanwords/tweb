@@ -1,32 +1,69 @@
-import {Layouter, RectPart} from '@components/groupedLayout';
+import {GroupMediaLayout, Layouter, RectPart} from '@components/groupedLayout';
+import {MESSAGES_ALBUM_MAX_SIZE} from '@appManagers/constants';
+import chunk from '@helpers/array/chunk';
 
 // the gap between an album's items, in px — a message's album and a rich message's collage alike
 export const ALBUM_ITEM_SPACING = 1;
 
-export default function prepareAlbum(options: {
-  container: HTMLElement,
+type AlbumOptions = {
   items: {w: number, h: number}[],
   maxWidth: number,
   minWidth: number,
   spacing: number,
-  maxHeight?: number,
-  forMedia?: true,
-  noGroupedItem?: boolean
-}) {
-  const layouter = new Layouter(
-    options.items,
-    options.maxWidth,
-    options.minWidth,
-    options.spacing,
-    options.maxHeight
-  );
-  const layout = layouter.layout();
+  maxHeight?: number
+};
+
+function layoutAlbum({items, maxWidth, minWidth, spacing, maxHeight}: AlbumOptions) {
+  const layout = new Layouter(items, maxWidth, minWidth, spacing, maxHeight).layout();
 
   const widthItem = layout.find((item) => item.sides & RectPart.Right);
   const width = widthItem.geometry.width + widthItem.geometry.x;
 
   const heightItem = layout.find((item) => item.sides & RectPart.Bottom);
   const height = heightItem.geometry.height + heightItem.geometry.y;
+
+  return {layout, width, height, stacked: false};
+}
+
+/**
+ * An album's layout has no shape for more items than an album holds: more of them (a rich message's collage) are
+ * laid out an album at a time, one under another (tdesktop's SplitGroupedMediaBlock), and rounded as one.
+ */
+function layoutAlbumItems(options: AlbumOptions) {
+  if(options.items.length <= MESSAGES_ALBUM_MAX_SIZE) {
+    return layoutAlbum(options);
+  }
+
+  const parts = chunk(options.items, MESSAGES_ALBUM_MAX_SIZE).map((items) => layoutAlbum({...options, items}));
+  const layout: GroupMediaLayout[] = [];
+  let top = 0;
+  parts.forEach((part, index) => {
+    for(const {geometry, sides} of part.layout) {
+      layout.push({
+        geometry: {...geometry, y: geometry.y + top},
+        // * only the first part's top and the last one's bottom are the edges of the whole
+        sides: sides & ~(index ? RectPart.Top : 0) & ~(index < parts.length - 1 ? RectPart.Bottom : 0)
+      });
+    }
+
+    top += part.height + options.spacing;
+  });
+
+  return {
+    layout,
+    width: Math.max(...parts.map((part) => part.width)),
+    height: top - options.spacing,
+    // * as tall as its parts, each held to the album's height: not to be held to one album's as a whole
+    stacked: true
+  };
+}
+
+export default function prepareAlbum(options: AlbumOptions & {
+  container: HTMLElement,
+  forMedia?: true,
+  noGroupedItem?: boolean
+}) {
+  const {layout, width, height, stacked} = layoutAlbumItems(options);
 
   const container = options.container;
   container.style.width = width + 'px';
@@ -88,5 +125,5 @@ export default function prepareAlbum(options: {
     });
   } */
 
-  return {items, width, height};
+  return {items, width, height, stacked};
 }

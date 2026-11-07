@@ -1712,7 +1712,15 @@ export default class MTPNetworker {
           }
 
           // deserializer.setMtproto(false);
-          result.result = deserializer.fetchObject(type, field + '[result]');
+          try {
+            result.result = deserializer.fetchObject(type, field + '[result]');
+          } catch(err) {
+            // * a result this client cannot read (one nested deeper than the stack goes, say) reads the
+            // * same way every time: its request fails, rather than waiting for good and being sent
+            // * again on every reconnect
+            this.log.error('can\'t parse result', type, err);
+            result.result = {_: 'rpc_error', error_code: 400, error_message: 'NETWORK_RESULT_UNREADABLE'};
+          }
           // deserializer.setMtproto(true);
           // this.log('override rpc_result', sentMessage, type, result);
         }

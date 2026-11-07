@@ -123,6 +123,19 @@ describe('SuperMessagePort structured-clone failures', () => {
     expect(client.awaitingCount).toBe(0);
   });
 
+  test('answers a result nested deeper than cloning goes with a clone error, not with nothing', async() => {
+    // the clone of such a payload runs out of stack: a RangeError, not a DataCloneError, left the caller waiting
+    const {client, worker} = createPair();
+    worker.addEventListener('call', () => {
+      let deep: object = {};
+      for(let level = 0; level < 200000; ++level) deep = {deep};
+      return deep;
+    });
+
+    await expect(client.invoke('call', {kind: 'value'})).rejects.toMatchObject({type: 'DATA_CLONE_ERROR'});
+    expect(client.awaitingCount).toBe(0);
+  });
+
   test('preserves transferable results and drops only an uncloneable void invoke', async() => {
     const {client, worker} = createPair();
     const received: any[] = [];

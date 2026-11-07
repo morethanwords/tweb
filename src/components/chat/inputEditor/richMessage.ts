@@ -21,6 +21,7 @@ import checkRTL from '@helpers/string/checkRTL';
 import getDocumentInput from '@appManagers/utils/docs/getDocumentInput';
 import getPhotoInput from '@appManagers/utils/photos/getPhotoInput';
 import {MESSAGES_ALBUM_MAX_SIZE} from '@appManagers/constants';
+import chunk from '@helpers/array/chunk';
 import {
   CHAT_TABLE_TITLE_NODE_NAME,
   CHAT_TABLE_WRAPPER_NODE_NAME
@@ -73,13 +74,7 @@ export function splitOversizedRichMediaCollage(
 > {
   if(block.items.length <= MESSAGES_ALBUM_MAX_SIZE) return [block];
 
-  const chunks = Array.from(
-    {length: Math.ceil(block.items.length / MESSAGES_ALBUM_MAX_SIZE)},
-    (_value, index) => block.items.slice(
-      index * MESSAGES_ALBUM_MAX_SIZE,
-      (index + 1) * MESSAGES_ALBUM_MAX_SIZE
-    )
-  );
+  const chunks = chunk(block.items, MESSAGES_ALBUM_MAX_SIZE);
   return chunks.map((items, index) => {
     const caption = index === chunks.length - 1 ? block.caption : emptyPageCaption();
     const item = items[0];
