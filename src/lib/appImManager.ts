@@ -75,6 +75,7 @@ import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 import getUserStatusString from '@components/wrappers/getUserStatusString';
 import getChatMembersString from '@components/wrappers/getChatMembersString';
 import {SETTINGS_INIT} from '@config/state';
+import {DEFAULT_BACKGROUND_SLUG} from '@config/app';
 import CacheStorageController from '@lib/files/cacheStorage';
 import themeController from '@helpers/themeController';
 import {pinObjectURL} from '@helpers/objectUrl';
@@ -391,18 +392,6 @@ export class AppImManager extends EventListenerBase<{
     window.addEventListener('beforeunload', this.onBeforeUnload);
 
     this.log = logger('IM', LogTypes.Log | LogTypes.Warn | LogTypes.Debug | LogTypes.Error);
-
-    // Pre-cache the bundled wallpaper svg for every base entry — multiple base themes
-    // can reference the same `pattern` slug, so we dedupe via the cache itself.
-    SETTINGS_INIT.themes.forEach((theme) => {
-      theme.settings?.forEach(({wallpaper}) => {
-        const slug = (wallpaper as WallPaper.wallPaper)?.slug;
-        if(!slug) return;
-
-        const url = 'assets/img/' + slug + '.svg' + (IS_FIREFOX ? '?1' : '');
-        ChatBackgroundStore.setBackgroundUrlToCache({slug, url});
-      });
-    });
 
     this.selectTab(APP_TABS.CHATLIST);
 
@@ -2843,7 +2832,10 @@ export class AppImManager extends EventListenerBase<{
     const themeSettings = themeController.getThemeSettings(theme);
 
     const slug = (themeSettings?.wallpaper as WallPaper.wallPaper)?.slug;
-    if(slug) {
+    // * the default pattern comes with the app (the chat background draws it from assets/) and is never in the
+    // * cache, so there is nothing to look up for it. The default themes all wear it, so the fall back to one
+    // * below asks no more: a lookup that could fail there would fall back again, without end
+    if(slug && slug !== DEFAULT_BACKGROUND_SLUG) {
       const defaultTheme = SETTINGS_INIT.themes.find((t) => t.name === theme.name);
       return Promise.resolve(ChatBackgroundStore.getBackground({
         slug,
