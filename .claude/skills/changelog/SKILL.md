@@ -154,11 +154,15 @@ when Telegram announced it.
 
 ## Releasing a version
 
-The user decides when, and which number. The link to the post is built into the
-version, so the order matters:
+The user decides when, and which number. The number has to differ from the one
+the app has now (`VITE_VERSION` in `.env`): the app tells people about a
+version only when its number changes, so a new build of the same number says
+nothing to anybody. The link to the post is built into the version, so the
+order matters:
 
 1. **A last pass over the section**: headlines in order of interest, the
-   Russian saying the same as the English.
+   Russian saying the same as the English, and what landed since the section
+   was written added where it belongs.
 2. **The draft.** `node scripts/changelog-draft.mjs [--lang ru]` sends the
    section to the private drafts channel as a rich post. It runs unsandboxed,
    with `NODE_USE_ENV_PROXY=1` inside the sandbox. A rerun edits the same draft;
@@ -169,12 +173,24 @@ version, so the order matters:
 3. **The review.** The user reads the draft there and edits it, or asks for
    changes. Bring every edit they make in the channel back into the section:
    it stays the source of the app's message and of the next draft.
-4. **Clips**: one short video (10–30 s) per headline. The user records them, or
-   asks for them to be recorded in a preview on the test servers. Rerun the
+4. **Clips**: one short video (10–30 s) per headline, of the feature at the
+   pace a person sees it, in a preview of accounts made for the post: never an
+   account whose chats are someone's own, and nothing in a frame but the chats
+   made for it. Look at every clip frame by frame where a screen slides or
+   changes before it goes into a draft. A machine with the tools for it says
+   how in `tmp/clip/README.md`; elsewhere the user records them. Rerun the
    draft once they are in `tmp/changelog-clips/`.
-5. **The posts**: the user moves the drafts to @WebK_en and @WebK_ru. Sessions
+5. **Before the posts**: look at the app's message as the "Telegram" chat will
+   show it, and when anything about how it is delivered changed, go through the
+   move from the current version to the new one on a built bundle: the message
+   comes once, reads, the unread counters go back to none, and a reload leaves
+   no trace of it.
+6. **The posts**: the user moves the drafts to @WebK_en and @WebK_ru. Sessions
    never post there.
-6. **The link**: add the last line to each section, in its own language:
+7. **The link**: add the last line to each section, in its own language:
    `[Videos and details in our channel](https://t.me/WebK_en/<id>)` or
    `[Видео и подробности — в нашем канале](https://t.me/WebK_ru/<id>)`.
-7. **The build**: `node build.js 2.3`.
+8. **The build**: `node build.js <version>`. It runs every test first; a run
+   that stops has already written the new version and build number into `.env`
+   and `public/version` and turned the sections into the version's: put them
+   back as they were before running it again, or the build number skips.
