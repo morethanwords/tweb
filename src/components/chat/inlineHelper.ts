@@ -28,7 +28,7 @@ import {POSTING_NOT_ALLOWED_MAP} from '@components/chat/postingNotAllowedMap';
 import liteMode from '@helpers/liteMode';
 import noop from '@helpers/noop';
 import type {Middleware} from '@helpers/middleware';
-import {getWidgetSource, isWidgetRenderingEnabled} from '@lib/widgetSandbox/payload';
+import {getWidgetSource, whenWidgetRenderingEnabled} from '@lib/widgetSandbox/payload';
 
 const ANIMATION_GROUP: AnimationItemGroup = 'INLINE-HELPER';
 // const GRID_ITEMS = 5;
@@ -353,7 +353,7 @@ export default class InlineHelper extends AutocompleteHelper {
    * picks the result — no requests and nothing about the user. Once sent it is a message's widget.
    */
   private async renderWidgetPreview(widget: BotInlineMessage.botInlineMessageWidget, container: HTMLElement, key: string, middleware: Middleware) {
-    if(!isWidgetRenderingEnabled()) return;
+    if(!(await whenWidgetRenderingEnabled())) return;
     const loaded = await Promise.all([
       getWidgetSource(widget),
       import('@components/widgetSandbox/widgetBlock'),

@@ -2,7 +2,7 @@ import {stubBrowserGlobals} from '@/tests/helpers/browserGlobals';
 
 vi.mock('@lib/apiManagerProxy', () => ({default: new Proxy({}, {get: () => (): undefined => undefined})}));
 vi.mock('@lib/widgetSandbox/payload', () => ({
-  isWidgetRenderingEnabled: () => true,
+  whenWidgetRenderingEnabled: () => true,
   getWidgetSource: () => Promise.resolve('<div></div>')
 }));
 vi.mock('@lib/widgetSandbox/messageWidget', () => ({getWidgetData: () => ({})}));

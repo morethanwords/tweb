@@ -631,6 +631,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     // });
 
     rootScope.addEventListener('language_change', this.onLanguageChange);
+    rootScope.addEventListener('app_config', (appConfig) => this.appConfig = appConfig);
 
     rootScope.addEventListener('state_cleared', () => {
       _iterateHistoryStorages((key, value) => {

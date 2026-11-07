@@ -274,7 +274,7 @@ import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
 import {linkToPollOption} from './bubbleParts/pollMessageContent/pollToOptionLink';
 import {getSimulatedEvent} from '@helpers/dom/dispatchEvent';
 import {richMessageToPage} from '@lib/richMessage';
-import {getWidgetSource, isWidgetRenderingEnabled} from '@lib/widgetSandbox/payload';
+import {getWidgetSource, isWidgetRenderingEnabled, whenWidgetRenderingEnabled} from '@lib/widgetSandbox/payload';
 import {getWidgetHeightAtLeast, getWidgetKey, onWidgetHeightRemembered, WIDGET_MIN_WIDTH} from '@lib/widgetSandbox/sizing';
 import {getManagersSession} from '@lib/accounts/getCurrentAccount';
 import {RichMessageBubble, isRichMessageButtonTarget, isRichMessageTarget} from '@components/chat/bubbles/richMessage';
@@ -12214,7 +12214,7 @@ export default class ChatBubbles {
 
         case 'messageMediaWidget': {
           const media = context.messageMedia;
-          const loaded = isWidgetRenderingEnabled() && await Promise.all([
+          const loaded = await whenWidgetRenderingEnabled() && await Promise.all([
             getWidgetSource(media),
             import('@components/widgetSandbox/widgetBlock'),
             import('@lib/widgetSandbox/storage'),

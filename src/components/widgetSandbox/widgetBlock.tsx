@@ -867,7 +867,11 @@ export default function WidgetBlock(props: {
     themeFallback = window.setTimeout(applyThemes, CHAT_THEME_WAIT_MS);
   };
   rootScope.addEventListener('theme_changed', onThemeChanged);
-  onEntered(() => unwatchChatTheme = watchChatTheme(element, applyThemes));
+  // * a chat's, from the start: a chat put on another peer applies that peer's colours as its bubbles go in
+  // * (Chat.revealPreparedBackground), after a widget started for one of them has read the colours of the peer before
+  const chatContainer = props.chat?.container;
+  if(chatContainer) unwatchChatTheme = watchChatTheme(chatContainer, applyThemes);
+  else onEntered(() => unwatchChatTheme = watchChatTheme(element, applyThemes));
   // the text tokens follow the chat's text size (appImManager has set it on the page by now)
   const onSettingsUpdated = ({key}: {key: string}) => {
     if(key === 'settings.messagesTextSize') applyThemes();

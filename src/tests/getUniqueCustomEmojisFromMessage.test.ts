@@ -68,6 +68,42 @@ describe('getUniqueCustomEmojisFromMessage', () => {
     expect(getUniqueCustomEmojisFromMessage(message)).toContain('333');
   });
 
+  test('collects custom emoji from a rich message\'s blocks, not its images', () => {
+    const message = {
+      _: 'message',
+      id: 3,
+      peer_id: {_: 'peerUser', user_id: 1},
+      date: 0,
+      message: '',
+      pFlags: {},
+      rich_message: {
+        _: 'richMessage',
+        pFlags: {},
+        photos: [],
+        documents: [],
+        blocks: [{
+          _: 'pageBlockParagraph',
+          text: {
+            _: 'textConcat',
+            texts: [
+              {_: 'textPlain', text: 'hi '},
+              {_: 'textCustomEmoji', document_id: '444', alt: '🙂'},
+              {_: 'textImage', document_id: '666', w: 20, h: 20}
+            ]
+          }
+        }, {
+          _: 'pageBlockList',
+          items: [{
+            _: 'pageListItemText',
+            text: {_: 'textCustomEmoji', document_id: '555', alt: '🙃'}
+          }]
+        }]
+      }
+    } as any as Message.message;
+
+    expect(getUniqueCustomEmojisFromMessage(message)).toEqual(['444', '555']);
+  });
+
   test('collects custom emoji from the poll QUESTION (regression)', () => {
     const message = makePollMessage({
       _: 'poll',

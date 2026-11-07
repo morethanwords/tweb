@@ -1584,7 +1584,8 @@ export class AppImManager extends EventListenerBase<{
     // * the autologin token and the domains are the account's own
     const loadConfigs = () => {
       appConfig = config = undefined;
-      this.managers.apiManager.getAppConfig().then((_appConfig) => appConfig = _appConfig);
+      // * through the tab's cached copy, which the widgets' switch reads synchronously (isWidgetRenderingEnabled)
+      Promise.resolve(apiManagerProxy.getAppConfig()).then((_appConfig) => appConfig = _appConfig);
       this.managers.apiManager.getConfig().then((_config) => config = _config);
     };
     loadConfigs();

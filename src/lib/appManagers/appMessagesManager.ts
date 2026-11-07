@@ -9379,7 +9379,13 @@ export class AppMessagesManager extends AppManager {
       message.pFlags.out ||
       this.appChatsManager.getChat(message.peerId.toChatId())._ === 'chat' ||
       this.appChatsManager.hasRights(message.peerId.toChatId(), 'delete_messages')
-    ) && (!message.pFlags.is_outgoing || !!message.error);
+    ) && (
+      !message.pFlags.is_outgoing ||
+      !!message.error ||
+      // * never sent, and no send of it waits (it has no random_id): the changelog put into the service chat on an
+      // * update is the client's alone, and is deleted here (deleteMessagesInner)
+      (message._ === 'message' && !message.random_id)
+    );
   }
 
   public getReplyKeyboard(peerId: PeerId) {
@@ -9978,7 +9984,10 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
-    if(channelId) {
+    if(!serverMessageIds.length) {
+      // * none the server has: the changelog put into the service chat on an update is the client's alone
+      promise = Promise.resolve();
+    } else if(channelId) {
       promise = this.apiManager.invokeApi('channels.deleteMessages', {
         channel: this.appChatsManager.getChannelInput(channelId),
         id: serverMessageIds
@@ -9990,7 +9999,7 @@ export class AppMessagesManager extends AppManager {
       });
     }
 
-    promise = promise.then((affectedMessages: MessagesAffectedMessages) => {
+    promise = promise.then((affectedMessages?: MessagesAffectedMessages) => {
       this.processLocalDeleteMessages(peerId, mids, affectedMessages);
     });
 

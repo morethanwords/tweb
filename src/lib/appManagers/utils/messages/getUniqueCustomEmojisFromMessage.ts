@@ -1,5 +1,6 @@
 import filterUnique from '@helpers/array/filterUnique';
 import {Message, MessageEntity, Reaction, MessageMedia} from '@layer';
+import {flattenRichMessageContent} from '@lib/richMessage';
 
 export default function getUniqueCustomEmojisFromMessage(message: Message) {
   const docIds: DocId[] = [];
@@ -9,11 +10,18 @@ export default function getUniqueCustomEmojisFromMessage(message: Message) {
       return;
     }
 
-    const filtered = entities.filter((entity) => entity._ === 'messageEntityCustomEmoji') as MessageEntity.messageEntityCustomEmoji[];
+    // * an image in a rich text is drawn by the same entity, with its size: it is no emoji of a pack
+    const filtered = entities.filter((entity) => entity._ === 'messageEntityCustomEmoji' && !entity.w) as MessageEntity.messageEntityCustomEmoji[];
     docIds.push(...filtered.map((entity) => entity.document_id));
   };
 
   iterateEntities((message as Message.message).entities);
+
+  // * a rich message keeps its text in its blocks, not in `message`
+  const richMessage = (message as Message.message).rich_message;
+  if(richMessage) {
+    iterateEntities(flattenRichMessageContent(richMessage).entities);
+  }
 
   const reactions = (message as Message.message).reactions;
   if(reactions) {

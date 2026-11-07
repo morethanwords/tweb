@@ -191,8 +191,8 @@ widget from the bot's `width` / `height` (200 px minimum width, heights in 50…
 clipped), passes the bubble's colours as the theme, confirms every external link with
 the whole URL (`lib/widgetSandbox/actions.ts`) and keeps each message's Web Storage on
 disk (`appWidgetsManager`, deleted with the message, the history, the account and on
-Clear cache). Rendering is the client's own switch (`isWidgetRenderingEnabled`): on in every
-build; `localStorage['tweb-widgets'] = '0'` turns it off in a browser.
+Clear cache). Rendering is on unless the server's app config says `web_widgets_disabled`
+(`isWidgetRenderingEnabled`); `localStorage['tweb-widgets'] = '0'` turns it off in a browser.
 
 A widget is fixed code plus changeable state. The bubble hands it the message's chat
 state and shared state and the server's flags as they are (`lib/widgetSandbox/messageWidget.ts`);
