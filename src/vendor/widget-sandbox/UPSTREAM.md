@@ -1,13 +1,14 @@
 # widget-sandbox (vendored)
 
-`packages/core` of TelegramMessenger/widget-sandbox at the tag `v0.6.0`: `src/`, `vite.ts`, `profile.json`,
+`packages/core` of TelegramMessenger/widget-sandbox at `v0.6.1` (main's 3acba1b, the QuickJS security release; its
+`src/` is v0.6.0's): `src/`, `vite.ts`, `profile.json`,
 `scripts/sandbox-build.ts`, `scripts/profile-build.ts`, `package.json`, `tsconfig.json`, `README.md`, and the repo's
 `THIRD_PARTY_NOTICES.md`. Its QuickJS build (`packages/quickjs-wasm`: `dist/`, `package.json`, the licence) is next to
-it in `src/vendor/widget-sandbox-quickjs`, linked as `@telegram/widget-sandbox-quickjs` from tweb's package.json — at
-the branch `fixes-backport` (bf4b6bd, v0.6.0 with the QuickJS fork at f4dd164: seven memory-safety fixes), whose
-`dist/` that branch does not rebuild: `emscripten-module.wasm` and `QUICKJS_VERSION` were built from it with the
-package's own `build.sh --docker` (emscripten 6.0.12, the image pinned by digest; the same run first reproduced
-v0.6.0's `dist.sha256`), sha256 8e7d8ffc… and 4fc37d50…, and the asyncify build from them (`scripts/asyncify.mjs`). The
+it in `src/vendor/widget-sandbox-quickjs`, linked as `@telegram/widget-sandbox-quickjs` from tweb's package.json —
+v0.6.1's `dist/`, the QuickJS fork at 1a402cb (seven upstream memory-safety fixes, the RegExp-delete use-after-free
+among them); every file matches v0.6.1's `dist.sha256` (`emscripten-module.wasm` 8e7d8ffc…, byte for byte the build
+tweb had made of the same fork from the branch `fixes-backport` with the package's `build.sh --docker`, before v0.6.1
+shipped one), and the asyncify build is made from it (`scripts/asyncify.mjs`). The
 package's tests, the native packages, the apps, the corpus and the conformance set stay upstream (tweb's fixtures are a
 copy of part of the corpus — all of `corpus/attacks`, `corpus/defaults`, `corpus/interactive` and `corpus/resize` — and
 of the conformance set, in `src/lib/widgetSandbox/fixtures/`; the sandbox's mock bot, `src/lib/widgetSandbox/mockBot.ts`,

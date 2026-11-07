@@ -1,0 +1,41 @@
+<!-- QuickJS JS_RegExpDelete read the compiled bytecode before converting lastIndex, and converting lastIndex can run
+     JavaScript. A getter on `constructor` (read by the standard-RegExp check on the String.prototype.replace fast path)
+     recompiles the same RegExp during that conversion and pushes the old bytecode out of the fork's 16-slot pattern
+     cache, so the deletion loop then read and ran freed bytecode (a use-after-free, upstream quickjs-ng 3d5cb148a7f8).
+     No exploit payload: the widget only observes which pattern the replace used. With the fix the RegExp recompiles to
+     /b/ before the match, so "aaa".replace(re, "") is "aaa" and re.source is "b"; the engine must not misread freed
+     memory and the widget must not leak. -->
+<p id="p">running</p>
+<script>
+  function run() {
+    var out = [];
+    for (var evict = 0; evict < 2; evict++) {
+      var re = new RegExp('a', 'g');
+      Object.defineProperty(re, 'constructor', {
+        configurable: true,
+        get: function () {
+          re.lastIndex = {
+            valueOf: function () {
+              re.compile('b', 'g');
+              if (evict) for (var i = 0; i < 64; i++) new RegExp('x' + i, 'g');
+              return 0;
+            },
+          };
+          return RegExp;
+        },
+      });
+      var replaced = 'aaa'.replace(re, '');
+      // After the recompile re is /b/g: it must not match "aaa" (replaced stays "aaa") and must match "abab" -> "aa".
+      out.push(replaced + '|' + re.source + '|' + re.lastIndex + '|' + 'abab'.replace(re, ''));
+    }
+    return out.join(' ');
+  }
+  var result;
+  try {
+    result = run();
+  } catch (e) {
+    result = 'THREW ' + e;
+  }
+  window.rceResult = result;
+  document.getElementById('p').textContent = result;
+</script>
