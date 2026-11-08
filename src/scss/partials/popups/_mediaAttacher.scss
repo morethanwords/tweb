@@ -1,5 +1,6 @@
 @use "sass:math";
 @use "../../shared" as *;
+@use "popupVariables" as *;
 
 .popup-new-media {
   --popup-width: 420px;
@@ -44,8 +45,16 @@
 }
 
 .popup-new-media.popup-send-photo {
+  // The files' card ends flush with the media box, the scroll and the body, which all clip, so its
+  // shadow was cut off. The box keeps room for it inside all three, and the body hands those pixels
+  // straight back to the caption below, which stays put (as the shell's scroll does, `_popup.scss`).
+  .popup-photo {
+    padding-bottom: $popup-scroll-bleed;
+  }
+
   .popup-body {
     position: relative;
+    margin-bottom: -$popup-scroll-bleed;
   }
 
   .scrollable {
@@ -125,6 +134,12 @@
     border-radius: 0;
   }
 
+  // room at a file's end for its delete button, which shows over it on a hover and always on touch
+  .document,
+  .popup-item-document .audio {
+    padding-inline-end: 3.5rem;
+  }
+
   .document {
     --icon-margin: .5rem;
     --icon-size: 3rem;
@@ -132,7 +147,6 @@
     border-radius: $border-radius-medium;
     cursor: default;
     height: 3.5rem;
-    padding-inline-end: 3.5rem;
 
     @include hover-background-effect() {
       --message-background-color: var(--light-filled-secondary-text-color);
@@ -158,6 +172,8 @@
     .is-touch & {
       opacity: 1;
     }
+
+    @include reveal-on-focus;
   }
 
   .document {

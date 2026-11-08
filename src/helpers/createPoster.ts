@@ -9,7 +9,8 @@ const POSTER_MAX_SIZE = 720;
 
 export function createPosterFromMedia(
   media: HTMLVideoElement | HTMLImageElement,
-  mimeType?: 'image/jpeg' | 'image/png'
+  mimeType?: 'image/jpeg' | 'image/png',
+  maxSize = POSTER_MAX_SIZE
 ) {
   let width: number, height: number;
   if(media instanceof HTMLVideoElement) {
@@ -24,7 +25,7 @@ export function createPosterFromMedia(
     media,
     mediaSize: makeMediaSize(width, height),
     // clamp the box to the source so a smaller video is never upscaled
-    boxSize: makeMediaSize(Math.min(width, POSTER_MAX_SIZE), Math.min(height, POSTER_MAX_SIZE)),
+    boxSize: makeMediaSize(Math.min(width, maxSize), Math.min(height, maxSize)),
     mimeType,
     quality: .9
   });

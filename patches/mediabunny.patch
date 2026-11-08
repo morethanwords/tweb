@@ -1,0 +1,76 @@
+diff --git a/dist/modules/src/id3.js b/dist/modules/src/id3.js
+index f1115abfbe8699db1db80a03ea1b8d9a51c61de9..7b35acb77587918f45068b7fd8723e4da4484c65 100644
+--- a/dist/modules/src/id3.js
++++ b/dist/modules/src/id3.js
+@@ -136,7 +136,8 @@ export const parseId3V2Tag = (slice, header, tags) => {
+         : header.size;
+     const bytes = readBytes(slice, dataSize);
+     const reader = new Id3V2Reader(header, bytes);
+-    if ((header.flags & Id3V2HeaderFlags.Unsynchronisation) && header.majorVersion === 3) {
++    // ID3v2.2 unsynchronises the whole tag the way ID3v2.3 does
++    if ((header.flags & Id3V2HeaderFlags.Unsynchronisation) && header.majorVersion <= 3) {
+         reader.ununsynchronizeAll();
+     }
+     if (header.flags & Id3V2HeaderFlags.ExtendedHeader) {
+@@ -156,21 +157,26 @@ export const parseId3V2Tag = (slice, header, tags) => {
+         if (!frame) {
+             break;
+         }
+-        const frameStartPos = reader.pos;
++        let frameStartPos = reader.pos;
+         const nextFramePos = Math.min(reader.pos + frame.size, reader.bytes.length);
+         let frameEndPos = nextFramePos;
+         let frameEncrypted = false;
+         let frameCompressed = false;
+         let frameUnsynchronized = false;
++        let frameGrouped = false;
++        let frameHasDataLength = false;
+         if (header.majorVersion === 3) {
+             frameEncrypted = !!(frame.flags & (1 << 6));
+             frameCompressed = !!(frame.flags & (1 << 7));
++            frameGrouped = !!(frame.flags & (1 << 5));
+         }
+         else if (header.majorVersion === 4) {
+             frameEncrypted = !!(frame.flags & (1 << 2));
+             frameCompressed = !!(frame.flags & (1 << 3));
+             frameUnsynchronized = !!(frame.flags & (1 << 1))
+                 || !!(header.flags & Id3V2HeaderFlags.Unsynchronisation);
++            frameGrouped = !!(frame.flags & (1 << 6));
++            frameHasDataLength = !!(frame.flags & (1 << 0));
+         }
+         if (frameEncrypted) {
+             Logging._warn(`Skipping encrypted ID3v2 frame ${frame.id}`);
+@@ -185,6 +191,14 @@ export const parseId3V2Tag = (slice, header, tags) => {
+         if (frameUnsynchronized) {
+             frameEndPos = reader.ununsynchronizeRegion(reader.pos, frameEndPos);
+         }
++        // what the flags put ahead of the data: the group's id (a byte), then the data's length (four, ID3v2.4)
++        const framePrefixSize = (frameGrouped ? 1 : 0) + (frameHasDataLength ? 4 : 0);
++        if (frameEndPos - reader.pos < framePrefixSize) {
++            reader.pos = nextFramePos;
++            continue;
++        }
++        frameStartPos += framePrefixSize;
++        reader.pos = frameStartPos;
+         // Frames don't necessarily hold the fixed-size fields they're supposed to
+         const ensureFrameHasBytes = (byteCount) => {
+             if (frameEndPos - reader.pos < byteCount) {
+@@ -382,7 +396,8 @@ export const parseId3V2Tag = (slice, header, tags) => {
+                                 : 'image/*';
+                     }
+                     else {
+-                        mimeType = reader.readId3V2Text(encoding, frameEndPos);
++                        // the MIME type is ISO-8859-1 whatever the encoding of the description
++                        mimeType = reader.readId3V2Text(0, frameEndPos);
+                     }
+                     ensureFrameHasBytes(1);
+                     const pictureType = reader.readU8();
+@@ -434,7 +449,7 @@ export class Id3V2Reader {
+             const value1 = this.bytes[i];
+             newBytes.push(value1);
+             if (value1 === 0xff && i !== this.bytes.length - 1) {
+-                const value2 = this.bytes[i];
++                const value2 = this.bytes[i + 1];
+                 if (value2 === 0x00) {
+                     i++;
+                 }

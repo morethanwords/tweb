@@ -1,7 +1,7 @@
 import {AppMessagesManager} from '@appManagers/appMessagesManager';
 import {ApiFileManager} from '@appManagers/apiFileManager';
-import {setEnvironment} from '@environment/utils';
 import deferredPromise from '@helpers/cancellablePromise';
+import {makeDocumentMakingManager} from '@/tests/helpers/messageSending';
 import noop from '@helpers/noop';
 import type {Document, InputMedia, MessageMedia, Photo} from '@layer';
 import '@helpers/peerIdPolyfill';
@@ -15,14 +15,7 @@ const inputPeer = {
 
 describe('rich-message media upload', () => {
   test('keeps the required audio duration when metadata decoding falls back to zero', () => {
-    setEnvironment({
-      IMAGE_MIME_TYPES_SUPPORTED: new Set(),
-      VIDEO_MIME_TYPES_SUPPORTED: new Set()
-    } as any);
-    const manager = new AppMessagesManager();
-    Object.assign(manager as any, {
-      appDocsManager: {saveDoc: (document: Document.document) => document}
-    });
+    const manager = makeDocumentMakingManager();
     const file = new File(['audio'], 'audio.flac', {type: 'audio/flac'});
     const metadata = manager.makeDocumentAndMetaForSendingFile({
       duration: 0,
@@ -149,15 +142,9 @@ describe('rich-message media upload', () => {
   // the composer decided it is a file block (an audio/wav is no music block): it is sent as a file,
   // not taken back for an audio by its mime type
   test('keeps a file block a file, an audio/wav too', () => {
-    setEnvironment({
-      IMAGE_MIME_TYPES_SUPPORTED: new Set(),
-      VIDEO_MIME_TYPES_SUPPORTED: new Set()
-    } as any);
-    const manager = new AppMessagesManager();
-    Object.assign(manager as any, {
+    const manager = makeDocumentMakingManager({
       mediaTempId: 1,
       uploadFilePromises: {},
-      appDocsManager: {saveDoc: (document: Document.document) => document},
       thumbsStorage: {setCacheContextBlob: vi.fn()}
     });
     const file = new File(['wave'], 'take.wav', {type: 'audio/wav'});
@@ -175,11 +162,7 @@ describe('rich-message media upload', () => {
   // the upload's ring stays until messages.uploadMedia answers; a cancel in that time finds no transfer
   // to stop, and the media must not complete as if nobody had asked
   test('a cancel once the bytes are up gives the media up instead of completing it', async() => {
-    setEnvironment({
-      IMAGE_MIME_TYPES_SUPPORTED: new Set(),
-      VIDEO_MIME_TYPES_SUPPORTED: new Set()
-    } as any);
-    const manager = new AppMessagesManager();
+    const manager = makeDocumentMakingManager();
     const uploadMedia = deferredPromise<MessageMedia>();
     const invokeApi = vi.fn(() => uploadMedia);
     const fileTransfers = {downloadPromises: {}, uploadPromises: {}, appMessagesManager: manager};

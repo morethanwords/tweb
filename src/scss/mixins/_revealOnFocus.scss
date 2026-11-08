@@ -1,0 +1,7 @@
+// A control that only a hover shows (`opacity: 0` otherwise): with the a11y layer Tab lands on it too, so it shows
+// while it holds keyboard focus. `:where()` keeps the selector as specific as the control's own rule.
+@mixin reveal-on-focus {
+  :where(.a11y) &:focus-visible {
+    opacity: 1;
+  }
+}

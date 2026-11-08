@@ -200,6 +200,9 @@ export type SendFileDetails = {
    * If it's a GIF (looped)
    */
   isAnimated: boolean,
+  // * a track's name and artist from its own tags (`readAudioTags`)
+  audioTitle: string,
+  audioPerformer: string
 }>;
 
 export type UploadedRichMessageMedia = {
@@ -588,6 +591,8 @@ type SendFileArgs = MessageSendingParams & SendFileDetails & Partial<{
   processAfter?: typeof processAfter
 }>;
 
+type SendingAttachType = 'document' | 'audio' | 'video' | 'voice' | 'photo';
+
 type MakeDocumentAndMetaForSendingFileArgs = Pick<SendFileArgs,
   | 'file'
   | 'strippedBytes'
@@ -604,6 +609,8 @@ type MakeDocumentAndMetaForSendingFileArgs = Pick<SendFileArgs,
   | 'noSound'
   | 'thumb'
   | 'isAnimated'
+  | 'audioTitle'
+  | 'audioPerformer'
 > & {
   mediaTempId: number;
   isDocument: boolean;
@@ -2685,7 +2692,9 @@ export class AppMessagesManager extends AppManager {
         'objectURLBlob',
         'duration',
         'thumb',
-        'isAnimated'
+        'isAnimated',
+        'audioTitle',
+        'audioPerformer'
       ])
     });
 
@@ -2808,7 +2817,7 @@ export class AppMessagesManager extends AppManager {
     onUploadDeferred?.(uploadPromise);
 
     let thumbUploadPromise: ReturnType<typeof this.uploadThumbAndCover>;
-    if(attachType === 'video' && thumb?.blob) {
+    if(this.canUploadThumb(attachType) && thumb?.blob) {
       thumbUploadPromise = this.uploadThumbAndCover({
         blob: thumb.blob,
         isCover: !!thumb.isCover,
@@ -2897,7 +2906,9 @@ export class AppMessagesManager extends AppManager {
         'objectURL',
         'duration',
         'thumb',
-        'isAnimated'
+        'isAnimated',
+        'audioTitle',
+        'audioPerformer'
       ])
     });
     if(
@@ -3622,7 +3633,9 @@ export class AppMessagesManager extends AppManager {
         'isRoundMessage',
         'noSound',
         'thumb',
-        'isAnimated'
+        'isAnimated',
+        'audioTitle',
+        'audioPerformer'
       ])
     });
 
@@ -3755,7 +3768,7 @@ export class AppMessagesManager extends AppManager {
           }
 
           let thumbUploadPromise: ReturnType<typeof this.uploadThumbAndCover>;
-          if(attachType === 'video' && options.thumb?.blob) {
+          if(this.canUploadThumb(attachType) && options.thumb?.blob) {
             thumbUploadPromise = this.uploadThumbAndCover({
               blob: options.thumb.blob,
               isCover: !!options.thumb.isCover,
@@ -4018,7 +4031,7 @@ export class AppMessagesManager extends AppManager {
   public makeDocumentAndMetaForSendingFile(args: MakeDocumentAndMetaForSendingFileArgs) {
     const {file, isDocument, mediaTempId} = args;
 
-    let attachType: 'document' | 'audio' | 'video' | 'voice' | 'photo', apiFileName: string;
+    let attachType: SendingAttachType, apiFileName: string;
     let mediaUnread: boolean;
 
     const fileType = (file as Document.document).mime_type || file.type;
@@ -4059,6 +4072,11 @@ export class AppMessagesManager extends AppManager {
         waveform: args.waveform,
         duration: args.duration ?? 0
       };
+
+      if(!args.isVoiceMessage) {
+        attribute.title = args.audioTitle;
+        attribute.performer = args.audioPerformer;
+      }
 
       attributes.push(attribute);
     } else if(!args.isMedia || args.forceFile) {
@@ -4177,7 +4195,7 @@ export class AppMessagesManager extends AppManager {
           type: THUMB_TYPE_FULL,
           size: file.size
         };
-      } else if(attachType === 'video') {
+      } else if(this.canUploadThumb(attachType)) {
         if(args.thumb) {
           thumb = {
             _: 'photoSize',
@@ -4226,6 +4244,11 @@ export class AppMessagesManager extends AppManager {
       mediaUnread,
       attributes
     };
+  }
+
+  // * a video's frame and a track's album cover go up as the document's thumbnail
+  private canUploadThumb(attachType: SendingAttachType) {
+    return attachType === 'video' || attachType === 'audio';
   }
 
   private async uploadThumbAndCover({blob, isCover, peer, onUploadPromise}: UploadThumbAndCoverArgs) {

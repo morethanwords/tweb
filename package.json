@@ -114,7 +114,7 @@
     "libsodium-wrappers": "^0.8.4",
     "linkedom": "^0.18.13",
     "magic-string": "^0.30.21",
-    "mediabunny": "^1.50.9",
+    "mediabunny": "^1.65.2",
     "mime": "^4.1.0",
     "node-ssh": "^13.2.1",
     "oxlint": "^1.75.0",

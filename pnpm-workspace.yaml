@@ -76,5 +76,15 @@ minimumReleaseAgeExclude:
 # formula — see src/components/instantViewMath.tsx. Upstreamed as ronkok/Temml#139; until
 # a release carries it, a temml upgrade means re-applying the patch (`pnpm patch temml`),
 # and src/tests/instantViewMathBudget.test.ts checks the shipped build for it.
+#
+# mediabunny reads a track's ID3 tags (src/helpers/files/readAudioTags.ts), but not every frame the
+# standard allows: its pass that undoes an ID3v2.3 tag's "unsynchronisation" (the zero older taggers put
+# after every 0xFF of a tag holding a JPEG or UTF-16 text) looks at the wrong byte, and ID3v2.2 skips it,
+# so the frames after the first such byte are lost (offered upstream); it reads the group id and the data
+# length an ID3v2.3/2.4 frame's flags put ahead of its data as data, and a cover's MIME type in its
+# description's encoding instead of ISO-8859-1. The patch fixes the module build that `import` resolves
+# to; a mediabunny upgrade means checking upstream for the fixes and re-applying them (`pnpm patch
+# mediabunny`), and src/tests/audioTags.test.ts reads such tags through the shipped build.
 patchedDependencies:
+  mediabunny: patches/mediabunny.patch
   temml: patches/temml.patch

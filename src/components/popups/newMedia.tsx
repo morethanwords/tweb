@@ -36,6 +36,7 @@ import prepareAlbum from '@components/prepareAlbum';
 import {makeMediaSize} from '@helpers/mediaSize';
 import {ThumbCache} from '@lib/storages/thumbs';
 import onMediaLoad from '@helpers/onMediaLoad';
+import readAudioTags from '@helpers/files/readAudioTags';
 import {SEND_WHEN_ONLINE_TIMESTAMP, SERVER_IMAGE_MIME_TYPES, STARS_CURRENCY, THUMB_TYPE_FULL} from '@appManagers/constants';
 import wrapDocument from '@components/wrappers/document';
 import wrapVideo from '@components/wrappers/video';
@@ -1829,7 +1830,7 @@ export default function showNewMediaPopup(
 
     const attributes: DocumentAttribute[] = [];
 
-    let img: HTMLImageElement;
+    let img: HTMLImageElement, coverUrl: string;
     if(isPhoto && params.objectURL) {
       img = new Image();
       img.alt = '';
@@ -1841,6 +1842,8 @@ export default function showNewMediaPopup(
     }
 
     if(isAudio && params.objectURL) {
+      const tagsPromise = readAudioTags(file);
+      let duration: number;
       try {
         // * get audio duration
         const audio = new Audio();
@@ -1848,14 +1851,27 @@ export default function showNewMediaPopup(
         audio.muted = true;
         audio.autoplay = true;
         await onMediaLoad(audio);
-        params.duration = audio.duration;
-        attributes.push({
-          _: 'documentAttributeAudio',
-          duration: params.duration,
-          pFlags: {}
-        });
+        duration = params.duration = audio.duration;
       } catch(err) {
         console.error('audio loading error', err);
+      }
+
+      const {title, performer, cover} = await tagsPromise;
+      params.audioTitle = title;
+      params.audioPerformer = performer;
+      if(cover) {
+        params.thumb = cover;
+        coverUrl = params.objectURLs.create(cover.blob);
+      }
+
+      if(duration !== undefined || title || performer) {
+        attributes.push({
+          _: 'documentAttributeAudio',
+          duration: duration ?? 0,
+          title,
+          performer,
+          pFlags: {}
+        });
       }
     }
 
@@ -1899,7 +1915,8 @@ export default function showNewMediaPopup(
       } as any,
       middleware: params.middlewareHelper.get(),
       clickable: true,
-      cacheContext
+      cacheContext,
+      cover: coverUrl
     });
 
     if(isPhoto) {

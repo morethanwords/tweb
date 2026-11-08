@@ -9,6 +9,7 @@ import gifToVideo, {canConvertGifToVideo} from '@helpers/gifToVideo';
 import movToVideo, {isConvertibleMov} from '@helpers/movToVideo';
 import {ObjectURLScope} from '@helpers/objectUrlScope';
 import onMediaLoad from '@helpers/onMediaLoad';
+import readAudioTags from '@helpers/files/readAudioTags';
 import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
 import {
   getRichMessageMediaFileType,
@@ -93,6 +94,7 @@ async function prepareVideo(file: File): Promise<SendFileDetails> {
 }
 
 async function prepareAudio(file: File): Promise<SendFileDetails> {
+  const tagsPromise = readAudioTags(file);
   const objectURLs = new ObjectURLScope();
   const objectUrl = objectURLs.create(file);
   const audio = document.createElement('audio');
@@ -114,11 +116,15 @@ async function prepareAudio(file: File): Promise<SendFileDetails> {
       // Upload it anyway; duration is optional in that case.
       audio.addEventListener('error', finish, {once: true});
     });
+    const {title, performer, cover} = await tagsPromise;
     return {
       file,
       duration: Number.isFinite(audio.duration) ?
         Math.max(0, Math.floor(audio.duration)) :
-        0
+        0,
+      audioTitle: title,
+      audioPerformer: performer,
+      thumb: cover
     };
   } finally {
     audio.removeAttribute('src');

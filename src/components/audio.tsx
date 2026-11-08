@@ -32,6 +32,7 @@ import wrapSentTime from '@components/wrappers/sentTime';
 import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
 import appDownloadManager from '@lib/appDownloadManager';
 import wrapPhoto from '@components/wrappers/photo';
+import renderMediaWithFadeIn from '@helpers/dom/renderMediaWithFadeIn';
 import safePlay from '@helpers/dom/safePlay';
 import Row from '@components/rowTsx';
 import createAudioTranscription from '@components/audioTranscription';
@@ -580,7 +581,9 @@ export type AudioElementOptions = {
   fontWeight?: number,
   fontSize?: number,
   sizeType?: string,
-  getSize?: () => number
+  getSize?: () => number,
+  /** The cover of a track not sent yet (an object URL): its document has no thumbnails to load. */
+  cover?: string
 };
 
 /**
@@ -857,7 +860,14 @@ export default async function createAudioElement(options: AudioElementOptions): 
     el.append(downloadDiv);
   }
 
-  if(doc.thumbs?.length) {
+  if(options.cover) {
+    const img = new Image();
+    img.alt = '';
+    img.classList.add('media-photo', 'audio-thumb');
+    toggle.classList.add('media-container');
+    await renderMediaWithFadeIn({container: toggle, media: img, url: options.cover, needFadeIn: false});
+    setState('withThumb', true);
+  } else if(doc.thumbs?.length) {
     const imgs: HTMLElement[] = [];
     const wrapped = await wrapPhoto({
       photo: doc,

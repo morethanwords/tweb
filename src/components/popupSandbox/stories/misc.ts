@@ -107,6 +107,33 @@ defineStories('Composer & bots', [
     }
   },
   {
+    // a track is named, and shows its cover, by its own tags
+    id: 'newMedia/music',
+    fixtureOnly: true,
+    title: 'Attach a tagged track',
+    open: async(ctx) => {
+      const {default: showNewMediaPopup} = await import('@components/popups/newMedia');
+      const {makeMp3, id3TextFrame, id3PictureFrame} = await import('@/tests/fixtures/taggedMp3');
+      const {default: canvasToBlob} = await import('@helpers/canvas/canvasToBlob');
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 64;
+      const context = canvas.getContext('2d');
+      const gradient = context.createLinearGradient(0, 0, 64, 64);
+      gradient.addColorStop(0, '#ff8a00');
+      gradient.addColorStop(1, '#5b2ee5');
+      context.fillStyle = gradient;
+      context.fillRect(0, 0, 64, 64);
+      const cover = await canvasToBlob(canvas, 'image/png');
+      const mp3 = makeMp3([
+        // long enough to be cut short before the row's delete button
+        id3TextFrame('TIT2', 'Sandbox Song With a Name Too Long for One Row', 1),
+        id3TextFrame('TPE1', 'Sandbox Artist', 0),
+        id3PictureFrame('image/png', new Uint8Array(await cover.arrayBuffer()))
+      ]);
+      showNewMediaPopup(ctx.chat(), [new File([mp3], 'sandbox-track.mp3', {type: 'audio/mpeg'})], 'document');
+    }
+  },
+  {
     id: 'newMedia/video',
     fixtureOnly: true,
     title: 'Attach video',

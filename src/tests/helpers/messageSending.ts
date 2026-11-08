@@ -2,7 +2,24 @@ import {vi} from 'vitest';
 import '@helpers/peerIdPolyfill';
 import deferredPromise from '@helpers/cancellablePromise';
 import {AppMessagesManager} from '@appManagers/appMessagesManager';
-import {InputPeer, Message, Updates} from '@layer';
+import {setEnvironment} from '@environment/utils';
+import {Document, InputPeer, Message, Updates} from '@layer';
+
+// An AppMessagesManager that only makes the document of a file to send (makeDocumentAndMetaForSendingFile): no
+// image or video type is known, so no file is a photo or a video, and saveDoc keeps a document as given.
+// `managers` stands in for whatever else the case reaches.
+export function makeDocumentMakingManager(managers: Record<string, unknown> = {}) {
+  setEnvironment({
+    IMAGE_MIME_TYPES_SUPPORTED: new Set(),
+    VIDEO_MIME_TYPES_SUPPORTED: new Set()
+  } as any);
+  const manager = new AppMessagesManager();
+  Object.assign(manager as any, {
+    appDocsManager: {saveDoc: (document: Document.document) => document},
+    ...managers
+  });
+  return manager;
+}
 
 // An AppMessagesManager whose sending goes nowhere: what a send asks the server is in invokeApi and
 // invokeApiAfter (both answer with empty updates), each message it makes is sent at once and kept in

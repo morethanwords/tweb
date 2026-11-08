@@ -74,7 +74,8 @@ export default async function wrapDocument({
   globalMedia,
   doc: docOverride,
   slot,
-  draft
+  draft,
+  cover
 }: {
   message: Message.message,
   middleware: Middleware,
@@ -117,7 +118,9 @@ export default async function wrapDocument({
    * A file of a draft, as the composer shows one: the user's own, not sent yet. Its upload shows and
    * cancels as an outgoing message's does; nothing else opens or downloads it.
    */
-  draft?: boolean
+  draft?: boolean,
+  /** A track's cover before it is sent (an object URL). See `AudioElementOptions`. */
+  cover?: string
 }): Promise<HTMLElement> {
   fontWeight ??= 500;
   sizeType ??= '' as any;
@@ -151,7 +154,8 @@ export default async function wrapDocument({
       fontWeight,
       fontSize,
       sizeType,
-      getSize
+      getSize,
+      cover
     });
   }
 

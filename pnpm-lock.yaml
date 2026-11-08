@@ -34,6 +34,7 @@ overrides:
   typed-scss-modules>esbuild: 0.28.2
 
 patchedDependencies:
+  mediabunny: 580a9b1f526d2a7d0da1f7c2b33384da7faacd0c2ae021de636a152c4c9c4147
   temml: fe44cf845de8eafde1ff19dbd2f89a7efbf8aa67519b278247acae631bbd0176
 
 importers:
@@ -219,8 +220,8 @@ importers:
         specifier: ^0.30.21
         version: 0.30.21
       mediabunny:
-        specifier: ^1.50.9
-        version: 1.50.9
+        specifier: ^1.65.2
+        version: 1.65.2(patch_hash=580a9b1f526d2a7d0da1f7c2b33384da7faacd0c2ae021de636a152c4c9c4147)
       mime:
         specifier: ^4.1.0
         version: 4.1.0
@@ -2969,8 +2970,8 @@ packages:
     resolution: {integrity: sha512-aisnrDP4GNe06UcKFnV5bfMNPBUw4jsLGaWwWfnH3v02GnBuXX2MCVn5RbrWo0j3pczUilYblq7fQ7Nw2t5XKw==}
     engines: {node: '>= 0.8'}
 
-  mediabunny@1.50.9:
-    resolution: {integrity: sha512-dkv2xPuW7WxmiZrhV4yDzgqhdQcHdQ9g5xRyVIDNoxe8Bo+jnK71bdKMYj12LzJf5YV9hcsufBG9R41TFKfg9g==}
+  mediabunny@1.65.2:
+    resolution: {integrity: sha512-goZpibvo/5hkc/56WVNm93Ini+o7K4y8aXA20c/BN1B+m3L5aHQa8MTvO+S1APg/YI8kMILtrX6QCqUtxLW7bA==}
 
   merge-anything@5.1.7:
     resolution: {integrity: sha512-eRtbOb1N5iyH0tkQDAoQ4Ipsp/5qSR79Dzrz8hEPxRX10RWWR/iQXdoKmBSRCThY1Fh5EhISDtpSc93fpxUniQ==}
@@ -6373,7 +6374,7 @@ snapshots:
 
   media-typer@1.1.0: {}
 
-  mediabunny@1.50.9:
+  mediabunny@1.65.2(patch_hash=580a9b1f526d2a7d0da1f7c2b33384da7faacd0c2ae021de636a152c4c9c4147):
     dependencies:
       '@types/dom-mediacapture-transform': 0.1.12
       '@types/dom-webcodecs': 0.1.13

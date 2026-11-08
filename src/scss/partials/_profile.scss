@@ -390,9 +390,7 @@
       width: calc(100% / 3);
       opacity: 0;
 
-      :where(.a11y) &:focus-visible {
-        opacity: 1;
-      }
+      @include reveal-on-focus;
 
       @include animation-level(1) {
         transition: opacity .2s ease-in-out;
