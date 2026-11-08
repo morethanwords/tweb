@@ -15,7 +15,6 @@ import formatDuration from '@helpers/formatDuration';
 import {HelpCountry, HelpCountryCode} from '@layer';
 import {getFloodWaitTime} from '@appManagers/utils/getFloodWaitTime';
 import I18n, {i18n} from '@lib/langPack';
-import lottieLoader from '@lib/lottie/lottieLoader';
 import AccountController from '@lib/accounts/accountController';
 import commonStateStorage from '@lib/commonStateStorage';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
@@ -78,7 +77,8 @@ export default function SignInCard(_props: {spec: Spec}) {
 
   const telInputField = new TelInputField({
     onInput: (formatted) => {
-      lottieLoader.loadLottieWorkers();
+      // * what the code card's sticker is drawn from, while the number is typed (preloadTrackingMonkey)
+      preloadTrackingMonkey();
 
       const {country, code} = formatted || {};
       const countryName = country ? country.name || country.default_name : '';
@@ -126,10 +126,11 @@ export default function SignInCard(_props: {spec: Spec}) {
     );
 
     const phone_number = telInputField.value;
-    // * the code card's sticker is fetched alongside the code itself, not when that card mounts: by
-    // * then the card is already open, and the monkey turns up in it a moment later
-    preloadTrackingMonkey().catch(() => {});
-    managers.appAccountManager.sendCode(phone_number).then((code) => {
+    // * the code card's sticker is fetched alongside the code itself, and the card opens once it is there: loaded
+    // * when the card mounts, the monkey turned up in it a moment after the card had opened
+    const stickerLoaded = preloadTrackingMonkey();
+    managers.appAccountManager.sendCode(phone_number).then(async(code) => {
+      await stickerLoaded;
       // the very first send has no previous `phone_code_hash` to sign up with
       return continueLogin(code, {managers, navigate, toIm, phone_number});
     }).catch((err: ApiError) => {

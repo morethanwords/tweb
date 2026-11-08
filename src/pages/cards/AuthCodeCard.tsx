@@ -6,6 +6,7 @@ import CodeInputFieldCompat from '@components/codeInputField';
 import Icon from '@components/icon';
 import InputField, {InputState} from '@components/inputField';
 import TrackingMonkey, {preloadTrackingMonkey} from '@components/monkeys/tracking';
+import {preloadPasswordMonkey} from '@components/monkeys/password';
 import {wrapEmailPattern} from '@components/emailVerification';
 import simpleConfirmation from '@components/popups/simpleConfirmation';
 import MediaHeader from '@components/mediaHeader';
@@ -53,7 +54,7 @@ import whenDetached from '@helpers/dom/whenDetached';
 
 // * the card's chunk is fetched as soon as the flow heads here, a card's exit animation before this
 // * one mounts: start the sticker's own fetch with it, or it arrives after the card has opened
-preloadTrackingMonkey().catch(() => {});
+preloadTrackingMonkey();
 
 if(import.meta.hot) import.meta.hot.accept();
 
@@ -600,6 +601,8 @@ export default function AuthCodeCard(props: {spec: Spec}) {
 
   let cancelFocus: (() => void) | undefined;
   onMount(() => {
+    // * the password card may come next: its sticker is fetched while this one is in use
+    preloadPasswordMonkey();
     applySentCode();
     cancelFocus = focusWhenSettled(activeInput());
   });

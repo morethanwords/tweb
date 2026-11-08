@@ -13,6 +13,8 @@ import makeError from '@helpers/makeError';
 import rootScope from '@lib/rootScope';
 import toArray from '@helpers/array/toArray';
 import lottieMessagePort from '@lib/lottie/lottieMessagePort';
+import {ensureDecodeChannel} from '@lib/customEmoji/compositorChannels';
+import forgetFailedRequest from '@helpers/forgetFailedRequest';
 import SHOULD_RENDER_OFFSCREEN from '@lib/lottie/shouldRenderOffscreen';
 import tlottieWasmAssetUrl from '@vendor/tlottie/tlottie.wasm?url';
 import tlottieNoSimdWasmAssetUrl from '@vendor/tlottie/tlottie.nosimd.wasm?url';
@@ -89,6 +91,7 @@ export type PreloadedLottieAsset = ReturnType<LottieLoader['loadAnimationFromURL
 
 export class LottieLoader {
   private loadPromise: Promise<void>;
+  private enginePromise: Promise<void>;
   private loaded = false;
 
   private players: {[reqId: number]: LottiePlayer} = {};
@@ -153,6 +156,25 @@ export class LottieLoader {
     }
 
     return this.loadPromise = this.registerLottieWorkers();
+  }
+
+  /**
+   * Everything a first sticker waits for but its own data: the workers with their engine (half a megabyte a worker
+   * fetches and compiles for its first animation otherwise) and, where stickers are drawn off the page's thread, the
+   * compositor with its channels to them, which the first such sticker starts otherwise. Started ahead of a screen
+   * whose sticker should be there when it opens; resolves once the engines are in, the compositor booting on.
+   */
+  public loadLottieEngine() {
+    return this.enginePromise ??= forgetFailedRequest(this.loadLottieWorkers().then(() => {
+      if(!IS_WEB_ASSEMBLY_BASELINE_SUPPORTED) return;
+      if(SHOULD_RENDER_OFFSCREEN) {
+        for(let workerId = 0; workerId < lottieMessagePort.workersCount; ++workerId) {
+          ensureDecodeChannel(workerId);
+        }
+      }
+
+      return lottieMessagePort.invokeLottieEverywhere('loadWasm', {wasmUrl: TLOTTIE_WASM_URL});
+    }), () => this.enginePromise, () => this.enginePromise = undefined);
   }
 
   private async registerLottieWorkers() {

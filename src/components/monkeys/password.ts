@@ -1,6 +1,14 @@
 import lottieLoader, {LottieLoader} from '@lib/lottie/lottieLoader';
 import LottiePlayer from '@lib/lottie/lottiePlayer';
 import PasswordInputField from '@components/passwordInputField';
+import noop from '@helpers/noop';
+
+const ASSET = 'TwoFactorSetupMonkeyPeek';
+
+/** What the password card's monkey is drawn from, fetched on the card before it (the code), as the card opens */
+export function preloadPasswordMonkey() {
+  lottieLoader.loadAnimationFromURLManually(ASSET).catch(noop);
+}
 
 export default class PasswordMonkey {
   public container: HTMLElement;
@@ -23,7 +31,7 @@ export default class PasswordMonkey {
       height: this.size,
       noCache: true
     // }, 'assets/img/TwoFactorSetupMonkeyClose.tgs').then((_animation) => {
-    }, 'TwoFactorSetupMonkeyPeek').then((_animation) => {
+    }, ASSET).then((_animation) => {
       // return;
       this.animation = _animation;
       this.animation.addEventListener('enterFrame', (currentFrame) => {

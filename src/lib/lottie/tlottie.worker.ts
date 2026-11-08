@@ -514,6 +514,10 @@ lottieMessagePort.addMultipleEventsListeners({
     lottieMessagePort.attachPort(event.ports[0]);
   },
 
+  loadWasm: async({wasmUrl}) => {
+    await loadTLottieWasm(wasmUrl);
+  },
+
   loadFromData: async({reqId, blob, wasmUrl, width, height, toneIndex, raw, offscreen}, source) => {
     const item = items[reqId] = new TLottieItem(reqId, width, height, wasmUrl, raw/* , canvas */);
     item.port = source;
@@ -585,7 +589,7 @@ lottieMessagePort.addMultipleEventsListeners({
     forEachItemOfSource(source, (item) => item.suspendFreeRun());
   },
 
-  debugTag: () => 'tlottie-simd-5', // bump on worker edits to verify the running bundle
+  debugTag: () => 'tlottie-simd-6', // bump on worker edits to verify the running bundle
 
   memoryStats: () => {
     let cachedFrames = 0, cachedFrameBytes = 0, itemCanvasBytes = 0, orphanedCaches = 0;

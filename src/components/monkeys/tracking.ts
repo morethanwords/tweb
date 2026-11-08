@@ -3,21 +3,31 @@ import lottieLoader from '@lib/lottie/lottieLoader';
 import LottiePlayer from '@lib/lottie/lottiePlayer';
 import CodeInputFieldCompat from '@components/codeInputField';
 import {fastRaf} from '@helpers/schedulers';
+import withTimeout from '@helpers/schedulers/withTimeout';
+import forgetFailedRequest from '@helpers/forgetFailedRequest';
+import noop from '@helpers/noop';
 
 const IDLE_ASSET = 'TwoFactorSetupMonkeyIdle';
 const TRACKING_ASSET = 'TwoFactorSetupMonkeyTracking';
 
+/** How long a card waits for its monkey before it opens without it (a slow link, a failed fetch): */
+const PRELOAD_WAIT_MS = 1000;
+
+let loaded: Promise<void>;
+
 /**
- * Fetches what the monkey is drawn from, and warms the lottie workers with it. Its two assets are
- * loaded when the card that shows it mounts, which is after that card has entered - started early
- * enough (the code is on its way), the sticker is there when the card opens instead of a moment,
- * or a slow fetch, later. `loadAssetData` keeps one promise per asset, so the load below reuses it.
+ * Loads what the monkey is drawn from - its two animations, and what a page's first sticker otherwise starts after its
+ * card has opened (lottieLoader.loadLottieEngine) - so that the card opens with it drawn. Started on the card before it (the number), as soon as one is typed; whatever opens the code card waits for
+ * it. Resolves once loaded, or after PRELOAD_WAIT_MS, and never rejects; a failed load is tried again by the next call.
  */
 export function preloadTrackingMonkey() {
-  return Promise.all([
+  loaded ??= forgetFailedRequest(Promise.all([
+    lottieLoader.loadLottieEngine(),
     lottieLoader.loadAnimationFromURLManually(IDLE_ASSET),
     lottieLoader.loadAnimationFromURLManually(TRACKING_ASSET)
-  ]);
+  ]).then(noop), () => loaded, () => loaded = undefined);
+
+  return withTimeout(loaded, PRELOAD_WAIT_MS).catch(noop);
 }
 
 export default class TrackingMonkey {

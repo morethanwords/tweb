@@ -28,6 +28,7 @@ export type LottieWorkerMethods = {
   updateFreeRun: (payload: CommonPayload & Partial<{frInterval: number, direction: number, minFrame: number, maxFrame: number}>) => void,
   suspendTab: (payload: void, source: MessageEventSource) => void,
   resumeTab: (payload: void, source: MessageEventSource) => void,
+  loadWasm: (payload: {wasmUrl: string}) => Promise<void>, // the engine fetched and compiled before an animation asks for it
   debugTag: (payload: void) => string, // worker-bundle freshness probe (SharedWorkers survive reloads)
   memoryStats: (payload: void) => ThreadMemoryStats, // see @lib/debug/memoryStats - this pool shares the tab's process
   terminate: (payload: void) => void
@@ -77,6 +78,15 @@ export class LottieMessagePort<Master extends boolean = true> extends SuperMessa
       hash = (hash * 31 + name.charCodeAt(i)) | 0;
     }
     return Math.abs(hash) % this.sendPorts.length;
+  }
+
+  /** One call to every worker, resolved once all have answered */
+  public invokeLottieEverywhere<T extends keyof LottieWorkerMethods>(method: T, payload: Parameters<LottieWorkerMethods[T]>[0]) {
+    return this.invokeExceptSourceAsyncAs<LottieWorkerMethods, T>(method, payload);
+  }
+
+  public get workersCount() {
+    return this.sendPorts.length;
   }
 
   public suspendAllTabPlayers(suspend: boolean) {

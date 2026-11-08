@@ -14,6 +14,7 @@
 import type {AuthSentCodeType} from '@layer';
 import type {AuthState} from '@types';
 import rootScope from '@lib/rootScope';
+import pause from '@helpers/schedulers/pause';
 
 import {defineStories} from '../registry';
 import type {ManagerHandlers} from '../mockManagers';
@@ -82,18 +83,25 @@ async function mount(authState: Exclude<AuthState, AuthState.signedIn>) {
   }).dispose;
 }
 
-function code(type: AuthSentCodeType, rest?: {next_type?: any, timeout?: number}) {
-  return () => mount({
-    _: 'authStateAuthCode',
-    sentCode: {
-      _: 'auth.sentCode',
-      type,
-      phone_code_hash: HASH,
-      phone_number: PHONE,
-      ...rest
-    } as AuthState.authCode['sentCode']
-  });
+function sentCode(type: AuthSentCodeType, rest?: {next_type?: any, timeout?: number}) {
+  return {
+    _: 'auth.sentCode',
+    type,
+    phone_code_hash: HASH,
+    phone_number: PHONE,
+    ...rest
+  } as AuthState.authCode['sentCode'];
 }
+
+function code(type: AuthSentCodeType, rest?: {next_type?: any, timeout?: number}) {
+  return () => mount({_: 'authStateAuthCode', sentCode: sentCode(type, rest)});
+}
+
+/** What the number card asks for as it mounts: the passkey button under the form, and the country to start with */
+const phoneCardManagers = {
+  initPasskeyLogin: () => ({_: 'auth.passkeyLoginOptions', options: {_: 'dataJSON', data: '{}'}}),
+  getNearestDc: () => ({_: 'nearestDc', country: 'US', this_dc: 2, nearest_dc: 2})
+};
 
 const surface = '#auth-pages';
 
@@ -109,11 +117,10 @@ defineStories('SIGN IN', [
       appAccountManager: {
         ...managers.appAccountManager,
         sendCode: refuse('FLOOD_WAIT_22098'),
-        // the passkey button under the form asks for these as the card mounts
-        initPasskeyLogin: () => ({_: 'auth.passkeyLoginOptions', options: {_: 'dataJSON', data: '{}'}})
+        initPasskeyLogin: phoneCardManagers.initPasskeyLogin
       },
       apiManager: {
-        getNearestDc: () => ({_: 'nearestDc', country: 'US', this_dc: 2, nearest_dc: 2})
+        getNearestDc: phoneCardManagers.getNearestDc
       }
     },
     open: () => mount({_: 'authStateSignIn'})
@@ -229,6 +236,33 @@ defineStories('SIGN IN', [
       length: 6,
       reset_pending_date: Math.floor(Date.now() / 1000) + 3600
     })
+  },
+  {
+    // the whole way from a number to the password, the code answered a moment later, as the server does: how the
+    // cards hand over to each other (their stickers among it)
+    id: 'auth/phoneToPassword',
+    title: 'Number, code, then password',
+    surface,
+    fixtureOnly: true,
+    managers: {
+      ...managers,
+      appAccountManager: {
+        ...managers.appAccountManager,
+        sendCode: () => sentCode({_: 'auth.sentCodeTypeSms', length: 5}, {timeout: 20}),
+        signIn: async() => {
+          await pause(1500);
+          throw {type: 'SESSION_PASSWORD_NEEDED'};
+        },
+        initPasskeyLogin: phoneCardManagers.initPasskeyLogin
+      },
+      apiManager: {
+        getNearestDc: phoneCardManagers.getNearestDc
+      },
+      passwordManager: {
+        getState: () => ({_: 'account.password', pFlags: {has_password: true}, hint: 'hint'})
+      }
+    },
+    open: () => mount({_: 'authStateSignIn'})
   }
 ]);
 

@@ -770,6 +770,10 @@ class SuperMessagePort<
     return this.invoke(type as any, payload as any, false, port, transfer) as any;
   }
 
+  protected invokeExceptSourceAsyncAs<M extends Listeners, T extends keyof M>(type: T, payload: Parameters<M[T]>[0], source?: SendPort) {
+    return this.invokeExceptSourceAsync(type as any, payload as any, source);
+  }
+
   public invoke<T extends keyof Send>(type: T, payload: Parameters<Send[T]>[0], withAck?: false, port?: SendPort, transfer?: Transferable[], timeout?: number): Promise<Awaited<ReturnType<Send[T]>>>;
   public invoke<T extends keyof Send>(type: T, payload: Parameters<Send[T]>[0], withAck?: true, port?: SendPort, transfer?: Transferable[], timeout?: number): Promise<AckedResult<Awaited<ReturnType<Send[T]>>>>;
   public invoke<T extends keyof Send>(type: T, payload: Parameters<Send[T]>[0], withAck?: boolean, port?: SendPort, transfer?: Transferable[], timeout?: number) {

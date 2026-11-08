@@ -6,6 +6,7 @@ import {toastNew} from '@components/toast';
 import AuthCard from '@/pages/AuthCard';
 import {CardSpec, useAuthFlow} from '@/pages/authFlow';
 import {continueLogin} from '@/pages/continueLogin';
+import {preloadTrackingMonkey} from '@components/monkeys/tracking';
 import {isPhoneLoginExpired} from '@/pages/sentCode';
 
 if(import.meta.hot) import.meta.hot.accept();
@@ -60,6 +61,8 @@ export default function EmailSetupCodeCard(props: {spec: Spec}) {
             return;
           }
 
+          // * the code card opens with its sticker drawn (SignInCard)
+          await preloadTrackingMonkey();
           await continueLogin(result.sent_code, {
             managers,
             navigate,
