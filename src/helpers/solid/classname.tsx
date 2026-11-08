@@ -1,7 +1,9 @@
-import {createEffect, on, onCleanup} from 'solid-js';
+import {createRenderEffect, on, onCleanup} from 'solid-js';
 
+// a render effect: the classes are on the element before it goes into the document, so none of
+// its transitions runs from the bare element as it appears (see `Passthrough`)
 export function attachClassName(element: HTMLElement, accessor: () => string) {
-  createEffect(on(accessor, (value, prev) => {
+  createRenderEffect(on(accessor, (value, prev) => {
     if(prev) {
       element.classList.remove(...prev.split(' '));
     }

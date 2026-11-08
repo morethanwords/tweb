@@ -1,4 +1,4 @@
-import {createEffect, splitProps} from 'solid-js';
+import {createRenderEffect, splitProps} from 'solid-js';
 import RadioField from '@components/radioField';
 import {attachClassName} from '@helpers/solid/classname';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
@@ -20,17 +20,19 @@ export default function RadioFieldTsx(props: ConstructorParameters<typeof RadioF
   ]);
   const radioField = new RadioField(radioProps);
 
-  createEffect(() => {
+  // render effects: the field is checked (locked, named) before it goes into the document — set
+  // after, its mark drew itself in as the popup or tab holding it opened
+  createRenderEffect(() => {
     if(local.checked !== undefined) {
       radioField.setValueSilently(local.checked);
     }
   });
 
-  createEffect(() => {
+  createRenderEffect(() => {
     radioField.locked = !!local.locked;
   });
 
-  createEffect(() => {
+  createRenderEffect(() => {
     const ariaLabel = local.ariaLabel;
     if(ariaLabel) {
       radioField.input.setAttribute('aria-label', ariaLabel);

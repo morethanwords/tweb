@@ -1,4 +1,4 @@
-import {ParentProps, JSX, createEffect, splitProps, untrack, children} from 'solid-js';
+import {ParentProps, JSX, createRenderEffect, splitProps, untrack, children} from 'solid-js';
 import {assign, insert} from 'solid-js/web';
 
 export type PassthroughProps<E extends Element> = {element: E} & ParentProps & JSX.HTMLAttributes<E>;
@@ -16,7 +16,7 @@ export default function Passthrough<E extends Element>(props: PassthroughProps<E
   // span when a label changed), the new node was appended ALONGSIDE the old
   // one — producing visible duplicates like "JUMP TO DATE JUMP TO DATE".
   //
-  // The createEffect below now skips children (`skipChildren: true`) and only
+  // The render effect below now skips children (`skipChildren: true`) and only
   // re-applies the other props.
   insert(element, resolved);
 
@@ -25,7 +25,12 @@ export default function Passthrough<E extends Element>(props: PassthroughProps<E
   // of being swapped. Defaulting `prevProps` to a fresh `{}` each run threw all of that away.
   const prevProps = {};
 
-  createEffect(() => {
+  // A render effect, as Solid's own `spread` has it: the classes, `disabled` and the rest are on the
+  // element before it goes into the document. A plain effect put them on after it was in, and a
+  // layout read in between (a popup measuring itself as it opens) gave the browser a style without
+  // them — so its transitions ran from the bare element to the styled one: every footer button of
+  // a popup faded in from a transparent background and black text.
+  createRenderEffect(() => {
     const [_, others] = splitProps(props, ['element', 'children']);
     assign(element, others, element instanceof SVGElement, true, prevProps);
   });
