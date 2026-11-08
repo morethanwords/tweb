@@ -1,29 +1,84 @@
+@use "../../scss/mixins" as *;
+
 .popup.popup {
   --popup-width: 26.25rem;
-  --popup-transition-time: 220ms;
+  --popup-transition-time: 180ms;
   backdrop-filter: none;
   background: transparent;
   opacity: 1;
-  transition-property: visibility;
+  transition: visibility 0s var(--popup-transition-time);
   padding: 1rem;
+  // The flight must not change the fullscreen overlay's scrollable bounds on each frame.
+  overflow: clip;
 
-  &::before {
-    content: '';
+  .backdrop {
     position: fixed;
     inset: 0;
     z-index: 0;
     pointer-events: none;
+    // Allocate the filtered surface during the popup's existing hidden frames, not mid-flight.
+    visibility: visible;
     background: rgba(0, 0, 0, .65);
-    backdrop-filter: var(--blur-off, blur(16px));
+    backdrop-filter: var(--blur-off, blur(8px));
     opacity: 0;
-    transition: opacity 150ms;
+    // Keep the filtered surface separate from the moving card for this popup's lifetime.
+    will-change: opacity;
   }
 
-  &:global(.active)::before {
+  &:not(:global(.active)):not(:global(.hiding)) .backdrop {
+    opacity: .01;
+  }
+
+  &:global(.active) {
+    transition-delay: 0s;
+  }
+
+  &:global(.active) .backdrop {
     opacity: 1;
   }
 
-  :global(.animation-level-0) &::before {
+  .caption,
+  .send {
+    opacity: 0;
+    @include animation-level-global(2) {
+      transform: translateY(.5rem);
+    }
+  }
+
+  // Do not start a reverse transition while the hidden popup is being constructed.
+  &:global(.active),
+  &:global(.hiding) {
+    .backdrop,
+    .caption,
+    .send {
+      @include animation-level-global(1) {
+        transition: opacity 180ms ease-out;
+      }
+    }
+
+    .caption,
+    .send {
+      @include animation-level-global(2) {
+        transition: opacity 180ms ease-out, transform 180ms ease-out;
+      }
+    }
+  }
+
+  &:global(.active) .backdrop,
+  &:global(.active) .caption,
+  &:global(.active) .send {
+    opacity: 1;
+    transform: none;
+    @include animation-level-global(1) {
+      transition-duration: 200ms;
+    }
+  }
+
+  :global(.animation-level-0) & {
+    transition: none;
+  }
+
+  :global(.animation-level-0) & .backdrop {
     transition: none;
   }
 
@@ -51,24 +106,8 @@
   }
 }
 
-.header {
-  position: absolute;
-  inset-block-start: -3rem;
-  inset-inline-end: 0;
-  margin: 0 !important;
-  padding: 0 !important;
-  background: transparent !important;
-  color: #fff;
-
-  :global(.popup-close) {
-    color: #fff;
-  }
-}
-
 .caption {
   padding: .5rem .75rem;
-  border-radius: .75rem;
-  background: #3b3b40;
   text-align: center;
   font-size: .875rem;
   line-height: 1.4;
@@ -89,8 +128,9 @@
   justify-content: center;
   gap: .5rem;
   min-height: 2.75rem;
+  height: 2.75rem;
   max-width: 100%;
-  padding: .625rem 1.25rem;
+  padding: 0 1.25rem;
   border: 0;
   border-radius: 1.5rem;
   background: #3b3b40;

@@ -10,7 +10,7 @@ import liteMode from '@helpers/liteMode';
 import {i18n} from '@lib/langPack';
 import I18n from '@lib/langPack';
 import classNames from '@helpers/string/classNames';
-import {WalletCard} from '@components/wallet/visual/card/card';
+import type {WalletCard} from '@components/wallet/visual/card/card';
 import {cardGemCenter, DESIGN} from '@components/wallet/visual/card/layout';
 import {addWalletFrameClient, requestWalletFrame} from '@components/wallet/frameLoop';
 import {WalletCardScroll, WalletCardScrollHeader} from '@components/wallet/cardScroll';
@@ -52,6 +52,8 @@ export default function WalletCardView(props: {
   visible: Accessor<boolean>,
   /** Use the existing flat design for a preview, without compiling or running the 3D renderer. */
   still?: boolean,
+  /** Omit for a flat card without loading the 3D renderer. */
+  renderer?: typeof WalletCard,
   scroller?: Accessor<HTMLElement>,
   /** what the scroll needs from the screen: its header, the layer over the history, the history's last piece */
   header?: Accessor<WalletCardScrollHeader>,
@@ -66,7 +68,7 @@ export default function WalletCardView(props: {
     fraction: HTMLSpanElement, currency: HTMLSpanElement, fiat: HTMLDivElement, fiatValue: HTMLSpanElement,
     name: HTMLDivElement, address: HTMLDivElement;
 
-  const [flat, setFlat] = createSignal(props.still || !liteMode.isAvailable('animations'));
+  const [flat, setFlat] = createSignal(!props.renderer || props.still || !liteMode.isAvailable('animations'));
   let card: WalletCard;
 
   const fiatText = (value: string) => value || WALLET_NO_FIAT;
@@ -111,7 +113,7 @@ export default function WalletCardView(props: {
   onMount(() => {
     if(!flat()) {
       try {
-        card = new WalletCard({root, fold, shadow, background, face, design, gem, balance, amount, fraction, currency, fiat: fiatValue});
+        card = new props.renderer({root, fold, shadow, background, face, design, gem, balance, amount, fraction, currency, fiat: fiatValue});
         card.setMirrored(I18n.getIsRTL());
       } catch(err) {
         console.warn('wallet: flat card, no WebGL2', err);
@@ -237,7 +239,7 @@ export default function WalletCardView(props: {
   return (
     <div
       ref={root}
-      class={classNames(styles.card, flat() && styles.cardFlat)}
+      class={classNames(styles.card, flat() && styles.cardFlat, props.still && styles.cardStill)}
       role="group"
       aria-label={I18n.format('Wallet.Card.Name', true)}
       onPointerDown={onPointerDown}

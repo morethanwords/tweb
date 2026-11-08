@@ -38,6 +38,7 @@ import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvi
 import type Scrollable from '@components/scrollable';
 import {wrapStarsRatingLevel} from '@components/wrappers/starsRating';
 import cancelEvent from '@helpers/dom/cancelEvent';
+import loadFonts from '@helpers/dom/loadFonts';
 import {HIDDEN_PEER_ID} from '@appManagers/constants';
 import {rgbIntToHex} from '@helpers/color';
 import type {MyStarGift} from '@appManagers/appGiftsManager';
@@ -714,6 +715,12 @@ PeerProfile.PinnedMusic = () => {
   const {rootScope, i18n, I18n} = useHotReloadGuard();
   const managers = bindManagersToSession(rootScope.managers);
   let openingWallet = false;
+  createEffect(() => {
+    const card = context.walletCard;
+    if(!card) return;
+    const peer = context.peer as User.user;
+    void loadFonts({monospace: [[peer.first_name, peer.last_name].filter(Boolean).join(' ').toUpperCase(), card.address, '0123456789 GRAM']});
+  });
   const openWallet = async(e: Event) => {
     cancelEvent(e);
     if(openingWallet) return;

@@ -30,21 +30,23 @@ test('the profile card passes Axe', async({page}) => {
   await expectNoA11yViolations(page, POPUP);
 });
 
-test('Tab stays in the dialog and reaches Close, which restores focus', async({page}) => {
+test('Tab reaches the action without a close button and Escape restores focus', async({page}) => {
   await openCard(page);
   await popupSettled(page, POPUP);
-  const close = page.locator(POPUP).getByRole('button', {name: 'Close', exact: true});
-  let reachedClose = false;
+  await expect(page.locator(POPUP).getByRole('button', {name: 'Close', exact: true})).toHaveCount(0);
+  const action = page.locator(POPUP).getByRole('button', {name: 'Send money', exact: true});
+  let reachedAction = false;
   for(let step = 0; step < 12; ++step) {
     await page.keyboard.press('Tab');
     expect(await page.locator(POPUP).evaluate((popup) => popup.contains(document.activeElement))).toBe(true);
-    if(await close.evaluate((button) => button === document.activeElement)) {
-      reachedClose = true;
+    if(await action.evaluate((button) => button === document.activeElement)) {
+      reachedAction = true;
       break;
     }
   }
-  expect(reachedClose).toBe(true);
-  await page.keyboard.press('Enter');
+  expect(reachedAction).toBe(true);
+  expect((await action.boundingBox()).height).toBe(44);
+  await page.keyboard.press('Escape');
   await expect(page.locator(POPUP)).toHaveCount(0);
   await expect(page.locator(SOURCE)).toBeFocused();
 });
@@ -60,6 +62,25 @@ test('closing after the source disappears removes the popup and releases focus',
   await expect(page.locator(CARD)).toHaveCount(0);
   expect(await page.evaluate(() => document.activeElement?.isConnected)).toBe(true);
   expect(errors).toEqual([]);
+});
+
+test('a card waiting for its fonts does not open after its source disappears', async({page}) => {
+  await page.evaluate(() => {
+    const load = document.fonts.load.bind(document.fonts);
+    let release: () => void;
+    const pending = new Promise<void>((resolve) => { release = resolve; });
+    (window as any).releaseWalletFonts = release;
+    document.fonts.load = async(...args) => {
+      if(args[0].includes('Roboto Mono')) await pending;
+      return load(...args);
+    };
+  });
+  expect(await openStory(page, 'wallet/profileCard')).toBeNull();
+  await expect(page.locator(POPUP)).toHaveCount(1);
+  await expect(page.locator(`${POPUP}.active`)).toHaveCount(0);
+  await page.locator(SOURCE).evaluate((source) => source.remove());
+  await page.evaluate(() => (window as any).releaseWalletFonts());
+  await expect(page.locator(POPUP)).toHaveCount(0);
 });
 
 test('the full opening flight does not lay out on every frame', async({page, browserName}) => {
@@ -78,11 +99,21 @@ test('the full opening flight does not lay out on every frame', async({page, bro
         animation.playState === 'running' && Number(animation.currentTime) >= 32
       );
     }, CARD);
+    expect(await page.locator(CARD).evaluate((card) =>
+      card.getAnimations()[0]?.effect.getTiming().duration
+    )).toBe(300);
+    expect(await page.locator(POPUP).evaluate((popup) =>
+      getComputedStyle(popup).getPropertyValue('--popup-transition-time').trim()
+    )).toBe('180ms');
     const before = (await cdp.send('Performance.getMetrics')).metrics.find(({name}) => name === 'LayoutCount').value;
     await popupSettled(page, POPUP);
     const after = (await cdp.send('Performance.getMetrics')).metrics.find(({name}) => name === 'LayoutCount').value;
-    // Initial sizing may finish, but the 640ms transform flight must not lay out each frame.
+    // Initial sizing may finish, but the transform flight must not lay out each frame.
     expect(after - before).toBeLessThanOrEqual(6);
+    expect(await page.locator(CARD).evaluate((card) => ({
+      animations: card.getAnimations().length,
+      willChange: (card as HTMLElement).style.willChange
+    }))).toEqual({animations: 0, willChange: ''});
   } finally {
     await cdp.detach();
   }
@@ -92,10 +123,95 @@ test.beforeEach(async({page}) => {
   await preparePopupSandbox(page, false, {a11y: true});
 });
 
+for(const direction of ['ltr', 'rtl'] as const) {
+  test(`the ${direction} flight is visible at the source and does not skip its path`, async({page}) => {
+    await page.evaluate((direction) => window.popupSandbox.setDirection(direction), direction);
+    await openCard(page);
+    const samples = await page.locator(CARD).evaluate((card) => {
+      const animation = card.getAnimations()[0];
+      animation.pause();
+      const duration = Number(animation.effect.getTiming().duration);
+      const samples = [0, .25, 1].map((progress) => {
+        animation.currentTime = duration * progress;
+        const rect = card.getBoundingClientRect();
+        return {x: rect.x + rect.width / 2, y: rect.y + rect.height / 2, opacity: getComputedStyle(card).opacity};
+      });
+      animation.currentTime = 0;
+      animation.play();
+      const source = document.querySelector('[data-wallet-profile-card-source]').getBoundingClientRect();
+      return {samples, source: {x: source.x + source.width / 2, y: source.y + source.height / 2}};
+    });
+    const [start, quarter, end] = samples.samples;
+    expect(start.x).toBeCloseTo(samples.source.x, 0);
+    expect(start.y).toBeCloseTo(samples.source.y, 0);
+    expect(start.opacity).toBe('1');
+    const distance = (point: typeof start) => Math.hypot(point.x - end.x, point.y - end.y);
+    expect(distance(quarter) / distance(start)).toBeGreaterThan(.5);
+    await popupSettled(page, POPUP);
+  });
+}
+
+test('the backdrop, caption and action fade together on opening and closing', async({page}) => {
+  await openCard(page);
+  await popupSettled(page, POPUP);
+  const viewport = page.viewportSize();
+  expect(await page.locator('[data-wallet-profile-card-backdrop]').boundingBox()).toEqual({x: 0, y: 0, ...viewport});
+  expect(await page.locator('[data-wallet-profile-card-backdrop]').evaluate((backdrop) =>
+    !!backdrop.closest('.popup-wallet-profile-card') && !backdrop.closest('.popup-container')
+  )).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(page.locator(POPUP)).toHaveCount(0);
+  await page.locator(SOURCE).evaluate((source: HTMLElement) => source.click());
+
+  for(const closing of [false, true]) {
+    if(closing) await page.keyboard.press('Escape');
+    await page.waitForFunction(({selector, closing}) => {
+      const popup = document.querySelector(selector);
+      if(!popup || popup.classList.contains('hiding') !== closing) return false;
+      const card = popup.querySelector('[data-wallet-profile-card]');
+      const caption = card?.parentElement.previousElementSibling;
+      const button = popup.querySelector('[role="dialog"] button');
+      const targets = [popup.querySelector('[data-wallet-profile-card-backdrop]'), caption, button];
+      const fades = popup.getAnimations({subtree: true}).filter((animation) => {
+        const effect = animation.effect as KeyframeEffect;
+        return targets.includes(effect.target as Element) && effect.getKeyframes().some((frame) => frame.opacity !== undefined);
+      });
+      if(fades.length !== 3) return false;
+      for(const animation of fades) {
+        animation.pause();
+        animation.currentTime = 90;
+      }
+      return targets.every((target) => {
+        const opacity = Number(getComputedStyle(target).opacity);
+        return opacity > 0 && opacity < 1;
+      });
+    }, {selector: POPUP, closing});
+    expect(await page.locator(POPUP).evaluate((popup) => getComputedStyle(popup).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
+    await page.locator(POPUP).evaluate((popup) => popup.getAnimations({subtree: true}).forEach((animation) => animation.play()));
+    if(!closing) await popupSettled(page, POPUP);
+  }
+  await expect(page.locator(POPUP)).toHaveCount(0);
+  await expect(page.locator(SOURCE)).toBeFocused();
+});
+
+for(const currency of ['USD', 'EUR']) {
+  test(`shows the balance in ${currency} and the shared card address`, async({page}) => {
+    await page.evaluate((currency) => localStorage.setItem('wallet_fiat_currency', currency), currency);
+    try {
+      await openCard(page);
+      await expect(page.locator(CARD)).toContainText(currency === 'EUR' ? '€' : '$');
+      const addressColor = await page.locator(CARD).locator('[dir="ltr"]').last().evaluate((address) => getComputedStyle(address).color);
+      expect(addressColor).toBe('rgba(0, 0, 0, 0.14)');
+    } finally {
+      await page.evaluate(() => localStorage.removeItem('wallet_fiat_currency'));
+    }
+  });
+}
+
 test('blurs the background, closes with Escape and restores the balance button', async({page}) => {
   await openCard(page);
   await popupSettled(page, POPUP);
-  expect(await page.locator(POPUP).evaluate((popup) => getComputedStyle(popup, '::before').backdropFilter)).toMatch(/blur\((?!0px)/);
+  expect(await page.locator('[data-wallet-profile-card-backdrop]').evaluate((backdrop) => getComputedStyle(backdrop).backdropFilter)).toMatch(/blur\((?!0px)/);
   await page.keyboard.press('Escape');
   await expect(page.locator(POPUP)).toHaveCount(0);
   await expect(page.locator(SOURCE)).toBeFocused();

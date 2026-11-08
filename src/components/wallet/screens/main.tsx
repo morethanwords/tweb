@@ -31,6 +31,7 @@ import {WalletCollectibles} from '@components/wallet/collectibles';
 import {ChipTab, ChipTabs} from '@components/chipTabs';
 import {I18nTsx} from '@helpers/solid/i18n';
 import WalletCardView, {formatWalletBalanceFiat, WALLET_NO_FIAT, WalletCardHandle} from '@components/wallet/card';
+import {WalletCard} from '@components/wallet/visual/card/card';
 import type {WalletCardScrollHeader} from '@components/wallet/cardScroll';
 import type {WalletHistoryItem} from '@components/wallet/store';
 import {absNanos, compareNanos, gramsToNumber, splitGrams} from '@components/wallet/format';
@@ -373,6 +374,7 @@ export default function WalletMainScreen(props: {active: Accessor<boolean>}) {
             </Match>
             <Match when={ready()}>
               <WalletCardView
+                renderer={WalletCard}
                 balance={balance}
                 fiat={fiat}
                 fiatPerGram={store.fiatPerGram}
