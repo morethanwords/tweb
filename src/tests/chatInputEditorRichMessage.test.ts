@@ -94,6 +94,41 @@ describe('Tiptap rich-message conversion', () => {
     });
   });
 
+  test('sends a custom emoji without the marks that do not change how it is drawn', () => {
+    // a heading pasted from a bubble comes bold, its emoji too; a bold round the emoji
+    // alone the server dropped together with the emoji
+    const document: JSONContent = {
+      type: 'doc',
+      content: [{
+        type: 'heading',
+        attrs: {level: 2},
+        content: [
+          {
+            type: 'customEmoji',
+            attrs: {documentId: '5431456208487716895', emoji: '🎨'},
+            marks: [{type: 'bold'}, {type: 'italic'}, {type: 'underline'}, {type: 'strike'}]
+          },
+          {type: 'text', text: ' A new look', marks: [{type: 'bold'}]},
+          {
+            type: 'customEmoji',
+            attrs: {documentId: '777', emoji: '🥳'},
+            marks: [{type: 'bold'}, {type: 'spoiler'}]
+          }
+        ]
+      }]
+    };
+
+    const heading = findBlock(tiptapToRichMessage(document).input.blocks, 'pageBlockHeading2');
+    expect(heading?.text).toEqual({
+      _: 'textConcat',
+      texts: [
+        {_: 'textCustomEmoji', document_id: '5431456208487716895', alt: '🎨'},
+        {_: 'textBold', text: {_: 'textPlain', text: ' A new look'}},
+        {_: 'textSpoiler', text: {_: 'textCustomEmoji', document_id: '777', alt: '🥳'}}
+      ]
+    });
+  });
+
   test('round-trips rich photo and video resources with an editable collage caption', () => {
     const photo = {
       _: 'photo',

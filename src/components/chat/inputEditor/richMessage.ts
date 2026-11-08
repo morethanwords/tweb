@@ -169,6 +169,12 @@ function applyRichTextMarks(text: RichText, marks: JSONContent['marks'] = []): R
   return text;
 }
 
+/**
+ * Marks that do not change how a custom emoji is drawn. Around an emoji alone the server drops
+ * such a wrapper and the emoji with it, so the emoji goes without them.
+ */
+const CUSTOM_EMOJI_UNDRAWN_MARKS = new Set(['bold', 'italic', 'underline', 'strike']);
+
 function stringAttribute(node: JSONContent, ...names: string[]) {
   for(const name of names) {
     const value = node.attrs?.[name];
@@ -209,11 +215,14 @@ function inlineNodeToRichText(node: JSONContent): RichText {
   } else if(node.type === 'customEmoji') {
     const documentId = node.attrs?.documentId ?? node.attrs?.id;
     const alt = stringAttribute(node, 'emoji', 'alt', 'name');
-    text = documentId === undefined || documentId === null ? plainRichText(alt) : {
-      _: 'textCustomEmoji',
-      document_id: documentId,
-      alt
-    };
+    if(documentId !== undefined && documentId !== null) {
+      return applyRichTextMarks(
+        {_: 'textCustomEmoji', document_id: documentId, alt},
+        node.marks?.filter((mark) => !CUSTOM_EMOJI_UNDRAWN_MARKS.has(mark.type))
+      );
+    }
+
+    text = plainRichText(alt);
   } else if(node.type === 'inlineMath') {
     const source = stringAttribute(node, 'source', 'latex');
     text = source ? {_: 'textMath', source} : EMPTY_RICH_TEXT;
