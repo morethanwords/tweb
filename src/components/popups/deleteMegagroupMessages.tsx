@@ -391,18 +391,16 @@ function updateReactionTitle() {
           </Section>
         </Show>
         {hasBanAction && <>
-          <Section
+          <div
             class={`${className}-permissions`}
-            name="UserRestrictionsCanDoUsers"
-            nameArgs={[banning().length]}
-            noShadow
             style={{
-              // 'max-height': collapsed() ? '0px' : ((chatPermissionsContainer.childElementCount - 1) * 48) + 40 + 'px'
               'max-height': collapsed() ? '0px' : '712px'
             }}
           >
-            {chatPermissionsContainer}
-          </Section>
+            <Section name="UserRestrictionsCanDoUsers" nameArgs={[banning().length]} noShadow>
+              {chatPermissionsContainer}
+            </Section>
+          </div>
           <Section
             classList={{hide: !banning().length}}
           >
