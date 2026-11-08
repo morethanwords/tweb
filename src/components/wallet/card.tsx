@@ -50,6 +50,8 @@ export default function WalletCardView(props: {
   address: Accessor<string>,
   /** the card is on screen and its screen is the active one */
   visible: Accessor<boolean>,
+  /** Use the existing flat design for a preview, without compiling or running the 3D renderer. */
+  still?: boolean,
   scroller?: Accessor<HTMLElement>,
   /** what the scroll needs from the screen: its header, the layer over the history, the history's last piece */
   header?: Accessor<WalletCardScrollHeader>,
@@ -64,7 +66,7 @@ export default function WalletCardView(props: {
     fraction: HTMLSpanElement, currency: HTMLSpanElement, fiat: HTMLDivElement, fiatValue: HTMLSpanElement,
     name: HTMLDivElement, address: HTMLDivElement;
 
-  const [flat, setFlat] = createSignal(!liteMode.isAvailable('animations'));
+  const [flat, setFlat] = createSignal(props.still || !liteMode.isAvailable('animations'));
   let card: WalletCard;
 
   const fiatText = (value: string) => value || WALLET_NO_FIAT;

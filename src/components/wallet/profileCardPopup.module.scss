@@ -1,0 +1,110 @@
+.popup.popup {
+  --popup-width: 26.25rem;
+  --popup-transition-time: 220ms;
+  backdrop-filter: none;
+  background: transparent;
+  opacity: 1;
+  transition-property: visibility;
+  padding: 1rem;
+
+  &::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: rgba(0, 0, 0, .65);
+    backdrop-filter: var(--blur-off, blur(16px));
+    opacity: 0;
+    transition: opacity 150ms;
+  }
+
+  &:global(.active)::before {
+    opacity: 1;
+  }
+
+  :global(.animation-level-0) &::before {
+    transition: none;
+  }
+
+  // This card flies on its own plane; the shared popup's slide must not move its destination.
+  .container {
+    z-index: 1;
+    transform: none !important;
+    transition: none;
+    overflow: visible;
+    background: transparent;
+    box-shadow: none;
+  }
+}
+
+.container {
+  color: #fff;
+
+  :global(.popup-footer) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+.header {
+  position: absolute;
+  inset-block-start: -3rem;
+  inset-inline-end: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  color: #fff;
+
+  :global(.popup-close) {
+    color: #fff;
+  }
+}
+
+.caption {
+  padding: .5rem .75rem;
+  border-radius: .75rem;
+  background: #3b3b40;
+  text-align: center;
+  font-size: .875rem;
+  line-height: 1.4;
+  color: #dedee3;
+}
+
+.plane {
+  margin-block: 1.25rem;
+}
+
+.card {
+  transform-origin: center;
+}
+
+.send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  min-height: 2.75rem;
+  max-width: 100%;
+  padding: .625rem 1.25rem;
+  border: 0;
+  border-radius: 1.5rem;
+  background: #3b3b40;
+  color: #fff;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+
+  &:hover {
+    background: #4b4b50;
+  }
+
+  :global(:where(.a11y)) &:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 3px;
+  }
+}

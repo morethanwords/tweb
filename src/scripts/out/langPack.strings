@@ -4215,6 +4215,8 @@
 "WalletMakeCommentPublic" = "Make comment public";
 "WalletContinue" = "Continue";
 "WalletBalanceAmount" = "Balance: %1$s";
+"WalletProfileCardBalance" = "%1$s has %2$s on the TON blockchain.";
+"WalletProfileCardSend" = "Send money";
 "WalletInsufficientFunds" = "Insufficient Funds.";
 "WalletDepositFunds" = "Deposit funds";
 "WalletUserWallet" = "%1$s's wallet";
