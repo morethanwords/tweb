@@ -1,3 +1,33 @@
+### Unreleased
+<!-- animated emoji: 🎵 5188621441926438751, 📝 5334882760735598374, 🧰 5449428597922079323 -->
+A small update with two things you'll notice: your music looks right, and articles copy the way they look.
+
+#### 🎵 Music with its cover
+A song you send now shows its title, artist and cover, taken from the file itself.
+
+No more "Unknown artist": you see the cover already in the window before sending.
+
+#### 📝 Copy from articles
+Copy part of an article and paste it into the message field: headings, lists, quotes and tables stay as they were.
+
+**Copy** in an article's menu takes all of it, and other apps still get its plain text.
+
+#### More new things
+- An article's menu tells you which packs its custom emoji come from.
+
+<details><summary>🧰 Fixes</summary>
+
+- the message about an update could fail to arrive while another Web K tab was open;
+- that message in the "Telegram" chat could not be deleted;
+- a forwarded article with videos showed each of them twice;
+- a custom emoji in an article's heading disappeared after the article was edited;
+- after switching to another account, a tab could slow down until it ran out of memory;
+- a bot's widget could keep the colors of the chat opened before it;
+- buttons in windows flickered as the window opened;
+- the monkey on the sign-in code screen appeared a moment late.
+
+</details>
+
 ### 2.3 (685)
 <!-- animated emoji: 👋 5472055112702629499, 🎨 5431456208487716895, 👥 5372926953978341366, 🖼️ 5375074927252621134, ✨ 5472164874886846699, 📞 5467539229468793355, 🔐 5472308992514464048, 🐞 5368487491097601104, 💬 5465300082628763143, 📁 5433653135799228968, 🎁 5199749070830197566, 🎬 5375464961822695044, 🔍 5188217332748527444, 📣 5469903029144657419, 🧰 5449428597922079323 -->
 It's been a while since our last post 👋 Web K has changed a lot since then, so here's the best of it, each with a short video.

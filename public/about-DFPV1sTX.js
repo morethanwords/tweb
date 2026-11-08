@@ -1,3 +1,0 @@
-//# allFunctionsCalledOnLoad
-import{t as e}from"./privacyTab-CA-EAp8m.js";import{t}from"./privacySection-DE7a3HIA.js";var n=`Privacy.BioCaption`,r=e(`privacy-about`,e=>{new t({tab:e,title:`Privacy.Bio`,inputKey:`inputPrivacyKeyAbout`,captions:[n,n,n],exceptionTexts:[`PrivacySettingsController.NeverAllow`,`PrivacySettingsController.AlwaysAllow`],appendTo:e.scrollable,managers:e.managers})});export{r as default};
-//# sourceMappingURL=about-DFPV1sTX.js.map
