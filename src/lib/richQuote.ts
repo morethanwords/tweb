@@ -6,7 +6,17 @@
  * break between each two.
  */
 
-import type {InputReplyTo, MessageEntity, MessageReplyHeader, PageBlock, PageCaption, RichText, TextWithEntities} from '@layer';
+import type {
+  InputReplyTo,
+  MessageEntity,
+  MessageReplyHeader,
+  PageBlock,
+  PageCaption,
+  PageListItem,
+  PageListOrderedItem,
+  RichText,
+  TextWithEntities
+} from '@layer';
 import {getGraphemeOffsets, snapGraphemeOffsetDown, snapGraphemeOffsetUp} from '@lib/richTextProcessor/graphemes';
 import {getRichTextFlatText, joinRichTexts} from '@lib/richMessage';
 import clamp from '@helpers/number/clamp';
@@ -57,24 +67,28 @@ const isAtom = (text: RichText) => text._ === 'textImage' ||
   text._ === 'textDiff' ||
   text._ === 'textButton';
 
-/** The texts of a rich message a quote can take, in the order they stand in it: those that read something */
-export function getRichQuoteNodes(blocks: PageBlock[]): RichQuoteNode[] {
-  const nodes: RichQuoteNode[] = [];
-  let unknown = false;
-  const add = (text: RichText, path: number[], part: string, code?: boolean) => {
-    const flat = getRichTextFlatText(text);
-    if(flat) {
-      nodes.push({text, id: getRichQuoteNodeId(path, part), flat, ...(unknown && {afterUnknown: true}), ...(code && {code})});
-      unknown = false;
-    }
-  };
-  const addCaption = (caption: PageCaption, path: number[]) => {
-    if(!caption) return;
-    add(caption.text, path, 'caption');
-    add(caption.credit, path, 'credit');
-  };
-  const collect = (blocks: PageBlock[], prefix: number[]) => blocks?.forEach((block, index) => {
+/** What becomes of a text of a rich message where it stands (`getRichQuoteNodeId`): none to leave it out */
+export type RichQuoteTextMapper = (text: RichText, id: string, code?: boolean) => RichText | undefined;
+
+const EMPTY_RICH_TEXT: RichText = {_: 'textEmpty'};
+const paragraphBlock = (text: RichText): PageBlock => ({_: 'pageBlockParagraph', text});
+
+/**
+ * The blocks of a rich message with each of the texts a quote can take as `map` gives it back, called in the order
+ * the texts stand in the message. A block left with no text is left out, as are a list's items and a table's rows
+ * with none; a text the block it stands in cannot carry by itself (a picture's caption, a table's title alone) is a
+ * paragraph. A code block or a formula is `code`: drawn as it reads, nothing of it formatted.
+ */
+export function mapRichQuoteTexts(blocks: PageBlock[], map: RichQuoteTextMapper, onUnknown?: () => void): PageBlock[] {
+  const mapBlocks = (blocks: PageBlock[], prefix: number[]): PageBlock[] => (blocks || []).flatMap((block, index): PageBlock[] => {
     const path = [...prefix, index];
+    const mapText = (text: RichText, part: string, code?: boolean, at = path) => (
+      text ? map(text, getRichQuoteNodeId(at, part), code) : undefined
+    );
+    const mapCaption = (caption: PageCaption) => caption ?
+      [mapText(caption.text, 'caption'), mapText(caption.credit, 'credit')].filter(Boolean).map(paragraphBlock) :
+      [];
+
     switch(block._) {
       case 'pageBlockParagraph':
       case 'pageBlockHeading1':
@@ -84,58 +98,96 @@ export function getRichQuoteNodes(blocks: PageBlock[]): RichQuoteNode[] {
       case 'pageBlockHeading5':
       case 'pageBlockHeading6':
       case 'pageBlockFooter':
-      case 'pageBlockThinking':
-        add(block.text, path, 'text');
-        break;
-      case 'pageBlockPreformatted':
-        add(block.text, path, 'text', true);
-        break;
+      case 'pageBlockThinking': {
+        const text = mapText(block.text, 'text');
+        return text ? [{...block, text}] : [];
+      }
+      case 'pageBlockPreformatted': {
+        const text = mapText(block.text, 'text', true);
+        return text ? [{...block, text}] : [];
+      }
       case 'pageBlockMath':
-        add({_: 'textMath', source: block.source}, path, 'text', true);
-        break;
+        return mapText({_: 'textMath', source: block.source}, 'text', true) ? [block] : [];
       case 'pageBlockBlockquote':
-      case 'pageBlockPullquote':
-        add(block.text, path, 'text');
-        add(block.caption, path, 'caption');
-        break;
-      case 'pageBlockBlockquoteBlocks':
-        collect(block.blocks, path);
-        add(block.caption, path, 'caption');
-        break;
+      case 'pageBlockPullquote': {
+        const text = mapText(block.text, 'text');
+        const caption = mapText(block.caption, 'caption');
+        return text || caption ? [{...block, text: text || EMPTY_RICH_TEXT, caption: caption || EMPTY_RICH_TEXT}] : [];
+      }
+      case 'pageBlockBlockquoteBlocks': {
+        const inner = mapBlocks(block.blocks, path);
+        const caption = mapText(block.caption, 'caption');
+        return inner.length || caption ? [{...block, blocks: inner, caption: caption || EMPTY_RICH_TEXT}] : [];
+      }
       case 'pageBlockList':
-      case 'pageBlockOrderedList':
-        block.items.forEach((item, itemIndex) => {
-          if('text' in item) add(item.text, [...path, itemIndex], 'text');
-          else collect(item.blocks, [...path, itemIndex]);
+      case 'pageBlockOrderedList': {
+        const items = (block.items as (PageListItem | PageListOrderedItem)[]).map((item, itemIndex) => {
+          const at = [...path, itemIndex];
+          if('text' in item) {
+            const text = mapText(item.text, 'text', false, at);
+            return text && {...item, text};
+          }
+
+          const inner = mapBlocks(item.blocks, at);
+          return inner.length ? {...item, blocks: inner} : undefined;
         });
-        break;
-      case 'pageBlockTable':
-        add(block.title, path, 'title');
-        block.rows.forEach((row, rowIndex) => row.cells.forEach((cell, cellIndex) => {
-          add(cell.text, path, `cell:${rowIndex},${cellIndex}`);
-        }));
-        break;
-      case 'pageBlockDetails':
-        add(block.title, path, 'title');
-        collect(block.blocks, path);
-        break;
+        const kept = items.filter(Boolean);
+        if(!kept.length) return [];
+        if(block._ === 'pageBlockList') return [{...block, items: kept as PageListItem[]}];
+        if(kept.length === items.length) return [{...block, items: kept as PageListOrderedItem[]}];
+        // * the items left keep their numbers
+        const first = items.findIndex(Boolean);
+        const start = block.start ?? (block.pFlags.reversed ? block.items.length : 1);
+        return [{...block, items: kept as PageListOrderedItem[], start: block.pFlags.reversed ? start - first : start + first}];
+      }
+      case 'pageBlockTable': {
+        const title = mapText(block.title, 'title');
+        const rows = block.rows.map((row, rowIndex) => {
+          const texts = row.cells.map((cell, cellIndex) => mapText(cell.text, `cell:${rowIndex},${cellIndex}`));
+          return texts.some(Boolean) ?
+            {...row, cells: row.cells.map((cell, cellIndex) => ({...cell, text: texts[cellIndex] || EMPTY_RICH_TEXT}))} :
+            undefined;
+        }).filter(Boolean);
+        if(rows.length) return [{...block, title: title || EMPTY_RICH_TEXT, rows}];
+        return title ? [paragraphBlock(title)] : [];
+      }
+      case 'pageBlockDetails': {
+        const title = mapText(block.title, 'title');
+        const inner = mapBlocks(block.blocks, path);
+        return title || inner.length ? [{...block, title: title || EMPTY_RICH_TEXT, blocks: inner}] : [];
+      }
       case 'pageBlockPhoto':
       case 'pageBlockVideo':
       case 'pageBlockAudio':
       case 'pageBlockMap':
-        addCaption(block.caption, path);
-        break;
+        return mapCaption(block.caption);
       case 'pageBlockCollage':
       case 'pageBlockSlideshow':
-        collect(block.items, path);
-        addCaption(block.caption, path);
-        break;
+        return [...mapBlocks(block.items, path), ...mapCaption(block.caption)];
       case 'pageBlockUnsupported':
-        unknown = true;
-        break;
+        onUnknown?.();
+        return [];
+      default:
+        return [];
     }
   });
-  collect(blocks, []);
+
+  return mapBlocks(blocks, []);
+}
+
+/** The texts of a rich message a quote can take, in the order they stand in it: those that read something */
+export function getRichQuoteNodes(blocks: PageBlock[]): RichQuoteNode[] {
+  const nodes: RichQuoteNode[] = [];
+  let unknown = false;
+  mapRichQuoteTexts(blocks, (text, id, code) => {
+    const flat = getRichTextFlatText(text);
+    if(flat) {
+      nodes.push({text, id, flat, ...(unknown && {afterUnknown: true}), ...(code && {code})});
+      unknown = false;
+    }
+
+    return text;
+  }, () => unknown = true);
   return nodes;
 }
 
@@ -206,8 +258,8 @@ function snapRichTextOffset(text: RichText, offset: number, up: boolean) {
   return result;
 }
 
-/** What a quote may carry: a button as its label, no pictures */
-function normalizeRichQuoteFragment(text: RichText): RichText | undefined {
+/** What a quote, or a copy, may carry: a button as its label, no pictures */
+export function normalizeRichQuoteFragment(text: RichText): RichText | undefined {
   switch(text._) {
     case 'textImage':
       return;
@@ -307,6 +359,32 @@ export function makeRichQuote(
   }
 
   return {fragments, offset};
+}
+
+/**
+ * What a selection from `start` to `end` across the texts of `blocks` copies: the blocks those texts stand in, as
+ * they stand (a heading a heading, a list's items its list, a quote with its author), the first and the last text
+ * only as far as it is taken, every text between whole. What reads nothing (a picture, a divider) is left out.
+ */
+export function sliceRichQuoteBlocks(
+  blocks: PageBlock[],
+  nodes: RichQuoteNode[],
+  start: RichQuoteBoundary,
+  end: RichQuoteBoundary
+): PageBlock[] {
+  const taken: Map<string, {from: number, to: number}> = new Map();
+  for(let index = start.index; index <= end.index; ++index) {
+    taken.set(nodes[index].id, {
+      from: index === start.index ? start.offset : 0,
+      to: index === end.index ? end.offset : nodes[index].flat.length
+    });
+  }
+
+  return mapRichQuoteTexts(blocks, (text, id) => {
+    const range = taken.get(id);
+    const sliced = range && range.to > range.from && sliceRichText(text, range.from, range.to);
+    return sliced && normalizeRichQuoteFragment(sliced);
+  });
 }
 
 /**

@@ -7,7 +7,8 @@ import {
   getRichQuoteSelectionBoundaries,
   getRichQuoteTextWithEntities,
   makeRichQuote,
-  RichQuoteNode
+  RichQuoteNode,
+  sliceRichQuoteBlocks
 } from '@lib/richQuote';
 
 // * the cases of Telegram for iOS' RichReplyQuoteTests: what the server takes for a quote of a rich message
@@ -206,5 +207,61 @@ describe('rich quotes', () => {
       text: 'y', entities: undefined, offset: 1
     });
     expect(getReplyQuote({_: 'messageReplyHeader', pFlags: {}})).toBeUndefined();
+  });
+});
+
+describe('what a selection of a rich message copies', () => {
+  const heading = (text: RichText): PageBlock => ({_: 'pageBlockHeading2', text});
+  const copy = (blocks: PageBlock[], start: [number, number], end: [number, number]) => sliceRichQuoteBlocks(
+    blocks,
+    getRichQuoteNodes(blocks),
+    {index: start[0], offset: start[1]},
+    {index: end[0], offset: end[1]}
+  );
+
+  it('keeps a heading a heading, a custom emoji in it, and cuts the last text where it is left', () => {
+    const blocks = [
+      paragraph(plain('before')),
+      heading(concat(emoji('🎨'), plain(' A new look'))),
+      paragraph(plain('Web K got a softer design'))
+    ];
+    expect(copy(blocks, [1, 0], [2, 9])).toEqual([
+      heading(concat(emoji('🎨'), plain(' A new look'))),
+      paragraph(plain('Web K got'))
+    ]);
+  });
+
+  it('keeps a list of the items taken, numbered as they were', () => {
+    const item = (text: string) => ({_: 'pageListOrderedItemText' as const, pFlags: {}, text: plain(text)});
+    const list: PageBlock = {_: 'pageBlockOrderedList', pFlags: {}, items: [item('one'), item('two'), item('three')]};
+    expect(copy([list], [1, 1], [2, 5])).toEqual([
+      {_: 'pageBlockOrderedList', pFlags: {}, items: [item('wo'), item('three')], start: 2}
+    ]);
+  });
+
+  it('keeps a quote with its author, a table of the rows taken, and a picture as its caption', () => {
+    const blocks: PageBlock[] = [
+      {_: 'pageBlockBlockquote', pFlags: {}, text: plain('said'), caption: plain('someone')},
+      {_: 'pageBlockPhoto', pFlags: {}, photo_id: 1, caption: caption('a photo', '')},
+      {_: 'pageBlockTable', pFlags: {}, title: plain(''), rows: [
+        {_: 'pageTableRow', cells: [cell('a'), cell('b')]},
+        {_: 'pageTableRow', cells: [cell('c'), cell('d')]}
+      ]}
+    ];
+    // * from the quote to "a" of the table
+    expect(copy(blocks, [0, 0], [3, 1])).toEqual([
+      blocks[0],
+      paragraph(plain('a photo')),
+      {...blocks[2], title: {_: 'textEmpty'}, rows: [{_: 'pageTableRow', cells: [cell('a'), {...cell('b'), text: {_: 'textEmpty'}}]}]}
+    ]);
+  });
+
+  it('leaves out a picture in a text, and copies a button as its label', () => {
+    const blocks = [paragraph(concat(
+      plain('see '),
+      {_: 'textImage', document_id: 1, w: 1, h: 1},
+      {_: 'textButton', text: plain('Open'), type: {_: 'inlineButtonTypeUrl', url: 'https://telegram.org'}}
+    ))];
+    expect(copy(blocks, [0, 0], [0, 8])).toEqual([paragraph(concat(plain('see '), plain('Open')))]);
   });
 });

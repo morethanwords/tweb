@@ -5,7 +5,10 @@ import {isInTable} from '@tiptap/pm/tables';
 import type {EditorView} from '@tiptap/pm/view';
 import {effectiveOrderedListItemValue, listItemMarkers} from '@components/chat/inputEditor/orderedList';
 import {entitiesFittingSchema, telegramTextToTiptap} from '@components/chat/inputEditor/model';
+import {richMessageToTiptap} from '@components/chat/inputEditor/richMessage';
 import {getCopiedTextWithEntities} from '@helpers/prepareTextWithEntitiesForCopying';
+import {mapRichQuoteTexts, normalizeRichQuoteFragment} from '@lib/richQuote';
+import type {PageBlock} from '@layer';
 import instantViewStyles from '@components/instantViewStyles';
 
 function directListItems(list: HTMLOListElement | HTMLUListElement) {
@@ -671,6 +674,29 @@ export const ChatPastedBlocks = Extension.create({
 });
 
 /**
+ * What a copy of a rich message carries of it (`richMessageCopy`), as this field's document: the texts
+ * a rich message can carry (`mapRichQuoteTexts`: a picture's caption a paragraph, a button its label),
+ * since any page can write them. None where the field cannot hold it all (a plain one, a heading in
+ * it), which then takes the copy's flat text and entities.
+ */
+function copiedRichMessageDocument(blocks: PageBlock[] | undefined, schema: Schema) {
+  if(!blocks) return;
+  try {
+    const content = mapRichQuoteTexts(blocks, (text) => normalizeRichQuoteFragment(text));
+    if(!content.length) return;
+    const doc = schema.nodeFromJSON(richMessageToTiptap({
+      _: 'richMessage',
+      pFlags: {},
+      blocks: content,
+      photos: [],
+      documents: []
+    }));
+    doc.check();
+    return doc;
+  } catch(err) {}
+}
+
+/**
  * A message copied out of a chat (its menu's Copy, a profile note, a translation) carries its text
  * and entities beside the HTML, and becomes what this field would show it as when editing it: a
  * quote, a code block with its language, a date with its format, which that HTML cannot hold. It is
@@ -692,15 +718,19 @@ function pastedMessageAsFieldHTML(html: string, view: EditorView) {
   if(!copied) return html;
 
   try {
-    const doc = schema.nodeFromJSON(telegramTextToTiptap(copied.text, entitiesFittingSchema(copied.entities, schema)));
+    const doc = copiedRichMessageDocument(copied.blocks, schema) ||
+      schema.nodeFromJSON(telegramTextToTiptap(copied.text, entitiesFittingSchema(copied.entities, schema)));
     const {$from} = view.state.selection;
     const intoQuote = $from.parent.type !== schema.nodes.blockquoteCaption &&
       Array.from({length: $from.depth}, (_, depth) => $from.node(depth + 1))
       .some((node) => node.type === schema.nodes.blockquote);
     const nodes: ProseMirrorNode[] = [];
     doc.forEach((node) => {
-      if(intoQuote && node.type === schema.nodes.blockquote) node.forEach((child) => nodes.push(child));
-      else nodes.push(node);
+      if(intoQuote && node.type === schema.nodes.blockquote) {
+        node.forEach((child) => child.type !== schema.nodes.blockquoteCaption && nodes.push(child));
+      } else {
+        nodes.push(node);
+      }
     });
     const content = Fragment.fromArray(nodes);
     const isOpen = (node: ProseMirrorNode) => node.type === schema.nodes.paragraph ? 1 : 0;

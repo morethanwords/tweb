@@ -68,6 +68,7 @@ import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotRel
 import getRichSelection from '@helpers/dom/getRichSelection';
 import cancelSelection from '@helpers/dom/cancelSelection';
 import {getRichQuoteSelection, makeRichQuoteOfSelection} from '@components/chat/richQuoteSelection';
+import {listenRichMessageCopy} from '@components/chat/richMessageCopy';
 import detectLanguageForTranslation from '@helpers/detectLanguageForTranslation';
 import {getMessageSourceText} from '@stores/peerLanguage';
 import {showAdReport, showMessageReport} from '@components/popups/reportAd';
@@ -106,7 +107,7 @@ import copyMessageMediaWithFeedback from '@components/copyMessageMediaWithFeedba
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 import isAnchoredEphemeralMessage from '@appManagers/utils/messages/isAnchoredEphemeralMessage';
 import canReplyToEphemeralMessage from '@appManagers/utils/messages/canReplyToEphemeralMessage';
-import {flattenRichMessageSummary} from '@lib/richMessage';
+import {flattenRichMessageSummary, isRichMessagePart} from '@lib/richMessage';
 import verifyMenuItem from '@helpers/verifyMenuItem';
 import getStickeredMedia from '@appManagers/utils/stickers/getStickeredMedia';
 import {getStickerSetInputById} from '@appManagers/utils/stickers/getStickerSetInput';
@@ -278,6 +279,8 @@ export default class ChatContextMenu {
     this.listenerSetter = new ListenerSetter();
     this.attachListenerSetter = new ListenerSetter();
     this.middleware = getMiddleware();
+    // * a selection in a rich message copies its blocks, by the keyboard as by Copy here
+    listenRichMessageCopy();
   }
 
   public attachTo(element: HTMLElement) {
@@ -2403,6 +2406,8 @@ export default class ChatContextMenu {
       return peerTitle + ', [' + date + ']';
     })) : [];
 
+    // * one whole rich message is pasted as its blocks, a part of one (the rest not loaded) as its text
+    const richMessage = messages.length === 1 && messages[0].rich_message;
     return prepareTextWithEntitiesForCopying(messages.map((message) => {
       if(message.rich_message) {
         const {text, entities} = flattenRichMessageSummary(message.rich_message);
@@ -2413,7 +2418,7 @@ export default class ChatContextMenu {
         text: message.message,
         entities: (message as Message.message).totalEntities || message.entities
       };
-    }), meta);
+    }), meta, richMessage && !isRichMessagePart(richMessage) ? richMessage.blocks : undefined);
   }
 
   private onSendScheduledClick = async() => {

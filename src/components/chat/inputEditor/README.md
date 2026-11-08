@@ -195,6 +195,13 @@ from becoming a link while still admitting the relative hrefs upstream allowed;
 - Media upload completion updates the existing node and maps selection;
   it must not add an unrelated history step or orphan an undoable upload.
   Local preview URLs remain owned while history/HMR can restore them.
+- A selection in a rich message copies the blocks it takes (`richMessageCopy`,
+  `sliceRichQuoteBlocks`) beside their flat text and entities, and the field
+  pastes those blocks: a heading stays a heading, without the bold the
+  browser's copy of a drawn heading carries in its `font-weight`. Any page can
+  write them, so only texts a rich message carries go in (`mapRichQuoteTexts`
+  with `normalizeRichQuoteFragment`: no pictures, no blocks of unknown kind);
+  a field that cannot hold them all (a plain one) pastes the flat text.
 - A mark that runs over several inline nodes becomes one wrapper round them
   (`wrapMarkRuns`), never neighbouring equal ones. The server merges those, and
   a custom emoji alone in the first of them is lost: an edited

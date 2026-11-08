@@ -1,4 +1,4 @@
-import type {RichText} from '@layer';
+import type {PageBlock, RichText} from '@layer';
 import type {MessageSendingParams} from '@appManagers/appMessagesManager';
 import {alignDrawnText, getTextOffset} from '@components/chat/messageTextCopy';
 import {extractText, getTextSkip} from '@helpers/dom/textHighlight';
@@ -19,10 +19,15 @@ import {
   RichQuoteNode
 } from '@lib/richQuote';
 
-/** what a selection takes of a rich message: its texts, and where it starts and ends in them */
-export type RichQuoteSelection = {nodes: RichQuoteNode[], start: RichQuoteBoundary, end: RichQuoteBoundary};
+/** what a selection takes of a rich message: its blocks and texts, and where it starts and ends in those */
+export type RichQuoteSelection = {
+  blocks: PageBlock[],
+  nodes: RichQuoteNode[],
+  start: RichQuoteBoundary,
+  end: RichQuoteBoundary
+};
 
-const getElement = (node: Node) => node.nodeType === node.ELEMENT_NODE ? node as Element : node.parentElement;
+export const getElement = (node: Node) => node.nodeType === node.ELEMENT_NODE ? node as Element : node.parentElement;
 
 /**
  * What a text of a rich message is drawn as (`wrapTelegramRichText`): a picture or a custom emoji with no text of its
@@ -131,7 +136,7 @@ export function getRichQuoteSelection(range: Range): RichQuoteSelection {
   });
 
   const boundaries = getRichQuoteSelectionBoundaries(runs);
-  return boundaries && {nodes, ...boundaries};
+  return boundaries && {blocks, nodes, ...boundaries};
 }
 
 /**
