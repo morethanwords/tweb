@@ -94,38 +94,70 @@ describe('Tiptap rich-message conversion', () => {
     });
   });
 
-  test('sends a custom emoji without the marks that do not change how it is drawn', () => {
-    // a heading pasted from a bubble comes bold, its emoji too; a bold round the emoji
-    // alone the server dropped together with the emoji
+  test('wraps a mark that runs over several inline nodes once', () => {
+    // the server merges neighbouring equal wrappers, and an emoji alone in the first of them was
+    // lost: an edited [textBold(emoji), textBold(" A new look")] came back as textBold(" A new look")
+    const emoji = {type: 'customEmoji', attrs: {documentId: '5431456208487716895', emoji: '🎨'}};
+    const link = (href: string) => ({type: 'link', attrs: {href}});
     const document: JSONContent = {
       type: 'doc',
       content: [{
         type: 'heading',
         attrs: {level: 2},
         content: [
-          {
-            type: 'customEmoji',
-            attrs: {documentId: '5431456208487716895', emoji: '🎨'},
-            marks: [{type: 'bold'}, {type: 'italic'}, {type: 'underline'}, {type: 'strike'}]
-          },
-          {type: 'text', text: ' A new look', marks: [{type: 'bold'}]},
-          {
-            type: 'customEmoji',
-            attrs: {documentId: '777', emoji: '🥳'},
-            marks: [{type: 'bold'}, {type: 'spoiler'}]
-          }
+          {...emoji, marks: [{type: 'bold'}]},
+          {type: 'text', text: ' A new look', marks: [{type: 'bold'}]}
+        ]
+      }, {
+        type: 'paragraph',
+        content: [
+          {...emoji, marks: [{type: 'bold'}, {type: 'spoiler'}]},
+          {type: 'text', text: ' hidden', marks: [{type: 'spoiler'}]},
+          {type: 'text', text: ' plain'}
+        ]
+      }, {
+        type: 'paragraph',
+        content: [
+          {...emoji, marks: [link('https://a.example')]},
+          {type: 'text', text: ' a', marks: [link('https://a.example')]},
+          {type: 'text', text: ' b', marks: [link('https://b.example')]}
         ]
       }]
     };
 
-    const heading = findBlock(tiptapToRichMessage(document).input.blocks, 'pageBlockHeading2');
-    expect(heading?.text).toEqual({
+    const {blocks} = tiptapToRichMessage(document).input;
+    const customEmoji = {_: 'textCustomEmoji', document_id: '5431456208487716895', alt: '🎨'};
+    expect(findBlock(blocks, 'pageBlockHeading2')?.text).toEqual({
+      _: 'textBold',
+      text: {_: 'textConcat', texts: [customEmoji, {_: 'textPlain', text: ' A new look'}]}
+    });
+
+    const [spoiler, links] = blocks.filter((block) => block._ === 'pageBlockParagraph');
+    // the mark that runs the farthest goes outermost
+    expect((spoiler as PageBlock.pageBlockParagraph).text).toEqual({
       _: 'textConcat',
-      texts: [
-        {_: 'textCustomEmoji', document_id: '5431456208487716895', alt: '🎨'},
-        {_: 'textBold', text: {_: 'textPlain', text: ' A new look'}},
-        {_: 'textSpoiler', text: {_: 'textCustomEmoji', document_id: '777', alt: '🥳'}}
-      ]
+      texts: [{
+        _: 'textSpoiler',
+        text: {
+          _: 'textConcat',
+          texts: [{_: 'textBold', text: customEmoji}, {_: 'textPlain', text: ' hidden'}]
+        }
+      }, {_: 'textPlain', text: ' plain'}]
+    });
+    // marks of the same type with other attributes stay apart
+    expect((links as PageBlock.pageBlockParagraph).text).toEqual({
+      _: 'textConcat',
+      texts: [{
+        _: 'textUrl',
+        text: {_: 'textConcat', texts: [customEmoji, {_: 'textPlain', text: ' a'}]},
+        url: 'https://a.example',
+        webpage_id: 0
+      }, {
+        _: 'textUrl',
+        text: {_: 'textPlain', text: ' b'},
+        url: 'https://b.example',
+        webpage_id: 0
+      }]
     });
   });
 

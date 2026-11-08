@@ -195,11 +195,10 @@ from becoming a link while still admitting the relative hrefs upstream allowed;
 - Media upload completion updates the existing node and maps selection;
   it must not add an unrelated history step or orphan an undoable upload.
   Local preview URLs remain owned while history/HMR can restore them.
-- A custom emoji goes into a rich message without bold, italic, underline or
-  strike: they do not change how it is drawn, and the server drops such a
-  wrapper round an emoji alone together with the emoji. A heading copied out of
-  a bubble pastes bold (its `font-weight` is in the browser's copy), its emoji
-  too, so this is the common case, not a corner one.
+- A mark that runs over several inline nodes becomes one wrapper round them
+  (`wrapMarkRuns`), never neighbouring equal ones. The server merges those, and
+  a custom emoji alone in the first of them is lost: an edited
+  `[textBold(emoji), textBold(text)]` comes back as `textBold(text)`.
 - Shared `inputRichMessageBlocks` normalizes server blocks for both editor
   loading and manager operations. `concatRichText` never mutates its inputs.
 - Ordered-list rules and RichText content detection live in
