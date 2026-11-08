@@ -1,4 +1,4 @@
-import {MessageEntity, TextWithEntities} from '@layer';
+import {MessageEntity, PageBlock, TextWithEntities} from '@layer';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import parseEntities from '@lib/richTextProcessor/parseEntities';
 import documentFragmentToHTML from '@helpers/dom/documentFragmentToHTML';
@@ -86,7 +86,8 @@ function markupToElements(fragment: DocumentFragment) {
   });
 }
 
-type CopiedTextWithEntities = TextWithEntitiesForCopying & {shape: string};
+// * `blocks`: what was copied of a rich message, which its text and entities write out flat
+type CopiedTextWithEntities = TextWithEntitiesForCopying & {shape: string, blocks?: PageBlock[]};
 
 /**
  * What a copy's HTML says: its text (a <br> a line break, an image its alt) and the formatting around
@@ -155,12 +156,23 @@ export function getCopiedTextWithEntities(root: ParentNode) {
     return;
   }
 
-  return {element, text: copied.text, entities: copied.entities};
+  return {
+    element,
+    text: copied.text,
+    entities: copied.entities,
+    // * as unchecked as the rest of what any page can write: the field takes what it can carry of them
+    blocks: Array.isArray(copied.blocks) ? copied.blocks : undefined
+  };
 }
 
+/**
+ * `blocks`, when the copy is of a rich message: the composer pastes those rather than the flat text,
+ * a heading as a heading, a list as a list.
+ */
 export default function prepareTextWithEntitiesForCopying(
   textWithEntities: TextWithEntitiesForCopying | TextWithEntitiesForCopying[],
-  meta?: string[]
+  meta?: string[],
+  blocks?: PageBlock[]
 ) {
   if(!Array.isArray(textWithEntities)) {
     textWithEntities = [textWithEntities];
@@ -194,7 +206,11 @@ export default function prepareTextWithEntitiesForCopying(
   // read back as a paste reads it
   const template = document.createElement('template');
   template.innerHTML = html;
-  const metadata: CopiedTextWithEntities = {...copied, shape: getContentShape(template.content)};
+  const metadata: CopiedTextWithEntities = {
+    ...copied,
+    shape: getContentShape(template.content),
+    ...(blocks?.length && {blocks})
+  };
 
   return {
     text: copied.text,

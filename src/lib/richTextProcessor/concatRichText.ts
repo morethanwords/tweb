@@ -1,6 +1,6 @@
 import type {RichText} from '@layer';
 
-const EMPTY_RICH_TEXT: RichText.textEmpty = {_: 'textEmpty'};
+export const EMPTY_RICH_TEXT: RichText.textEmpty = {_: 'textEmpty'};
 
 export default function concatRichText(texts: RichText[]): RichText {
   const compact: RichText[] = [];

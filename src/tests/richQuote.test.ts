@@ -1,13 +1,17 @@
 import {describe, expect, it} from 'vitest';
-import type {PageBlock, RichText} from '@layer';
+import type {PageBlock, PageListOrderedItem, RichText} from '@layer';
 import {concat, emoji, plain} from '@/tests/helpers/richText';
+import {getRichTextFlatText as getRichTextFlatTextOf, richMessageToPlainMessage} from '@lib/richMessage';
 import {
   getReplyQuote,
   getRichQuoteNodes,
   getRichQuoteSelectionBoundaries,
   getRichQuoteTextWithEntities,
   makeRichQuote,
-  RichQuoteNode
+  mapRichQuoteTexts,
+  normalizeRichQuoteFragment,
+  RichQuoteNode,
+  sliceRichQuoteBlocks
 } from '@lib/richQuote';
 
 // * the cases of Telegram for iOS' RichReplyQuoteTests: what the server takes for a quote of a rich message
@@ -206,5 +210,200 @@ describe('rich quotes', () => {
       text: 'y', entities: undefined, offset: 1
     });
     expect(getReplyQuote({_: 'messageReplyHeader', pFlags: {}})).toBeUndefined();
+  });
+});
+
+describe('what a selection of a rich message copies', () => {
+  const heading = (text: RichText): PageBlock => ({_: 'pageBlockHeading2', text});
+  const copy = (blocks: PageBlock[], start: [number, number], end: [number, number]) => sliceRichQuoteBlocks(
+    blocks,
+    getRichQuoteNodes(blocks),
+    {index: start[0], offset: start[1]},
+    {index: end[0], offset: end[1]}
+  );
+
+  it('keeps a heading a heading, a custom emoji in it, and cuts the last text where it is left', () => {
+    const blocks = [
+      paragraph(plain('before')),
+      heading(concat(emoji('🎨'), plain(' A new look'))),
+      paragraph(plain('Web K got a softer design'))
+    ];
+    expect(copy(blocks, [1, 0], [2, 9])).toEqual([
+      heading(concat(emoji('🎨'), plain(' A new look'))),
+      paragraph(plain('Web K got'))
+    ]);
+  });
+
+  it('keeps a list of the items taken, numbered as they were', () => {
+    const item = (text: string) => ({_: 'pageListOrderedItemText' as const, pFlags: {}, text: plain(text)});
+    const list: PageBlock = {_: 'pageBlockOrderedList', pFlags: {}, items: [item('one'), item('two'), item('three')]};
+    expect(copy([list], [1, 1], [2, 5])).toEqual([
+      {_: 'pageBlockOrderedList', pFlags: {}, items: [item('wo'), item('three')], start: 2}
+    ]);
+  });
+
+  it('keeps a quote with its author, a table of the rows taken, and a picture as its caption', () => {
+    const blocks: PageBlock[] = [
+      {_: 'pageBlockBlockquote', pFlags: {}, text: plain('said'), caption: plain('someone')},
+      {_: 'pageBlockPhoto', pFlags: {}, photo_id: 1, caption: caption('a photo', '')},
+      {_: 'pageBlockTable', pFlags: {}, title: plain(''), rows: [
+        {_: 'pageTableRow', cells: [cell('a'), cell('b')]},
+        {_: 'pageTableRow', cells: [cell('c'), cell('d')]}
+      ]}
+    ];
+    // * from the quote to "a" of the table
+    expect(copy(blocks, [0, 0], [3, 1])).toEqual([
+      blocks[0],
+      paragraph(plain('a photo')),
+      {...blocks[2], rows: [{_: 'pageTableRow', cells: [cell('a'), {...cell('b'), text: {_: 'textEmpty'}}]}]}
+    ]);
+  });
+
+  it('leaves out a picture in a text, and copies a button as its label', () => {
+    const blocks = [paragraph(concat(
+      plain('see '),
+      {_: 'textImage', document_id: 1, w: 1, h: 1},
+      {_: 'textButton', text: plain('Open'), type: {_: 'inlineButtonTypeUrl', url: 'https://telegram.org'}}
+    ))];
+    expect(copy(blocks, [0, 0], [0, 8])).toEqual([paragraph(concat(plain('see '), plain('Open')))]);
+  });
+
+  it('keeps an empty paragraph between the texts taken, none before or after them', () => {
+    const empty = paragraph({_: 'textEmpty'});
+    const blocks = [empty, paragraph(plain('before')), empty, paragraph(plain('after')), empty];
+    expect(copy(blocks, [0, 0], [1, 5])).toEqual([paragraph(plain('before')), empty, paragraph(plain('after'))]);
+  });
+
+  it('numbers the items taken as the list shows them, an item\'s own number counted on from', () => {
+    const item = (text: string, value?: number) => ({
+      _: 'pageListOrderedItemText' as const,
+      pFlags: {},
+      text: plain(text),
+      ...(value !== undefined && {value})
+    });
+    const list = (...items: ReturnType<typeof item>[]): PageBlock => ({_: 'pageBlockOrderedList', pFlags: {}, items});
+    // * the first item drawn as 10., the second as 11.
+    expect(copy([list(item('one', 10), item('two'), item('three'))], [1, 0], [2, 5])).toEqual([
+      {...list(item('two'), item('three')), start: 11}
+    ]);
+
+    // * an item that reads nothing, left out, leaves the one after it its number
+    const picture: RichText = {_: 'textImage', document_id: 1, w: 1, h: 1};
+    const withPicture: PageBlock = {_: 'pageBlockOrderedList', pFlags: {}, items: [
+      item('one'),
+      {_: 'pageListOrderedItemText', pFlags: {}, text: picture},
+      item('three')
+    ]};
+    const sliced = copy([withPicture], [0, 0], [1, 5]);
+    expect(sliced).toEqual([{...list(item('one'), item('three', 3)), start: 1}]);
+    // * and its flat text too
+    expect(richMessageToPlainMessage({_: 'richMessage', pFlags: {}, blocks: sliced, photos: [], documents: []}).text)
+    .toBe('1. one\n3. three');
+  });
+
+  it('makes a quote\'s author, or a details block\'s title, taken alone a paragraph: neither is sent without the rest', () => {
+    const blocks: PageBlock[] = [
+      {_: 'pageBlockBlockquote', pFlags: {}, text: plain('said'), caption: plain('someone')},
+      {_: 'pageBlockDetails', pFlags: {}, title: plain('More'), blocks: [paragraph(plain('hidden'))]}
+    ];
+    expect(copy(blocks, [1, 0], [1, 7])).toEqual([paragraph(plain('someone'))]);
+    expect(copy(blocks, [2, 0], [2, 4])).toEqual([paragraph(plain('More'))]);
+  });
+
+  it('makes an author or a title taken with no more than spaces of the rest a paragraph, as the field sends it', () => {
+    const blocks: PageBlock[] = [
+      {_: 'pageBlockBlockquote', pFlags: {}, text: plain('said  '), caption: plain('someone')},
+      {_: 'pageBlockDetails', pFlags: {}, title: plain('More'), blocks: [paragraph(plain('  hidden'))]}
+    ];
+    // * from the spaces after "said" to the end of the author
+    expect(copy(blocks, [0, 4], [1, 7])).toEqual([paragraph(plain('someone'))]);
+    // * from the title to the spaces before "hidden"
+    expect(copy(blocks, [2, 0], [3, 2])).toEqual([paragraph(plain('More'))]);
+  });
+
+  it('makes the author of a quote whose blocks read nothing a paragraph, as the field sends no such quote', () => {
+    const blocks: PageBlock[] = [{_: 'pageBlockBlockquoteBlocks', caption: plain('Author'), blocks: [
+      {_: 'pageBlockPhoto', pFlags: {}, photo_id: 1, caption: caption('', '')},
+      paragraph({_: 'textEmpty'}),
+      {_: 'pageBlockPhoto', pFlags: {}, photo_id: 2, caption: caption('', '')}
+    ]}];
+    expect(mapRichQuoteTexts(blocks, normalizeRichQuoteFragment, {copy: true})).toEqual([paragraph(plain('Author'))]);
+  });
+
+  it('copies a list\'s markers that are numbers, a bot\'s markdown list, as the numbers its items have', () => {
+    const item = (text: string, num?: string) => ({
+      _: 'pageListOrderedItemText' as const,
+      pFlags: {},
+      ...(num !== undefined && {num}),
+      text: plain(text)
+    });
+    const counted = (text: string, value?: number) => ({
+      _: 'pageListOrderedItemText' as const,
+      pFlags: {},
+      text: plain(text),
+      ...(value !== undefined && {value})
+    });
+    const list = (items: object[], start?: number): PageBlock => ({
+      _: 'pageBlockOrderedList',
+      pFlags: {},
+      items: items as PageListOrderedItem[],
+      ...(start !== undefined && {start})
+    });
+    const markdown = [list([item('seven', '7'), item('eight', '8')])];
+    expect(copy(markdown, [0, 0], [1, 5])).toEqual([list([counted('seven'), counted('eight')], 7)]);
+    expect(copy(markdown, [1, 0], [1, 5])).toEqual([list([counted('eight')], 8)]);
+
+    // * a marker is a label: an item without one is drawn with the number the list counts for it, "7." then "2."
+    const labelled = [list([item('seven', '7'), item('two')])];
+    expect(copy(labelled, [0, 0], [1, 3])).toEqual([list([counted('seven'), counted('two', 2)], 7)]);
+    expect(copy(labelled, [1, 0], [1, 3])).toEqual([list([counted('two')], 2)]);
+
+    // * a marker that is no number stays a marker
+    const roman = [list([item('four', 'iv'), item('five', 'v')])];
+    expect(copy(roman, [0, 0], [1, 4])).toEqual(roman);
+
+    // * a marker is drawn as it is written whatever the list's type: in figures
+    const romanType = {...list([item('eight', '8'), item('nine', '9')]), type: 'i'} as PageBlock;
+    expect(copy([romanType], [0, 0], [1, 4])).toEqual([{
+      ...list([{...counted('eight'), type: '1'}, {...counted('nine'), type: '1'}], 8),
+      type: 'i'
+    }]);
+  });
+
+  it('walks nested blocks once, deep as they go', () => {
+    let blocks: PageBlock[] = [paragraph(plain('leaf'))];
+    for(let depth = 0; depth < 24; ++depth) {
+      blocks = [{_: 'pageBlockDetails', pFlags: {}, title: plain(''), blocks}];
+    }
+
+    let leaf = 0;
+    mapRichQuoteTexts(blocks, (text) => {
+      if(getRichTextFlatTextOf(text) === 'leaf') ++leaf;
+      return text;
+    }, {copy: true});
+    expect(leaf).toBe(1);
+  });
+
+  it('copies a bot\'s thinking as a paragraph of its text', () => {
+    const blocks: PageBlock[] = [{_: 'pageBlockThinking', text: plain('Let me think')}];
+    expect(copy(blocks, [0, 0], [0, 6])).toEqual([paragraph(plain('Let me'))]);
+  });
+
+  it('takes a file\'s caption and a row of buttons\' labels between the texts taken, which no quote counts', () => {
+    const button = (text: string) => ({_: 'pageButton' as const, text: plain(text), type: {_: 'inlineButtonTypeUrl' as const, url: 'https://telegram.org'}});
+    const blocks: PageBlock[] = [
+      paragraph(plain('before')),
+      {_: 'pageBlockDocument', document_id: 1, caption: caption('a file', '')},
+      {_: 'pageBlockButtonRow', pFlags: {}, buttons: [button('One'), button('Two')]},
+      paragraph(plain('after'))
+    ];
+    expect(getRichQuoteNodes(blocks).map((node) => node.flat)).toEqual(['before', 'after']);
+    expect(copy(blocks, [0, 0], [1, 5])).toEqual([
+      paragraph(plain('before')),
+      paragraph(plain('a file')),
+      paragraph(plain('One Two')),
+      paragraph(plain('after'))
+    ]);
+    expect(copy(blocks, [1, 0], [1, 5])).toEqual([paragraph(plain('after'))]);
   });
 });

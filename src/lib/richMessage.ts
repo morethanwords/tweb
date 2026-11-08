@@ -2,7 +2,7 @@ import {MessageEntity, Page, PageBlock, PageCaption, PageListOrderedItem, RichMe
 import type {MessageSendingParams} from '@appManagers/appMessagesManager';
 import wrapTelegramRichText from '@lib/richTextProcessor/wrapTelegramRichText';
 import sortEntities from '@lib/richTextProcessor/sortEntities';
-import {formatListItemMarker} from '@lib/richTextProcessor/orderedList';
+import {formatListItemMarker, orderedListValues} from '@lib/richTextProcessor/orderedList';
 import {MATH_MARKER_RE, decodeInlineMath} from '@helpers/math/mathMarker';
 import limitSymbols from '@helpers/string/limitSymbols';
 import {lowerBound} from '@helpers/array/lowerBound';
@@ -167,14 +167,15 @@ export function getDocumentRowBlockId(block: DocumentRowBlock) {
 // stands in before it, so one the size of a message would be repeated for each of its lines.
 const MAX_LIST_MARKER_LENGTH = 16;
 
-export function getOrderedListItemNumber(block: PageBlock.pageBlockOrderedList, index: number) {
+/** `value`: the number counted for the item (`orderedListValues`), when its place alone does not give it */
+export function getOrderedListItemNumber(block: PageBlock.pageBlockOrderedList, index: number, value?: number) {
   const start = block.start ?? (block.pFlags.reversed ? block.items.length : 1);
   const num = block.items[index].num;
   if(num?.length > MAX_LIST_MARKER_LENGTH) {
     return limitSymbols(num, MAX_LIST_MARKER_LENGTH, MAX_LIST_MARKER_LENGTH);
   }
 
-  return num || `${block.pFlags.reversed ? start - index : start + index}`;
+  return num || `${value ?? (block.pFlags.reversed ? start - index : start + index)}`;
 }
 
 function emptySummary(): Summary {
@@ -501,13 +502,18 @@ function plainMessageBlock(block: PageBlock, depth: number): Summary | undefined
     case 'pageBlockDetails':
       return joinTexts(nonEmpty([wrapSummaryRichText(block.title), ...plainMessageBlocks(block.blocks, depth)]), '\n');
     case 'pageBlockList':
-    case 'pageBlockOrderedList':
+    case 'pageBlockOrderedList': {
+      // * the numbers the list is drawn with, an item's own value counted on from
+      const values = block._ === 'pageBlockOrderedList' ?
+        [...orderedListValues(block.items.length, block.start, !!block.pFlags.reversed, (index) => block.items[index].value)] :
+        [];
       return joinTexts(block.items.map((item, index) => {
         const content = 'text' in item ?
           wrapSummaryRichText(item.text) :
           joinTexts(plainMessageBlocks(item.blocks, depth + 1), '\n');
-        return prefixedText('  '.repeat(depth) + plainMessageListMarker(block, index), content);
+        return prefixedText('  '.repeat(depth) + plainMessageListMarker(block, index, values[index]), content);
       }), '\n');
+    }
     case 'pageBlockTable':
       return joinTexts(nonEmpty([
         wrapSummaryRichText(block.title),
@@ -533,19 +539,19 @@ function plainMessageBlock(block: PageBlock, depth: number): Summary | undefined
   }
 }
 
-function plainMessageListMarker(block: PageBlock.pageBlockList | PageBlock.pageBlockOrderedList, index: number) {
+function plainMessageListMarker(block: PageBlock.pageBlockList | PageBlock.pageBlockOrderedList, index: number, value?: number) {
   const item = block.items[index];
   const {checkbox, checked} = item.pFlags;
   if(block._ === 'pageBlockList') {
     return formatListItemMarker({ordered: false, checkbox, checked});
   }
 
-  const number = getOrderedListItemNumber(block, index);
-  const value = Number(number);
+  const number = getOrderedListItemNumber(block, index, value);
+  const numberValue = Number(number);
   return formatListItemMarker({
     ordered: true,
-    ...(Number.isInteger(value) ?
-      {value, type: (item as PageListOrderedItem).type || block.type} :
+    ...(Number.isInteger(numberValue) ?
+      {value: numberValue, type: (item as PageListOrderedItem).type || block.type} :
       {num: number}),
     checkbox,
     checked

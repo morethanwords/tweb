@@ -68,7 +68,7 @@ export function getTextOffset(pieces: TextSegment[], node: Node, offset: number,
 }
 
 /** Whether all a range takes beyond `element` is the time: the rest of a bubble (a reply) is the browser's to copy */
-function isBeyondOnlyTime(range: Range, element: Element) {
+export function isBeyondOnlyTime(range: Range, element: Element) {
   const beyond = element.ownerDocument.createRange();
   // no text, and nothing drawn otherwise: an emoji's image, a custom emoji, a picture
   const isBlank = () => {
@@ -109,14 +109,8 @@ function getSelectedSource(range: Range) {
  * copies as before.
  */
 function onCopy(e: ClipboardEvent) {
-  const selection = (e.currentTarget as Document).getSelection();
-  // several ranges (Firefox's Ctrl+drag) are the browser's to copy: one is all this takes
-  if(e.defaultPrevented || !e.clipboardData || selection?.rangeCount !== 1 || selection.isCollapsed) {
-    return;
-  }
-
-  const range = selection.getRangeAt(0);
-  const element = getSelectedSource(range);
+  const range = getCopiedRange(e);
+  const element = range && getSelectedSource(range);
   const source = element && sources.get(element)();
   const pieces = source?.text && alignDrawnText(element as HTMLElement, source.text);
   if(!pieces) {
@@ -129,11 +123,26 @@ function onCopy(e: ClipboardEvent) {
     return;
   }
 
-  const {text, html} = prepareTextWithEntitiesForCopying(
+  writeCopy(e, prepareTextWithEntitiesForCopying(
     sliceTextWithEntities(source.text, source.entities, start, end, {keepCut: true})
-  );
-  e.clipboardData.setData('text/plain', text);
-  e.clipboardData.setData('text/html', html);
+  ));
+}
+
+/** The one range a copy takes, while the copy is still this client's to make */
+export function getCopiedRange(e: ClipboardEvent) {
+  const selection = (e.currentTarget as Document).getSelection();
+  // several ranges (Firefox's Ctrl+drag) are the browser's to copy: one is all this takes
+  if(e.defaultPrevented || !e.clipboardData || selection?.rangeCount !== 1 || selection.isCollapsed) {
+    return;
+  }
+
+  return selection.getRangeAt(0);
+}
+
+/** Makes the copy `copied`, instead of the browser's own of what is drawn */
+export function writeCopy(e: ClipboardEvent, copied: {text: string, html: string}) {
+  e.clipboardData.setData('text/plain', copied.text);
+  e.clipboardData.setData('text/html', copied.html);
   e.preventDefault();
 }
 

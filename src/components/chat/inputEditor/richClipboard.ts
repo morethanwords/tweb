@@ -5,7 +5,11 @@ import {isInTable} from '@tiptap/pm/tables';
 import type {EditorView} from '@tiptap/pm/view';
 import {effectiveOrderedListItemValue, listItemMarkers} from '@components/chat/inputEditor/orderedList';
 import {entitiesFittingSchema, telegramTextToTiptap} from '@components/chat/inputEditor/model';
+import {richMessageToTiptap} from '@components/chat/inputEditor/richMessage';
+import {buildChatTableClipboardSerializer} from '@components/chat/inputEditor/tableClipboard';
 import {getCopiedTextWithEntities} from '@helpers/prepareTextWithEntitiesForCopying';
+import {mapRichQuoteTexts, normalizeRichQuoteFragment} from '@lib/richQuote';
+import type {PageBlock, PageListItem, PageListOrderedItem} from '@layer';
 import instantViewStyles from '@components/instantViewStyles';
 
 function directListItems(list: HTMLOListElement | HTMLUListElement) {
@@ -670,6 +674,47 @@ export const ChatPastedBlocks = Extension.create({
   }
 });
 
+/** Whether a list in `blocks` labels an item with a marker of its own (`num`, a copy's that is no number) */
+function hasOwnListMarkers(blocks: PageBlock[]): boolean {
+  return blocks.some((block) => {
+    switch(block._) {
+      case 'pageBlockList':
+      case 'pageBlockOrderedList':
+        return (block.items as (PageListItem | PageListOrderedItem)[])
+        .some((item) => ('num' in item && item.num) || ('blocks' in item && hasOwnListMarkers(item.blocks)));
+      case 'pageBlockBlockquoteBlocks':
+      case 'pageBlockDetails':
+        return hasOwnListMarkers(block.blocks);
+      default:
+        return false;
+    }
+  });
+}
+
+/**
+ * What a copy of a rich message carries of it (`richMessageCopy`), as this field's document: the texts
+ * a rich message can carry (`mapRichQuoteTexts`: a picture's or a file's caption a paragraph, a button
+ * its label), since any page can write them. None where the field cannot hold it all (a plain one, a
+ * heading in it, a list's markers of its own, which it would number anew), which then takes the
+ * copy's flat text and entities.
+ */
+function copiedRichMessageDocument(blocks: PageBlock[] | undefined, schema: Schema) {
+  if(!blocks) return;
+  try {
+    const content = mapRichQuoteTexts(blocks, (text) => normalizeRichQuoteFragment(text), {copy: true});
+    if(!content.length || hasOwnListMarkers(content)) return;
+    const doc = schema.nodeFromJSON(richMessageToTiptap({
+      _: 'richMessage',
+      pFlags: {},
+      blocks: content,
+      photos: [],
+      documents: []
+    }));
+    doc.check();
+    return doc;
+  } catch(err) {}
+}
+
 /**
  * A message copied out of a chat (its menu's Copy, a profile note, a translation) carries its text
  * and entities beside the HTML, and becomes what this field would show it as when editing it: a
@@ -679,8 +724,8 @@ export const ChatPastedBlocks = Extension.create({
  * too. Not through `serializeForClipboard`: the field's copy hooks look at its own selection.
  * Only a paragraph's edge is open, to join the line the copy is pasted into: a quote or a code
  * block at an edge stays whole, rather than becoming that line's plain text or taking in its rest.
- * Into a quote's text, a copied quote is its paragraphs: quotes do not nest, and the rest of the
- * copy stays in the quote it lands in too. Not into its author line, the quote's last: what follows
+ * Into a quote's text, a copied quote is its paragraphs, its author a line after them: quotes do not
+ * nest, and the rest of the copy stays in the quote it lands in too. Not into its author line, the quote's last: what follows
  * a line there goes after the quote, and a copied quote stays one.
  */
 function pastedMessageAsFieldHTML(html: string, view: EditorView) {
@@ -692,19 +737,31 @@ function pastedMessageAsFieldHTML(html: string, view: EditorView) {
   if(!copied) return html;
 
   try {
-    const doc = schema.nodeFromJSON(telegramTextToTiptap(copied.text, entitiesFittingSchema(copied.entities, schema)));
+    const doc = copiedRichMessageDocument(copied.blocks, schema) ||
+      schema.nodeFromJSON(telegramTextToTiptap(copied.text, entitiesFittingSchema(copied.entities, schema)));
     const {$from} = view.state.selection;
     const intoQuote = $from.parent.type !== schema.nodes.blockquoteCaption &&
       Array.from({length: $from.depth}, (_, depth) => $from.node(depth + 1))
       .some((node) => node.type === schema.nodes.blockquote);
     const nodes: ProseMirrorNode[] = [];
     doc.forEach((node) => {
-      if(intoQuote && node.type === schema.nodes.blockquote) node.forEach((child) => nodes.push(child));
-      else nodes.push(node);
+      if(intoQuote && node.type === schema.nodes.blockquote) {
+        node.forEach((child) => {
+          if(child.type !== schema.nodes.blockquoteCaption) {
+            nodes.push(child);
+          } else if(child.content.size) {
+            // * its author a line of its own, as a quote written out flat has it (`richMessageToPlainMessage`)
+            nodes.push(schema.nodes.paragraph.create(null, Fragment.from(schema.text('— ')).append(child.content)));
+          }
+        });
+      } else {
+        nodes.push(node);
+      }
     });
     const content = Fragment.fromArray(nodes);
     const isOpen = (node: ProseMirrorNode) => node.type === schema.nodes.paragraph ? 1 : 0;
-    const fragment = DOMSerializer.fromSchema(schema).serializeFragment(content, {document: ownerDocument});
+    // * a table as a table's own copy writes it, its title in it: the field's markup is two tables to the paste
+    const fragment = buildChatTableClipboardSerializer(schema, ownerDocument).serializeFragment(content, {document: ownerDocument});
     (fragment.firstChild as Element).setAttribute('data-pm-slice', `${isOpen(content.firstChild)} ${isOpen(content.lastChild)} []`);
     copied.element.replaceWith(fragment);
   } catch(err) {
