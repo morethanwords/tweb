@@ -214,7 +214,9 @@
   display: grid;
   place-items: center;
   font-size: 40px;
+  line-height: 1;
   font-weight: 600;
+  translate: 0 -2px;
   color: var(--wallet-usd);
   opacity: 0;
 
