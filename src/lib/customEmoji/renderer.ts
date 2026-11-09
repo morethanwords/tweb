@@ -1406,7 +1406,10 @@ export class CustomEmojiRendererElement extends HTMLElement {
               doc: {
                 _: 'document',
                 id: docId,
-                attributes: []
+                attributes: [],
+                // * an editor's emoji are not in the page, its canvas draws them: the Stars' animation
+                // * plays there as any animated emoji does
+                ...(this.isSelectable && {sticker: StickerType.Lottie, animated: true})
               } as MyDocument,
               isPaidReactionEmoji: true,
               loadPromises

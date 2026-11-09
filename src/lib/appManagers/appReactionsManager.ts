@@ -15,7 +15,7 @@ import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessag
 import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
 import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import availableReactionToReaction from '@appManagers/utils/reactions/availableReactionToReaction';
-import filterReactionsAtUniqCap, {DEFAULT_REACTIONS_UNIQ_MAX, isMessageAtUniqReactionCap} from '@appManagers/utils/reactions/filterReactionsAtUniqCap';
+import filterReactionsAtUniqCap, {isMessageAtUniqReactionCap, resolveReactionsUniqMax} from '@appManagers/utils/reactions/filterReactionsAtUniqCap';
 import {NULL_PEER_ID, SEND_PAID_REACTION_ANONYMOUS_PEER_ID} from '@appManagers/constants';
 import insertInDescendSortedArray from '@helpers/array/insertInDescendSortedArray';
 import {BroadcastEvents} from '@lib/rootScope';
@@ -55,6 +55,8 @@ export type PeerAvailableReactions = {
   type: ChatReactions['_'],
   reactions: Reaction[],
   trulyAll?: boolean,
+  // the chat's own maximum of distinct reactions on a message (its full info's reactions_limit)
+  reactionsLimit?: number,
   // reactions_uniq_max reached: the message already carries the max distinct reactions,
   // so `reactions` is narrowed to the present kinds and the custom-emoji search/packs
   // must be hidden (no new distinct reaction may be introduced).
@@ -168,7 +170,7 @@ export class AppReactionsManager extends AppManager {
 
   public resetAvailableReactions() {
     this.availableReactions = undefined;
-    this.getAvailableReactions();
+    return this.getAvailableReactions();
   }
 
   public getAvailableReactions() {
@@ -271,7 +273,8 @@ export class AppReactionsManager extends AppManager {
       const p: PeerAvailableReactions = {
         type: chatAvailableReactions._,
         reactions: filteredChatReactions,
-        trulyAll
+        trulyAll,
+        reactionsLimit: chatFull._ === 'communityFull' ? undefined : chatFull.reactions_limit
       };
 
       if(chatAvailableReactions._ === 'chatReactionsAll' && unshiftQuickReaction) {
@@ -431,7 +434,7 @@ export class AppReactionsManager extends AppManager {
       // reactions_uniq_max — once a message already carries the max distinct reactions,
       // narrow the picker to the kinds already present (can't introduce a new distinct one)
       // and flag it so the UI hides the custom-emoji search/packs (tdesktop/iOS/Android parity).
-      const uniqMax = appConfig?.reactions_uniq_max ?? DEFAULT_REACTIONS_UNIQ_MAX;
+      const uniqMax = resolveReactionsUniqMax(peerAvailableReactions.reactionsLimit, appConfig?.reactions_uniq_max);
       peerAvailableReactions.atUniqCap = isMessageAtUniqReactionCap(messageReactionsResults, uniqMax);
       peerAvailableReactions.reactions = filterReactionsAtUniqCap(
         peerAvailableReactions.reactions,

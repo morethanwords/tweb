@@ -9,6 +9,7 @@ export default function RangeSettingSelector(props: {
   value: number
   minValue: number
   maxValue: number
+  disabled?: boolean,
   onChange?: (value: number) => void,
   onMouseUp?: () => void
 }) {
@@ -34,6 +35,7 @@ export default function RangeSettingSelector(props: {
         min={props.minValue}
         max={props.maxValue}
         value={props.value}
+        disabled={props.disabled}
         onScrub={(value) => {
           props.onChange?.(value);
           setValue(value);

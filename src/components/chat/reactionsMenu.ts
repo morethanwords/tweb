@@ -10,7 +10,7 @@ import callbackifyAll from '@helpers/callbackifyAll';
 import deferredPromise from '@helpers/cancellablePromise';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import cloneDOMRect from '@helpers/dom/cloneDOMRect';
-import createFocusTrap from '@helpers/dom/focusTrap';
+import bindDisposablePicker from '@components/emoticonsDropdown/bindDisposablePicker';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {getOverlayRoot} from '@helpers/appWindow';
@@ -36,7 +36,9 @@ import anchorCallback from '@helpers/dom/anchorCallback';
 import contextMenuController from '@helpers/contextMenuController';
 import callbackify from '@helpers/callbackify';
 import partition from '@helpers/array/partition';
-import {PAID_REACTION_EMOJI_DOCID} from '@lib/customEmoji/constants';
+import getReactionDocId from '@appManagers/utils/reactions/getReactionDocId';
+import docIdToReaction from '@appManagers/utils/reactions/docIdToReaction';
+import createEmojiReaction from '@appManagers/utils/reactions/createEmojiReaction';
 import {StarsStar} from '@components/stars/starsAmount';
 import {cleanEmoji} from '@lib/richTextProcessor/fixEmoji';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
@@ -270,7 +272,8 @@ export class ChatReactionsMenu {
         return;
       }
 
-      if(peerAvailableReactions.type === 'chatReactionsNone') {
+      // a channel with Stars reactions only still shows the Stars reaction
+      if(peerAvailableReactions.type === 'chatReactionsNone' && !peerAvailableReactions.reactions.length) {
         return;
       }
 
@@ -367,14 +370,10 @@ export class ChatReactionsMenu {
   // };
 
   private reactionToDocId = (reaction: Reaction) => {
-    if(reaction._ === 'reactionPaid') return PAID_REACTION_EMOJI_DOCID;
-    let docId = (reaction as Reaction.reactionCustomEmoji).document_id;
-    if(!docId) {
-      const availableReaction = this.availableReactions.find((_reaction) => _reaction.reaction === (reaction as Reaction.reactionEmoji).emoticon);
-      docId = availableReaction.select_animation.id;
-    }
-
-    return docId;
+    return getReactionDocId(reaction, (emoticon) => {
+      const availableReaction = this.availableReactions.find((_reaction) => _reaction.reaction === emoticon);
+      return availableReaction.select_animation.id;
+    });
   };
 
   private reactionsToDocIds = (reactions: Reaction[]) => {
@@ -444,29 +443,14 @@ export class ChatReactionsMenu {
         return (await this.splitAvailableEffects(availableEffects)).localStickerSet;
       } : undefined,
       onClick: async(emoji) => {
+        let getStandardEmoticon: (docId: DocId) => string | undefined;
         if(emoji.docId && emoji.emoji) {
           const availableReactions = await apiManagerProxy.getAvailableReactions();
-          const hasNativeReaction = availableReactions.find((_reaction) => _reaction.select_animation?.id === emoji.docId);
-          if(hasNativeReaction) {
-            emoji.emoji = hasNativeReaction.reaction;
-            delete emoji.docId;
-          }
+          getStandardEmoticon = (docId) => availableReactions.find((_reaction) => _reaction.select_animation?.id === docId)?.reaction;
         }
 
-        let reaction: Reaction;
-        if(emoji.docId === PAID_REACTION_EMOJI_DOCID) {
-          reaction = {_: 'reactionPaid'};
-        } else if(emoji.docId) {
-          reaction = {
-            _: 'reactionCustomEmoji',
-            document_id: emoji.docId
-          };
-        } else {
-          reaction = {
-            _: 'reactionEmoji',
-            emoticon: cleanEmoji(emoji.emoji) // * heart can be different, like '❤' and '❤️'
-          };
-        }
+        // * heart can be different, like '❤' and '❤️'
+        const reaction: Reaction = emoji.docId ? docIdToReaction(emoji.docId, getStandardEmoticon) : createEmojiReaction(cleanEmoji(emoji.emoji));
 
         // * snapshot the clicked element (instant flight source) + kick off the
         // * clean first-frame render that upgrades it
@@ -540,21 +524,16 @@ export class ChatReactionsMenu {
 
     // * with the keyboard layer the whole choice takes the focus while it is open, over any trap around the
     // * strip, and gives it back to where it was as it goes
-    const focusTrap = createFocusTrap(emoticonsDropdown.getElement());
-    emoticonsDropdown.addEventListener('opened', () => focusTrap.activate(), {once: true});
-
     const deferred = deferredPromise<Reaction>();
     this.expanded = emoticonsDropdown;
     this.onFinish(deferred);
     // * on its way out, however it goes: a pick destroys it before it is closed, and the trap, the pick
     // * waited for and the handle to it must not outlive it
-    emoticonsDropdown.addEventListener('close', () => {
-      if(this.expanded === emoticonsDropdown) this.expanded = undefined;
-      focusTrap.deactivate();
-      deferred.resolve(undefined);
-    });
-    emoticonsDropdown.addEventListener('closed', () => {
-      emoticonsDropdown.hideAndDestroy();
+    bindDisposablePicker(emoticonsDropdown, {
+      onClose: () => {
+        if(this.expanded === emoticonsDropdown) this.expanded = undefined;
+        deferred.resolve(undefined);
+      }
     });
 
     emoticonsDropdown.onButtonClick();

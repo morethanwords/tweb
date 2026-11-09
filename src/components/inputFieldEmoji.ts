@@ -1,3 +1,4 @@
+import {EMOTICONS_DROPDOWN_HEIGHT} from '@components/emoticonsDropdown/constants';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import deepEqual from '@helpers/object/deepEqual';
 import {TextWithEntities} from '@layer';
@@ -38,8 +39,8 @@ export class InputFieldEmoji extends InputField {
           const rect = this.input.getBoundingClientRect();
           const cloned = cloneDOMRect(rect);
           cloned.top += rect.height;
-          if(cloned.top + 420 > getAppWindow().innerHeight) {
-            cloned.top = rect.top - 428;
+          if(cloned.top + EMOTICONS_DROPDOWN_HEIGHT > getAppWindow().innerHeight) {
+            cloned.top = rect.top - EMOTICONS_DROPDOWN_HEIGHT - 8;
           }
 
           cloned.left += rect.width / 2;

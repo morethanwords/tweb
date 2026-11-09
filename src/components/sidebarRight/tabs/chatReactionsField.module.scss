@@ -1,0 +1,38 @@
+// * the reactions as a line of emoji that wraps, at the size of the old chips
+.field {
+  min-height: 3.375rem;
+  padding-inline-end: 3rem;
+  font-size: 1.5rem;
+  line-height: 1.75rem;
+  white-space: pre-wrap;
+  // * emoji have no direction of their own: the line runs as the interface does, whatever `dir` the
+  // * editor puts on it from its content
+  direction: inherit;
+  overflow-wrap: anywhere;
+
+  &.focused {
+    border-color: var(--primary-color);
+  }
+
+  :global(.chat-input-emoji-image) {
+    width: 1.5rem;
+    height: 1.5rem;
+    line-height: 1.5rem;
+  }
+}
+
+.wrap {
+  position: relative;
+
+  // * the custom emoji are drawn over the field's own background (the composer has none)
+  :global(.custom-emoji-renderer) {
+    z-index: 2;
+  }
+}
+
+.button {
+  position: absolute;
+  inset-inline-end: .5rem;
+  top: .5rem;
+  z-index: 1;
+}

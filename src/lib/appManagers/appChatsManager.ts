@@ -8,7 +8,7 @@
 import deepEqual from '@helpers/object/deepEqual';
 import isObject from '@helpers/object/isObject';
 import safeReplaceObject from '@helpers/object/safeReplaceObject';
-import {ChannelAdminLogEvent, ChannelParticipant, ChannelsCreateChannel, ChannelsGetAdminLog, ChannelsGetAdminedPublicChannels, ChannelsSendAsPeers, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatInvite, ChatParticipant, ChatPhoto, ChatReactions, EmojiStatus, InputChannel, InputChatPhoto, InputFile, InputPeer, InputUser, MessagesChats, Photo, MessagesChatInviteJoinResult, MessagesSponsoredMessages, MissingInvitee, Peer, SponsoredMessage, SponsoredPeer, StickerSet, Update, Updates} from '@layer';
+import {MessagesSetChatAvailableReactions, ChannelAdminLogEvent, ChannelParticipant, ChannelsCreateChannel, ChannelsGetAdminLog, ChannelsGetAdminedPublicChannels, ChannelsSendAsPeers, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatInvite, ChatParticipant, ChatPhoto, ChatReactions, EmojiStatus, InputChannel, InputChatPhoto, InputFile, InputPeer, InputUser, MessagesChats, Photo, MessagesChatInviteJoinResult, MessagesSponsoredMessages, MissingInvitee, Peer, SponsoredMessage, SponsoredPeer, StickerSet, Update, Updates} from '@layer';
 import {AppManager} from '@appManagers/manager';
 import hasRights, {isSendRight} from '@appManagers/utils/chats/hasRights';
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
@@ -27,8 +27,13 @@ import {CHAT_LEGACY_ADMIN_RIGHTS} from '@lib/appManagers/utils/chats/constants';
 import getPhotoInput from '@appManagers/utils/photos/getPhotoInput';
 import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 import forgetFailedRequest from '@helpers/forgetFailedRequest';
+import setBooleanFlag from '@helpers/object/setBooleanFlag';
 
 export type Channel = Chat.channel;
+export type ChatAvailableReactionsOptions = {
+  reactionsLimit?: number, // sent as `reactions_limit` when defined; omitted keeps the server's value
+  paidEnabled?: boolean // sent as `paid_enabled` when defined, `false` included
+};
 export type ChatPhotoUpload = {
   file: InputFile,
   video?: InputFile,
@@ -83,6 +88,8 @@ export class AppChatsManager extends AppManager {
   // * the admin behind a message posted as the channel, by `${chatId}_${mid}`: asked once a session,
   // * an answer that did not come included (desktop's `LookupMessageAuthor`)
   private messageAuthors: Map<string, Promise<PeerId>> = new Map();
+  // * the saves of a chat's allowed reactions sent and the newest one applied, see `setChatAvailableReactions`
+  private reactionsSaves: {[chatId: ChatId]: {sent: number, applied: {reactions: number, limit: number, paid: number}, values: ChatAvailableReactionsOptions & {reactions?: ChatReactions}}} = {};
 
   protected after() {
     this.clear(true);
@@ -1184,17 +1191,105 @@ export class AppChatsManager extends AppManager {
     });
   }
 
-  public setChatAvailableReactions(id: ChatId, reactions: ChatReactions) {
-    this.appProfileManager.modifyCachedFullChat(id, (chatFull) => {
-      if('available_reactions' in chatFull) {
-        chatFull.available_reactions = reactions;
-      }
-    });
-
-    return this.apiManager.invokeApi('messages.setChatAvailableReactions', {
+  /**
+   * Saves the chat's allowed reactions. The cache changes only after the server accepted the request.
+   * `CHAT_NOT_MODIFIED` is a success; `REACTION_INVALID` refreshes the full chat and the reactions
+   * catalog before rejecting; any other error is rejected as is.
+   */
+  public async setChatAvailableReactions(id: ChatId, reactions: ChatReactions, options: ChatAvailableReactionsOptions = {}) {
+    const {reactionsLimit, paidEnabled} = options;
+    const params: MessagesSetChatAvailableReactions = {
       peer: this.getInputPeer(id),
       available_reactions: reactions
-    }).then(this.onChatUpdated.bind(this, id));
+    };
+    if(reactionsLimit !== undefined) {
+      params.reactions_limit = reactionsLimit;
+    }
+    if(paidEnabled !== undefined) {
+      params.paid_enabled = paidEnabled;
+    }
+
+    // * of saves overlapping in flight (an autosave and the flush on leaving), an answer that comes after a newer
+    // * one was applied changes nothing
+    // * the generation is kept per field: an answer applies each field it carries unless a newer save
+    // * that carried the same field was applied already
+    const saves = this.reactionsSaves[id] ??= {sent: 0, applied: {reactions: 0, limit: 0, paid: 0}, values: {}};
+    const generation = ++saves.sent;
+    const apply = () => {
+      const fresh = (field: 'reactions' | 'limit' | 'paid', carried: boolean) => {
+        if(!carried || generation < saves.applied[field]) {
+          return false;
+        }
+
+        saves.applied[field] = generation;
+        return true;
+      };
+
+      const freshReactions = fresh('reactions', true);
+      const freshLimit = fresh('limit', reactionsLimit !== undefined);
+      const freshPaid = fresh('paid', paidEnabled !== undefined);
+      if(freshReactions) saves.values.reactions = reactions;
+      if(freshLimit) saves.values.reactionsLimit = reactionsLimit;
+      if(freshPaid) saves.values.paidEnabled = paidEnabled;
+
+      this.applyChatAvailableReactions(id, freshReactions ? reactions : undefined, {
+        reactionsLimit: freshLimit ? reactionsLimit : undefined,
+        paidEnabled: freshPaid ? paidEnabled : undefined
+      });
+    };
+
+    let updates: Updates;
+    try {
+      updates = await this.apiManager.invokeApi('messages.setChatAvailableReactions', params);
+    } catch(err) {
+      if((err as ApiError).type === 'CHAT_NOT_MODIFIED') {
+        apply();
+        return;
+      }
+
+      if((err as ApiError).type === 'REACTION_INVALID') {
+        const appliedBefore = {...saves.applied};
+        await Promise.allSettled([
+          this.appProfileManager.getChatFull(id, true),
+          this.appReactionsManager.resetAvailableReactions()
+        ]);
+
+        // * the refresh may hold a snapshot older than a save applied while it was in flight:
+        // * replay only the fields such a save advanced
+        const advanced = (field: 'reactions' | 'limit' | 'paid') => saves.applied[field] !== appliedBefore[field];
+        if(advanced('reactions') || advanced('limit') || advanced('paid')) {
+          this.applyChatAvailableReactions(id, advanced('reactions') ? saves.values.reactions : undefined, {
+            reactionsLimit: advanced('limit') ? saves.values.reactionsLimit : undefined,
+            paidEnabled: advanced('paid') ? saves.values.paidEnabled : undefined
+          });
+        }
+      }
+
+      throw err;
+    }
+
+    this.onChatUpdated(id, updates);
+    apply();
+  }
+
+  private applyChatAvailableReactions(id: ChatId, reactions: ChatReactions | undefined, options: ChatAvailableReactionsOptions) {
+    this.appProfileManager.modifyCachedFullChat(id, (chatFull) => {
+      if(chatFull._ === 'communityFull') {
+        return false;
+      }
+
+      if(reactions) {
+        chatFull.available_reactions = reactions;
+      }
+
+      if(options.reactionsLimit !== undefined) {
+        chatFull.reactions_limit = options.reactionsLimit;
+      }
+
+      if(options.paidEnabled !== undefined && chatFull._ === 'channelFull') {
+        setBooleanFlag(chatFull.pFlags, 'paid_reactions_available', options.paidEnabled);
+      }
+    });
   }
 
   public getSendAs(channelId: ChatId, forPaidReactions: boolean = false) {

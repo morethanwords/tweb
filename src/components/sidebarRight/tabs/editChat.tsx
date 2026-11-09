@@ -1,3 +1,4 @@
+import getChatReactionsSummary from '@appManagers/utils/reactions/getChatReactionsSummary';
 import {
   Component,
   createEffect,
@@ -172,9 +173,9 @@ function EditChatForm(props: {
   const canInviteUsers = () => hasRights(chat(), 'invite_users');
   const linkedChatId = () => channelFull()?.linked_chat_id;
   const linkedCommunityId = () => channel()?.linked_community_id?.toChatId();
-  const availableReactionsLength = props.data.availableReactions.filter((reaction) => {
-    return !reaction.pFlags.inactive;
-  }).length;
+  const activeReactionEmoticons = props.data.availableReactions
+    .filter((reaction) => !reaction.pFlags.inactive)
+    .map((reaction) => reaction.reaction);
 
   const avatarEdit = new AvatarEdit((payload) => {
     uploadAvatar = payload;
@@ -250,15 +251,19 @@ function EditChatForm(props: {
   });
 
   const reactionsSubtitle = createMemo(() => {
-    const reactions = chatFull().available_reactions ?? {_: 'chatReactionsNone'} as const;
-    if(reactions._ === 'chatReactionsSome') {
-      const length = reactions.reactions.length;
-      return length === availableReactionsLength ?
-        i18n('ReactionsAll') :
-        `${length}/${availableReactionsLength}`;
-    }
+    const summary = getChatReactionsSummary({
+      reactions: chatFull().available_reactions,
+      isBroadcast: isBroadcast(),
+      paidEnabled: !!channelFull()?.pFlags.paid_reactions_available,
+      activeEmoticons: activeReactionEmoticons
+    });
 
-    return i18n(reactions._ === 'chatReactionsAll' ? 'ReactionsAll' : 'Checkbox.Disabled');
+    switch(summary.type) {
+      case 'all': return i18n('ReactionsAll');
+      case 'off': return i18n('Checkbox.Disabled');
+      case 'count': return String(summary.count);
+      case 'fraction': return `${summary.selected}/${summary.total}`;
+    }
   });
   const directMessagesSubtitle = createMemo(() => {
     const monoforumId = channel()?.linked_monoforum_id;

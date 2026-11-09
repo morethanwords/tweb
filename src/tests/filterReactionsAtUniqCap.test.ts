@@ -2,22 +2,11 @@ import {Reaction, ReactionCount} from '@layer';
 import filterReactionsAtUniqCap, {
   DEFAULT_REACTIONS_UNIQ_MAX,
   countDistinctReactions,
-  isMessageAtUniqReactionCap
+  isMessageAtUniqReactionCap,
+  resolveReactionsUniqMax
 } from '@appManagers/utils/reactions/filterReactionsAtUniqCap';
+import {count, custom, emoji, paid} from '@/tests/helpers/reactions';
 
-function emoji(emoticon: string): Reaction.reactionEmoji {
-  return {_: 'reactionEmoji', emoticon};
-}
-
-function custom(document_id: string): Reaction.reactionCustomEmoji {
-  return {_: 'reactionCustomEmoji', document_id};
-}
-
-const paid: Reaction.reactionPaid = {_: 'reactionPaid'};
-
-function count(reaction: Reaction, n = 1): ReactionCount {
-  return {_: 'reactionCount', count: n, reaction};
-}
 
 // Build a message-results array with `n` distinct emoji reactions: 0,1,2,...
 function distinctResults(n: number): ReactionCount[] {
@@ -126,5 +115,23 @@ describe('isMessageAtUniqReactionCap', () => {
   test('respects a custom uniqMax', () => {
     expect(isMessageAtUniqReactionCap(distinctResults(3), 3)).toBe(true);
     expect(isMessageAtUniqReactionCap(distinctResults(3), 4)).toBe(false);
+  });
+});
+
+describe('resolveReactionsUniqMax', () => {
+  test('the chat limit wins, then the app config, then the default', () => {
+    expect(resolveReactionsUniqMax(5, 11)).toBe(5);
+    expect(resolveReactionsUniqMax(20, 11)).toBe(20);
+    expect(resolveReactionsUniqMax(undefined, 9)).toBe(9);
+    expect(resolveReactionsUniqMax(0, 9)).toBe(9);
+    expect(resolveReactionsUniqMax(undefined, undefined)).toBe(11);
+  });
+
+  test('Stars stay exempt at the chat cap', () => {
+    const results = [count(emoji('a')), count(emoji('b')), count(paid)];
+    const cap = resolveReactionsUniqMax(2, 11);
+    expect(isMessageAtUniqReactionCap(results, cap)).toBe(true);
+    expect(filterReactionsAtUniqCap([emoji('a'), emoji('z'), paid], results, cap)).toEqual([emoji('a'), paid]);
+    expect(isMessageAtUniqReactionCap([count(emoji('a')), count(paid)], cap)).toBe(false);
   });
 });

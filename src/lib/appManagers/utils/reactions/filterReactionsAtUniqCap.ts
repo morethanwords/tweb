@@ -5,6 +5,18 @@ import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
 export const DEFAULT_REACTIONS_UNIQ_MAX = 11;
 
 /**
+ * The cap of distinct reactions on one message: the chat's own `reactions_limit` (its full info)
+ * when it set one, else the app config's `reactions_uniq_max`, else the default.
+ */
+export function resolveReactionsUniqMax(chatLimit?: number, configMax?: number): number {
+  if(chatLimit > 0) {
+    return chatLimit;
+  }
+
+  return configMax > 0 ? configMax : DEFAULT_REACTIONS_UNIQ_MAX;
+}
+
+/**
  * Number of DISTINCT reactions that count toward reactions_uniq_max. `reactionPaid`
  * is the star ⭐ counter, not a normal distinct reaction, so it is excluded — this
  * matches Android's `chosenCount` (it skips TL_reactionPaid), MessageObject.selectReaction.

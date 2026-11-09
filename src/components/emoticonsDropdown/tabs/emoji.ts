@@ -248,6 +248,8 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
   private activeElements: EmojiTabItem[];
   // the picks of a picker that holds a few, each with its place among them (from 1): their cells show it, `data-pick`
   private activeDocIds?: Map<DocId, number>;
+  // the categories of the search results on screen: they are not in categoriesMap, but are marked as well
+  private searchCategories = new Set<EmojiTabCategory>();
   private noPacks: boolean;
   /** The main sets show as soon as they are known, without waiting for the installed packs */
   private packsAfterMainSets?: boolean;
@@ -260,6 +262,9 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
   private showLocks: boolean;
   private nativeEmojiFadeReady: boolean;
   private canUsePremiumEmojiAlways?: boolean;
+  /** The installed packs load even where Premium is not offered: custom emoji are not the user's Premium here
+   * (a channel's reactions, which its boosts allow) */
+  private packsWithoutPremium?: boolean;
   private emojiVariants: {[emoji: string]: EmojiSkinTone};
   private groupSetController: GroupSetController;
   private groupSetHidden: boolean;
@@ -288,6 +293,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     searchFetcher?: EmojiTab['searchFetcher'],
     groupFetcher?: EmojiTab['groupFetcher'],
     canUsePremiumEmojiAlways?: boolean,
+    packsWithoutPremium?: EmojiTab['packsWithoutPremium'],
     showLocks?: boolean,
     styles?: EmojiTab['styles']
   }) {
@@ -348,6 +354,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
         this._onCategoryVisibility(category, true);
 
         const renderedCategories: EmojiTabCategory[] = [category];
+        this.searchCategories.add(category);
         if(localStickerSet) {
           const category = this.renderLocalStickerSet(localStickerSet);
           renderedCategories.push(category);
@@ -356,6 +363,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
         container.append(...renderedCategories.map((category) => category.elements.container));
 
         onCleanup(() => {
+          this.searchCategories.delete(category);
           renderedCategories.forEach((category) => {
             category.middlewareHelper.destroy();
           });
@@ -590,7 +598,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     });
 
     const mainSetsResult = this.mainSets?.();
-    const packsPromise = !this.noPacks && Promise.resolve(apiManagerProxy.isPremiumFeaturesHidden()).then((isPremiumPurchaseHidden) => {
+    const packsPromise = !this.noPacks && Promise.resolve(!this.packsWithoutPremium && apiManagerProxy.isPremiumFeaturesHidden()).then((isPremiumPurchaseHidden) => {
       return isPremiumPurchaseHidden ? undefined : managers.appEmojiManager.getCustomEmojis();
     });
     const promise = Promise.all([
@@ -1373,7 +1381,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
 
     this.activeElements.length = 0;
 
-    this.categoriesMap.forEach((category) => {
+    const markCategory = (category: EmojiTabCategory) => {
       category.items.forEach((item) => {
         if(isActive(item)) {
           item.element.classList.add('active');
@@ -1381,7 +1389,10 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
           this.activeElements.push(item);
         }
       });
-    });
+    };
+
+    this.categoriesMap.forEach(markCategory);
+    this.searchCategories.forEach(markCategory);
   }
 
   public onClose() {

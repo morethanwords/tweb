@@ -3,6 +3,7 @@ import type {Node as ProseMirrorNode} from '@tiptap/pm/model';
 import type {AnimationItemGroup} from '@components/animationIntersector';
 import CustomEmojiElement from '@lib/customEmoji/element';
 import {CustomEmojiRendererElement} from '@lib/customEmoji/renderer';
+import {makeMediaSize} from '@helpers/mediaSize';
 import {createFullySelectedNodeDecorationPlugin} from '@components/chat/inputEditor/extensions/nodeViewHelpers';
 
 const TRANSPARENT_PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAAtJREFUGFdjYAACAAAFAAGq1chRAAAAAElFTkSuQmCC';
@@ -27,8 +28,11 @@ function getCustomEmojiRenderer(input: HTMLElement) {
   let state = customEmojiRenderers.get(input);
   if(state) return state;
 
+  // * a field whose emoji are not the composer's size says theirs, so that they are drawn at it, not stretched to it
+  const size = +input.dataset.customEmojiSize;
   const renderer = CustomEmojiRendererElement.create({
     wrappingDraft: true,
+    customEmojiSize: size ? makeMediaSize(size, size) : undefined,
     isSelectable: true,
     textColor: input.dataset.textColor || 'primary-text-color',
     animationGroup: input.dataset.animationGroup as AnimationItemGroup
@@ -133,7 +137,10 @@ export const ChatCustomEmoji = Node.create({
         documentId !== null &&
         documentId !== ''
       );
-      if(!input.classList.contains('input-message-input') || !hasDocumentId) {
+      // * a message field draws its custom emoji, as does a field that asks to (`data-draws-custom-emoji`:
+      // * a channel's reactions); any other shows their emoji
+      const drawsCustomEmoji = input.classList.contains('input-message-input') || input.dataset.drawsCustomEmoji !== undefined;
+      if(!drawsCustomEmoji || !hasDocumentId) {
         const dom = document.createElement('span');
         dom.className = 'custom-emoji chat-input-custom-emoji';
         dom.contentEditable = 'false';

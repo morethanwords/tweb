@@ -279,7 +279,7 @@ describe('RowTsx migration boundary', () => {
     expect(loaderEnd).toBeGreaterThan(loaderStart);
     expect(loader).not.toMatch(/<[A-Z]|new CheckboxField/);
     expect(source).toMatch(
-      /<Row>\s*<Row\.CheckboxFieldToggle>[\s\S]*?<\/Row\.CheckboxFieldToggle>\s*<Row\.Title>\{i18n\('EnableReactions'\)\}<\/Row\.Title>/
+      /<Row>\s*<Row\.CheckboxFieldToggle>[\s\S]*?<\/Row\.CheckboxFieldToggle>\s*<Row\.Title>\{i18n\('AllowReactions'\)\}<\/Row\.Title>/
     );
     expect(source).toMatch(
       /<Row havePadding>\s*<Row\.CheckboxFieldToggle>[\s\S]*?<\/Row\.CheckboxFieldToggle>\s*<Row\.Title>\{availableReaction\.title\}<\/Row\.Title>/

@@ -2680,10 +2680,26 @@ const lang = {
   'Update': 'UPDATE',
   'Reactions': 'Reactions',
   'DoubleTapSetting': 'Quick Reaction',
-  'EnableReactions': 'Enable Reactions',
-  'EnableReactionsChannelInfo': 'Allow subscribers to react to channel posts.',
+  'AllowReactions': 'Allow Reactions',
   'EnableReactionsGroupInfo': 'Allow members to react to group messages.',
   'AvailableReactions': 'Available reactions',
+  'ReactionAddReactionsHint': 'Add Reactions...',
+  'ReactionAddEmojiFromAnyPack': 'You can add emoji from any emoji pack as a reaction.',
+  'ReactionCreateOwnEmojiPacks': 'You can also [create your own](https://t.me/stickers) emoji packs and use them.',
+  'ReactionReachLvlForReactionShort': {
+    'one_value': 'Your channel needs to reach Level **%2$d** to add **%1$d** custom emoji as reactions.',
+    'other_value': 'Your channel needs to reach Level **%2$d** to add **%1$d** custom emoji as reactions.'
+  },
+  'ReactionCustomReactions': 'Custom Reactions',
+  'ReactionMaxCountError': {
+    'one_value': 'You can select at most %1$d reaction.',
+    'other_value': 'You can select at most %1$d reactions.'
+  },
+  'ReactionApplyChangesDialog': 'You have changed the list of reactions. Apply changes?',
+  'MaximumReactionsHeader': 'Maximum reactions per post',
+  'MaximumReactionsInfo': 'Limit the number of different reactions that can be added to a post, including already published posts.',
+  'ChannelEnablePaidReactions': 'Enable Paid Reactions',
+  'ChannelEnablePaidReactionsInfo': 'Switch this on to let your subscribers set paid reactions with Telegram Stars, which you will be able to withdraw later as GRAM. [Learn More >](https://telegram.org/tos/stars)',
   'NobodyViewed': 'Nobody viewed',
   'MessageSeen': {
     'one_value': 'Seen',

@@ -110,6 +110,17 @@ defineStories('Premium & Stars', [
       const {default: showBoostPopup} = await import('@components/popups/boost');
       showBoostPopup(ctx.peer('channel'));
     }
+  },
+  {
+    id: 'boost/channel-reactions',
+    title: 'Boost a channel: custom reactions need a level',
+    open: async(ctx) => {
+      const [{default: showBoostPopup}, {getCustomReactionsBoostReason}] = await Promise.all([
+        import('@components/popups/boost'),
+        import('@components/openBoosts')
+      ]);
+      showBoostPopup(ctx.peer('channel'), {reason: getCustomReactionsBoostReason(3)});
+    }
   }
 ]);
 

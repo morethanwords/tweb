@@ -24,7 +24,9 @@ export default function attachPlainMessageEditor(
      * The field's popup sends on the send shortcut (`confirmShortcutIsSendShortcut`): the shortcut
      * breaks no line, and the event is marked so the popup still sends on it.
      */
-    leaveSendShortcut?: boolean
+    leaveSendShortcut?: boolean,
+    /** After every change of the document or the selection (a microtask later) */
+    onStateChange?: () => void
   } = {}
 ) {
   // The view writes its own `contenteditable` onto the element, so a field that
@@ -50,6 +52,7 @@ export default function attachPlainMessageEditor(
     // one leaves a quote that ends the caption, a third leaves code
     isNewLineShortcutPressed: options.leaveSendShortcut ? isNewLineShortcutPressed : undefined,
     onLinkEditor: (selection) => void openCreateLinkPopupForEditor(editor, selection),
+    onStateChange: options.onStateChange,
     plainOnly: true,
     singleLine
   });
