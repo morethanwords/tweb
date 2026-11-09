@@ -441,6 +441,10 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
     res.thumb = photoRes;
 
     if((!canAutoplay && doc.type !== 'gif') || onlyPreview) {
+      if(!canAutoplay && doc.type === 'video' && container && !photoRes.images.thumb && !photoRes.images.full) {
+        container.classList.add('video-no-thumbnail');
+      }
+
       if(uploadingFileName && container && !onlyPreview) {
         preloader = new ProgressivePreloader({
           attachMethod: 'prepend',
