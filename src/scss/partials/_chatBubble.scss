@@ -39,6 +39,15 @@
   pointer-events: none;
 }
 
+// * the gradient's phases (`GRADIENT_PHASES`): the freeform one's, the same picture at every one of them otherwise
+$message-out-gradient-phases: 0, 1, 2, 3, 4, 5, 6, 7;
+
+// * no piece of the gradient drawn, nor laid out: a piece is a layer of the compositor's even when it draws nothing
+@mixin message-out-gradient-hidden {
+  --message-out-gradient-display: none;
+  --message-out-gradient-next-display: none;
+}
+
 @mixin message-out-gradient {
   @supports (clip-path: border-box) {
     &::before {
@@ -67,7 +76,7 @@
 // * the freeform gradient's phase and its move to the next one, classes of the chat's frame
 // * (`advanceOutgoingMessageGradient`), set on its pieces, not there: a property changed there restyles every message.
 // * The pictures are the nearest theme's, the same one at every phase but the freeform gradient's
-@each $phase in 0, 1, 2, 3, 4, 5, 6, 7 {
+@each $phase in $message-out-gradient-phases {
   .message-out-gradient-phase-#{$phase} {
     .bubbles-gradient,
     .bubble-gradient,
@@ -112,8 +121,7 @@
   @include message-out-gradient;
 
   &.is-empty {
-    --message-out-gradient-display: none;
-    --message-out-gradient-next-display: none;
+    @include message-out-gradient-hidden;
     background: none;
   }
 
@@ -3892,8 +3900,7 @@
 
   // * cut out of the chat's piece (`OutgoingGradientUnion`), which is the bubble's gradient, its colour and its tail's
   &.is-gradient-joined {
-    --message-out-gradient-display: none;
-    --message-out-gradient-next-display: none;
+    @include message-out-gradient-hidden;
 
     .bubble-tail {
       background-color: transparent;
@@ -3917,6 +3924,26 @@
       // * a selected document's cover of its band, which is under the piece already and would cover the piece now
       .bubble-content.has-gradient .document-wrapper::before {
         background-color: var(--message-out-gradient-content-background, var(--message-background-color));
+      }
+    }
+  }
+
+  // * one that holds a widget is of one colour all over (widget-sandbox's SDK §5.1): the one the gradient shows most
+  // * (`--message-out-gradient-solid-color`), which the widget is told is its background. The gradient moves under the
+  // * bubble as the chat scrolls, and a widget that paints its own background stood out against it. Its content paints
+  // * the colour, so it is not cut out of the chat's piece (`OutgoingGradientUnion`); its pieces have no picture, so
+  // * nothing takes a colour of the gradient for it (`readOutgoingMessageGradient`), mid-change too (`.morphing`)
+  &.widget-message {
+    --message-background-color: var(--message-out-gradient-solid-color, var(--message-out-background-color));
+    @include message-out-gradient-hidden;
+
+    @each $phase in $message-out-gradient-phases {
+      --message-out-gradient-image-#{$phase}: none;
+    }
+
+    @supports (clip-path: border-box) {
+      &:not(.just-media) .bubble-content.has-gradient {
+        background-color: var(--message-background-color);
       }
     }
   }

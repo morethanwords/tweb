@@ -1,14 +1,14 @@
 # widget-sandbox (vendored)
 
-`packages/core` of TelegramMessenger/widget-sandbox at `v0.6.1` (main's 3acba1b, the QuickJS security release; its
+`packages/core` of TelegramMessenger/widget-sandbox at `v0.6.2` (main's e837e6c, a QuickJS hardening release; its
 `src/` is v0.6.0's): `src/`, `vite.ts`, `profile.json`,
 `scripts/sandbox-build.ts`, `scripts/profile-build.ts`, `package.json`, `tsconfig.json`, `README.md`, and the repo's
 `THIRD_PARTY_NOTICES.md`. Its QuickJS build (`packages/quickjs-wasm`: `dist/`, `package.json`, the licence) is next to
 it in `src/vendor/widget-sandbox-quickjs`, linked as `@telegram/widget-sandbox-quickjs` from tweb's package.json —
-v0.6.1's `dist/`, the QuickJS fork at 1a402cb (seven upstream memory-safety fixes, the RegExp-delete use-after-free
-among them); every file matches v0.6.1's `dist.sha256` (`emscripten-module.wasm` 8e7d8ffc…, byte for byte the build
-tweb had made of the same fork from the branch `fixes-backport` with the package's `build.sh --docker`, before v0.6.1
-shipped one), and the asyncify build is made from it (`scripts/asyncify.mjs`). The
+v0.6.2's `dist/`, the QuickJS fork at 09bb809 (v0.6.1's seven upstream memory-safety fixes, the RegExp-delete
+use-after-free among them, and the parser's failed scope pushes propagated, so a scope is never read or written below
+its table); every file matches v0.6.2's `dist.sha256` (`emscripten-module.wasm` 5d2c9007…), and the asyncify build is
+made from it (`scripts/asyncify.mjs`). The
 package's tests, the native packages, the apps, the corpus and the conformance set stay upstream (tweb's fixtures are a
 copy of part of the corpus — all of `corpus/attacks`, `corpus/defaults`, `corpus/interactive` and `corpus/resize` — and
 of the conformance set, in `src/lib/widgetSandbox/fixtures/`; the sandbox's mock bot, `src/lib/widgetSandbox/mockBot.ts`,
@@ -34,6 +34,16 @@ the time takes (`lib/widgetSandbox/safeArea.ts`, measured from the time as laid 
 widget starts before its bubble is in the chat, so the time is measured in the staged copy of the bubble
 (`staging.ts` copies it there); after that the band follows the time's size ("edited", views) and the interface's
 direction, never the chat's scroll.
+
+SDK v1 §5.1 (main's 3959d40, in v0.6.2): an outgoing bubble of a gradient that holds a widget is of one colour all over
+— its header, caption, reactions and tail too — and that colour is the `bg_color` the widget gets. It is the one the
+gradient shows most: the mean of what it is painted in (the freeform one's points, as on Android), moved to read the
+text on as the gradient's colours are (`getSolidColor` in `@helpers/outgoingMessageGradient`, set on the theme as
+`--message-out-gradient-solid-color`). `.bubble.is-out.widget-message` (`_chatBubble.scss`) paints it on the content
+and takes the gradient's pictures away from its pieces, so the chat's piece leaves the bubble out
+(`OutgoingGradientUnion`) and what reads a colour of the gradient for a bubble (a change's shape, a send flight, a
+spoiler) takes the bubble's own; `theme.ts` reads it as the bubble's `--message-background-color`. A selection is the
+row's highlight under the bubble, as for any message.
 
 v0.5.0's wallet: tweb has no Gram Wallet yet, so it passes no `context.wallet` (`TelegramWidget.wallet` stays null) and
 no `onWallet`, and the framework refuses a request for the wallet. The server's side is not on production either: the

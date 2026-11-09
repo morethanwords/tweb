@@ -1,0 +1,52 @@
+<!-- QuickJS parser scope out-of-bounds (hardening, candidate v0.6.2). push_scope() returns -1 when the per-widget 8 MB
+     heap cannot grow the parser's fd->scopes array, but 14 of its 15 call sites ignored that result. The construct's
+     matching pop_scope then popped one scope too many, scope_level walked down to -1, and add_scope_var wrote
+     fd->scopes[-1].first (an out-of-bounds write just below the array) while pop_scope read fd->scopes[-1].parent. The
+     fix propagates every failed push and adds a scope_level < 0 backstop in add_scope_var / pop_scope.
+     Reaching the original failure needs a parser allocation to fail mid-compile under the 8 MB cap. Analysis says a
+     conforming widget (<= 32 KB source, no eval / Function) cannot drive the compiler there, so this is hardening, not a
+     reachable RCE. There is no exploit payload: the widget is only a dense tangle of the scope-pushing constructs behind
+     the 14 call sites - sequential and nested blocks, if / for / for-of / switch, try / catch, nested functions, and
+     classes with a private field, a static block and a derived class whose default constructor is synthesized at parse
+     time. The sandbox must compile and run it cleanly, the checksum must equal 187, and the canary must stay 0; a
+     corrupted scope table would mis-resolve a scoped variable, change the checksum, or crash. -->
+<p id="p">running</p>
+<script>
+  "use strict";
+  function run() {
+    let total = 0;
+    for (let outer = 0; outer < 8; outer++) {
+      { let a = outer; { let b = a + 1; { let c = b + 1; total += c; } } }
+      if (outer % 2 === 0) { let t = outer * 2; total += t; } else { let t = outer; total += t; }
+      for (let i = 0; i < 3; i++) { let d = i; total += d; }
+      for (const z of [1, 2, 3]) { let q = z; total += q; }
+      switch (outer % 3) {
+        case 0: { let s = 1; total += s; break; }
+        case 1: { let s = 2; total += s; break; }
+        default: { let s = 3; total += s; }
+      }
+      try { let e = outer; if (e < 0) throw 0; total += 0; } catch (err) { let f = 1; total += f; }
+    }
+    class Base {
+      #p = 7;
+      m() { let x = this.#p; return x; }
+      static { let y = 5; this.s = y; }
+    }
+    class Derived extends Base {}   // synthesized default constructor
+    const b = new Base();
+    const d = new Derived();
+    total += b.m() + Base.s + (d instanceof Base ? 1 : 0);
+    function f1() { let u = 1; function f2() { let v = 2; return u + v; } return f2(); }
+    total += f1();
+    return total;
+  }
+  let result;
+  try {
+    const total = run();
+    result = (total === 187) ? ('ok|' + total) : ('BAD|' + total);
+  } catch (e) {
+    result = 'THREW ' + e;
+  }
+  window.rceResult = result;
+  document.getElementById('p').textContent = result;
+</script>

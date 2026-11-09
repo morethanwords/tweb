@@ -7,6 +7,7 @@ import {zlibSync} from 'fflate';
 import {holdCount, releaseCount} from '@helpers/holdCount';
 import {lerp} from '@helpers/lerp';
 import setStyleProperty from '@helpers/dom/setStyleProperty';
+import accumulate from '@helpers/array/accumulate';
 
 // * the outgoing bubbles' fill when the theme gives them more than one colour: a gradient over the chat's frame
 // * (`.bubbles`), of which every bubble shows the part it stands over, as on Android, iOS and Desktop
@@ -33,6 +34,9 @@ const UNDER_PROPERTY = '--message-out-gradient-under';
 // * a tint of the accent in a bubble of a gradient (a reaction) is see-through, as on iOS and Android: the filled one is
 // * mixed with the bubble's own colour, which is not seen there
 const LIGHT_PRIMARY_PROPERTY = '--message-out-gradient-light-primary-color';
+// * the one colour a bubble of the gradient is painted in where the gradient may not be under what it holds (a widget,
+// * which is told its background as one colour: `.bubble.is-out.widget-message`)
+const SOLID_PROPERTY = '--message-out-gradient-solid-color';
 
 // * the freeform gradient's phase, and its move to the next one, are classes of the chat's frame, which its pieces take
 // * their pictures by (`message-out-gradient-phase` in _chatBubble.scss): a property changed there would restyle every
@@ -48,7 +52,9 @@ export type OutgoingMessageGradient = {
   // * vertical: the colours from the bottom up; freeform: those of its points
   colors: ColorRgb[],
   // * the text the freeform gradient is read under, which each of its pixels is moved for
-  freeform?: {textColor: ColorRgb}
+  freeform?: {textColor: ColorRgb},
+  // * the colour it shows most (`getSolidColor`)
+  solid: ColorRgb
 };
 
 // * what a gradient's piece is filled with, a picture stretched over the frame: its address, how it is drawn stretched
@@ -259,9 +265,25 @@ export function getOutgoingMessageGradient(colors: number[] | undefined, animate
 
   const freeform = animated && getOutgoingMessageFreeformColors(colors, textColor);
   const vertical = !freeform && getOutgoingMessageGradientColors(colors, textColor);
-  const gradient = freeform ? {colors: freeform, freeform: {textColor}} : vertical ? {colors: vertical} : undefined;
+  const gradient: OutgoingMessageGradient = freeform ?
+    {colors: freeform, freeform: {textColor}, solid: getSolidColor(freeform, true, textColor)} :
+    vertical ? {colors: vertical, solid: getSolidColor(vertical, false, textColor)} : undefined;
   gradients.set(key, gradient);
   return gradient;
+}
+
+/**
+ * The one colour that stands for the gradient, the one it shows most (widget-sandbox's SDK §5.1): the mean of what it
+ * is painted in, moved to read the text on as its colours are. The vertical one's colours are evenly spaced, each two
+ * mixed between them, so its ends weigh half; the freeform one's are its points, as on Android
+ */
+function getSolidColor(colors: ColorRgb[], freeform: boolean, textColor: ColorRgb): ColorRgb {
+  const weights = colors.map((_, index) => freeform || (index && index < colors.length - 1) ? 1 : .5);
+  const total = accumulate(weights, 0);
+  const mean = [0, 1, 2].map((channel) => {
+    return colors.reduce((sum, color, index) => sum + color[channel] * weights[index], 0) / total;
+  }) as ColorRgb;
+  return makeReadable(mean, textColor);
 }
 
 export function makeOutgoingMessageGradient(colors: ColorRgb[] | undefined) {
@@ -401,7 +423,7 @@ function makeFreeformImage(gradient: OutgoingMessageGradient, phase: number) {
  * A colour of the bubbles' own under dark text (the time, the ticks, the links, a reaction's counter), darkened to be read
  * all over their gradient, the freeform one's moves included, and on its own tint over it (a reaction)
  */
-export function keepReadableOnOutgoingMessageGradient(hex: string, gradient: OutgoingMessageGradient) {
+export function keepReadableOnOutgoingMessageGradient(hex: string, gradient: Pick<OutgoingMessageGradient, 'colors' | 'freeform'>) {
   const painted = gradient.freeform ? getMixes(gradient.colors) : getPainted(gradient.colors);
   const luminances = painted.map(relativeLuminance);
   const contrast = (a: number, b: number) => (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
@@ -485,6 +507,7 @@ export function applyOutgoingMessageGradient(element: HTMLElement, gradient: Out
   set(CONTENT_BACKGROUND_PROPERTY, gradient ? 'transparent' : 'initial');
   set(UNDER_PROPERTY, gradient ? 'initial' : 'transparent');
   set(LIGHT_PRIMARY_PROPERTY, gradient ? 'var(--light-message-out-primary-color)' : 'initial');
+  set(SOLID_PROPERTY, gradient ? rgbaToHexa(gradient.solid) : 'initial');
   appliedListeners.forEach((callback) => callback());
 }
 
@@ -539,7 +562,7 @@ export type OutgoingMessageGradientPlace = {picture: Picture, frame: {left: numb
 /**
  * The gradient the content of an outgoing bubble shows: the picture it is filled with (the next phase's, while it moves
  * to it), and the box it spans (the chat's frame). Nothing where the bubble is of one colour, which it is too where its
- * piece is not drawn (no picture of the gradient, no clip for a fixed piece)
+ * piece is not drawn (no picture of the gradient, as in one that holds a widget; no clip for a fixed piece)
  */
 export function readOutgoingMessageGradient(content: Element): OutgoingMessageGradientPlace | undefined {
   const frame = content.closest('.bubbles');

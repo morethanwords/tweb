@@ -74,6 +74,23 @@ describe('outgoing message gradient', () => {
         expect(worstOn(painted(gradient), textColor, true), colors.map((color) => color.toString(16)).join(',')).toBeGreaterThanOrEqual(READABLE);
       }
     });
+
+    // * a bubble that holds a widget is of the gradient's one colour (widget-sandbox's SDK §5.1)
+    test(`the text and the bubbles' own colour are read on the gradient's one colour (${base})`, () => {
+      for(const colors of themes) {
+        for(const animated of [false, true]) {
+          const gradient = getOutgoingMessageGradient(colors, animated, textColor);
+          if(!gradient) continue;
+          const label = colors.map((color) => color.toString(16)).join(',') + (animated ? ' (freeform)' : '');
+          expect(worstOn([gradient.solid], textColor), label).toBeGreaterThanOrEqual(READABLE);
+          expect(worstOn([gradient.solid], textColor, true), label).toBeGreaterThanOrEqual(READABLE);
+          // * under white text the bubbles' own colours are white (themeController)
+          if(relativeLuminance(textColor) > .5) continue;
+          const accent = hexToRgb(keepReadableOnOutgoingMessageGradient(rgbaToHexa(gradient.colors[gradient.colors.length >> 1]), gradient));
+          expect(worstOn([gradient.solid], accent, true), label).toBeGreaterThanOrEqual(READABLE);
+        }
+      }
+    });
   }
 
   // * the colours of every pixel of the freeform gradient's pictures, at every phase, and of what the compositor paints
@@ -122,6 +139,18 @@ describe('outgoing message gradient', () => {
       }
     });
   }
+
+  // * a bubble that holds a widget is of one colour all over (widget-sandbox's SDK §5.1): the one the gradient shows most
+  test('the one colour of a gradient is the mean of what it is painted in', () => {
+    const text = hexToRgb('#000000');
+    const near = (color: ColorRgb, expected: ColorRgb) => color.forEach((value, channel) => {
+      expect(Math.abs(value - expected[channel]), `${rgbaToHexa(color)} vs ${rgbaToHexa(expected)}`).toBeLessThanOrEqual(1);
+    });
+    // light colours that read under black text as they are: the middle of the two
+    near(getOutgoingMessageGradient([0xfff3d5, 0xfffddd], false, text).solid, [255, 248, 217]);
+    // the freeform one's points, as on Android
+    near(getOutgoingMessageGradient([0xe2f5dc, 0xecf2b6, 0xecf6bd, 0xddf6c2], true, text).solid, [230, 245, 196]);
+  });
 
   test('only three colours or four that move are freeform', () => {
     const text = hexToRgb('#000000');

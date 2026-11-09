@@ -143,7 +143,7 @@ Either way every `rootScope.managers` call is answered from
 ### Widget sandbox
 
 HTML widgets — messages whose media is `messageMediaWidget` (layer 233), a zlib stream of
-the widget's source — run on widget-sandbox v0.6.1, vendored in `src/vendor/widget-sandbox`
+the widget's source — run on widget-sandbox v0.6.2, vendored in `src/vendor/widget-sandbox`
 (its `UPSTREAM.md` lists tweb's own changes, with the measurements behind them). In every
 browser the engine runs **off the page's thread** (the `worker` transport): one engine
 worker per page runs every widget, each in a copy of a QuickJS VM (wasm) warmed once there
@@ -188,7 +188,9 @@ engine (`WidgetHost.suspend()`) and come back to life when shown.
 The client side follows upstream's `docs/client-checklist.md`: the bubble
 (`components/chat/bubbles.ts`, `components/widgetSandbox/widgetBlock.tsx`) sizes the
 widget from the bot's `width` / `height` (200 px minimum width, heights in 50…600,
-clipped), passes the bubble's colours as the theme, confirms every external link with
+clipped), passes the bubble's colours as the theme (an outgoing bubble of a gradient that
+holds a widget is of one colour, the one the gradient shows most: `.bubble.is-out.widget-message`,
+`--message-out-gradient-solid-color`), confirms every external link with
 the whole URL (`lib/widgetSandbox/actions.ts`) and keeps each message's Web Storage on
 disk (`appWidgetsManager`, deleted with the message, the history, the account and on
 Clear cache). Rendering is on unless the server's app config says `web_widgets_disabled`

@@ -26,7 +26,7 @@ declare global {
   }
 }
 
-// HTML widgets (messageMediaWidget) in the widget sandbox, `?widgets=1`: widget-sandbox v0.6.1's engine, validator and
+// HTML widgets (messageMediaWidget) in the widget sandbox, `?widgets=1`: widget-sandbox v0.6.2's engine, validator and
 // renderer, fed from the fixtures (its corpus, its attack corpus and its conformance set) — no account, no server. What
 // users get in every engine is the `worker` transport: every widget's QuickJS in the page's engine worker, each in a
 // copy of an engine warmed once, drawing on a shadow root in the page, whose layout queries the widget's code waits for
@@ -1051,6 +1051,13 @@ test('a RegExp recompiled while it deletes runs its new pattern, never the freed
   // on the engine before the fix the deletion read freed bytecode, and the wasm aborted on this widget
   await open(page, 'attacks/regexp-delete-recompile');
   await expect(page.locator(SHADOW).locator('#p')).toHaveText('aaa|b|0|aa aaa|b|0|aa', FIRST_DRAW);
+});
+
+test('a widget dense with scopes compiles and runs with every variable where it belongs (v0.6.2\'s QuickJS)', async({page}) => {
+  // a scope the parser failed to enter and still left was read and written below its table: a variable resolved to
+  // another's place changes the sum, a corrupted table aborts the wasm
+  await open(page, 'attacks/parser-scope-oob');
+  await expect(page.locator(SHADOW).locator('#p')).toHaveText('ok|187', FIRST_DRAW);
 });
 
 test('a shared widget is polled while it watches its shared state and is in view, and the new value reaches it', async({page}) => {
@@ -2487,7 +2494,7 @@ test('the attack corpus leaks nothing: no request leaves the page, nothing reach
     };
   }, CANARY);
   expect(aimed).toBe(true);
-  expect(names).toHaveLength(120);
+  expect(names).toHaveLength(121);
   // one after another, each started on its own in view: it runs (or the sandbox stops it), is poked where a vector might
   // want a tap, and has the time its deferred payloads take — the latest aims 150 ms after the start, or after the tap
   for(const name of names) {
