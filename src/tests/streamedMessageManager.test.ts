@@ -494,9 +494,9 @@ describe('AppMessagesManager streamed drafts', () => {
     expect(dispatchEvent).not.toHaveBeenCalled();
   });
 
-  test('adopts only a matching final message and dispatches finalize before the legacy history adapter', () => {
+  test('adopts rewritten final text from the same author and dispatches finalize before the legacy history adapter', () => {
     const {manager, dispatchEvent, storage, mainHistory, threadHistory} = makeHarness();
-    manager.handleStreamedMessageTypingUpdate(userTyping(textAction('hello')));
+    manager.handleStreamedMessageTypingUpdate(userTyping(textAction('Draft message...')));
     const tempMessage = storage.get(1.0001);
     expect(tempMessage).toBeTruthy();
 
@@ -515,11 +515,11 @@ describe('AppMessagesManager streamed drafts', () => {
       reply_to: tempMessage.reply_to
     } as Message.message;
     dispatchEvent.mockClear();
-    (manager as any).adoptStreamedMessageDraft(unrelated);
+    (manager as any).adoptStreamedMessageDraft({...unrelated, fromId: 21 as PeerId});
     expect(dispatchEvent).not.toHaveBeenCalled();
     expect(storage.has(1.0001)).toBe(true);
 
-    const finalMessage = {...unrelated, id: 99, mid: 99, message: 'hello world'};
+    const finalMessage = {...unrelated, id: 99, mid: 99, message: 'This is the final message.'};
     storage.set(finalMessage.mid, finalMessage);
     (manager as any).adoptStreamedMessageDraft(finalMessage);
 
