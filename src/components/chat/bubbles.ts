@@ -12516,7 +12516,7 @@ export default class ChatBubbles {
         bubble.classList.add('hidden-profile');
       } else {
         const titlePeerId = storyFromPeerId || fwdFromId || message.fromId;
-        title = this.createTitle(titlePeerId, wrapOptions, isForward).element;
+        title = this.createTitle(titlePeerId, wrapOptions, isForward, loadPromises).element;
       }
 
       let replyContainer: HTMLElement;
@@ -12636,7 +12636,7 @@ export default class ChatBubbles {
               title.append(wrapEmojiText(fwdFromName));
             } else {
               const peerId = getPeerId(fwdFrom.saved_from_id);
-              const {element, textColorProperty} = this.createTitle(peerId, wrapOptions, false);
+              const {element, textColorProperty} = this.createTitle(peerId, wrapOptions, false, loadPromises);
               element.style.color = `rgb(var(--${textColorProperty}))`;
               title = element;
             }
@@ -12698,7 +12698,7 @@ export default class ChatBubbles {
           nameDiv.append(' ');
         }
 
-        const visitorTitle = new PeerTitle({peerId: guestChatViaFromId, onlyFirstName: true, link: true, wrapOptions}).element;
+        const visitorTitle = this.createPeerTitleElement({peerId: guestChatViaFromId, onlyFirstName: true, link: true, wrapOptions}, loadPromises);
         const span = document.createElement('span');
         span.classList.add('is-guest-chat-for');
         span.append(i18n('GuestChatFor'), ' ', visitorTitle);
@@ -12816,7 +12816,7 @@ export default class ChatBubbles {
     if(isEphemeral || isWelcomeFirst) {
       // the chip over a sticker is styled by what the bubble is, and a template is no ephemeral yet
       bubble.classList.toggle('is-welcome-first', isWelcomeFirst);
-      const badge = this.createEphemeralBadge(message as Message.message, wrapOptions);
+      const badge = this.createEphemeralBadge(message as Message.message, wrapOptions, loadPromises);
       placeEphemeralBadge(
         bubbleContainer,
         nameDiv,
@@ -13424,31 +13424,47 @@ export default class ChatBubbles {
   }
 
 
-  private createTitle(peerId: PeerId, wrapOptions: WrapSomethingOptions, isForward?: boolean) {
+  /**
+   * A name drawn into a bubble: its text and icons come after an await, so the render waits for them
+   * (`loadPromises`) and the bubble is attached with the name already at its height
+   */
+  private createTitle(peerId: PeerId, wrapOptions: WrapSomethingOptions, isForward: boolean, loadPromises: Promise<any>[]) {
     const colorIndex = getPeerColorIndexByPeer(apiManagerProxy.getPeer(peerId));
     let textColorProperty: string;
     if(colorIndex !== -1) {
       textColorProperty = `peer-${colorIndex}-color-rgb`;
     }
 
+    // * a name in a message opens its peer on click (onBubblesClick)
+    const element = this.createPeerTitleElement({
+      peerId,
+      withPremiumIcon: !isForward,
+      link: true,
+      wrapOptions: {
+        ...wrapOptions,
+        textColor: textColorProperty
+      }
+    }, loadPromises);
+
     return {
-      // * a name in a message opens its peer on click (onBubblesClick)
-      element: new PeerTitle({
-        peerId,
-        withPremiumIcon: !isForward,
-        link: true,
-        wrapOptions: {
-          ...wrapOptions,
-          textColor: textColorProperty
-        }
-      }).element,
+      element,
       textColorProperty
     };
   }
 
+  /**
+   * A `PeerTitle` built during a render: the render waits for its `ready` (`loadPromises`)
+   */
+  private createPeerTitleElement(options: ConstructorParameters<typeof PeerTitle>[0], loadPromises: Promise<any>[]) {
+    const peerTitle = new PeerTitle(options);
+    loadPromises?.push(peerTitle.ready);
+    return peerTitle.element;
+  }
+
   private createEphemeralBadge(
     message: MyEphemeralMessage | Message.message,
-    wrapOptions: WrapSomethingOptions
+    wrapOptions: WrapSomethingOptions,
+    loadPromises: Promise<any>[]
   ) {
     const container = document.createElement('div');
     container.classList.add('ephemeral-badge-container', 'bubble-name-chip-container');
@@ -13463,12 +13479,12 @@ export default class ChatBubbles {
     if(message.pFlags.out && !message.pFlags.welcome_template) {
       const receiverPeerId = message.ephemeral_receiver_id.toPeerId(false);
       const receiver = apiManagerProxy.getPeer(receiverPeerId);
-      const receiverTitle = new PeerTitle({
+      const receiverTitle = this.createPeerTitleElement({
         peerId: receiverPeerId,
         username: !!getPeerActiveUsernames(receiver)[0],
         dialog: false,
         wrapOptions
-      }).element;
+      }, loadPromises);
       receiverTitle.classList.add('ephemeral-badge-peer');
       badge.append(i18n('Ephemeral.VisibleTo', [receiverTitle]));
     } else {
@@ -15886,14 +15902,12 @@ export default class ChatBubbles {
       isOut,
       makePeerTitle: promises ?
         (peerId) => {
-          const peerTitle = new PeerTitle({peerId, link: true});
-          promises.push(peerTitle.ready);
-          return peerTitle.element;
+          return this.createPeerTitleElement({peerId, link: true}, promises);
         } :
         () => document.createElement('span'),
       makeMessagePeerTitle: wrapOptions ?
         (peerId) => {
-          const {element, textColorProperty} = this.createTitle(peerId, wrapOptions, false);
+          const {element, textColorProperty} = this.createTitle(peerId, wrapOptions, false, promises);
           element.style.color = `rgb(var(--${textColorProperty}))`;
           return element;
         } :

@@ -100,7 +100,11 @@ export default class PeerTitle {
     this.options = {};
 
     if(options) {
-      this.ready = this.update(options);
+      // * settles whatever the render comes to: a bubble's render waits for it with the rest of its
+      // * loads, and a rejection would end that wait for all of them at once
+      this.ready = this.update(options).catch((err) => {
+        console.error('peer title render failed', err);
+      });
     }
 
     weakMap.set(this.element, this);
