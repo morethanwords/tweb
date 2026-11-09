@@ -1,4 +1,4 @@
-import {loadChatBubbles, LOAD_CHAT_BUBBLES_TIMEOUT} from '@/tests/helpers/chatBubbles';
+import {loadChatBubbles, LOAD_CHAT_BUBBLES_TIMEOUT, makeMessageBubble} from '@/tests/helpers/chatBubbles';
 import {getMiddleware} from '@helpers/middleware';
 import windowSize from '@helpers/windowSize';
 import {FullMid, makeFullMid, splitFullMid} from '@appManagers/utils/messages/fullMid';
@@ -21,10 +21,7 @@ beforeAll(async() => {
 const PEER_ID = 10;
 
 function makeBubble(mid: number, top?: number) {
-  const bubble = document.createElement('div');
-  bubble.classList.add('bubble');
-  bubble.dataset.mid = '' + mid;
-  bubble.dataset.peerId = '' + PEER_ID;
+  const bubble = makeMessageBubble(PEER_ID, mid);
   bubble.getBoundingClientRect = () => ({top} as DOMRect);
   return bubble;
 }
