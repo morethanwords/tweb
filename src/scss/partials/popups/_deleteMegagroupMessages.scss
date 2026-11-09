@@ -21,7 +21,7 @@
     }
 
     &-buttons {
-      margin: -.3125rem 0 .75rem;
+      margin: .5rem 0 .75rem;
     }
   }
 
@@ -71,9 +71,5 @@
 
   .scrollable-y {
     padding: 0 .5rem;
-
-    .scrollable-thumb-container {
-      display: none;
-    }
   }
 }
