@@ -261,6 +261,10 @@ export class RichMessageInputController {
     this.reloadScheduler.run(() => this.replaceEditor(create, snapshot));
   }
 
+  public restoreSnapshot(snapshot: ChatInputEditorSnapshot) {
+    this.replaceEditor(createChatInputEditor, snapshot);
+  }
+
   private replaceEditor(create: CreateChatInputEditor, snapshot?: ChatInputEditorSnapshot) {
     if(this.destroyed) return;
     MarkupTooltip.getInstance().hide();

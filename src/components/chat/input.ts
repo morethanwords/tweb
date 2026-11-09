@@ -22,6 +22,8 @@ import type {MyDocument} from '@appManagers/appDocsManager';
 import getDocumentInput from '@appManagers/utils/docs/getDocumentInput';
 import sliceMessageEntities from '@helpers/sliceMessageEntities';
 import type {MyDraftMessage} from '@appManagers/appDraftsManager';
+import type {ChatInputEditorSnapshot} from '@components/chat/inputEditor/types';
+import {retainRichMediaPreviewDocument} from '@components/chat/inputEditor/mediaPreviewUrl';
 import type {AppMessagesManager, MessageSendingParams, MyMessage, SuggestedPostPayload} from '@appManagers/appMessagesManager';
 import type Chat from '@components/chat/chat';
 import type {AppImManager} from '@lib/appImManager';
@@ -419,6 +421,8 @@ export default class ChatInput {
   public inputMessageContainer: HTMLDivElement;
   /** @internal — used by ChatRecording */
   public btnSend: HTMLButtonElement;
+  private btnParkDraft: HTMLButtonElement;
+  private parkedDrafts = new Map<string, {snapshot: ChatInputEditorSnapshot, release: () => void}>();
   public btnCancelRecord: HTMLButtonElement;
   public btnReaction: HTMLButtonElement;
   public lastUrl = '';
@@ -1755,6 +1759,14 @@ export default class ChatInput {
     this.fileInput.multiple = true;
     this.fileInput.style.display = 'none';
 
+    this.btnParkDraft = ButtonCorner({
+      icon: 'archive',
+      className: 'chat-secondary-button chat-input-park-draft is-visible',
+      ariaLabel: 'Chat.ParkDraft'
+    });
+    this.btnParkDraft.hidden = true;
+    attachClickEvent(this.btnParkDraft, () => this.swapParkedDraft(), {listenerSetter: this.listenerSetter});
+
     this.richMessageInput.mountAccessories([this.botCommandsToggle, this.attachMenu].filter(Boolean), [
       this.btnScheduled,
       this.btnToggleReplyMarkup,
@@ -1806,7 +1818,7 @@ export default class ChatInput {
 
     this.addStarsBadge();
 
-    this.btnSendContainer.append(this.btnSend);
+    this.btnSendContainer.append(this.btnParkDraft, this.btnSend);
 
     createRoot((dispose) => {
       this.chat.destroyMiddlewareHelper.onDestroy(dispose);
@@ -2926,6 +2938,8 @@ export default class ChatInput {
   }
 
   public destroy() {
+    this.parkedDrafts.forEach(({release}) => release());
+    this.parkedDrafts.clear();
     // this.chat.log.error('Input destroying');
 
     this.richMessageInput?.destroy();
@@ -5126,10 +5140,58 @@ export default class ChatInput {
     });
   }
 
+  private parkedDraftKey() {
+    return `${this.chat.peerId}:${this.chat.threadId || 0}:${this.chat.monoforumThreadId || 0}`;
+  }
+
+  private swapParkedDraft() {
+    const editor = this.messageInputEditor;
+    if(!editor || editor.isComposing || this.sendingMessage || this.draftRestoring ||
+      this.btnParkDraft.hidden || this.btnParkDraft.disabled) return;
+    const key = this.parkedDraftKey();
+    const previous = this.parkedDrafts.get(key);
+    const snapshot = editor.snapshot();
+    const current = editor.isEmpty() ? undefined : {
+      snapshot,
+      release: retainRichMediaPreviewDocument(snapshot.doc)
+    };
+    this.saveDraftDebounced.clearTimeout();
+    if(current) this.parkedDrafts.set(key, current);
+    else this.parkedDrafts.delete(key);
+    try {
+      this.richMessageInput.restoreSnapshot(previous ? {...previous.snapshot, focused: true} : {
+        doc: {type: 'doc', content: [{type: 'paragraph'}]},
+        editable: snapshot.editable,
+        focused: true,
+        selection: {from: 1, to: 1}
+      });
+    } catch(error) {
+      current?.release();
+      if(previous) this.parkedDrafts.set(key, previous);
+      else this.parkedDrafts.delete(key);
+      throw error;
+    }
+    previous?.release();
+    ++this.inputValueGeneration;
+    this.appliedInputDraft = undefined;
+    this.onMessageInput();
+  }
+
   public updateSendBtn() {
     let icon: ChatSendBtnIcon;
 
     const isInputEmpty = this.isInputEmpty();
+    if(this.btnParkDraft) {
+      const parked = this.parkedDrafts.has(this.parkedDraftKey());
+      this.btnParkDraft.hidden = this.chat.type !== ChatType.Chat || !!this.editMsgId ||
+        !!this.recording || !!this.forwarding || !!this.suggestedPost || this.isWelcomeComposer ||
+        (isInputEmpty && !parked);
+      this.btnParkDraft.disabled = !!this.messageInputEditor?.hasPendingRichMediaUploads();
+      const label = I18n.format(parked ? 'Chat.RestoreParkedDraft' : 'Chat.ParkDraft', true);
+      this.btnParkDraft.setAttribute('aria-label', label);
+      this.btnParkDraft.title = label;
+      this.btnParkDraft.classList.toggle('has-draft', parked);
+    }
 
     if(this.chat.type === ChatType.Stories && isInputEmpty && !this.freezedFocused && this.canForwardStory) icon = 'forward';
     else if(this.editMsgId) icon = 'edit';

@@ -142,6 +142,25 @@
     justify-content: center;
 	}
 
+  .chat-input-park-draft {
+    --size: 2.5rem;
+    width: var(--size);
+    height: var(--size);
+    position: relative !important;
+    bottom: auto;
+    inset-inline-end: auto;
+    flex: 0 0 auto;
+    margin-inline-end: .25rem;
+
+    &.has-draft {
+      color: var(--primary-color);
+    }
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
 	.btn-icon {
 		transition: /* .2s color, background-color .2s, */ .2s opacity;
 
