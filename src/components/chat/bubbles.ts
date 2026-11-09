@@ -937,6 +937,8 @@ export default class ChatBubbles {
   private messagesQueueOnRenderAdditional: () => void = null;
 
   private firstUnreadBubble: HTMLElement = null;
+  // * the message the unread delimiter is frozen on: it outlives the bubble, which the viewport slice takes away
+  private firstUnreadFullMid: FullMid;
   private attachedUnreadBubble: boolean;
 
   public lazyLoadQueue: LazyLoadQueue;
@@ -4975,14 +4977,9 @@ export default class ChatBubbles {
       const messages = await Promise.all(slice.map((fullMid) => this.chat.getMessage(fullMid)));
       if(!middleware()) return;
 
-      // * where the newest bubble on screen stands in the history (its place in the list, not its id: an ephemeral one's
-      // * is past them all; an ad inside a post is no item): one followed back to that is not rendered and is not newer
-      // * was scrolled past - the viewport slice took it away above - and is not one to go down to
-      const onScreen = this.getViewportSlice().visible;
-      let bottomPosition: number;
-      for(let i = onScreen.length - 1; i >= 0 && bottomPosition === undefined; --i) {
-        bottomPosition = this.bubbleGroups.getItemByBubble(onScreen[i].element)?.timelineKey.position;
-      }
+      // * one followed back to that is not rendered and is not newer than the bottom of the screen was scrolled past -
+      // * the viewport slice took it away above - and is not one to go down to
+      const bottomPosition = this.getViewportBottomPosition();
 
       slice.forEach((fullMid, idx) => {
         const message = messages[idx];
@@ -5014,6 +5011,20 @@ export default class ChatBubbles {
     const fullMid = this.followStack.pop();
     const {mid} = splitFullMid(fullMid);
     this.chat.setMessageId({lastMsgId: mid});
+  }
+
+  /**
+   * Where the newest bubble on screen stands in the history: its place in the list, not its id - an ephemeral one's
+   * is past them all; an ad inside a post is no item
+   */
+  private getViewportBottomPosition() {
+    const onScreen = this.getViewportSlice().visible;
+    for(let i = onScreen.length - 1; i >= 0; --i) {
+      const position = this.bubbleGroups.getItemByBubble(onScreen[i].element)?.timelineKey.position;
+      if(position !== undefined) {
+        return position;
+      }
+    }
   }
 
   public getBubbleByPoint(verticalSide: 'top' | 'bottom') {
@@ -6596,6 +6607,7 @@ export default class ChatBubbles {
     }
 
     this.firstUnreadBubble = null;
+    this.firstUnreadFullMid = undefined;
     this.attachedUnreadBubble = false;
     // * a bubble of the chat being left: re-pinning to it means nothing now, and keeping it kept its subtree
     this.reflowAnchor = undefined;
@@ -6903,7 +6915,7 @@ export default class ChatBubbles {
 
       if(bubble) {
         if(followingUnread) {
-          this.scrollToBubble(bubble, 'start');
+          this.scrollToFirstUnread(bubble);
           this.chat.dispatchEvent('setPeer', lastMsgId, false);
         } else if(isTarget) {
           // * the highlight waits for the scroll to settle (iOS does the same) — otherwise it
@@ -15255,12 +15267,17 @@ export default class ChatBubbles {
 
   /**
    * The bubble the unread delimiter sits on (or would sit on), i.e. tdesktop's
-   * `History::firstUnreadMessage()`. Falls back to a scan when the delimiter itself hasn't been
-   * attached yet (or has been sliced out of the viewport).
+   * `History::firstUnreadMessage()`. The delimiter is frozen on its message: sliced out of the viewport, it is that
+   * message's bubble once rendered again, or none. Only with no delimiter at all is the read cursor scanned for
+   * one - the live cursor, which follows the bottom of the screen as it is read
    */
   private getFirstUnreadBubble(readMaxId: number) {
     if(this.firstUnreadBubble?.parentElement) {
       return this.firstUnreadBubble;
+    }
+
+    if(this.firstUnreadFullMid) {
+      return this.getBubble(this.firstUnreadFullMid);
     }
 
     const fullMid = this.findFirstUnreadFullMid(readMaxId);
@@ -15274,7 +15291,28 @@ export default class ChatBubbles {
    */
   private shouldJumpToEndInsteadOfUnread(readMaxId: number) {
     const bubble = this.getFirstUnreadBubble(readMaxId);
-    return !!bubble && bubble.getBoundingClientRect().top <= this.chat.bubblesViewport.getBoundingClientRect().bottom;
+    if(bubble) {
+      return bubble.getBoundingClientRect().top <= this.chat.bubblesViewport.getBoundingClientRect().bottom;
+    }
+
+    // * the delimiter's bubble was sliced away: above the screen, read down from, unless it stands past the bottom
+    // * of it. Asking the read cursor instead found the message right below the screen every time - a press went
+    // * down one screen, not to the end
+    if(this.firstUnreadFullMid) {
+      const bottomPosition = this.getViewportBottomPosition();
+      return bottomPosition !== undefined && splitFullMid(this.firstUnreadFullMid).mid <= bottomPosition;
+    }
+
+    return false;
+  }
+
+  /**
+   * A press of the go-down button lands on the first unread message, which is the delimiter from now on: the next
+   * press finds it on screen and goes to the end, instead of after the read cursor the screen has just moved down
+   */
+  private scrollToFirstUnread(bubble: HTMLElement) {
+    this.firstUnreadFullMid = getBubbleFullMid(bubble);
+    return this.scrollToBubble(bubble, 'start');
   }
 
   public async setUnreadDelimiter() {
@@ -15332,6 +15370,7 @@ export default class ChatBubbles {
     }
 
     this.firstUnreadBubble = bubble;
+    this.firstUnreadFullMid = firstUnreadFullMid;
     this.attachedUnreadBubble = true;
   }
 
