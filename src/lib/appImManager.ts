@@ -4027,10 +4027,6 @@ export class AppImManager extends EventListenerBase<{
     }
 
     const isUser = peerId.isUser();
-    if(isUser && await managers.appUsersManager.isBot(peerId)) {
-      // log('a bot');
-      return;
-    }
 
     // * a peer that hasn't reached the mirror yet has no title to render and would be
     // * named "Deleted", so it doesn't get counted either — a private chat never names anyone
@@ -4241,9 +4237,9 @@ export class AppImManager extends EventListenerBase<{
 
     const subtitle = getUserStatusString(user);
 
-    if(!user.pFlags.bot && !user.pFlags.support) {
+    if(!user.pFlags.support) {
       let typingEl = await this.getPeerTyping(userId.toPeerId());
-      if(!typingEl && user.status?._ === 'userStatusOnline') {
+      if(!typingEl && !user.pFlags.bot && user.status?._ === 'userStatusOnline') {
         typingEl = document.createElement('span');
         typingEl.classList.add('online');
         typingEl.append(subtitle);
