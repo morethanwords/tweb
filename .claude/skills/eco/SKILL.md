@@ -17,12 +17,22 @@ Everything else goes elsewhere:
 | Reading reference clients / large code to find what is missing | **Codex** (`codex exec`) | reading is the most token-hungry part; Codex's limits are much wider |
 | Every code review round | **Codex** (`scripts/codex-review.sh`, the `codex-review` skill) | same, and a reviewer that did not write the code |
 | Complex UI, tricky state, anything a weak model gets subtly wrong | Agent, `model: "opus"`, `effort: "medium"` | |
-| Managers, plumbing, mechanical fixes from a findings list, tests, browser checklists | Agent, `model: "sonnet"`, `effort: "medium"` | the model matters more for cost than the effort |
+| Managers, plumbing, fixes from a findings list, tests, browser checklists | Agent, `model: "sonnet"`, `effort: "medium"` | |
+| A fix of a line or two, a string, a renamed key | Agent, `model: "sonnet"`, `effort: "low"` | 3–5 calls instead of 10–40 |
 | Plan, decisions, briefs, verdicts on findings | the orchestrator | |
 
 This skill is the explicit instruction the Agent tool asks for before it sets `effort` on an agent: pass `effort` and
 `model` on every agent this skill spawns. Never use `subagent_type: "fork"` — a fork inherits the orchestrator's model,
 effort and whole context.
+
+**Where the usage actually goes** (measured on a feature done this way, 2026-11): every tool call re-reads the whole
+context from the cache, and those reads were about half of everything spent; writing new context to the cache was
+another third. So the first lever is **fewer calls and smaller contexts**: a fresh agent is cheap because its context
+is small, and the orchestrator was the largest single item (about half) because its context only grew. The second is
+the model: Sonnet costs half of Opus on every part of it, cache reads included, so whatever Sonnet can do goes to
+Sonnet. Every context also starts with the same base — the harness, AGENTS.md, the local notes, the memory index — so
+a short-lived agent still costs that base once. The costliest single mistake was a rework: an agent left the reference
+clients' design, the orchestrator accepted it, and the user sent it back.
 
 ## Hard rules
 
@@ -33,7 +43,21 @@ effort and whole context.
 - **It does not resume a large agent for a small follow-up.** Resuming re-reads the agent's whole context (often
   200k+ tokens). A fresh agent with a precise brief is cheaper. Continue an agent only for a quick question whose
   answer is already in its context.
+- **It does not load what it does not need**: no large references or skills pulled in for a side question, no source
+  files read "to see". Whatever enters its context is paid again on every later call.
+- **One task per session.** A request unrelated to the task (another skill, another feature) is better done in a
+  session of its own: say so, and do it here only if the user wants it here.
 - **Never commit** unless the user says so (AGENTS.md); `/finalize` is the usual way to.
+
+## Phases
+
+The work runs in phases: **research and plan → implementation (and its browser check) → review rounds →
+finalize**. At the end of each phase the orchestrator writes `$SCRATCH/handoff.md` — the task, every decision taken
+and why, the worktree and branch, the files the change touches, the Codex report's path, what each agent reported in a
+line, the review rounds so far with their counts, the previews running, what is next — and asks the user to run
+`/compact` (or to start a new session and point it at the file). The orchestrator cannot compact itself, and a phase
+boundary is where a summary loses the least. Not on an automatic threshold mid-phase: the base alone is ~130k tokens,
+and a low threshold compacts every few calls and loses decisions in the middle of the work.
 
 ## 1. Workspace
 
@@ -83,6 +107,11 @@ The orchestrator reads that report once, in full. It settles section E and every
 the documented API, consistency with the rest of the app) and writes those decisions into the briefs; it asks the user
 only what truly is theirs to decide.
 
+**What the references agree on is pinned in the brief, in so many words** — above all the kind of each control (a
+text input, not "a list of chips"; a header save button, not a corner one), what it does on click, copy and paste,
+what animates, and the strings: take them from the reference clients, never invent them (and in tweb a re-worded
+existing lang key needs a new key — the server's pack keeps the old text).
+
 ## 3. Implementation agents
 
 Split along section D: packages that touch **disjoint files**, run in parallel, in the background. Where one package
@@ -102,6 +131,11 @@ Every brief carries (the agent knows nothing else):
 - **Done means**: tsc/oxlint clean for its files, which test files pass; "no browser check" unless it is part of it.
 - **The report**: at most 150–250 words — files, deviations from the brief and why, what is left open. No code, no
   diffs. (A long report is paid in the orchestrator's context.)
+
+**A deviation from the reference clients is never accepted by the orchestrator alone**, however good the agent's
+reason sounds ("a group of chips, so paste is impossible by construction"). Either the agent redoes it as the brief
+says, or the user decides — a deviation found by the user after review rounds costs the rework plus every round
+spent on the wrong design.
 
 ## 4. Browser checks
 
@@ -128,10 +162,14 @@ the user has been given a preview's URL, no agent drives that preview any more.
    keyboard and focus where the flow has them (AGENTS.md "Verify the affected flow").
 4. Next round: full again, with `--no-duplicates` (the duplicate check belongs to the first round). Rounds run on the
    whole change, never `--since`.
-5. Every ~3 rounds, tell the user the trend (findings per round). The loop ends with a clean round. It stops and asks
-   the user — keep going, or leave what is left — on the `codex-review` skill's limits: after five rounds, when a
-   finding comes back after its fix, or when fixes go in circles; and when what is left is only exotic edge cases or
-   style. `/finalize` runs its own rounds anyway.
+5. Every ~3 rounds, tell the user the trend (findings per round). The loop ends with a clean round — or, before
+   `/finalize`, once a round brings only exotic edge cases (two saves in flight answered out of order, an IME Enter
+   under the a11y flag, a callback after the tab closed mid-await) or style: what that round confirmed is still fixed
+   (a confirmed bug is fixed however rare its trigger, unless the user says to leave it), and then no further round
+   runs before `/finalize` — say so; `/finalize` runs its own rounds to a clean one. Every round costs a fix agent and
+   several orchestrator calls, and late rounds of a large change keep finding one or two such cases each. It stops
+   and asks the user on the `codex-review` skill's limits: after five rounds, when a finding comes back after its fix,
+   or when fixes go in circles.
 
 While Codex reviews, nothing edits the tree. A baseline check (does a failing suite fail on master too?) runs in a
 separate, clean worktree of the base (`git worktree add --detach .claude/worktrees/<name>-base <base>`, prepared as in
