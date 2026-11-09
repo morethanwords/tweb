@@ -40,7 +40,7 @@ import RepliesElement from '@components/chat/replies';
 import DEBUG from '@config/debug';
 import Modes from '@config/modes';
 import {SliceEnd} from '@helpers/slicedArray';
-import PeerTitle from '@components/peerTitle';
+import PeerTitle, {createPeerTitleElement} from '@components/peerTitle';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {countFirstScreen, estimateBubbleHeight, FirstScreenPlace, getAlbumBubbleMessage, getBubbleHeightAtLeast, GetWidgetHeight, joinHistories, keepFrom, keepRange, measureTextWidth, MessageTextMetrics} from '@components/chat/firstScreenHistory';
 import findUpTag from '@helpers/dom/findUpTag';
@@ -12551,7 +12551,8 @@ export default class ChatBubbles {
           lazyLoadQueue: this.lazyLoadQueue,
           needUpdate: this.needUpdate,
           isStandaloneMedia: context.isStandaloneMedia,
-          isOut
+          isOut,
+          loadPromises
         });
       }
 
@@ -12698,7 +12699,7 @@ export default class ChatBubbles {
           nameDiv.append(' ');
         }
 
-        const visitorTitle = this.createPeerTitleElement({peerId: guestChatViaFromId, onlyFirstName: true, link: true, wrapOptions}, loadPromises);
+        const visitorTitle = createPeerTitleElement({peerId: guestChatViaFromId, onlyFirstName: true, link: true, wrapOptions}, loadPromises);
         const span = document.createElement('span');
         span.classList.add('is-guest-chat-for');
         span.append(i18n('GuestChatFor'), ' ', visitorTitle);
@@ -13436,7 +13437,7 @@ export default class ChatBubbles {
     }
 
     // * a name in a message opens its peer on click (onBubblesClick)
-    const element = this.createPeerTitleElement({
+    const element = createPeerTitleElement({
       peerId,
       withPremiumIcon: !isForward,
       link: true,
@@ -13450,15 +13451,6 @@ export default class ChatBubbles {
       element,
       textColorProperty
     };
-  }
-
-  /**
-   * A `PeerTitle` built during a render: the render waits for its `ready` (`loadPromises`)
-   */
-  private createPeerTitleElement(options: ConstructorParameters<typeof PeerTitle>[0], loadPromises: Promise<any>[]) {
-    const peerTitle = new PeerTitle(options);
-    loadPromises?.push(peerTitle.ready);
-    return peerTitle.element;
   }
 
   private createEphemeralBadge(
@@ -13479,7 +13471,7 @@ export default class ChatBubbles {
     if(message.pFlags.out && !message.pFlags.welcome_template) {
       const receiverPeerId = message.ephemeral_receiver_id.toPeerId(false);
       const receiver = apiManagerProxy.getPeer(receiverPeerId);
-      const receiverTitle = this.createPeerTitleElement({
+      const receiverTitle = createPeerTitleElement({
         peerId: receiverPeerId,
         username: !!getPeerActiveUsernames(receiver)[0],
         dialog: false,
@@ -15902,7 +15894,7 @@ export default class ChatBubbles {
       isOut,
       makePeerTitle: promises ?
         (peerId) => {
-          return this.createPeerTitleElement({peerId, link: true}, promises);
+          return createPeerTitleElement({peerId, link: true}, promises);
         } :
         () => document.createElement('span'),
       makeMessagePeerTitle: wrapOptions ?

@@ -19,8 +19,11 @@ vi.mock('@lib/apiManagerProxy', () => ({default: {
   getMessageByPeer: () => mirror.original,
   getMessagesByGroupedId: () => mirror.album
 }}));
-vi.mock('@components/peerTitle', () => ({default: class {
-  public element = document.createElement('span');
+// * a name in a quote: what it waits for to be drawn is what the test holds
+const titles = vi.hoisted(() => ({hold: undefined as Promise<void>}));
+vi.mock('@components/peerTitle', () => ({createPeerTitleElement: (options: any, loadPromises?: Promise<any>[]) => {
+  if(titles.hold) loadPromises?.push(titles.hold);
+  return document.createElement('span');
 }}));
 vi.mock('@lib/accounts/bindManagersToAccount', async(importOriginal) => ({
   ...(await importOriginal<typeof import('@lib/accounts/bindManagersToAccount')>()),
@@ -118,6 +121,7 @@ describe('a reply quote refreshed', () => {
   beforeEach(() => {
     quotes.made.length = 0;
     quotes.hold = undefined;
+    titles.hold = undefined;
     mirror.album = [];
   });
 
@@ -196,13 +200,16 @@ describe('a reply quote refreshed', () => {
     expect(bubble.querySelector('.reply')).toBe(made);
   });
 
-  it('is put in only once the new one shows all of itself', async() => {
+  it.each([
+    ['is put in only once the new one shows all of itself', quotes],
+    ['is put in only once its author\'s name is drawn', titles]
+  ])('%s', async(_name, held) => {
     const bubble = makeBubble();
     mirror.original = makeOriginal();
     await render(bubble);
 
-    const showAll = deferred();
-    quotes.hold = showAll.promise;
+    const release = deferred();
+    held.hold = release.promise;
     mirror.original = makeOriginal({message: 'Test documentation for Bot API, edited'});
     const swap = vi.fn((callback: () => void) => callback());
     const refreshed = refresh(bubble, swap);
@@ -211,7 +218,7 @@ describe('a reply quote refreshed', () => {
     await pause(20);
     expect(swap).not.toHaveBeenCalled();
 
-    showAll.resolve();
+    release.resolve();
     const made = await refreshed;
     expect(swap).toHaveBeenCalledTimes(1);
     expect(bubble.querySelector('.reply')).toBe(made);

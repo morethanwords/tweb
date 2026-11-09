@@ -12,7 +12,7 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import rootScope from '@lib/rootScope';
 import Icon from '@components/icon';
-import PeerTitle from '@components/peerTitle';
+import {createPeerTitleElement} from '@components/peerTitle';
 import wrapReply from '@components/wrappers/reply';
 import Chat from '@components/chat/chat';
 import {ChatType, isHistoryMessage} from './chatType';
@@ -520,7 +520,7 @@ export namespace MessageRender {
     return isFooter;
   };
 
-  export const setReply = async({chat, bubble, bubbleContainer, message, logId, appendCallback, middleware, lazyLoadQueue, needUpdate, isStandaloneMedia, isOut, fromUpdate, swap = (callback) => callback()}: {
+  export const setReply = async({chat, bubble, bubbleContainer, message, logId, appendCallback, middleware, lazyLoadQueue, needUpdate, isStandaloneMedia, isOut, fromUpdate, loadPromises, swap = (callback) => callback()}: {
     chat: Chat,
     bubble: HTMLElement,
     bubbleContainer?: HTMLElement,
@@ -533,6 +533,8 @@ export namespace MessageRender {
     isStandaloneMedia: boolean,
     isOut: boolean,
     fromUpdate?: boolean,
+    /** the bubble's render's loads: a quote put in with the bubble is laid out with its names already in it */
+    loadPromises?: Promise<any>[],
     /** puts the quote made in place of the one shown: at once, or as a change of the bubble the caller shows */
     swap?: (callback: () => void) => void
   }) => {
@@ -577,6 +579,11 @@ export namespace MessageRender {
 
     const originalStory = isStoryReply && await managers.acknowledged.appStoriesManager.getStoryById(replyToPeerId, replyTo.story_id);
     let originalPeerTitle: string | HTMLElement | DocumentFragment;
+    // * what the quote waits for to show all of itself before it goes in place of the one shown
+    const replyLoadPromises: Promise<any>[] = [];
+    // * its names come after an await, and a quote taller than its least height grows a line when they do: a quote put
+    // * in with the bubble is waited for by the bubble's render, one put in place of the one shown waits for them itself
+    const titleLoadPromises = currentReplyDiv ? replyLoadPromises : loadPromises;
 
     let isReplyFromAnotherPeer = false;
     let titlePeerId: PeerId, setColorPeerId: PeerId, forUpdate: typeof needUpdate[0];
@@ -600,25 +607,25 @@ export namespace MessageRender {
         originalPeerTitle = i18n('Loading');
       } else {
         titlePeerId = replyToPeerId;
-        originalPeerTitle = new PeerTitle({
+        originalPeerTitle = createPeerTitleElement({
           peerId: titlePeerId,
           dialog: false,
           onlyFirstName: false,
           plainText: false
-        }).element;
+        }, titleLoadPromises);
       }
     } else if(!originalMessage) {
       // from different peer
       if(replyTo.reply_from) {
         isReplyFromAnotherPeer = true;
         titlePeerId = getPeerId(replyTo.reply_from?.from_id || replyTo.reply_to_peer_id);
-        originalPeerTitle = new PeerTitle({
+        originalPeerTitle = createPeerTitleElement({
           peerId: titlePeerId || undefined,
           dialog: false,
           onlyFirstName: false,
           plainText: false,
           fromName: getFwdFromName(replyTo.reply_from)
-        }).element;
+        }, titleLoadPromises);
       } else if(replyTo.reply_to_msg_deleted) {
         originalPeerTitle = i18n('DeletedMessage');
       } else {
@@ -636,13 +643,13 @@ export namespace MessageRender {
       setColorPeerId = message.fwdFromId && message.fwdFromId === originalMessageFwdFromId ?
         undefined :
         originalMessage.fromId;
-      originalPeerTitle = new PeerTitle({
+      originalPeerTitle = createPeerTitleElement({
         peerId: titlePeerId,
         dialog: false,
         onlyFirstName: false,
         plainText: false,
         fromName: !titlePeerId ? getFwdFromName((originalMessage as Message.message).fwd_from) : undefined
-      }).element;
+      }, titleLoadPromises);
     }
 
     if(!isStoryReply && replyTo.reply_from) {
@@ -651,12 +658,12 @@ export namespace MessageRender {
       if(replyTo.reply_from.channel_post) {
         fragment.append(icon = Icon('newchannel_filled', 'with-margin'), originalPeerTitle);
       } else if(replyTo.reply_to_peer_id) {
-        const groupPeerTitle = new PeerTitle({
+        const groupPeerTitle = createPeerTitleElement({
           peerId: getPeerId(replyTo.reply_to_peer_id),
           dialog: false,
           onlyFirstName: false,
           plainText: false
-        }).element;
+        }, titleLoadPromises);
 
         fragment.append(originalPeerTitle, ' ', icon = Icon('group_filled'), ' ', groupPeerTitle);
       } else {
@@ -670,7 +677,6 @@ export namespace MessageRender {
     }
 
     const isStoryExpired = isStoryReply && originalStory.cached && !(await originalStory.result);
-    const loadPromises: Promise<any>[] = [];
     const {container, fillPromise} = wrapReply({
       title: originalPeerTitle,
       animationGroup: chat.animationGroup,
@@ -694,7 +700,7 @@ export namespace MessageRender {
       useHighlightingColor: isStandaloneMedia,
       colorAsOut: isOut,
       canTranslate: originalMessage && !isReplyFromAnotherPeer ? !originalMessage.pFlags.out : undefined,
-      loadPromises
+      loadPromises: replyLoadPromises
     });
     replySources.set(container, source);
 
@@ -702,7 +708,7 @@ export namespace MessageRender {
     if(currentReplyDiv) {
       // * put in once it shows all of itself: its text comes after its custom emoji (`TranslatableMessage`), and a bubble
       // * measured around a quote with no text yet is shown changing to a size it does not end at (`bubbleTransitions`)
-      await withTimeout(Promise.all(loadPromises).catch(noop), REPLY_SWAP_TIMEOUT);
+      await withTimeout(Promise.all(replyLoadPromises).catch(noop), REPLY_SWAP_TIMEOUT);
       if(!middleware()) return;
       swap(() => {
         // * the quote shown by then: another refresh, asked for earlier, put in its own in place of the one this one

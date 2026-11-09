@@ -274,6 +274,16 @@ export default class PeerTitle {
   }
 }
 
+/**
+ * A `PeerTitle` built during a render: the render waits for its `ready` (`loadPromises`), so what it is drawn
+ * into is laid out with the name already in it
+ */
+export function createPeerTitleElement(options: PeerTitleOptions, loadPromises?: Promise<any>[]) {
+  const peerTitle = new PeerTitle(options);
+  loadPromises?.push(peerTitle.ready);
+  return peerTitle.element;
+}
+
 export function changeTitleEmojiColor(element: HTMLElement, color: string) {
   const elements = element.querySelectorAll<HTMLElement>('.emoji-status-text-color');
   elements.forEach((emojiStatus) => {

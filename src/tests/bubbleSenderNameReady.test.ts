@@ -93,7 +93,7 @@ function settled(promise: Promise<unknown>) {
 }
 
 /** A group's message from someone else: the first of its sender's, so it shows their name */
-async function renderGroupMessage() {
+async function renderGroupMessage(changes: Partial<Message.message> = {}) {
   const message = {
     _: 'message',
     mid: 1,
@@ -103,7 +103,8 @@ async function renderGroupMessage() {
     from_id: {_: 'peerUser', user_id: SENDER_ID.toUserId()},
     date: 0,
     pFlags: {},
-    message: 'hello'
+    message: 'hello',
+    ...changes
   } as any as Message.message;
 
   const bubble = makeMessageBubble(PEER_ID, message.mid);
@@ -138,4 +139,27 @@ test('a name that fails to render does not end the wait for the bubble\'s other 
   expect(await loads()).toBe('fulfilled');
   expect(consoleError).toHaveBeenCalled();
   consoleError.mockRestore();
+});
+
+test('the render of a group message replying with a quote waits for the name of the one it replies to', async() => {
+  const REPLIED_ID = 7 as PeerId;
+  // * a reply to someone else's message, quoting several lines of it: the quote is taller than a reply's least height,
+  // * so a name line drawn after the bubble is attached would make it grow
+  const {bubble, loads} = await renderGroupMessage({
+    reply_to: {
+      _: 'messageReplyHeader',
+      pFlags: {quote: true},
+      reply_from: {_: 'messageFwdHeader', pFlags: {}, from_id: {_: 'peerUser', user_id: REPLIED_ID.toUserId()}, date: 0},
+      quote_text: 'first line\nsecond line\nthird line'
+    } as any
+  });
+
+  const reply = bubble.querySelector<HTMLElement>('.reply');
+  expect(reply).not.toBeNull();
+  pendingTitles.get(SENDER_ID).resolve('Alice');
+  expect(await loads()).toBe('pending');
+
+  pendingTitles.get(REPLIED_ID).resolve('Bob');
+  expect(await loads()).toBe('fulfilled');
+  expect(reply.textContent).toContain('Bob');
 });
