@@ -4801,6 +4801,7 @@ export default class ChatBubbles {
       // || isVideoComponentElement
       (target.tagName === 'VIDEO' && !bubble.classList.contains('round')) ||
       (documentDiv && !documentDiv.querySelector('.preloader-container')) ||
+      target.closest('.video-no-thumbnail') ||
       target.classList.contains('canvas-thumbnail')
     ) {
       const groupedItem = findUpClassName(target, 'album-item') || findUpClassName(target, 'document-container');
