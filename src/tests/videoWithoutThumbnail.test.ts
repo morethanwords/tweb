@@ -1,4 +1,4 @@
-import {loadChatBubbles, LOAD_CHAT_BUBBLES_TIMEOUT} from '@/tests/helpers/chatBubbles';
+import {loadChatBubbles, LOAD_CHAT_BUBBLES_TIMEOUT, makeMessageBubble} from '@/tests/helpers/chatBubbles';
 import {getMiddleware} from '@helpers/middleware';
 import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {ChatType} from '@components/chat/chatType';
@@ -55,10 +55,8 @@ async function makePreview(options: {size?: number, canAutoplay?: boolean, onlyP
     message: '',
     media: {_: 'messageMediaDocument', pFlags: {}, document: doc}
   } as Message.message;
-  const bubble = document.createElement('div');
-  bubble.className = 'bubble video';
-  bubble.dataset.mid = '1';
-  bubble.dataset.peerId = '1';
+  const bubble = makeMessageBubble(message.peerId, message.mid);
+  bubble.classList.add('video');
   const attachment = document.createElement('div');
   attachment.className = 'attachment';
   bubble.append(attachment);
