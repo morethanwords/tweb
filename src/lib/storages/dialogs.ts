@@ -42,6 +42,7 @@ import {isDialog, isSavedDialog, isForumTopic} from '@appManagers/utils/dialogs/
 import getDialogKey from '@appManagers/utils/dialogs/getDialogKey';
 import getDialogThreadId from '@appManagers/utils/dialogs/getDialogThreadId';
 import {isTempId} from '@appManagers/utils/messages/isTempId';
+import type {DialogsPaginationOffsets} from '@appManagers/utils/dialogs/getDialogsPaginationOffsets';
 
 export enum FilterType {
   Folder,
@@ -93,6 +94,11 @@ export default class DialogsStorage extends AppManager {
 
   private allDialogsLoaded: {[folder_id: number]: boolean};
   private dialogsOffsetDate: {[folder_id: number]: number};
+  // * the `messages.getDialogs` pagination frontier of a folder (or of GLOBAL_FOLDER_ID), taken from
+  // * the LAST dialog of the previous server page in response order (see `getDialogsPaginationOffsets`).
+  // * Unlike `dialogsOffsetDate` (the oldest date seen), one dialog the server returns out of its date
+  // * order can't make the next page skip everything between the two dates
+  private dialogsPaginationOffsets: {[folder_id: number]: DialogsPaginationOffsets};
   private pinnedOrders: {[folder_id: number]: PeerId[]};
   private dialogsNum: number;
   // * the index a dialog took among those of its date, and the top message it took it for
@@ -264,6 +270,7 @@ export default class DialogsStorage extends AppManager {
       }
 
       this.allDialogsLoaded = state.allDialogsLoaded || {};
+      this.dialogsPaginationOffsets = state.dialogsPaginationOffsets || {};
 
       if(dialogs.length) {
         this.appDraftsManager.addMissedDialogs();
@@ -354,6 +361,9 @@ export default class DialogsStorage extends AppManager {
       this.allDialogsLoaded = {};
       this.saveAllDialogsLoaded();
 
+      this.dialogsPaginationOffsets = {};
+      this.saveDialogsPaginationOffsets();
+
       // * clear not numerable properties
       this.pinnedOrders = Object.assign({}, this.pinnedOrders);
       for(const folderId of REAL_FOLDERS) {
@@ -362,6 +372,7 @@ export default class DialogsStorage extends AppManager {
       this.savePinnedOrders();
     } else {
       this.allDialogsLoaded = {};
+      this.dialogsPaginationOffsets = {};
       this.pinnedOrders = {};
       for(const folderId of REAL_FOLDERS) {
         this.pinnedOrders[folderId] = [];
@@ -479,6 +490,28 @@ export default class DialogsStorage extends AppManager {
     }
 
     return isPinned;
+  }
+
+  /**
+   * The offsets of the next `messages.getDialogs` page of a folder, if a page of it was received.
+   * Ignored while no dialog of the folder is loaded (e.g. the dialogs storage was reset while the
+   * state kept the offsets): the list must then start from the top again.
+   */
+  public getDialogsPaginationOffsets(folderId: number): DialogsPaginationOffsets {
+    if(!this.dialogsOffsetDate[folderId]) {
+      return;
+    }
+
+    return this.dialogsPaginationOffsets?.[folderId];
+  }
+
+  public setDialogsPaginationOffsets(folderId: number, offsets: DialogsPaginationOffsets) {
+    (this.dialogsPaginationOffsets ??= {})[folderId] = offsets;
+    this.saveDialogsPaginationOffsets();
+  }
+
+  private saveDialogsPaginationOffsets() {
+    this.appStateManager.pushToState('dialogsPaginationOffsets', this.dialogsPaginationOffsets);
   }
 
   public getOffsetDate(folderId: number): number {

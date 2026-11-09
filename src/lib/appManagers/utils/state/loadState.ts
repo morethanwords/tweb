@@ -209,6 +209,7 @@ const STATE_STEPS = {
       } else if(writer.state.build < 677) {
         writer.resetStorages.set('dialogs', []);
         writer.push('allDialogsLoaded', copy(STATE_INIT.allDialogsLoaded));
+        writer.push('dialogsPaginationOffsets', copy(STATE_INIT.dialogsPaginationOffsets));
         writer.push('pinnedOrders', copy(STATE_INIT.pinnedOrders));
         writer.push('botCommands', copy(STATE_INIT.botCommands));
       }
