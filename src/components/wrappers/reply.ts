@@ -23,7 +23,9 @@ export type WrapReplyOptions = WrapPinnedContainerOptions & {
   noBorder?: boolean,
   replyHeader?: MessageReplyHeader,
   quote?: {text: string, entities?: MessageEntity[]},
-  canTranslate?: boolean
+  canTranslate?: boolean,
+  // what the quote waits for to show all of itself: its picture, its text (which comes after its custom emoji)
+  loadPromises?: Promise<any>[]
 } & WrapSomethingOptions;
 
 export default function wrapReply(options: WrapReplyOptions) {
