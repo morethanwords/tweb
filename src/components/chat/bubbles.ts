@@ -215,6 +215,7 @@ import {wrapRoundVideoBubble} from '@components/chat/bubbleParts/roundVideoBubbl
 import {createMessageSpoilerOverlay, updateMessageSpoilerOverlays} from '@components/messageSpoilerOverlay';
 import {getReplyQuote} from '@lib/richQuote';
 import {getRichQuoteTextOffset} from '@components/chat/richQuoteSelection';
+import {expandTextMatchDetails} from '@components/instantView/details';
 import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
 import {Sparkles} from '@components/sparkles';
@@ -6108,6 +6109,12 @@ export default class ChatBubbles {
       this.log.error('element is not connected', bubble);
     }
 
+    // * the text about to be lit up may sit in a collapsed details of a rich message: opened before anything here is
+    // * measured, so the scroll lands where it would if it had been open
+    if(focusOn?.textHighlight) {
+      this.expandBubbleTextDetails(element, focusOn.textHighlight);
+    }
+
     let fallbackToElementStartWhenCentering: HTMLElement;
     // * if it's a start, then scroll to start of the group
     if(bubble && position !== 'end') {
@@ -6321,16 +6328,19 @@ export default class ChatBubbles {
       return;
     }
 
-    const container = this.getBubbleTextContainer(element);
-    if(!container) {
+    // * the collapsed details holding it are opened on the way here already, unless no scroll took it here
+    const prepared = this.expandBubbleTextDetails(element, match);
+    if(!prepared) {
       return;
     }
+
+    const {container, match: containerMatch} = prepared;
 
     // * `.message` is positioned and paints below `.bubble-content` background — full line boxes,
     // * appearing iOS-style: the whole text selected, then narrowing down onto the match
     const highlight = highlightText({
       container,
-      match: this.getBubbleTextMatch(container, match),
+      match: containerMatch,
       skip: BUBBLE_TEXT_HIGHLIGHT_SKIP,
       lineBoxes: true,
       animateIn: true
@@ -6349,6 +6359,21 @@ export default class ChatBubbles {
       clearTimeout(timeout);
       highlight.dispose();
     });
+  }
+
+  /**
+   * opens, at once, the collapsed details of a rich message that hold the match a highlight is about to light up;
+   * gives back the text container and the match as that container counts it, ready to be highlighted
+   */
+  private expandBubbleTextDetails(element: HTMLElement, match: TextHighlightMatch) {
+    const container = this.getBubbleTextContainer(element);
+    if(!container) {
+      return;
+    }
+
+    const containerMatch = this.getBubbleTextMatch(container, match);
+    expandTextMatchDetails(container, containerMatch, BUBBLE_TEXT_HIGHLIGHT_SKIP);
+    return {container, match: containerMatch};
   }
 
   /** a match as the text it is looked for in counts: a rich message's quote counts its offset in its texts */

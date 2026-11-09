@@ -1,4 +1,4 @@
-import {For, createEffect, createContext, useContext, Show, createSignal, createUniqueId, Setter, onCleanup, createMemo, on, Accessor, batch, children, untrack} from 'solid-js';
+import {For, createEffect, createContext, useContext, Show, createSignal, createUniqueId, onCleanup, createMemo, on, Accessor, batch, children, untrack} from 'solid-js';
 import type {JSX} from 'solid-js';
 import {Dynamic} from 'solid-js/web';
 import {createStore, reconcile, unwrap} from 'solid-js/store';
@@ -79,6 +79,7 @@ import wrapMediaSpoiler, {onMediaSpoilerClick} from '@components/wrappers/mediaS
 import {registerMediaPeekSource} from '@components/mediaPeek/sources';
 import showTooltip from '@components/tooltip';
 import {reconcileStablePageBlockEntries} from '@components/instantView/stablePageBlocks';
+import {DETAILS_CONTENT_CLASS, expandDetailsAncestors, registerDetails} from '@components/instantView/details';
 import {
   MessageTextLayoutEvent,
   MessageTextPhase,
@@ -151,7 +152,6 @@ type InstantViewContextValue = {
   collapse: () => void,
   scrollToAnchor: (anchor: string, instantly: boolean) => void,
   customEmojiRenderer: CustomEmojiRendererElement,
-  details: WeakMap<HTMLElement, Setter<boolean>>,
   referenceTooltipClose?: () => void,
   ready: boolean,
   savingScroll: boolean,
@@ -288,21 +288,6 @@ function onClick(context: InstantViewContextValue, e: MouseEvent) {
   }
 }
 
-// Expand every collapsed <details> the anchor target sits inside, so it's actually visible before we
-// scroll to it. Shared by the full-page IV and inline RichMessage anchor navigation.
-function expandDetailsAncestors(context: InstantViewContextValue, element: HTMLElement) {
-  let detailsElement: HTMLElement = element;
-  do {
-    detailsElement = findUpClassName(detailsElement, styles.Details);
-    if(!detailsElement) {
-      break;
-    }
-
-    context.details.get(detailsElement)?.(true);
-    detailsElement = detailsElement.parentElement;
-  } while(true);
-}
-
 export function InstantViewBlocks(props: {
   webPageId: ReactiveInstantViewValue<Long>,
   page: ReactiveInstantViewValue<Page.page>,
@@ -372,11 +357,10 @@ export function InstantViewBlocks(props: {
         return;
       }
 
-      expandDetailsAncestors(value, element);
+      expandDetailsAncestors(element);
       props.scrollToElement?.(element);
     },
     customEmojiRenderer,
-    details: new WeakMap(),
     savingScroll: false,
     isAlive: () => !disposed,
     get navigationGeneration() {
@@ -493,7 +477,7 @@ export function InstantView(props: {
         return;
       }
 
-      expandDetailsAncestors(value, element);
+      expandDetailsAncestors(element);
       fastSmoothScroll({container: scrollableRef, element, position: 'start', forceDuration});
     },
     customEmojiRenderer: CustomEmojiRendererElement.create({
@@ -501,7 +485,6 @@ export function InstantView(props: {
       middleware: createMiddleware().get(),
       renderNonSticker: true
     }),
-    details: new WeakMap(),
     savingScroll: false,
     isAlive: () => !disposed,
     navigationGeneration: 0,
@@ -1961,7 +1944,6 @@ function Block(props: {
       );
     case 'pageBlockDetails': {
       const [open, setOpen] = createSignal(!!block.pFlags.open);
-      const detailsMap = useContext(InstantViewContext).details;
       let userToggled = false;
       createEffect(() => {
         const serverOpen = !!block.pFlags.open;
@@ -1974,10 +1956,7 @@ function Block(props: {
         content.inert = !open();
       });
       return (
-        <div
-          ref={(ref) => {detailsMap.set(ref, setOpen)}}
-          class={classNames(styles.Details)}
-        >
+        <div class={classNames(styles.Details)}>
           <button
             type="button"
             id={summaryId}
@@ -1998,13 +1977,17 @@ function Block(props: {
             </div>
           </button>
           <div
-            ref={content}
+            ref={(ref) => {
+              content = ref;
+              registerDetails(ref, {isOpen: open, setOpen});
+            }}
             id={contentId}
             role="region"
             aria-labelledby={summaryId}
             aria-hidden={!open()}
             class={classNames(
               styles.DetailsContent,
+              DETAILS_CONTENT_CLASS,
               open() && styles.DetailsContentOpen
             )}
           >

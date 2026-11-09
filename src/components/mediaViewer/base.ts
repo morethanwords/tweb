@@ -1,6 +1,7 @@
 // * zoom part from WebZ
 // * https://github.com/Ajaxy/telegram-tt/blob/069f4f5b2f2c7c22529ccced876842e7f9cb81f4/src/components/mediaViewer/MediaViewerSlides.tsx
 
+import applyWithoutTransition from '@helpers/dom/applyWithoutTransition';
 import type {MyDocument} from '@appManagers/appDocsManager';
 import type {ActiveAccountNumber} from '@lib/accounts/types';
 import type {MyPhoto} from '@appManagers/appPhotosManager';
@@ -1593,10 +1594,7 @@ export default class AppMediaViewerBase<
         // A viewer opened from a fully visible source carries no clip at rest. Prime
         // a syntactically compatible inset(0) before the close target so the browser
         // can interpolate instead of switching none -> inset() discretely.
-        wrapper.style.transition = 'none';
-        wrapper.style.clipPath = NO_MEDIA_VIEWER_CLIP_PATH;
-        void wrapper.offsetLeft;
-        wrapper.style.transition = '';
+        applyWithoutTransition([wrapper], () => wrapper.style.clipPath = NO_MEDIA_VIEWER_CLIP_PATH);
       } else if(!closing) {
         // Do not animate from `none` to the opening start state. The transition is
         // restored in the preparation frame below.
@@ -1852,10 +1850,7 @@ export default class AppMediaViewerBase<
       // .center-transform не анимировался; затем чистим инлайн — будущие
       // изменения (PiP opacity, close transform) пойдут через .active-правило.
       mover.classList.add('center');
-      mover.style.transition = 'none';
-      this.applyCenterStyles(mover);
-      void mover.offsetLeft; // reflow — commits center transform without anim
-      mover.style.transition = '';
+      applyWithoutTransition([mover], () => this.applyCenterStyles(mover)); // reflow — commits center transform without anim
 
       // это уже нужно для будущих анимаций
       mover.classList.add('active');
