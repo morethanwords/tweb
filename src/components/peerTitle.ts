@@ -28,6 +28,8 @@ export type PeerTitleOptions = {
   limitSymbols?: number,
   withIcons?: boolean,
   withPremiumIcon?: boolean,
+  /** with `withIcons`: no emoji status or premium star, whatever the middleware */
+  noPremiumIcon?: boolean,
   clickableEmojiStatus?: boolean,
   threadId?: number,
   meAsNotes?: boolean,
@@ -228,7 +230,7 @@ export default class PeerTitle {
           peerId,
           threadId
         }),
-        (this.options.withIcons && generateTitleIcons({peerId, clickableEmojiStatus: this.options.clickableEmojiStatus, wrapOptions: {...this.options.wrapOptions, textColor: this.options.iconsColor || this.options.wrapOptions?.textColor}})) ||
+        (this.options.withIcons && generateTitleIcons({peerId, clickableEmojiStatus: this.options.clickableEmojiStatus, noPremiumIcon: this.options.noPremiumIcon, wrapOptions: {...this.options.wrapOptions, textColor: this.options.iconsColor || this.options.wrapOptions?.textColor}})) ||
           (this.options.withPremiumIcon && generateTitleIcons({peerId, wrapOptions: {...this.options.wrapOptions, textColor: this.options.iconsColor || this.options.wrapOptions?.textColor}, noVerifiedIcon: true, noFakeIcon: true})),
         getTopicIconPromise
       ]);

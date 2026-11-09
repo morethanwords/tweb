@@ -1,5 +1,6 @@
 import {JSX, Ref, Show, createMemo, createResource, splitProps} from 'solid-js';
 import createMiddleware from '@helpers/solid/createMiddleware';
+import {attachClassName} from '@helpers/solid/classname';
 import {Middleware, MiddlewareHelper} from '@helpers/middleware';
 
 export type MediaComponentProps = {
@@ -19,7 +20,6 @@ export function MediaTsx<T, R>(props: T & {
   let ref: HTMLDivElement;
   const ret = (
     <div
-      class={local.class}
       ref={(_ref) => {
         ref = _ref;
         (local.ref as any)?.(ref);
@@ -27,6 +27,10 @@ export function MediaTsx<T, R>(props: T & {
       onClick={local.onClick}
     ></div>
   );
+  // * the wrapper puts classes of its own on the container (`media-container-fitted` and the like), which decide the
+  // * media's fit: the caller's classes are added and taken away by themselves, never by writing the whole attribute,
+  // * which a re-render of what holds the media (an edited rich message) would otherwise do
+  attachClassName(ref, () => local.class);
 
   // * a photo or a document comes again as another object of the same one when what holds it is rebuilt (a page of a
   // * sent rich message): it is not drawn again

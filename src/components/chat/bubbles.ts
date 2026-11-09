@@ -13073,6 +13073,8 @@ export default class ChatBubbles {
       bubble.classList.contains('service') ||
       bubble.classList.contains('is-unsupported')
     ) {
+      // * on the wallpaper, out of the bubble's background
+      reactionsElement.classList.add('is-outside');
       bubble.querySelector('.bubble-content-wrapper').append(reactionsElement);
     } else {
       const timeSpan = bubble.timeSpan;

@@ -116,8 +116,9 @@ export default async function generateTitleIcons({
     const {container} = wrapAdaptiveCustomEmoji({
       docId: (peer as User.user | Chat.channel).bot_verification_icon,
       size: 24,
-      wrapOptions
-    })
+      // * a text-colour icon is of the accent colour, as the verified badge next to it; white on an accent background
+      wrapOptions: {...wrapOptions, textColor: wrapOptions?.textColor === 'white' ? 'white' : 'primary-color'}
+    });
     botVerification = container;
     container.classList.add('peer-title-bot-verification');
   }

@@ -1853,10 +1853,6 @@ $message-out-gradient-phases: 0, 1, 2, 3, 4, 5, 6, 7;
       opacity: .4;
     }
 
-    .reaction-block.is-paid {
-      --background-color: #fff6e3 !important;
-    }
-
     .reaction-block {
       &:not(.is-chosen) {
         @include hover() {
@@ -2238,8 +2234,27 @@ $message-out-gradient-phases: 0, 1, 2, 3, 4, 5, 6, 7;
       text-overflow: ellipsis;
     }
 
+    // * the line is laid out in the interface's direction, whatever its texts' are: `.name` around it is
+    // * `dir=auto`, which an Arabic tag after a Latin name would turn right to left
+    direction: ltr;
+
+    .is-rtl & {
+      direction: rtl;
+    }
+
+    // * the free room between the name and what follows it is a flexible gap of the line itself: a
+    // * margin on the name (`dir=auto`, so RTL for an Arabic one) would land on the other side of it and
+    // * push the name from the line's start
+    &::before {
+      content: '';
+      flex: 1 1 0;
+      order: 1;
+    }
+
     > .bubble-name-rank {
       flex-shrink: 0;
+      // * a tag's text keeps its own direction, as the name's (`dir=auto`)
+      unicode-bidi: plaintext;
     }
 
     &-topic {
@@ -2251,10 +2266,6 @@ $message-out-gradient-phases: 0, 1, 2, 3, 4, 5, 6, 7;
   }
 
   &-name {
-    &-first {
-      margin-inline-end: auto;
-    }
-
     &-rank {
       color: var(--message-time-color);
       order: 999;

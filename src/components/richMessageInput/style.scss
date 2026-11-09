@@ -32,6 +32,13 @@
 }
 
 .rich-message-input {
+  // * the field caps its own height (syncHeight), and a reply or an edit header above it adds to the plate: the
+  // * plate's own cap squeezed the field's row under that header while the field kept its height, and its content
+  // * stood out of the plate's rounded box, over the header and past the bottom edge
+  .chat-input-wrapper {
+    max-height: none;
+  }
+
   &:not(.is-message-input-expanded) {
     .input-message-input {
       --padding-horizontal: 0em;

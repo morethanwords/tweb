@@ -32,6 +32,7 @@ import {markEmojiLayoutMoving} from '@lib/customEmoji/layoutWatch';
 import getViewportSlice from '@helpers/dom/getViewportSlice';
 import copyElement, {CopyPairs, keepStyle, paintPlayerFrame} from '@components/chat/copyElement';
 import drawMediaToCanvas from '@helpers/canvas/drawMediaToCanvas';
+import getLayoutScale from '@helpers/dom/getLayoutScale';
 import type CustomEmojiElement from '@lib/customEmoji/element';
 import {settleSendingStatusIconCopy} from '@components/sendingStatusIcon';
 import {markOutgoingMessageGradientHeld, measureOutgoingMessageGradientHold, readOutgoingMessageGradient} from '@helpers/outgoingMessageGradient';
@@ -409,7 +410,8 @@ function copyCustomEmoji(element: HTMLElement, copies: CopyPairs) {
   });
 }
 
-// a reaction's count: what it reads, and where it stands from the reaction's start and top
+// a reaction's count: what it reads, and where it stands from the reaction's start and top, in the reaction's pixels
+// (a paid one is drawn bigger while it is pressed)
 function captureCounter(element: HTMLElement, box: Box, anchor: Anchor): PartCapture['counter'] {
   const counter = element.querySelector<HTMLElement>(':scope > .reaction-counter');
   if(!counter || !isVisible(counter)) {
@@ -417,11 +419,12 @@ function captureCounter(element: HTMLElement, box: Box, anchor: Anchor): PartCap
   }
 
   const rect = counter.getBoundingClientRect();
+  const scale = getLayoutScale(element, box);
   return {
     text: counter.textContent,
     count: (element as ReactionElement).reactionCount?.count,
     copy: makeCopy(counter, [styles.counterCopy]),
-    offset: {x: anchor.right ? box.right - rect.right : rect.left - box.left, y: rect.top - box.top}
+    offset: {x: (anchor.right ? box.right - rect.right : rect.left - box.left) / scale, y: (rect.top - box.top) / scale}
   };
 }
 
@@ -1136,9 +1139,10 @@ export class BubbleTransition {
   ) {
     const rect = element.getBoundingClientRect();
     const nextRect = next.getBoundingClientRect();
+    const scale = getLayoutScale(element, rect);
     const nextCopy = makeCopy(next, [styles.counterCopy]);
-    nextCopy.style[side] = `${side === 'right' ? rect.right - nextRect.right : nextRect.left - rect.left}px`;
-    nextCopy.style.top = `${nextRect.top - rect.top}px`;
+    nextCopy.style[side] = `${(side === 'right' ? rect.right - nextRect.right : nextRect.left - rect.left) / scale}px`;
+    nextCopy.style.top = `${(nextRect.top - rect.top) / scale}px`;
     this.writes.push(() => element.append(nextCopy));
     cleanups.push(() => nextCopy.remove());
 
@@ -1156,7 +1160,7 @@ export class BubbleTransition {
     };
 
     const [from, to] = [split(copy), split(nextCopy)];
-    const height = nextRect.height;
+    const height = nextRect.height / scale;
     const ways = motionTracks;
     for(let index = 0; index < Math.max(from.length, to.length); ++index) {
       const [was, is] = [from[index], to[index]];

@@ -3,6 +3,7 @@ import PeerTitle from '@components/peerTitle';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {attachClassName} from '@helpers/solid/classname';
 import createListenerSetter from '../helpers/solid/createListenerSetter';
+import createMiddleware from '@helpers/solid/createMiddleware';
 
 export const PeerTitleTsx = (props: {
   ref?: Ref<HTMLElement>;
@@ -17,6 +18,8 @@ export const PeerTitleTsx = (props: {
 }) => {
   const peerTitle = new PeerTitle();
   const listenerSetter = createListenerSetter();
+  // * what the title draws (its icons' players) lives as long as the component
+  const middleware = createMiddleware().get();
 
   props.ref instanceof Function && props.ref?.(peerTitle.element); // solid will always make it a function
 
@@ -30,7 +33,10 @@ export const PeerTitleTsx = (props: {
         onlyFirstName: props.onlyFirstName,
         username: props.username,
         limitSymbols: props.limitSymbols,
-        withIcons: props.withIcons
+        withIcons: props.withIcons,
+        wrapOptions: {middleware},
+        // * as without a middleware: no emoji status here
+        noPremiumIcon: true
       });
       if(props.onClick) {
         attachClickEvent(peerTitle.element, props.onClick, {listenerSetter});

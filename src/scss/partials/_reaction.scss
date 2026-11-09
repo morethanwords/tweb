@@ -186,6 +186,14 @@
         z-index: 2;
       }
 
+      // * on the wallpaper, out of the bubble (`reactions-element.is-outside`): of the theme's own colours, opaque where
+      // * the wallpaper would show through the light ones
+      .reactions.is-outside & {
+        --chosen-background-color: var(--reaction-paid-outside-chosen-background-color) !important;
+        --background-color: var(--reaction-paid-outside-background-color) !important;
+        color: var(--reaction-paid-outside-color);
+      }
+
       &.is-chosen.forwards {
         color: #fff;
       }

@@ -35,6 +35,7 @@ import {settle, ease, inertia, linearEasing} from '@components/wallet/visual/mot
 import {clock} from '@components/wallet/visual/clock';
 import {DrumCell, SPIN} from '@components/wallet/visual/amount/roll';
 import {BlurFilter, gooFilter, layoutWidth, removeFilter, smearFilter} from '@components/wallet/visual/dom';
+import getLayoutScale from '@helpers/dom/getLayoutScale';
 import '@components/wallet/visual/amount/cells.scss';
 
 const TYPING = 0.22;
@@ -196,8 +197,7 @@ export class Digits {
     // Where the glyphs stood — the move is counted from these places, on screen, then back in the line's own
     // pixels (it may be scaled to fit).
     const before = new Map(next.filter((c) => !c.isNew).map((c): [DigitCell, number] => [c, c.el.getBoundingClientRect().left]));
-    const lineWidth = layoutWidth(this.container);
-    const scale = lineWidth ? this.container.getBoundingClientRect().width / lineWidth : 1;
+    const scale = getLayoutScale(this.container, this.container.getBoundingClientRect());
     this.container.replaceChildren(this.measurer, ...order.map((c) => c.el));
     for(const cell of next) {
       if(cell.isNew) {
@@ -206,7 +206,7 @@ export class Digits {
       }
     }
     for(const [cell, was] of before) {
-      const dx = (was - cell.el.getBoundingClientRect().left) / (scale || 1);
+      const dx = (was - cell.el.getBoundingClientRect().left) / scale;
       if(Math.abs(dx) > 0.5) this.slide(cell, dx);
     }
     for(const cell of gone) this.popOut(cell);

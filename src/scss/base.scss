@@ -1708,6 +1708,13 @@ hr {
 
   &-inner {
     @include text-overflow();
+
+    // * the title's baseline is its name's, whatever icon stands first (a bot-verification one has
+    // * no text, and a flex box takes its first item's baseline): a row aligned by baseline
+    // * (the chat list's title and time) stays where it is with and without icons
+    .with-icons > & {
+      align-self: baseline;
+    }
   }
 
   &-bot-verification {

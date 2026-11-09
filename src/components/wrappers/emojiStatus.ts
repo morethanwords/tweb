@@ -2,10 +2,11 @@ import {IS_WEBM_SUPPORTED} from '@environment/videoSupport';
 import {rgbIntToHex} from '@helpers/color';
 import {MediaSize} from '@helpers/mediaSize';
 import mediaSizes from '@helpers/mediaSizes';
-import {EmojiStatus, DocumentAttribute, Document} from '@layer';
+import {EmojiStatus, Document} from '@layer';
 import rootScope from '@lib/rootScope';
 import {Sparkles} from '@components/sparkles';
 import wrapSticker from '@components/wrappers/sticker';
+import markTextColorEmoji from '@components/wrappers/markTextColorEmoji';
 
 const RENDER_SPARKLES = false; // performance issues
 
@@ -32,10 +33,7 @@ export default async function wrapEmojiStatus({
     if(!middleware()) return;
     const loadPromises: Promise<any>[] = [];
 
-    const attribute = doc.attributes.find((attr) => attr._ === 'documentAttributeCustomEmoji') as DocumentAttribute.documentAttributeCustomEmoji;
-    if(attribute && attribute.pFlags.text_color) {
-      container.classList.add('emoji-status-text-color');
-    }
+    markTextColorEmoji(container, doc);
 
     const {render} = await wrapSticker({
       doc,
