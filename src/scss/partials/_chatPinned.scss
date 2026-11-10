@@ -380,6 +380,10 @@
       top: 50%;
       transform: translateY(-50%);
     }
+
+    &-label {
+      display: block;
+    }
   }
 
   &.has-custom-action-button {

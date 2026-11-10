@@ -792,16 +792,18 @@ export default function createChatPinnedMessage(
     const btn = document.createElement(opts.as || 'button');
     btn.classList.add(
       'pinned-container-action-button',
-      'pinned-message-action-button',
-      'text-overflow-no-wrap'
+      'pinned-message-action-button'
     );
-    // * a bot's button label: truncated at its own end, whatever the layout's direction
-    setDirection(btn);
+    // The label follows its text, but the button's logical inset follows the interface.
+    const label = document.createElement('span');
+    label.classList.add('pinned-message-action-label', 'text-overflow-no-wrap');
+    setDirection(label);
     if(typeof opts.text === 'string') {
-      btn.textContent = opts.text;
+      label.textContent = opts.text;
     } else {
-      btn.append(opts.text);
+      label.append(opts.text);
     }
+    btn.append(label);
     if(opts.onClick) {
       attachClickEvent(btn, opts.onClick, {listenerSetter});
     }
