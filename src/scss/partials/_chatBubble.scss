@@ -897,6 +897,16 @@ $message-out-gradient-phases: 0, 1, 2, 3, 4, 5, 6, 7;
     }
   }
 
+  // a link preview's large photo or video sets the bubble's width, as in Telegram Desktop: the headers above it
+  // (the reply, the name line with a forward or a bot) add nothing to that width, they fill what it gives and elide
+  &.has-webpage.photo:not(.is-square-photo),
+  &.has-webpage.video {
+    .bubble-content > .reply,
+    .bubble-content > .name {
+      contain: inline-size;
+    }
+  }
+
   &.emoji-big .emoji-image {
     height: 1.125rem;
     width: 1.125rem;
