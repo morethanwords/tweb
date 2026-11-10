@@ -54,6 +54,27 @@ describe('the version the app was updated to', () => {
   });
 });
 
+describe('the dialog list of a state older than build 687', () => {
+  test('is reset, since the old pagination marked dialogs it skipped as loaded', async() => {
+    states[1] = {userId: 1, authState: signedIn, version: '1.0', build: 685, updates: {pts: 100}};
+
+    const loaded = await load();
+
+    expect(loaded[1].resetStorages.get('dialogs')).toEqual([]);
+    expect(loaded[1].pushedKeys.has('allDialogsLoaded')).toBe(true);
+    expect(loaded[1].pushedKeys.has('dialogsPaginationOffsets')).toBe(true);
+    expect(loaded[1].pushedKeys.has('pinnedOrders')).toBe(true);
+  });
+
+  test('is kept by a state of build 687', async() => {
+    states[1] = {userId: 1, authState: signedIn, version: '1.0', build: 687, updates: {pts: 100}};
+
+    const loaded = await load();
+
+    expect(loaded[1].resetStorages.has('dialogs')).toBe(false);
+  });
+});
+
 describe('a state that could not be read', () => {
   test('writes none of its defaults over what is kept, and finds no version new', async() => {
     states[1] = {userId: 1, authState: signedIn, version: '1.0', build: App.build - 1, updates: {pts: 100}};

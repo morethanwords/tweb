@@ -1,6 +1,9 @@
-import {AppMessagesManager} from '@appManagers/appMessagesManager';
 import getDialogsPaginationOffsets, {DialogsPaginationOffsets} from '@appManagers/utils/dialogs/getDialogsPaginationOffsets';
-import DialogsStorage from '@lib/storages/dialogs';
+import {GLOBAL_FOLDER_ID} from '@lib/storages/dialogs';
+import {ONE_DAY as DAY} from '@helpers/date';
+import {createDialogsStorage, makeDialog as makeUserDialog} from '@/tests/helpers/dialogsStorage';
+import PeersStorage from '@lib/storages/peers';
+import {createTopMessagesHarness} from '@/tests/helpers/topMessages';
 import {Dialog, Message, MessagesDialogs} from '@layer';
 import '@helpers/peerIdPolyfill';
 
@@ -13,9 +16,7 @@ import '@helpers/peerIdPolyfill';
 // was never loaded. Now the list is paged like tdesktop does: by the date, id and peer of the top
 // message of the LAST dialog of the previous page, in the server's response order.
 
-const DAY = 86400;
 const NOW = 1792000000;
-const SELF_ID = 1;
 
 type ServerDialog = {
   userId: number,
@@ -27,18 +28,11 @@ type ServerDialog = {
   pinned?: boolean
 };
 
-const makeDialog = (d: ServerDialog): Dialog.dialog => ({
-  _: 'dialog',
+const makeDialog = (d: ServerDialog): Dialog.dialog => makeUserDialog(d.userId, {
   pFlags: d.pinned ? {pinned: true} : {},
-  peer: {_: 'peerUser', user_id: d.userId},
   top_message: d.topMessage,
   read_inbox_max_id: d.topMessage,
-  read_outbox_max_id: d.topMessage,
-  unread_count: 0,
-  unread_mentions_count: 0,
-  unread_reactions_count: 0,
-  unread_poll_votes_count: 0,
-  notify_settings: {_: 'peerNotifySettings'}
+  read_outbox_max_id: d.topMessage
 });
 
 const makeMessage = (d: ServerDialog): Message.message => ({
@@ -73,7 +67,7 @@ const makeServerDialogs = (total: number, outOfOrderAt: number) => {
 // * messages.getDialogs does: the offset message's date is compared with the dialogs' order dates
 const serveDialogs = (
   dialogs: ServerDialog[],
-  offset: {date: number, id: number, peerId: number},
+  offset: DialogsPaginationOffsets,
   limit: number
 ) => {
   if(!offset.date) {
@@ -90,7 +84,7 @@ const serveDialogs = (
 
 const loadAll = (
   dialogs: ServerDialog[],
-  nextOffset: (page: ServerDialog[]) => {date: number, id: number, peerId: number}
+  nextOffset: (page: ServerDialog[]) => DialogsPaginationOffsets
 ) => {
   const loaded = new Set<number>();
   let offset = {date: 0, id: 0, peerId: 0};
@@ -107,15 +101,16 @@ const loadAll = (
   return loaded;
 };
 
+// * the second dialog is out of order: a year old top message among today's dialogs
+const outOfOrderPage: ServerDialog[] = [
+  {userId: 100, topMessage: 1, orderDate: NOW, messageDate: NOW},
+  {userId: 200, topMessage: 2, orderDate: NOW - 60, messageDate: NOW - 365 * DAY},
+  {userId: 300, topMessage: 3, orderDate: NOW - 120, messageDate: NOW - 120}
+];
+
 describe('getDialogsPaginationOffsets', () => {
   test('anchors on the LAST dialog of the page, not on the oldest one', () => {
-    const page = [
-      {userId: 100, topMessage: 1, orderDate: NOW, messageDate: NOW},
-      // * out of order: a year old top message among today's dialogs
-      {userId: 200, topMessage: 2, orderDate: NOW - 60, messageDate: NOW - 365 * DAY},
-      {userId: 300, topMessage: 3, orderDate: NOW - 120, messageDate: NOW - 120}
-    ];
-    const {dialogs, messages} = makePage(page);
+    const {dialogs, messages} = makePage(outOfOrderPage);
 
     expect(getDialogsPaginationOffsets(dialogs, messages)).toEqual<DialogsPaginationOffsets>({
       date: NOW - 120,
@@ -188,65 +183,14 @@ describe('chat list pagination in getTopMessages', () => {
     dialogsOffsetDate: {[folderId: number]: number},
     dialogsPaginationOffsets: {[folderId: number]: DialogsPaginationOffsets},
     response: MessagesDialogs
-  }) => {
-    const storage = new DialogsStorage();
-    Object.assign(storage as any, {
-      allDialogsLoaded: {},
-      dialogs: {},
+  }) => createTopMessagesHarness({
+    response: options.response,
+    storageFields: {
       dialogsOffsetDate: options.dialogsOffsetDate,
-      dialogsPaginationOffsets: options.dialogsPaginationOffsets,
-      folders: {},
-      pinnedOrders: {0: []},
-      appCommunitiesManager: {
-        getCommunityDialogsCount: () => 0,
-        handlePinnedDialogsOrder: vi.fn(),
-        sanitizePinnedDialogsOrder: (order: PeerId[]) => order
-      },
-      appMessagesManager: {scheduleHandleNewDialogs: vi.fn()},
-      appPeersManager: {
-        getPeerId: (peer: Dialog.dialog['peer']) => (peer as any).user_id.toPeerId(false),
-        isBotforum: () => false,
-        peerId: (SELF_ID as UserId).toPeerId(false)
-      },
-      appStateManager: {pushToState: vi.fn()},
-      saveDialog: vi.fn(),
-      setDialogsLoaded: vi.fn(),
-      getFolderDialogs: (): never[] => []
-    });
-
-    // * keep the response out of the dialogs storage: only the request and the offsets matter here
-    const filterDialogsForStorage = storage.filterDialogsForStorage.bind(storage);
-    vi.spyOn(storage, 'filterDialogsForStorage').mockImplementation((dialogs, onPinnedOrder) => {
-      const filtered = filterDialogsForStorage(dialogs, onPinnedOrder);
-      filtered.length = 0;
-      return filtered;
-    });
-
-    const invokeApiSingleProcess = vi.fn(({processResult}) => Promise.resolve(processResult(options.response)));
-    const manager = new AppMessagesManager();
-    const log = Object.assign(vi.fn(), {
-      bindPrefix: () => log,
-      error: vi.fn(),
-      warn: vi.fn()
-    });
-    Object.assign(manager as any, {
-      apiManager: {invokeApiSingleProcess},
-      appCommunitiesManager: {getCommunityDialogsCount: () => 0},
-      appDraftsManager: {addMissedDialogs: vi.fn(), getDraftsClock: () => 0},
-      appNotificationsManager: {getSettingsClock: () => 0},
-      appPeersManager: {
-        getInputPeerById: (peerId: PeerId) => peerId ? {_: 'inputPeerUser', user_id: peerId.toUserId()} : {_: 'inputPeerEmpty'}
-      },
-      dialogsStorage: storage,
-      log,
-      middleware: {get: () => () => true},
-      rootScope: {dispatchEvent: vi.fn()},
-      saveApiResult: vi.fn(),
-      timeManager: {getServerTimeOffset: () => 0}
-    });
-
-    return {storage, manager, invokeApiSingleProcess};
-  };
+      dialogsPaginationOffsets: options.dialogsPaginationOffsets
+    },
+    getInputPeerById: (peerId: PeerId) => peerId ? {_: 'inputPeerUser', user_id: peerId.toUserId()} : {_: 'inputPeerEmpty'}
+  });
 
   const response = (page: ServerDialog[]): MessagesDialogs.messagesDialogsSlice => ({
     _: 'messages.dialogsSlice',
@@ -256,18 +200,12 @@ describe('chat list pagination in getTopMessages', () => {
     ...makePage(page)
   });
 
-  const page = [
-    {userId: 100, topMessage: 1, orderDate: NOW, messageDate: NOW},
-    {userId: 200, topMessage: 2, orderDate: NOW - 60, messageDate: NOW - 365 * DAY},
-    {userId: 300, topMessage: 3, orderDate: NOW - 120, messageDate: NOW - 120}
-  ];
-
   test('requests the next page from the stored offsets and advances them to the last dialog', async() => {
     const stored: DialogsPaginationOffsets = {date: NOW + 60, id: 9, peerId: (900 as UserId).toPeerId(false)};
     const {storage, manager, invokeApiSingleProcess} = setup({
       dialogsOffsetDate: {0: NOW - 365 * DAY},
       dialogsPaginationOffsets: {0: stored},
-      response: response(page)
+      response: response(outOfOrderPage)
     });
 
     await manager.getTopMessages({limit: 20, folderId: 0});
@@ -289,7 +227,7 @@ describe('chat list pagination in getTopMessages', () => {
     const {manager, invokeApiSingleProcess} = setup({
       dialogsOffsetDate: {},
       dialogsPaginationOffsets: {0: {date: NOW - DAY, id: 9, peerId: (900 as UserId).toPeerId(false)}},
-      response: response(page)
+      response: response(outOfOrderPage)
     });
 
     await manager.getTopMessages({limit: 20, folderId: 0});
@@ -299,5 +237,123 @@ describe('chat list pagination in getTopMessages', () => {
       offset_id: 0,
       offset_peer: {_: 'inputPeerEmpty'}
     });
+  });
+
+  test('resumes the global list after a reload, when only the real folders were restored', async() => {
+    const stored: DialogsPaginationOffsets = {date: NOW - 300, id: 7, peerId: (700 as UserId).toPeerId(false)};
+    const {manager, invokeApiSingleProcess} = setup({
+      dialogsOffsetDate: {0: NOW - 365 * DAY},
+      dialogsPaginationOffsets: {[GLOBAL_FOLDER_ID]: stored},
+      response: response(outOfOrderPage)
+    });
+
+    await manager.getTopMessages({limit: 20, folderId: GLOBAL_FOLDER_ID});
+
+    expect(invokeApiSingleProcess.mock.calls[0][0].params).toMatchObject({
+      offset_date: NOW - 300,
+      offset_id: 7,
+      offset_peer: {_: 'inputPeerUser', user_id: 700}
+    });
+  });
+
+  test('starts the global list from the top while no real folder is loaded, even with stored offsets', async() => {
+    const {manager, invokeApiSingleProcess} = setup({
+      dialogsOffsetDate: {},
+      dialogsPaginationOffsets: {[GLOBAL_FOLDER_ID]: {date: NOW - 300, id: 7, peerId: (700 as UserId).toPeerId(false)}},
+      response: response(outOfOrderPage)
+    });
+
+    await manager.getTopMessages({limit: 20, folderId: GLOBAL_FOLDER_ID});
+
+    expect(invokeApiSingleProcess.mock.calls[0][0].params).toMatchObject({
+      offset_date: 0,
+      offset_id: 0,
+      offset_peer: {_: 'inputPeerEmpty'}
+    });
+  });
+});
+
+describe('the peer of the stored offsets', () => {
+  const peerA = (900 as UserId).toPeerId(false);
+  const peerB = (901 as UserId).toPeerId(false);
+  const offsets = (peerId: PeerId): DialogsPaginationOffsets => ({date: NOW, id: 5, peerId});
+
+  const setup = () => {
+    const peersStorage = new PeersStorage();
+    const storage = createDialogsStorage({peersStorage: {
+      requestPeer: peersStorage.requestPeer.bind(peersStorage),
+      releasePeer: peersStorage.releasePeer.bind(peersStorage),
+      requestPeersForKey: peersStorage.requestPeersForKey.bind(peersStorage)
+    }});
+    return {peersStorage, storage};
+  };
+
+  test('is needed once the offsets are set', () => {
+    const {peersStorage, storage} = setup();
+    storage.setDialogsPaginationOffsets(0, offsets(peerA));
+
+    expect(peersStorage.isPeerNeeded(peerA)).toBe(true);
+  });
+
+  test('is released when new offsets of the folder replace it, unless another key holds it', () => {
+    const {peersStorage, storage} = setup();
+    storage.setDialogsPaginationOffsets(0, offsets(peerA));
+    peersStorage.requestPeer(peerB, 'dialog');
+    storage.setDialogsPaginationOffsets(0, offsets(peerB));
+
+    expect(peersStorage.isPeerNeeded(peerA)).toBe(false);
+    expect(peersStorage.isPeerNeeded(peerB)).toBe(true);
+
+    peersStorage.requestPeer(peerB, 'topPeer');
+    storage.setDialogsPaginationOffsets(0, offsets(peerA));
+    expect(peersStorage.isPeerNeeded(peerB)).toBe(true);
+  });
+
+  test('is kept per folder', () => {
+    const {peersStorage, storage} = setup();
+    storage.setDialogsPaginationOffsets(0, offsets(peerA));
+    storage.setDialogsPaginationOffsets(GLOBAL_FOLDER_ID, offsets(peerB));
+    storage.setDialogsPaginationOffsets(0, offsets(peerB));
+
+    expect(peersStorage.isPeerNeeded(peerA)).toBe(false);
+    expect(peersStorage.isPeerNeeded(peerB)).toBe(true);
+  });
+
+  test('is released when the offsets are reset', () => {
+    const {peersStorage, storage} = setup();
+    storage.setDialogsPaginationOffsets(0, offsets(peerA));
+    storage.setDialogsPaginationOffsets(GLOBAL_FOLDER_ID, offsets(peerB));
+    Object.assign(storage as any, {storage: {clear: () => {}}});
+    storage.clear();
+
+    expect(peersStorage.isPeerNeeded(peerA)).toBe(false);
+    expect(peersStorage.isPeerNeeded(peerB)).toBe(false);
+
+    storage.setDialogsPaginationOffsets(0, offsets(peerA));
+    storage.clear(true);
+
+    expect(peersStorage.isPeerNeeded(peerA)).toBe(false);
+  });
+
+  test('is requested when the offsets are restored from the state', async() => {
+    const {peersStorage, storage} = setup();
+    Object.assign(storage as any, {
+      appStateManager: {
+        getState: () => Promise.resolve({
+          pinnedOrders: {},
+          allDialogsLoaded: {},
+          dialogsPaginationOffsets: {0: offsets(peerA), [GLOBAL_FOLDER_ID]: offsets(peerB)}
+        }),
+        pushToState: () => {}
+      },
+      appStoragesManager: {
+        loadStorage: () => Promise.resolve({results: [], storage: {getCache: () => ({})}})
+      }
+    });
+
+    await (storage as any).after();
+
+    expect(peersStorage.isPeerNeeded(peerA)).toBe(true);
+    expect(peersStorage.isPeerNeeded(peerB)).toBe(true);
   });
 });

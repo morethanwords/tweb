@@ -271,6 +271,10 @@ export default class DialogsStorage extends AppManager {
 
       this.allDialogsLoaded = state.allDialogsLoaded || {};
       this.dialogsPaginationOffsets = state.dialogsPaginationOffsets || {};
+      // * the same point where the restored dialogs get their peers: before anything prunes the unneeded ones
+      for(const key in this.dialogsPaginationOffsets) {
+        this.requestPaginationOffsetsPeer(key, this.dialogsPaginationOffsets[key]);
+      }
 
       if(dialogs.length) {
         this.appDraftsManager.addMissedDialogs();
@@ -361,7 +365,7 @@ export default class DialogsStorage extends AppManager {
       this.allDialogsLoaded = {};
       this.saveAllDialogsLoaded();
 
-      this.dialogsPaginationOffsets = {};
+      this.resetDialogsPaginationOffsets();
       this.saveDialogsPaginationOffsets();
 
       // * clear not numerable properties
@@ -372,7 +376,7 @@ export default class DialogsStorage extends AppManager {
       this.savePinnedOrders();
     } else {
       this.allDialogsLoaded = {};
-      this.dialogsPaginationOffsets = {};
+      this.resetDialogsPaginationOffsets();
       this.pinnedOrders = {};
       for(const folderId of REAL_FOLDERS) {
         this.pinnedOrders[folderId] = [];
@@ -495,10 +499,14 @@ export default class DialogsStorage extends AppManager {
   /**
    * The offsets of the next `messages.getDialogs` page of a folder, if a page of it was received.
    * Ignored while no dialog of the folder is loaded (e.g. the dialogs storage was reset while the
-   * state kept the offsets): the list must then start from the top again.
+   * state kept the offsets): the list must then start from the top again. For GLOBAL_FOLDER_ID a loaded
+   * dialog of any real folder counts, since only those are restored from the state after a reload.
    */
   public getDialogsPaginationOffsets(folderId: number): DialogsPaginationOffsets {
-    if(!this.dialogsOffsetDate[folderId]) {
+    const hasLoadedDialogs = folderId === GLOBAL_FOLDER_ID ?
+      !!this.dialogsOffsetDate[GLOBAL_FOLDER_ID] || Array.from(REAL_FOLDERS).some((realFolderId) => !!this.dialogsOffsetDate[realFolderId]) :
+      !!this.dialogsOffsetDate[folderId];
+    if(!hasLoadedDialogs) {
       return;
     }
 
@@ -507,7 +515,23 @@ export default class DialogsStorage extends AppManager {
 
   public setDialogsPaginationOffsets(folderId: number, offsets: DialogsPaginationOffsets) {
     (this.dialogsPaginationOffsets ??= {})[folderId] = offsets;
+    this.requestPaginationOffsetsPeer(String(folderId), offsets);
     this.saveDialogsPaginationOffsets();
+  }
+
+  // * the offsets' peer is sent as `offset_peer` after a reload, so it has to stay in the storage until the offsets go
+  private requestPaginationOffsetsPeer(folderKey: string, offsets?: DialogsPaginationOffsets) {
+    // * the object key of GLOBAL_FOLDER_ID (undefined) is 'undefined'
+    const key = `paginationOffsets_${folderKey === String(GLOBAL_FOLDER_ID) ? 'all' : folderKey}` as const;
+    this.peersStorage.requestPeersForKey(offsets?.peerId ? [offsets.peerId] : [], key);
+  }
+
+  private resetDialogsPaginationOffsets() {
+    for(const key in this.dialogsPaginationOffsets) {
+      this.requestPaginationOffsetsPeer(key, undefined);
+    }
+
+    this.dialogsPaginationOffsets = {};
   }
 
   private saveDialogsPaginationOffsets() {
