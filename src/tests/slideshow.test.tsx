@@ -2,6 +2,7 @@ import {createSignal} from 'solid-js';
 import {render} from 'solid-js/web';
 import Slideshow from '@components/slideshow';
 import styles from '@components/slideshow.module.scss';
+import {setMediaPeekPress} from '@components/mediaPeek/press';
 
 const swipeMocks = vi.hoisted(() => ({
   // frames held back instead of run at once, while a test needs to see what happens before them
@@ -152,6 +153,13 @@ describe('Slideshow stable selection', () => {
 });
 
 describe('Slideshow paging', () => {
+  // * a press moved by each of these in turn, then let go
+  const drag = (...xDiffs: number[]) => {
+    swipeMocks.options!.onFirstSwipe();
+    xDiffs.forEach((xDiff) => swipeMocks.options!.onSwipe(xDiff, 0));
+    swipeMocks.options!.onReset();
+  };
+
   const rect = {bottom: 200, height: 200, left: 0, right: 300, toJSON: () => ({}), top: 0, width: 300, x: 0, y: 0};
 
   function renderKeyed() {
@@ -196,11 +204,6 @@ describe('Slideshow paging', () => {
 
   test('a short drag puts the item back, a longer one pages by one', () => {
     const {host, dispose, shown, onIndexChange} = renderKeyed();
-    const drag = (xDiff: number) => {
-      swipeMocks.options!.onFirstSwipe();
-      swipeMocks.options!.onSwipe(xDiff, 0);
-      swipeMocks.options!.onReset();
-    };
 
     drag(-3); // * a press that barely moved is a click
     drag(-40);
@@ -238,6 +241,37 @@ describe('Slideshow paging', () => {
     expect(wheel({deltaX: 10, deltaY: 1})).toBe(true);
     expect(wheel({deltaX: 1, deltaY: 10})).toBe(false);
     expect(wheel({deltaX: 10, deltaY: 1, ctrlKey: true})).toBe(false);
+
+    dispose();
+    host.remove();
+  });
+
+  test('a drag cancels the peek its press waits on, and a peek shown first keeps the items still', () => {
+    const {host, dispose, shown, onIndexChange} = renderKeyed();
+    let isPeekShown = false;
+    const cancel = vi.fn();
+    const forget = setMediaPeekPress({element: host.querySelector('span')!, isShown: () => isPeekShown, cancel});
+
+    drag(-3); // * not a drag yet: the peek may still come
+    expect(cancel).not.toHaveBeenCalled();
+
+    drag(-10, -900);
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(onIndexChange.mock.calls).toEqual([[1]]);
+
+    isPeekShown = true;
+    drag(-3, -10, -900);
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(onIndexChange.mock.calls).toEqual([[1]]);
+    expect(shown()).toEqual([1]);
+    forget();
+
+    // * a press that started elsewhere is none of this slideshow's
+    const forgetOther = setMediaPeekPress({element: document.createElement('div'), isShown: () => true, cancel});
+    drag(-900);
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(onIndexChange.mock.calls).toEqual([[1], [2]]);
+    forgetOther();
 
     dispose();
     host.remove();

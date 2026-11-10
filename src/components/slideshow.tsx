@@ -19,6 +19,7 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import {isElementRTL} from '@helpers/dom/isDocumentRTL';
 import {IconTsx} from '@components/iconTsx';
 import Modes from '@config/modes';
+import {cancelMediaPeekIn, isMediaPeekShownIn} from '@components/mediaPeek/press';
 
 export type SlideshowProps<T> = {
   aspectRatio?: number;
@@ -138,7 +139,10 @@ export default function Slideshow<T>(props: SlideshowProps<T>) {
         if(samples.length > 20) samples.shift();
 
         if(!dragging) {
-          if(Math.abs(xDiff) < DRAG_DEAD_ZONE) return;
+          // * the first to take the press keeps it: a peek shown on an item holds the items still until
+          // * the release, and a drag cancels the peek its press would have shown
+          if(Math.abs(xDiff) < DRAG_DEAD_ZONE || isMediaPeekShownIn(container)) return;
+          cancelMediaPeekIn(container);
           dragging = true;
           setIsSwiping(true);
           setNoTransition(true);

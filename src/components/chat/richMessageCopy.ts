@@ -1,6 +1,6 @@
 import {bindActiveWindowListener} from '@helpers/appWindow';
 import prepareTextWithEntitiesForCopying from '@helpers/prepareTextWithEntitiesForCopying';
-import {getCopiedRange, isBeyondOnlyTime, writeCopy} from '@components/chat/messageTextCopy';
+import {getCopiedRange, isBeyondOnlyTime, NOT_TEXT, writeCopy} from '@components/chat/messageTextCopy';
 import {getRichQuotePageElement, getRichQuoteSelection} from '@components/chat/richQuoteSelection';
 import {RICH_QUOTE_SOURCE_ATTRIBUTE} from '@components/chat/richQuoteSources';
 import {richMessageToPlainMessage} from '@lib/richMessage';
@@ -26,6 +26,8 @@ function isEdgeOutsideTexts(range: Range, page: Element) {
   const walker = page.ownerDocument.createTreeWalker(page, NodeFilter.SHOW_TEXT);
   let first: Text, last: Text;
   for(let node = walker.nextNode() as Text; node; node = walker.nextNode() as Text) {
+    // * the time at the end of the last paragraph is no text at all (`NOT_TEXT`), as at the end of a message's own
+    if(node.parentElement.closest(NOT_TEXT)) continue;
     if(!range.intersectsNode(node)) {
       if(first) break;
       continue;

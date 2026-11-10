@@ -15,7 +15,7 @@ import {
   RichText
 } from '@layer';
 import wrapTelegramRichText from '@lib/richTextProcessor/wrapTelegramRichText';
-import {getDocumentRowBlockId} from '@lib/richMessage';
+import {getDocumentRowBlockId, isPageCaptionEmpty, isRichTextEmpty, RichMessageBubbleEdges, unwrapPageBlockCover} from '@lib/richMessage';
 import {
   applyInstantViewMediaSize,
   getMaximumHeightMediaSize,
@@ -159,7 +159,19 @@ type InstantViewContextValue = {
   onChecklistToggle?: (path: number[], checked: boolean) => void,
   isAlive: () => boolean,
   navigationGeneration: number,
-  media: Array<{ref: HTMLElement, media: Photo.photo | Document.document, caption: PageCaption}>
+  media: Array<{ref: HTMLElement, media: Photo.photo | Document.document, caption: PageCaption}>,
+  bubbleEdges?: InstantViewBubbleEdges
+};
+
+/**
+ * A rich message in a bubble: which of its top-level blocks meet the bubble's edges
+ * (`getRichMessageBubbleEdges`), and the place at the end of its last paragraph that the message's time
+ * floats in, as it floats at the end of a message's own text
+ */
+export type InstantViewBubbleEdges = {
+  edges: Accessor<RichMessageBubbleEdges>,
+  setTimeSlot: (index: number, slot: HTMLElement) => void,
+  releaseTimeSlot: (slot: HTMLElement) => void
 };
 
 const InstantViewContext = createContext<InstantViewContextValue>();
@@ -309,6 +321,7 @@ export function InstantViewBlocks(props: {
   paddings?: number,
   displayTextDiff?: boolean,
   onChecklistToggle?: (path: number[], checked: boolean) => void,
+  bubbleEdges?: InstantViewBubbleEdges,
   style?: JSX.CSSProperties
 }) {
   let disposed = false;
@@ -372,7 +385,8 @@ export function InstantViewBlocks(props: {
     get onChecklistToggle() {
       return props.onChecklistToggle;
     },
-    media: []
+    media: [],
+    bubbleEdges: props.bubbleEdges
   };
 
   onCleanup(() => value.referenceTooltipClose?.());
@@ -676,7 +690,7 @@ function PageDocument(props: {documentId: Long}) {
 
 function Caption(props: {caption: PageCaption, quote?: (part: string) => () => string}) {
   return (
-    <Show when={!isRichTextEmpty(props.caption.text) || !isRichTextEmpty(props.caption.credit)}>
+    <Show when={!isPageCaptionEmpty(props.caption)}>
       <div class={classNames(styles.Padding, styles.Caption)}>
         <Show when={!isRichTextEmpty(props.caption.text)}>
           <div class={styles.CaptionText}>
@@ -1254,6 +1268,18 @@ function Block(props: {
   const block = props.block;
 
   const CaptionC: typeof Caption = props.noCaption ? (...args: any[]) => false : Caption;
+  // * a top-level block of a rich message in a bubble that meets the bubble's edge (a cover's block is in its place)
+  const blockContext = useContext(InstantViewContext);
+  const isBubbleEdge = (edge: Exclude<keyof RichMessageBubbleEdges, 'lastParagraphText'>) => {
+    const edges = blockContext?.bubbleEdges?.edges();
+    const path = props.path;
+    return !!edges && path?.length === 1 && edges[edge] === path[0];
+  };
+  const mediaEdgeClasses = () => ({
+    [styles.FirstMedia]: isBubbleEdge('firstMedia'),
+    [styles.LastMedia]: isBubbleEdge('lastMedia')
+  });
+  const mediaEdgeClass = () => classNames(...Object.entries(mediaEdgeClasses()).map(([name, on]) => on && name));
   // * which text of the message a part of the block is, for a quote of a selection in it (`getRichQuoteNodes`)
   const quote = (part: string) => props.path ? () => getRichQuoteNodeId(props.path, part) : undefined;
   // if(block._ !== 'pageBlockRelatedArticles' && Math.random() !== undefined) {
@@ -1269,7 +1295,7 @@ function Block(props: {
       const level = (block as typeof block & {headingLevel?: number}).headingLevel || nativeLevel;
       const presentation = getInstantViewHeadingPresentation(Math.max(1, Math.min(6, level)) as InstantViewHeadingLevel);
       return (
-        <Dynamic component={presentation.tag} class={presentation.class}>
+        <Dynamic component={presentation.tag} class={presentation.class} classList={{[styles.FirstText]: isBubbleEdge('firstText')}}>
           <RichTextRenderer text={block.text} />
         </Dynamic>
       );
@@ -1283,18 +1309,32 @@ function Block(props: {
       const level = Number(block._.slice('pageBlockHeading'.length)) as InstantViewHeadingLevel;
       const presentation = getInstantViewHeadingPresentation(level);
       return (
-        <Dynamic component={presentation.tag} class={presentation.class}>
+        <Dynamic component={presentation.tag} class={presentation.class} classList={{[styles.FirstText]: isBubbleEdge('firstText')}}>
           <RichTextRenderer text={block.text} quote={quote('text')} />
         </Dynamic>
       );
     }
     case 'pageBlockParagraph': {
       const context = useContext(InstantViewContext);
+      const isTimeHost = () => isBubbleEdge('lastParagraph');
+      let timeSlot: HTMLSpanElement;
+      createEffect(() => {
+        if(!isTimeHost()) return;
+        const slot = timeSlot;
+        context.bubbleEdges.setTimeSlot(props.path[0], slot);
+        onCleanup(() => context.bubbleEdges.releaseTimeSlot(slot));
+      });
       return (
-        <p class={classNames(styles.Padding, styles.Paragraph)}>
+        <p
+          class={classNames(styles.Padding, styles.Paragraph)}
+          classList={{[styles.FirstText]: isBubbleEdge('firstText'), [styles.TimeHost]: isTimeHost()}}
+        >
           <RichTextRenderer text={block.text} quote={quote('text')} />
           {/* in a message an empty paragraph is an empty line, as the other apps draw it */}
           {context.message && isRichTextEmpty(block.text) && <br />}
+          {/* the bubble's time floats here when this is the message's last paragraph (`bubbleEdges`); it is
+          the last of the paragraph's nodes, so what is put before it stays before it */}
+          <span ref={timeSlot} class={styles.TimeSlot} />
         </p>
       );
     }
@@ -1469,11 +1509,7 @@ function Block(props: {
     case 'pageBlockCover': {
       // * a cover only presents its block, and a cover's cover the same one (tdesktop appends the cover's
       // * block in its place): a chain of them is one level, not one copy of the rest of it per cover
-      const cover = createMemo(() => {
-        let inner = block.cover;
-        while(inner?._ === 'pageBlockCover') inner = inner.cover;
-        return inner;
-      });
+      const cover = createMemo(() => unwrapPageBlockCover(block.cover));
       return (
         <div>
           <StablePageBlocks blocks={[cover()]} paddings={props.paddings} render={(cover) => <Block block={cover} paddings={props.paddings} path={props.path} />} />
@@ -1499,7 +1535,7 @@ function Block(props: {
                 () => block.url
               );
             }}
-            class={classNames(styles.Media, styles.MediaViewable, !props.grouped && styles.MediaFrame)}
+            class={classNames(styles.Media, styles.MediaViewable, !props.grouped && styles.MediaFrame, mediaEdgeClass())}
             photo={photo()}
             {...getSingleMediaBox(photo(), props.grouped)}
             withoutPreloader
@@ -1527,7 +1563,7 @@ function Block(props: {
               onClick = prepareMediaForViewer(ref, doc, () => block.caption);
             }}
             doc={doc()}
-            class={classNames(styles.Media, styles.MediaViewable, !props.grouped && styles.MediaFrame)}
+            class={classNames(styles.Media, styles.MediaViewable, !props.grouped && styles.MediaFrame, mediaEdgeClass())}
             withoutPreloader
             withPreview
             {...getChatVideoOptions(doc(), context.chat, props.grouped)}
@@ -1834,7 +1870,7 @@ function Block(props: {
         <>
           <Slideshow
             aspectRatio={aspectRatio()}
-            class={classNames(styles.Slideshow, styles.MediaFrame)}
+            class={classNames(styles.Slideshow, styles.MediaFrame, mediaEdgeClass())}
             items={items()}
             getItemKey={(item) => item.key}
           >
@@ -2009,6 +2045,7 @@ function Block(props: {
         <div
           ref={ref}
           class={classNames(styles.Collage, styles.Media, styles.MediaFrame)}
+          classList={mediaEdgeClasses()}
         >
           <For each={items()}>{(item, index) => {
             let ref: HTMLDivElement;
@@ -2083,10 +2120,6 @@ function Block(props: {
         </div>
       );
   }
-}
-
-function isRichTextEmpty(text: RichText) {
-  return text._ === 'textEmpty' || (text._ === 'textPlain' && !text.text.trim());
 }
 
 // Flatten a RichText tree to its plain string (preformatted code is plain text; any inline

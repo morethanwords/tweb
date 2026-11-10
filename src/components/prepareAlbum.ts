@@ -87,6 +87,9 @@ export default function prepareAlbum(options: AlbumOptions & {
     // * the layout's left is the line's start, as the corners below say: an album reads from the right in RTL
     div.style.insetInlineStart = (geometry.x / width * 100) + '%';
 
+    // * a cell reused by a new layout (reorder, resize) drops the corners it had as an outer one
+    div.style.borderStartStartRadius = div.style.borderEndStartRadius = div.style.borderStartEndRadius = div.style.borderEndEndRadius = '';
+
     if(sides & RectPart.Left && sides & RectPart.Top) {
       div.style.borderStartStartRadius = `calc(var(--border-start-start-radius) - ${options.spacing}px)`;
     }

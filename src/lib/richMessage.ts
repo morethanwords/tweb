@@ -149,6 +149,105 @@ function isFullWidthBlock(block: PageBlock): boolean {
 }
 
 /**
+ * The blocks of a rich message that meet its bubble's edges, by their index among the top-level blocks
+ * (an anchor draws nothing, so it is passed over), -1 for none: a photo, a video, a slideshow or a
+ * collage — a cover's too — at the top or the bottom is cut by the bubble's corners there, a paragraph
+ * or a heading at the top starts where a message's own text does, and a paragraph with text at the end
+ * takes the message's time on its last line, as tdesktop lays one out (a heading, a list, a quote, code
+ * or a caption does not).
+ */
+export type RichMessageBubbleEdges = {
+  firstMedia: number,
+  firstText: number,
+  lastMedia: number,
+  lastParagraph: number,
+  // what that paragraph reads: the time goes by its direction
+  lastParagraphText?: string
+};
+
+export function getRichMessageBubbleEdges(blocks: PageBlock[]): RichMessageBubbleEdges {
+  const edges: RichMessageBubbleEdges = {firstMedia: -1, firstText: -1, lastMedia: -1, lastParagraph: -1};
+  let first = -1, last = -1;
+  blocks.forEach((block, index) => {
+    if(block._ === 'pageBlockAnchor') return;
+    if(first === -1) first = index;
+    last = index;
+  });
+
+  if(first === -1) {
+    return edges;
+  }
+
+  const firstBlock = blocks[first], lastBlock = blocks[last];
+  if(isEdgeMediaBlock(firstBlock)) edges.firstMedia = first;
+  else if(firstBlock._ === 'pageBlockParagraph' || isHeadingBlock(firstBlock)) edges.firstText = first;
+
+  if(isEdgeMediaBlock(lastBlock)) {
+    // * its caption is drawn under it
+    if(isPageCaptionEmpty((unwrapPageBlockCover(lastBlock) as PageBlock.pageBlockPhoto).caption)) {
+      edges.lastMedia = last;
+    }
+  } else if(lastBlock._ === 'pageBlockParagraph') {
+    const text = getRichTextFlatText(lastBlock.text);
+    if(text.trim()) {
+      edges.lastParagraph = last;
+      edges.lastParagraphText = text;
+    }
+  }
+
+  return edges;
+}
+
+/**
+ * What a cover presents: a cover only presents its block, and a cover's cover the same one (tdesktop appends
+ * the cover's block in its place). Any other block is itself
+ */
+export function unwrapPageBlockCover(block: PageBlock): PageBlock {
+  while(block?._ === 'pageBlockCover') block = block.cover;
+  return block;
+}
+
+export function isRichTextEmpty(text: RichText) {
+  return text._ === 'textEmpty' || (text._ === 'textPlain' && !text.text.trim());
+}
+
+// * whether a caption draws nothing: no text and no credit
+export function isPageCaptionEmpty(caption: PageCaption) {
+  return !caption || (isRichTextEmpty(caption.text) && isRichTextEmpty(caption.credit));
+}
+
+function isEdgeMediaBlock(block: PageBlock): boolean {
+  block = unwrapPageBlockCover(block);
+  switch(block?._) {
+    case 'pageBlockPhoto':
+    case 'pageBlockVideo':
+    case 'pageBlockSlideshow':
+    case 'pageBlockCollage':
+      return true;
+    default:
+      return false;
+  }
+}
+
+function isHeadingBlock(block: PageBlock): boolean {
+  switch(block._) {
+    case 'pageBlockTitle':
+    case 'pageBlockSubtitle':
+    case 'pageBlockHeader':
+    case 'pageBlockSubheader':
+    case 'pageBlockHeading1':
+    case 'pageBlockHeading2':
+    case 'pageBlockHeading3':
+    case 'pageBlockHeading4':
+    case 'pageBlockHeading5':
+    case 'pageBlockHeading6':
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
  * A file or an audio of a rich message: one document drawn as the document row a message's own
  * file or audio is, with its caption under it — never in a collage or a slideshow.
  */

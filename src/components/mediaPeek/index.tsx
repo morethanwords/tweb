@@ -39,6 +39,7 @@ import snapshotRenderedMedia, {copyRenderedImage} from '@components/mediaViewer/
 import createSourceFloatings from '@components/mediaViewer/sourceFloatings';
 import {STICKER_EFFECT_MULTIPLIER} from '@components/wrappers/sticker';
 import styles from '@components/mediaPeek/mediaPeek.module.scss';
+import {setMediaPeekPress} from '@components/mediaPeek/press';
 
 export type MediaPeekKind = 'sticker' | 'gif' | 'photo' | 'video';
 
@@ -654,6 +655,9 @@ function startMediaPeek(element: HTMLElement, options: MediaPeekOptions & Requir
     onRelease();
     finish();
   });
+
+  // * a slideshow paging under the press takes it before the peek shows, and stays still once it has
+  gesture.onClean(setMediaPeekPress({element, isShown: () => !!shown, cancel: onRelease}));
 
   const timeout = activeWindow.setTimeout(open, HOLD_DELAY);
   // * the message got deleted, the chat got closed

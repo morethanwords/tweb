@@ -11,7 +11,7 @@ const sources: WeakMap<Node, MessageTextSource> = new WeakMap();
 const SOURCE_ATTRIBUTE = 'data-message-text-source';
 
 // what a bubble draws among the text that is not a part of it
-const NOT_TEXT = '.time';
+export const NOT_TEXT = '.time';
 
 /**
  * Where each drawn piece stands in the message's text. A line break that the layout draws as the

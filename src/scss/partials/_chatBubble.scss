@@ -1078,11 +1078,7 @@ $message-out-gradient-phases: 0, 1, 2, 3, 4, 5, 6, 7;
 
   .attachment {
     max-width: 100%;
-    border-start-start-radius: var(--border-start-start-radius);
-    border-start-end-radius: var(--border-start-end-radius);
-    border-end-start-radius: var(--border-end-start-radius);
-    border-end-end-radius: var(--border-end-end-radius);
-    overflow: hidden;
+    @include bubble-corners(start, end);
     user-select: none;
 
     //-webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow

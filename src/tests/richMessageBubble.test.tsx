@@ -48,6 +48,7 @@ vi.mock('@lib/solidjs/hotReloadGuard', () => ({
 }));
 
 vi.mock('@lib/richMessage', () => ({
+  getRichMessageBubbleEdges: () => ({firstMedia: -1, firstText: -1, lastMedia: -1, lastParagraph: -1}),
   isRichMessageFullWidth: (blocks: Page.page['blocks']) => blocks.some((block) => block._ === 'pageBlockTable'),
   isRichMessagePart: (richMessage: RichMessage) => !!richMessage.pFlags.part,
   richMessageToPage: (richMessage: RichMessage): Page.page => ({

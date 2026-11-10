@@ -1,0 +1,11 @@
+// Media at a bubble's edge, cut by the bubble's own corners there (`--border-*-radius`, set on `.bubble` by its place
+// in a group, in or out and the direction): a message's attachment, a rich message's media at its top or bottom.
+// $edges: `start` (the top corners), `end` (the bottom ones)
+@mixin bubble-corners($edges...) {
+  @each $edge in $edges {
+    border-#{$edge}-start-radius: var(--border-#{$edge}-start-radius);
+    border-#{$edge}-end-radius: var(--border-#{$edge}-end-radius);
+  }
+
+  overflow: hidden;
+}

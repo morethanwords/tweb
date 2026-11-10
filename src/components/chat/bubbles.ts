@@ -278,7 +278,7 @@ import {richMessageToPage} from '@lib/richMessage';
 import {getWidgetSource, isWidgetRenderingEnabled, whenWidgetRenderingEnabled} from '@lib/widgetSandbox/payload';
 import {getWidgetHeightAtLeast, getWidgetKey, onWidgetHeightRemembered, WIDGET_MIN_WIDTH} from '@lib/widgetSandbox/sizing';
 import {getManagersSession} from '@lib/accounts/getCurrentAccount';
-import {RichMessageBubble, isRichMessageButtonTarget, isRichMessageTarget} from '@components/chat/bubbles/richMessage';
+import {RichMessageBubble, RichMessageBubbleLayout, isRichMessageButtonTarget, isRichMessageTarget} from '@components/chat/bubbles/richMessage';
 import {isPagingSlideshowTarget} from '@components/slideshow';
 import {isWidgetHorizontalDragTarget} from '@lib/widgetSandbox/gestures';
 import {keepWidgetHeights} from '@lib/widgetSandbox/heights';
@@ -810,6 +810,18 @@ function isBubbleTimeBlock(text: string) {
 
 // * the text each time was placed by: a switch of direction on the fly places it anew
 const bubbleTimeTexts: WeakMap<HTMLElement, string> = new WeakMap();
+// * the paragraph's a time floats at the end of in a rich message (RichMessageBubbleLayout): what an update of the
+// * time places it by, rather than the message's own text
+const richBubbleTimeTexts: WeakMap<HTMLElement, string> = new WeakMap();
+// * what takes a time out of a rich message's paragraph once the bubble puts a footer of its own before it
+const richBubbleTimeReleases: WeakMap<HTMLElement, () => void> = new WeakMap();
+
+// * a footer the shell owns (a fact-check, a link preview, a contact) stands before the time, outside the rich
+// * subtree an edit replaces, so the time is not at the end of the page's paragraph then
+function insertBeforeBubbleTime(timeSpan: HTMLElement, box: HTMLElement) {
+  richBubbleTimeReleases.get(timeSpan)?.();
+  timeSpan.before(box);
+}
 
 function placeBubbleTime(timeSpan: HTMLElement, text: string) {
   bubbleTimeTexts.set(timeSpan, text);
@@ -9176,7 +9188,7 @@ export default class ChatBubbles {
     }
     previous.replaceChildren(...Array.from(next.childNodes));
     previous.classList.toggle('is-floating', floating);
-    placeBubbleTime(previous, message.message || '');
+    placeBubbleTime(previous, richBubbleTimeTexts.get(previous) ?? (message.message || ''));
     if(status) this.setBubbleSendingStatus(bubble, status);
     // as in a group the bubble shows them when it is rendered, if not as a footer of comments: an edit may bring the
     // first of them, the count being no part of what it is made of
@@ -10497,6 +10509,18 @@ export default class ChatBubbles {
       bubble.classList.add('can-have-big-emoji');
     }
 
+    // * how a rich message meets the bubble (RichMessageBubble): the time floats at the end of its last paragraph, and
+    // * its header is laid out over media it starts with as over a photo. It is told before the time and the header are
+    // * made, and again whenever it changes (an edit, a translation, the rest of a part, an answer coming)
+    let richLayout: RichMessageBubbleLayout, syncRichTime: () => void, syncRichHeader: () => void;
+    let hasShellFooter = false;
+    const onRichBubbleLayout = (layout: RichMessageBubbleLayout) => {
+      richLayout = layout;
+      if(!middleware()) return;
+      syncRichTime?.();
+      syncRichHeader?.();
+    };
+
     const mountSolidMessageBody = (
       element: HTMLElement,
       currentMessage: Message.message,
@@ -10522,6 +10546,7 @@ export default class ChatBubbles {
           scrollToElement: (element) => {
             if(ownsCurrentBubble()) this.scrollToBubble(element, 'start');
           },
+          onRichBubbleLayout: ownsTime ? onRichBubbleLayout : undefined,
           onLayout: () => {
             if(holder.entry) this.onSolidMessageBodyLayout(holder.entry);
           }
@@ -10606,6 +10631,7 @@ export default class ChatBubbles {
             richMessage,
             page: richMessagePage,
             richTextOptions,
+            onBubbleLayout: onRichBubbleLayout,
             scrollToElement: (element: HTMLElement) => {
               if(ownsCurrentBubble()) this.scrollToBubble(element, 'start');
             }
@@ -10649,11 +10675,26 @@ export default class ChatBubbles {
       });
 
       let _clearfix: HTMLElement;
-      appendBubbleTime(bubble, messageDiv, () => {
-        messageDiv.append(timeSpan, _clearfix ??= clearfix());
-      });
+      const richTimeSlot = () => hasShellFooter ? undefined : richLayout?.timeSlot;
+      const appendTime = () => {
+        (richTimeSlot() || messageDiv).append(timeSpan, _clearfix ??= clearfix());
+      };
+      appendBubbleTime(bubble, messageDiv, appendTime);
 
-      placeBubbleTime(timeSpan, context.messageMessage || '');
+      syncRichTime = () => {
+        const text = richTimeSlot() ? richLayout.timeText : undefined;
+        if(text === undefined) richBubbleTimeTexts.delete(timeSpan);
+        else richBubbleTimeTexts.set(timeSpan, text);
+        // * the message's own place for it, unless the reactions or the media hold it now. Asked once a rich body has
+        // * told its layout, whatever the message was rendered as: an edit or an answer coming may make it rich
+        if(richLayout && bubble.timeAppenders?.[0]?.element === messageDiv) appendTime();
+        placeBubbleTime(timeSpan, text ?? (context.messageMessage || ''));
+      };
+      richBubbleTimeReleases.set(timeSpan, () => {
+        hasShellFooter = true;
+        syncRichTime();
+      });
+      syncRichTime();
 
       if(isBroadcast) {
         setUnreadObserver?.(timeSpan);
@@ -10663,6 +10704,12 @@ export default class ChatBubbles {
     } else if(isBroadcast) {
       // * a post with no time to be read by is read by itself
       setUnreadObserver?.();
+    }
+
+    // * nothing under a rich message with no time (a sponsored one has its button): media it ends with takes the
+    // * bubble's bottom corners. Whatever the message is now, as an edit may make it rich
+    if(noMessageInfo && !isSponsored) {
+      messageDiv.classList.add('is-rich-bubble-end');
     }
 
     bubbleContainer.prepend(messageDiv);
@@ -10879,7 +10926,7 @@ export default class ChatBubbles {
           ref: (box) => {
             factCheckBox = box;
             if(timeSpan) {
-              timeSpan.before(box);
+              insertBeforeBubbleTime(timeSpan, box);
             } else {
               messageDiv.append(box);
             }
@@ -11410,9 +11457,10 @@ export default class ChatBubbles {
                   factCheckBox.before(box);
                 } else if(timeSpan) {
                   if(invertMedia) {
+                    richBubbleTimeReleases.get(timeSpan)?.();
                     timeSpan.parentElement.prepend(box);
                     box.parentElement.classList.add('mt-bigger');
-                  } else timeSpan.before(box);
+                  } else insertBeforeBubbleTime(timeSpan, box);
                 } else {
                   messageDiv.append(box);
                 }
@@ -11554,7 +11602,7 @@ export default class ChatBubbles {
                 });
 
                 if(timeSpan) {
-                  timeSpan.before(box);
+                  insertBeforeBubbleTime(timeSpan, box);
                 } else {
                   messageDiv.append(box);
                 }
@@ -12520,7 +12568,7 @@ export default class ChatBubbles {
         title = this.createTitle(titlePeerId, wrapOptions, isForward, loadPromises).element;
       }
 
-      let replyContainer: HTMLElement;
+      let replyContainer: HTMLElement, textReplyHolder: HTMLElement;
       if(
         isMessage &&
         (
@@ -12541,7 +12589,9 @@ export default class ChatBubbles {
           appendCallback: (container) => {
             nameContainer.prepend(container);
             if(!isMessageEmpty && (!context.attachmentDiv || invertMedia)) {
-              container.classList.add('mb-shorter');
+              // * not over media a rich message starts with (`syncRichHeader`)
+              textReplyHolder = nameContainer;
+              container.classList.toggle('mb-shorter', !richLayout?.mediaFirst);
             }
 
             if(context.attachmentDiv) {
@@ -12741,6 +12791,20 @@ export default class ChatBubbles {
         replyContainer.classList.add('floating-part');
       }
 
+      // * media a rich message starts with stands under its header as a message's photo does: the header is laid
+      // * out as over an attachment — no text right under the name, the reply's own gap below it. Kept for any
+      // * message with text under its header, as an edit or an answer coming may make it rich (or plain again); the
+      // * reply is the one shown now, as a reply loaded later replaces its plate
+      const textNameDiv = nameDiv?.classList.contains('next-is-message') ? nameDiv : undefined;
+      if(textNameDiv || textReplyHolder) {
+        syncRichHeader = () => {
+          const mediaFirst = !!richLayout?.mediaFirst;
+          textNameDiv?.classList.toggle('next-is-message', !mediaFirst);
+          textReplyHolder?.querySelector<HTMLElement>(':scope > .reply')?.classList.toggle('mb-shorter', !mediaFirst);
+        };
+        if(richLayout) syncRichHeader();
+      }
+
       const firstElement = nameDiv?.firstElementChild as HTMLElement || title;
       if(
         this.canShowRanks &&
@@ -12825,6 +12889,8 @@ export default class ChatBubbles {
         badge,
         context.isStandaloneMedia
       );
+      // * a badge over the message's content, with no name to sit in: a header, though the name is hidden
+      bubble.classList.toggle('has-top-badge', badge.parentElement === bubbleContainer);
     }
 
     bubble.classList.add(isOut ? 'is-out' : 'is-in');
@@ -13248,7 +13314,7 @@ export default class ChatBubbles {
         clickable: !!mainCallback,
         class: 'is-contact',
         ref: (box) => {
-          if(timeSpan) timeSpan.before(box);
+          if(timeSpan) insertBeforeBubbleTime(timeSpan, box);
           else messageDiv.append(box);
           // * with no text, the box always heads the message: the margin a link preview gets above its text
           messageDiv.classList.add('mt-bigger');

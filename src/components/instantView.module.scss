@@ -2,6 +2,16 @@
 @use "../scss/tgico/variables.scss" as *;
 @use "../scss/variables.scss" as *;
 
+// A rich message with nothing over it in its bubble: no reply and no name — none, or a sender's name a group shows
+// on its first message only, there but hidden on the rest (`.name` in `_chatBubble`). An ephemeral message's badge
+// prepended to the bubble (`.has-top-badge`, when it has no name to sit in) is a header too, though the name is hidden
+@mixin rich-bubble-no-header {
+  :global(.bubble.hide-name:not(.is-reply):not(.has-top-badge)) &,
+  :global(.bubble:not(.is-reply):not(.forwarded):not(.must-have-name):not(.is-group-first):not(.has-top-badge)) & {
+    @content;
+  }
+}
+
 .RichText {
   --iv-scale: 1;
   --iv-media-max-height: 360px;
@@ -108,6 +118,42 @@
 .RichMessageWrapper {
   white-space: normal;
   margin: -4px -8px 0; // * the opposite to `_chatBubble .message`'s top and sides
+
+  // the bubble's corners by their sides, for its media to take whatever the page's own direction
+  // (`.RichMessage[dir]` below)
+  --rich-corner-top-left: var(--border-start-start-radius);
+  --rich-corner-top-right: var(--border-start-end-radius);
+  --rich-corner-bottom-left: var(--border-end-start-radius);
+  --rich-corner-bottom-right: var(--border-end-end-radius);
+
+  :global(.is-rtl) & {
+    --rich-corner-top-left: var(--border-start-end-radius);
+    --rich-corner-top-right: var(--border-start-start-radius);
+    --rich-corner-bottom-left: var(--border-end-end-radius);
+    --rich-corner-bottom-right: var(--border-end-start-radius);
+  }
+
+  // its text starts where a message's own does: under the message's top margin, right under a name
+  // (`.next-is-message`), its first block giving up the space a page keeps above it (`.FirstText`)
+  &TextFirst {
+    margin-top: 0;
+  }
+
+  // media under a header (a name, a forward, a reply) stands under it as a message's photo does: the
+  // header is laid out as over a photo (`bubbles.ts`) and the message's top margin is the gap; with no
+  // header it reaches the bubble's top
+  &MediaFirst {
+    margin-top: 0;
+
+    @include rich-bubble-no-header {
+      margin-top: -4px;
+    }
+
+    // right under the badge, as an ordinary photo is (the badge has no margin below it)
+    :global(.bubble.has-top-badge:not(.is-reply)) & {
+      margin-top: -4px;
+    }
+  }
 
   // a message as wide as a message gets (isRichMessageFullWidth): this asks for more width than there
   // is, and the bubble stops at its own limit
@@ -253,6 +299,31 @@
 
 .Blocks > .Paragraph {
   padding-block: calc(.375rem * var(--iv-scale));
+}
+
+// the first block of a rich message (`RichMessageWrapperTextFirst`)
+.Blocks > .FirstText {
+  padding-top: 0;
+}
+
+// The last paragraph of a rich message, which the message's time floats at the end of, as it does at the end
+// of a message's own text (`.time` + `.clearfix` in `_chatBubble`): the paragraph ends where the message does,
+// and the time's visible copy, put at the end of what holds it, at the end of the paragraph's text
+.Blocks > .TimeHost {
+  padding-bottom: 0;
+}
+
+.TimeSlot {
+  display: contents;
+
+  // the time runs the way the UI does, as in a message's own text, not the way the page does (its `dir`)
+  :global(.is-rtl) .Paragraph > & > :global(.time) {
+    direction: rtl;
+  }
+
+  :global(.time-inner) {
+    inset-inline-end: var(--padding-horizontal);
+  }
 }
 
 // In a message — a bubble or the composer — a paragraph is a line of its text, as every app draws
@@ -626,6 +697,39 @@
   :global(.bubble) & + & {
     margin-top: -1px;
   }
+}
+
+// Media at the bubble's edge is cut by the bubble's own corners there, as a message's photo is
+// (`.attachment`: the corners its place in a group and the direction give), and square under a header or
+// over what the message draws below it (a caption leaves no media at the edge: `getRichMessageBubbleEdges`).
+// A slideshow is cut as a whole, and a collage gives its outer items the corners (`prepareAlbum`).
+// The page lays its media out in its own direction, so the corners are handed over by their sides
+.RichMessageWrapper > .RichMessage[dir='ltr'] {
+  --border-start-start-radius: var(--rich-corner-top-left);
+  --border-start-end-radius: var(--rich-corner-top-right);
+  --border-end-start-radius: var(--rich-corner-bottom-left);
+  --border-end-end-radius: var(--rich-corner-bottom-right);
+}
+
+.RichMessageWrapper > .RichMessage[dir='rtl'] {
+  --border-start-start-radius: var(--rich-corner-top-right);
+  --border-start-end-radius: var(--rich-corner-top-left);
+  --border-end-start-radius: var(--rich-corner-bottom-right);
+  --border-end-end-radius: var(--rich-corner-bottom-left);
+}
+
+.FirstMedia.MediaFrame {
+  @include rich-bubble-no-header {
+    --border-start-start-radius: inherit;
+    --border-start-end-radius: inherit;
+    @include bubble-corners(start);
+  }
+}
+
+:global(.message.is-rich-bubble-end) .LastMedia.MediaFrame {
+  --border-end-start-radius: inherit;
+  --border-end-end-radius: inherit;
+  @include bubble-corners(end);
 }
 
 .Embed {
