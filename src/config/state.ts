@@ -223,6 +223,7 @@ type CacheSomething<T> = {
 
 export type State = {
   allDialogsLoaded: DialogsStorage['allDialogsLoaded'],
+  dialogsPaginationOffsets: DialogsStorage['dialogsPaginationOffsets'],
   pinnedOrders: DialogsStorage['pinnedOrders'],
   communityDialogs: {[communityId: string]: Dialog.dialogCommunity},
   joinedCommunityIds: ChatId[] | null,
@@ -632,6 +633,7 @@ export const SETTINGS_INIT: StateSettings = {
 
 export const STATE_INIT: State = {
   allDialogsLoaded: {},
+  dialogsPaginationOffsets: {},
   pinnedOrders: {},
   communityDialogs: {},
   joinedCommunityIds: null,

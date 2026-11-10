@@ -2,7 +2,7 @@ import applyMixins from '@helpers/applyMixins';
 import EventListenerBase from '@helpers/eventListenerBase';
 import {AppManager} from '@appManagers/manager';
 
-export type StatePeerType = 'recentSearch' | 'recentlyClosed' | 'topPeer' | 'dialog' | 'contact' | 'topMessage' | 'self' | 'community' | 'wallet';
+export type StatePeerType = 'recentSearch' | 'recentlyClosed' | 'topPeer' | 'dialog' | 'contact' | 'topMessage' | 'self' | 'community' | 'wallet' | 'paginationOffsets';
 
 type PeersStorageKey = `${StatePeerType}_${string | PeerId}` | StatePeerType;
 

@@ -39,6 +39,7 @@ import {AppManager} from '@appManagers/manager';
 import getPhotoMediaInput from '@appManagers/utils/photos/getPhotoMediaInput';
 import parseMarkdown from '@lib/richTextProcessor/parseMarkdown';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
+import getDialogsPaginationOffsets from '@appManagers/utils/dialogs/getDialogsPaginationOffsets';
 import getReadMaxIdIfUnread from '@appManagers/utils/messages/getReadMaxIdIfUnread';
 import isOwnMessage from '@appManagers/utils/messages/isOwnMessage';
 import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
@@ -6032,21 +6033,36 @@ export class AppMessagesManager extends AppManager {
   }> {
     const log = this.log.bindPrefix('getTopMessages-' + nextRandomUint(16));
     // const dialogs = this.dialogsStorage.getFolder(folderId);
-    const offsetId = 0;
+    let offsetId = 0;
     let offsetPeerId: PeerId;
     let offsetIndex = 0;
     query ||= undefined;
 
-    let offsetDate = this.dialogsStorage.getOffsetDate(folderId);
-    if(offsetDate) {
-      offsetIndex = offsetDate * 0x10000;
-      offsetDate += this.timeManager.getServerTimeOffset();
+    const isSearch = !!query;
+    const peerId = this.dialogsStorage.isVirtualFilter(folderId) ? folderId : undefined;
+    // * the main chat list (`messages.getDialogs`) is paged by the date, id and peer of the LAST dialog
+    // * of the previous page, like tdesktop does — not by the oldest date seen, which a single dialog
+    // * returned out of its date order would push far into the past, skipping every dialog in between
+    const isDialogsList = !peerId && !isSearch && filterType !== FilterType.Forum && filterType !== FilterType.Saved;
+    const paginationOffsets = isDialogsList ? this.dialogsStorage.getDialogsPaginationOffsets(folderId) : undefined;
+
+    let offsetDate: number;
+    if(paginationOffsets) {
+      // * raw server values, sent as they are
+      offsetDate = paginationOffsets.date;
+      offsetId = paginationOffsets.id;
+      offsetPeerId = paginationOffsets.peerId;
+      offsetIndex = (offsetDate - this.timeManager.getServerTimeOffset()) * 0x10000;
+    } else {
+      offsetDate = this.dialogsStorage.getOffsetDate(folderId);
+      if(offsetDate) {
+        offsetIndex = offsetDate * 0x10000;
+        offsetDate += this.timeManager.getServerTimeOffset();
+      }
     }
 
     const useLimit = 100;
     const middleware = this.middleware.get();
-    const isSearch = !!query;
-    const peerId = this.dialogsStorage.isVirtualFilter(folderId) ? folderId : undefined;
     const cutoffGeneration = filterType === FilterType.Saved ?
       undefined :
       this.getChannelAvailableMinIdGeneration();
@@ -6097,6 +6113,14 @@ export class AppMessagesManager extends AppManager {
         log('adding missed dialogs');
         // telegramMeWebManager.setAuthorized(true);
         this.appDraftsManager.addMissedDialogs();
+      }
+
+      // * from the raw response: saveApiResult and saveDialog rewrite the ids and dates below
+      if(isDialogsList && (result._ === 'messages.dialogs' || result._ === 'messages.dialogsSlice')) {
+        const nextOffsets = getDialogsPaginationOffsets(result.dialogs, result.messages);
+        if(nextOffsets) {
+          this.dialogsStorage.setDialogsPaginationOffsets(folderId, nextOffsets);
+        }
       }
 
       this.saveApiResult(result);

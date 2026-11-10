@@ -197,6 +197,12 @@ const STATE_STEPS = {
       writer.push('settings', writer.state.settings);
     }
   },
+  RESET_DIALOG_LIST: (writer: ReturnType<typeof StateWriter>) => {
+    writer.resetStorages.set('dialogs', []);
+    writer.push('allDialogsLoaded', copy(STATE_INIT.allDialogsLoaded));
+    writer.push('dialogsPaginationOffsets', copy(STATE_INIT.dialogsPaginationOffsets));
+    writer.push('pinnedOrders', copy(STATE_INIT.pinnedOrders));
+  },
   VERSION: (writer: ReturnType<typeof StateWriter>) => {
     let newVersion: string, oldVersion: string;
     // * the migrations go with the build, which is written at once; the version stays as it was until its
@@ -207,10 +213,12 @@ const STATE_STEPS = {
       } else if(writer.state.build < 562) { // * drop filtersArr
         writer.push('filtersArr', copy(STATE_INIT.filtersArr));
       } else if(writer.state.build < 677) {
-        writer.resetStorages.set('dialogs', []);
-        writer.push('allDialogsLoaded', copy(STATE_INIT.allDialogsLoaded));
-        writer.push('pinnedOrders', copy(STATE_INIT.pinnedOrders));
+        STATE_STEPS.RESET_DIALOG_LIST(writer);
         writer.push('botCommands', copy(STATE_INIT.botCommands));
+      } else if(writer.state.build < 687) {
+        // * the dialogs the old pagination skipped (a dialog out of date order made the next page jump over
+        // * everything between) were marked as loaded: load the list again
+        STATE_STEPS.RESET_DIALOG_LIST(writer);
       }
 
       RESET_WITH_BUILD.forEach((key) => {

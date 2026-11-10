@@ -1999,6 +1999,8 @@ describe('manager cache race guards', () => {
         dialogsStorage: {
           isVirtualFilter: () => false,
           getOffsetDate: () => 0,
+          getDialogsPaginationOffsets: (): undefined => undefined,
+          setDialogsPaginationOffsets: vi.fn(),
           getFolderDialogs: (): any[] => []
         },
         appNotificationsManager: {getSettingsClock: () => 0},
@@ -2051,6 +2053,8 @@ describe('manager cache race guards', () => {
         dialogsStorage: {
           isVirtualFilter: () => true,
           getOffsetDate: () => 0,
+          getDialogsPaginationOffsets: (): undefined => undefined,
+          setDialogsPaginationOffsets: vi.fn(),
           getFolderDialogs: (): any[] => [],
           getForumTopicsPaginationOffsets: () => ({date: 0, id: 0, topic: 0}),
           processTopics,

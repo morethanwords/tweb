@@ -2,6 +2,7 @@ import {AppMessagesManager} from '@appManagers/appMessagesManager';
 import {AppNotificationsManager} from '@appManagers/appNotificationsManager';
 import DialogsStorage from '@lib/storages/dialogs';
 import {Dialog, MessagesDialogs, MessagesPeerDialogs, PeerNotifySettings} from '@layer';
+import {createTopMessagesHarness} from '@/tests/helpers/topMessages';
 import '@helpers/peerIdPolyfill';
 
 describe('community notification settings', () => {
@@ -237,7 +238,6 @@ describe('community pinned dialog order', () => {
   });
 
   test('preserves cold-start order ordinary A, Community, ordinary B', async() => {
-    const storage = new DialogsStorage();
     const communitiesManager = {
       getCommunityDialogsCount: () => 1,
       handlePinnedDialogsOrder: vi.fn(),
@@ -245,36 +245,6 @@ describe('community pinned dialog order', () => {
       sanitizePinnedDialogsOrder: (order: PeerId[]) => order,
       saveCommunityDialog: vi.fn()
     };
-    Object.assign(storage as any, {
-      allDialogsLoaded: {},
-      dialogs: {},
-      dialogsOffsetDate: {},
-      folders: {},
-      pinnedOrders: {0: []},
-      appCommunitiesManager: communitiesManager,
-      appMessagesManager: {scheduleHandleNewDialogs: vi.fn()},
-      appPeersManager: {
-        getPeerId: (peer: Dialog.dialog['peer']) => peer._ === 'peerUser' ?
-          peer.user_id.toPeerId(false) :
-          peer._ === 'peerChannel' ?
-            peer.channel_id.toPeerId(true) :
-            peer.chat_id.toPeerId(true),
-        isBotforum: () => false,
-        peerId: (1 as UserId).toPeerId(false)
-      },
-      appStateManager: {pushToState: vi.fn()},
-      saveDialog: vi.fn(),
-      setDialogsLoaded: vi.fn(),
-      getFolderDialogs: (): never[] => []
-    });
-
-    const filterDialogsForStorage = storage.filterDialogsForStorage.bind(storage);
-    vi.spyOn(storage, 'filterDialogsForStorage').mockImplementation((dialogs, onPinnedOrder) => {
-      const filtered = filterDialogsForStorage(dialogs, onPinnedOrder);
-      filtered.length = 0;
-      return filtered;
-    });
-
     const response = {
       _: 'messages.dialogsSlice',
       count: 3,
@@ -292,25 +262,9 @@ describe('community pinned dialog order', () => {
       messages: [],
       users: []
     } as MessagesDialogs.messagesDialogsSlice;
-    const manager = new AppMessagesManager();
-    const log = Object.assign(vi.fn(), {
-      bindPrefix: () => log,
-      error: vi.fn(),
-      warn: vi.fn()
-    });
-    Object.assign(manager as any, {
-      apiManager: {
-        invokeApiSingleProcess: vi.fn(({processResult}) => Promise.resolve(processResult(response)))
-      },
-      appCommunitiesManager: communitiesManager,
-      appDraftsManager: {addMissedDialogs: vi.fn(), getDraftsClock: () => 0},
-      appNotificationsManager: {getSettingsClock: () => 0},
-      appPeersManager: {getInputPeerById: vi.fn()},
-      dialogsStorage: storage,
-      log,
-      middleware: {get: () => () => true},
-      rootScope: {dispatchEvent: vi.fn()},
-      saveApiResult: vi.fn()
+    const {storage, manager} = createTopMessagesHarness({
+      response,
+      communitiesManager
     });
 
     const result = await manager.getTopMessages({limit: 20, folderId: 0});
