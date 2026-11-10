@@ -1,14 +1,14 @@
 # widget-sandbox (vendored)
 
-`packages/core` of TelegramMessenger/widget-sandbox at `v0.6.2` (main's e837e6c, a QuickJS hardening release; its
+`packages/core` of TelegramMessenger/widget-sandbox at `v0.6.3` (main's 7a2ec35, a QuickJS hardening release; its
 `src/` is v0.6.0's): `src/`, `vite.ts`, `profile.json`,
 `scripts/sandbox-build.ts`, `scripts/profile-build.ts`, `package.json`, `tsconfig.json`, `README.md`, and the repo's
 `THIRD_PARTY_NOTICES.md`. Its QuickJS build (`packages/quickjs-wasm`: `dist/`, `package.json`, the licence) is next to
 it in `src/vendor/widget-sandbox-quickjs`, linked as `@telegram/widget-sandbox-quickjs` from tweb's package.json —
-v0.6.2's `dist/`, the QuickJS fork at 09bb809 (v0.6.1's seven upstream memory-safety fixes, the RegExp-delete
-use-after-free among them, and the parser's failed scope pushes propagated, so a scope is never read or written below
-its table); every file matches v0.6.2's `dist.sha256` (`emscripten-module.wasm` 5d2c9007…), and the asyncify build is
-made from it (`scripts/asyncify.mjs`). The
+v0.6.3's `dist/`, the QuickJS fork at b02310a (v0.6.1's seven upstream memory-safety fixes, the RegExp-delete
+use-after-free among them, and the parser's failed scope pushes and label allocations propagated, so neither a scope
+nor a label is ever read or written below its table); every file matches v0.6.3's `dist.sha256`
+(`emscripten-module.wasm` ded68186…), and the asyncify build is made from it (`scripts/asyncify.mjs`). The
 package's tests, the native packages, the apps, the corpus and the conformance set stay upstream (tweb's fixtures are a
 copy of part of the corpus — all of `corpus/attacks`, `corpus/defaults`, `corpus/interactive` and `corpus/resize` — and
 of the conformance set, in `src/lib/widgetSandbox/fixtures/`; the sandbox's mock bot, `src/lib/widgetSandbox/mockBot.ts`,
@@ -462,6 +462,50 @@ it could notice, so what the sheet overrode (`filter: none` over 17 boxes) was n
    element (2026-11-06).
    Upstream: a platform's own emoji is a renderer concern of every client; a hook like this one (or a decision that a
    client's emoji are out of scope) belongs in the shared renderer.
+14. **The layout budget** (2026-11-10, v0.6.3's `render-*` attacks; `shared/layout-policy.ts`, `renderer/core.ts`).
+   v0.6.3 says the web lays those widgets out as any page. WebKit does not lay them all out in bounded time: a grid
+   container that is an item of a grid is laid out again for each pass of its parent, two a level, so `n` nested grids
+   cost it 2^n passes — on a development VM (~2.3× slower than an M1) 14 took 49 ms, 18 816 ms, 20 3.2 s, and the 30
+   of `render-nested-grid` never end; `inline-grid`, `1fr` and `min-content` tracks alike, a flex or a block between
+   two grids breaks the chain. The widget's DOM is the page's (a shadow root, or a frame on the page's thread), so the
+   page never came back: the WebKit run of the attack corpus hung there. Each node under the grids counts: a tree of
+   grids 8 deep with 3 children each (3280 nodes) took 1.4 s, 10 deep with 2 (1023) 1.4 s, about 1 µs for every pass
+   of every node. Chromium and Firefox lay all of these out in a few milliseconds, and the other `render-*` attacks in
+   every engine (an over-long `var()` takes its fallback, a gradient of no period is drawn at once, the marker is
+   decimal). Nested multi-column is exponential in Chromium and WebKit too, but outside profile 1 (the declaration is
+   dropped). A native renderer bounds one layout to 100,000 boxes laid out afresh and 50 more per element (twidget);
+   the renderer now counts the same before anything lays the widget out: every node once for each pass of the
+   elements above it that may be grids, Σ 2^(those). Past the budget it takes away, before the page lays anything
+   out, every element that may be a grid with as many such ones above it as the deepest level that still fits
+   (`display: none !important`, what is under it with it), takes no more ops, and reports `limit` with the code
+   `layout-limit`; the host stops the widget with `Layout limit exceeded: … boxes to lay out afresh, of nested grids`
+   — in every policy, `compat` too: its grids are gone. The count runs at a batch's end, before a scroll or a
+   canvas's text inside one (both lay the page out), after a script's animations, before a query and before the size,
+   and again, the widget stopped or not, after the renderer changes the DOM itself (the stopped badge, the sheet without
+   effects), which the widget's selectors see: `.late:not(:last-child) div` matched a whole chain once the badge came.
+   What may be a grid is read from the widget's declarations and matched by selector, never from a computed value:
+   in a shadow root whose host is a size container (`container-type: size`) a computed value is a layout in WebKit
+   (20 nested grids: 3.4 s to read their `display`), and in Chromium as soon as a rule depends on the container, the
+   very layout this has to come before. A rule may make a grid when its `display` is a grid's or comes from elsewhere
+   (`var()`, `attr()`, `env()`, `inherit`, `revert-layer`; `all` alike), an inline style the same, a script's
+   animation while its keyframes set one (by its id: one removed or given other keyframes no longer counts) and, when
+   an `@keyframes` sets one, whatever runs an animation (an `animation` shorthand with a substitution too, whose
+   longhands CSSOM gives as empty strings); a rule inside `@media`, `@container` or `@supports` counts whatever its
+   condition. The rules are read from each `<style>`'s text, parsed as a sheet of its own (`CSSStyleSheet.replaceSync`):
+   a `<style>` out of the document has no sheet, and a widget built before its renderer is in the page would be laid
+   out once attached with nothing counting it again. What the DOM decides is counted again after every op that
+   changes it, a text's included (`:empty`, and the client's emoji wrap it in an element); what changes without an op
+   counts as held both ways (`layout-policy.ts` `widenSelector`): the user's states (`:hover`, `:active`, `:focus` …,
+   a negation or an argument naming one), the attributes the renderer or the browser writes (`style`, `data-tw-*`,
+   `open`), `:lang()` and `:dir()` (an element without its own takes the page's, which tweb changes as it runs), and
+   a pseudo-element counts as its element. A widget with nothing that may
+   be a grid costs a read of its sheets when they change; one with grid rules a walk over its nodes after a batch that
+   changes nodes, attributes, a display or a sheet — at the node cap (2000, half of them elements matched against the
+   rules) 0.7 ms in Chromium and WebKit, 1.1 ms in Firefox. The corpus's widgets have at most 2 grids on a path and 8
+   levels of DOM; with 10 grids in a chain WebKit takes 5 ms. Unit tests in `widgetSandboxHardening.test.ts`, the
+   `render-*` attacks and grids a script nests later in `e2e/popupSandboxWidgets.spec.ts` (every engine).
+   Upstream: the web host's renderer is the shared one, and the iframe renderer (`sab`, upstream's web demo) is on
+   the page's thread in WebKit too, so the same count belongs there, with the code in the protocol.
 
 Dropped with v0.1.0 (profile 1 has no libraries and canvas 2D only): the library URLs from the host, the bridge's
 `gesture` flag (v0.1.0 numbers gestures itself), and tweb's WebGL / three.js extension. The last state of those is kept

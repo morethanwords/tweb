@@ -1,0 +1,11 @@
+<!-- Renderer exhaustion: forty nested display:flex boxes, under 1 KB of markup. Each flex container measures its
+     items for their min-content and flex-basis sizes, then lays them out at the final size, and stretches them.
+     Browsers lay it out at once. A renderer that measures each child several times per box and caches no
+     measurement repeats the work at every level, 2^depth passes or more, on its layout thread and outside every
+     JS quota: in twidget before 8c6d311 depth 12 took 3.8 s on a desktop, depth 14 more than 6 s, so this one never
+     finishes. A client must lay it out in bounded time or stop the widget. twidget bounds one layout to 100,000 +
+     50 per element boxes laid out afresh (the heaviest widget of corpus/ needs 2,600): past it the widget freezes
+     with the badge alone and the host logs `renderer-violation: layout limit`, in about 0.5 s on a Snapdragon 680.
+     No canary hits; the page stays responsive. -->
+<p id="p">drawn</p>
+<div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex"><div style="display:flex">deep</div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div>

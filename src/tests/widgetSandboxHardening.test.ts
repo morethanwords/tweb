@@ -7,6 +7,7 @@ import {sanitizeCssValue} from 'widget-sandbox/host/css-sanitizer';
 import {countCssRules, Validator} from 'widget-sandbox/host/validator';
 import {createGlue} from 'widget-sandbox/host/glue';
 import {LIMIT_DEFAULTS} from 'widget-sandbox/shared/protocol';
+import {layoutBudget, mayAllGrid, mayDisplayGrid, widenSelector} from 'widget-sandbox/shared/layout-policy';
 import isCollected from '@/tests/helpers/collectGarbage';
 import bytesFromWordss from '@helpers/bytes/bytesFromWordss';
 import bytesToBase64 from '@helpers/bytes/bytesToBase64';
@@ -441,6 +442,14 @@ describe('a computed style in the shim (sandbox/layout.ts)', () => {
   });
 });
 
+/** What a renderer posted to its host. */
+type Posted = {type: string, [key: string]: any};
+/** The renderer suites' clean-up: what render() mocked and stubbed goes. */
+const unrender = () => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+};
+
 /** The renderer core of one widget on a shadow root, as the shadow renderer makes it; its clock is `now`. */
 const ID = {body: 2, p: 3};
 let now = 1000;
@@ -469,7 +478,7 @@ const render = async(origin: () => null = () => null) => {
     viewport: () => ({innerWidth: 300, innerHeight: 300, dpr: 1}), onViewportResize: () => () => {},
     onColorSchemeChange: () => () => {}, deferSize: true, emoji
   });
-  const posted: {type: string, [key: string]: any}[] = [];
+  const posted: Posted[] = [];
   renderer.init((msg) => posted.push(msg as typeof posted[number]));
   const ops = (...list: object[]) => renderer.onMessage({type: 'ops', ops: list});
   ops({op: 'el', id: ID.body, tag: 'body', attrs: [], adopt: 'body'}, {op: 'el', id: ID.p, tag: 'p', attrs: []}, {op: 'ins', parent: ID.body, id: ID.p, before: null});
@@ -486,10 +495,7 @@ const render = async(origin: () => null = () => null) => {
 // validator counts and models one op: a widget's texts stand in at most 1024 parts beyond their first at once, and it
 // makes at most 2048 of them a second (1024 at once). Canvases have no 2D context in jsdom: their part is in the e2e.
 describe('a widget\'s text with the client\'s emoji (renderer/core.ts)', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
-  });
+  afterEach(unrender);
 
   it('keeps a text of more parts than a widget may make at once in the platform\'s glyphs, whole', async() => {
     const {text, images, body} = await render();
@@ -536,10 +542,7 @@ describe('a widget\'s text with the client\'s emoji (renderer/core.ts)', () => {
 // While a widget is hidden its renderer holds an element's own important play state paused (UPSTREAM.md, item 6): what
 // the widget removes meanwhile goes, with what the renderer kept about it.
 describe('a hidden widget\'s renderer (renderer/core.ts)', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
-  });
+  afterEach(unrender);
 
   it('keeps nothing of an element the widget removed while hidden', async() => {
     const {renderer, ops, body} = await render();
@@ -557,10 +560,7 @@ describe('a hidden widget\'s renderer (renderer/core.ts)', () => {
 // The renderer keeps each pointer's last position for a move whose browser says it moved nothing (WebKit's synthetic
 // ones). Touch browsers give every contact an id of its own: a tap's position goes with it, and its click keeps none.
 describe('the positions of the pointers on a widget (renderer/core.ts)', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
-  });
+  afterEach(unrender);
 
   /** A pointer event of `pointerType` at `x` (jsdom has no PointerEvent: a mouse event with a pointer's fields). */
   const pointer = (type: string, pointerId: number, pointerType: string, x: number) => {
@@ -569,7 +569,7 @@ describe('the positions of the pointers on a widget (renderer/core.ts)', () => {
     return e;
   };
   /** What the widget hears of a move of `pointerId` to `x` its browser says moved nothing: how far it moved (moves wait for a frame). */
-  const movedBy = async(target: Element, posted: {type: string, [key: string]: any}[], pointerId: number, pointerType: string, x: number) => {
+  const movedBy = async(target: Element, posted: Posted[], pointerId: number, pointerType: string, x: number) => {
     const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
     await frame();
     posted.length = 0;
@@ -602,10 +602,7 @@ describe('the positions of the pointers on a widget (renderer/core.ts)', () => {
 // The widget's origin on the page reads the layout (a renderer on a shadow root: two boxes and a computed width): only
 // an event with a position is worth it — not every iteration of an animation the widget does not listen for.
 describe('what serializing an event costs (renderer/core.ts)', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
-  });
+  afterEach(unrender);
 
   it('measures the widget\'s origin for a pointer\'s event only', async() => {
     let measured = 0;
@@ -622,5 +619,174 @@ describe('what serializing an event costs (renderer/core.ts)', () => {
     expect(measured).toBe(0);
     target.dispatchEvent(new MouseEvent('click', {bubbles: true, composed: true, detail: 1, clientX: 5}));
     expect(measured).toBe(1);
+  });
+});
+
+// What may be a grid is read from the widget's declarations, matched by selector, never from a computed value (in a
+// shadow root whose host is a size container that is a layout already): a state that changes without an op counts as
+// held both ways (layout-policy.ts, UPSTREAM.md item 14).
+describe('what may make a widget\'s element a grid (shared/layout-policy.ts)', () => {
+  it('takes a display from elsewhere as a grid\'s', () => {
+    for(const value of ['grid', 'inline-grid', 'var(--d)', 'var(--d, block)', 'inherit', 'revert-layer', 'attr(data-d type(<custom-ident>))']) {
+      expect(mayDisplayGrid(value)).toBe(true);
+    }
+    for(const value of ['', 'block', 'flex', 'none', 'inline', 'revert', 'initial', 'unset', 'table']) {
+      expect(mayDisplayGrid(value)).toBe(false);
+    }
+    expect(mayAllGrid('inherit')).toBe(true);
+    expect(mayAllGrid('var(--a)')).toBe(true);
+    expect(mayAllGrid('unset')).toBe(false);
+  });
+
+  it('widens a selector to every state of the user\'s and every attribute the renderer or the browser writes', () => {
+    const cases: [string, string][] = [
+      ['.a:hover > .b', '.a:is(*) > .b'],
+      ['div:not(:hover)', 'div:is(*)'],
+      ['div:not(.x) span', 'div:not(.x) span'],
+      ['li:nth-child(2n+1):first-child', 'li:nth-child(2n+1):first-child'],
+      ['li:nth-child(2 of .a:hover)', 'li:is(*)'],
+      [':is(.a:focus-visible, .b) .c', ':is(.a:is(*), .b) .c'],
+      [':has(> .a:checked) .b', ':has(> .a:is(*)) .b'],
+      ['[style*="grid"] .x', ':is(*) .x'],
+      ['details[open] > div', 'details:is(*) > div'],
+      ['[data-tw-active] .x, [data-x] .y', ':is(*) .x, [data-x] .y'],
+      ['[data-x="a:hover"]', '[data-x="a:hover"]'],
+      ['.a\\:hover', '.a\\:hover'],
+      ['p::before, p:after', 'p:is(*), p:is(*)'],
+      [':root .a', ':root .a'],
+      ['div:lang(ar) > .a, :dir(rtl) .b', 'div:is(*) > .a, :is(*) .b']
+    ];
+    for(const [selector, widened] of cases) expect(widenSelector(selector)).toBe(widened);
+  });
+});
+
+// The layout budget (renderer/core.ts, layout-policy.ts): every node is laid out afresh once for each pass of the
+// elements above it that may be grids, two a level — 100,000 boxes and 50 more a node.
+describe('the layout budget (renderer/core.ts)', () => {
+  afterEach(unrender);
+
+  /** `depth` divs nested in `parent` (the widget's <p>), from id 100, each with `attrs`. */
+  const nested = (depth: number, attrs: [string, string][] = [], parent = ID.p): object[] => Array.from({length: depth}, (_, i): object[] => [
+    {op: 'el', id: 100 + i, tag: 'div', attrs: [['id', 'd' + i], ...attrs]},
+    {op: 'ins', parent: i ? 100 + i - 1 : parent, id: 100 + i, before: null}
+  ]).flat();
+  /** A script's animation `aid` of `target` whose one keyframe sets `display`. */
+  const displayAnimation = (aid: number, target: number, display: string) => ({
+    aid, target, keyframes: [{offset: 0, easing: 'linear', composite: null as string, values: {display}}],
+    timing: {duration: 1000, delay: 0, endDelay: 0, iterations: 1, iterationStart: 0, direction: 'normal', fill: 'both', easing: 'linear'},
+    composite: 'replace', iterationComposite: 'replace', startTime: 0, holdTime: null as number, playbackRate: 1
+  });
+  const sheet = (css: string): object[] => [
+    {op: 'el', id: 90, tag: 'style', attrs: []}, {op: 'ins', parent: ID.body, id: 90, before: null}, {op: 'css', id: 90, text: css}
+  ];
+  const limits = (posted: Posted[]) => posted.filter((msg) => msg.type === 'limit');
+  const hidden = (body: HTMLElement) => [...body.querySelectorAll<HTMLElement>('[id^="d"]')]
+  .filter((el) => el.style.getPropertyValue('display') === 'none' && el.style.getPropertyPriority('display') === 'important')
+  .map((el) => el.id);
+
+  it('stops a widget whose nested grids pass it before any layout, the grids from the level past it taken away', async() => {
+    const {ops, posted, body} = await render();
+    // in a batch with a scroll after them: the scroll is a layout, and it does not come
+    ops(...sheet('div{display:grid}'), ...nested(30), {op: 'prop', id: 129, name: 'scrollTop', value: 10},
+      {op: 'el', id: 200, tag: 'span', attrs: [['id', 'after']]}, {op: 'ins', parent: ID.p, id: 200, before: null});
+    expect(limits(posted)).toEqual([expect.objectContaining({code: 'layout-limit'})]);
+    // the body (a div: a grid), the <p> and the <style> under it, the 30 divs: 33 nodes, a budget of 101,650 boxes. The
+    // body is laid out once, the <p>, the <style> and d0 twice, d(i) 2^(i+1) times: the nodes with at most 15 grids
+    // above them come to 2^16 + 3 boxes, with 16 to 2^17 + 3. The grids with 15 above them go: d14, and what it holds.
+    expect(layoutBudget(33)).toBe(101_650);
+    expect(hidden(body)).toEqual(['d14']);
+    expect(body.querySelector('#after')).toBeNull();
+    // and the widget takes nothing more
+    ops({op: 'el', id: 201, tag: 'span', attrs: [['id', 'later']]}, {op: 'ins', parent: ID.p, id: 201, before: null});
+    expect(body.querySelector('#later')).toBeNull();
+    expect(limits(posted)).toHaveLength(1);
+  });
+
+  it('counts what a user\'s state, a substitution, an inline style or a script\'s keyframes may make a grid', async() => {
+    const variants: [string, () => Promise<void>][] = [
+      ['a :hover rule', async() => {
+        const {ops, posted} = await render();
+        ops(...sheet('.never-hovered:hover div{display:grid}'), {op: 'attr', id: ID.p, name: 'class', value: 'never-hovered'}, ...nested(30));
+        expect(limits(posted)).toHaveLength(1);
+      }],
+      ['a var() display', async() => {
+        const {ops, posted} = await render();
+        ops(...sheet('div{display:var(--d,block)}'), ...nested(30));
+        expect(limits(posted)).toHaveLength(1);
+      }],
+      ['an inline style', async() => {
+        const {ops, posted} = await render();
+        ops(...nested(30, [['style', 'display: grid']]));
+        expect(limits(posted)).toHaveLength(1);
+      }],
+      ['a script\'s keyframes', async() => {
+        const {renderer, ops, posted} = await render();
+        ops(...nested(30));
+        expect(limits(posted)).toHaveLength(0);
+        renderer.onMessage({type: 'anim', now: 0, anims: Array.from({length: 30}, (_, i) => displayAnimation(i + 1, 100 + i, 'grid'))});
+        expect(limits(posted)).toHaveLength(1);
+      }],
+      ['an animation shorthand that waits for a substitution (its longhands are empty strings until then)', async() => {
+        const {ops, posted} = await render();
+        ops(...sheet('@keyframes k{from,to{display:grid}}div{--a:k 1s infinite;animation:var(--a)}'), ...nested(30));
+        expect(limits(posted)).toHaveLength(1);
+      }]
+    ];
+    for(const [name, run] of variants) {
+      await run().catch((error) => {
+        throw new Error(name + ': ' + error.message);
+      });
+      unrender();
+    }
+  });
+
+  it('counts again when a text changes: the client\'s emoji put it in an element, which a sibling selector sees', async() => {
+    const {ops, posted} = await render();
+    // a plain text before the divs is no element: `* + #d0` matches nothing
+    ops(...sheet('* + #d0, * + #d0 div{display:grid}'), {op: 'text', id: 80, data: 'plain'}, {op: 'ins', parent: ID.p, id: 80, before: null}, ...nested(30));
+    expect(limits(posted)).toHaveLength(0);
+    // with an emoji of the client's it stands in a <tw-text> before them, and all 30 are grids
+    ops({op: 'data', id: 80, data: 'a©b'});
+    expect(limits(posted)).toHaveLength(1);
+  });
+
+  it('forgets a script\'s animation that may make a grid once it is removed or given other keyframes', async() => {
+    const {renderer, ops, posted} = await render();
+    ops(...nested(30));
+    // one nested div after another made a grid and let go: never more than one at once
+    for(let i = 0; i < 30; i++) {
+      renderer.onMessage({type: 'anim', now: 0, anims: [displayAnimation(i + 1, 100 + i, 'grid')]});
+      renderer.onMessage({type: 'anim', now: 0, anims: i % 2 ? [{aid: i + 1, remove: true}] : [displayAnimation(i + 1, 100 + i, 'block')]});
+    }
+    expect(limits(posted)).toHaveLength(0);
+  });
+
+  it('counts the widget built out of the page with its sheets, before it is put in', async() => {
+    // read from the sheet's text: one without a grid stops nothing
+    for(const [css, stops] of [['div div{color:red}', 0], ['div div{display:grid}', 1]] as const) {
+      const {ops, posted, body} = await render();
+      (body.getRootNode() as ShadowRoot).host.remove();
+      ops(...sheet(css), ...nested(30));
+      expect(limits(posted)).toHaveLength(stops);
+      unrender();
+    }
+  });
+
+  it('counts again after the renderer changes the DOM itself: its stopped badge makes a sibling selector match', async() => {
+    const {renderer, ops, posted, body} = await render();
+    // the last of the body's children: `:not(:last-child)` matches it once the badge comes after it
+    ops(...sheet('.late:not(:last-child) div{display:grid}'), {op: 'el', id: 60, tag: 'div', attrs: [['class', 'late']]},
+      {op: 'ins', parent: ID.body, id: 60, before: null}, ...nested(30, [], 60));
+    expect(limits(posted)).toHaveLength(0);
+    renderer.onMessage({type: 'frozen', reason: 'CPU limit exceeded', fatal: true});
+    expect(body.querySelector('[data-tw-badge]')).not.toBeNull();
+    expect(hidden(body)).toHaveLength(1);
+  });
+
+  it('lets a widget of grids in grids in grids run, whatever it holds (1500 nodes under the third)', async() => {
+    const {ops, posted} = await render();
+    ops(...sheet('.g{display:grid}'), ...nested(3, [['class', 'g']]),
+      ...Array.from({length: 1500}, (_, i): object[] => [{op: 'el', id: 1000 + i, tag: 'span', attrs: []}, {op: 'ins', parent: 102, id: 1000 + i, before: null}]).flat());
+    expect(limits(posted)).toHaveLength(0);
   });
 });

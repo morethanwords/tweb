@@ -1,0 +1,13 @@
+<!-- Renderer exhaustion: repeating gradients whose period is zero, or far below a pixel. A renderer that unrolls
+     the repeats into colour stops over the box never reaches its end with a zero period, and makes millions of
+     stops with a tiny one (twidget before f385525: the first box alone grew the engine to 3.9 GB on a 6 GB phone,
+     and the OS killed the launcher before it). css-images-3 draws a repeating gradient of a zero period as the
+     average colour of its stops; one too fine to draw may be drawn the same way. Expected: the first four boxes are
+     solid #800080, the average of red and blue, the last one has 10px stripes, and the renderer's memory stays
+     where it was. No canary hits. -->
+<p id="p">drawn</p>
+<div style="width:300px;height:60px;background:repeating-linear-gradient(to right,red 50%,blue 50%)"></div>
+<div style="width:300px;height:40px;background:repeating-radial-gradient(red 10px,blue 10px)"></div>
+<div style="width:300px;height:40px;background:repeating-conic-gradient(red 90deg,blue 90deg)"></div>
+<div style="width:300px;height:40px;background:repeating-linear-gradient(to right,red 0,red 0.001px,blue 0.001px,blue 0.002px)"></div>
+<div style="width:300px;height:40px;background:repeating-linear-gradient(to right,red 0 10px,blue 10px 20px)"></div>

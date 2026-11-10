@@ -1,0 +1,9 @@
+<!-- Renderer exhaustion: list markers far outside a counter style's range. A renderer that writes roman numerals
+     by repeating "M" per thousand makes a marker of two million letters for start=2000000000, then measures and
+     draws it on every layout. css-counter-styles gives lower-roman and upper-roman the range 1 to 3999 and the
+     alphabetic styles 1 and up; outside it the marker falls back to decimal, as browsers draw it. Expected markers:
+     "2000000000." and "2000000001.", then "mmmcmxcviii.", "mmmcmxcix." and "4000.", then "0.". No canary hits. -->
+<p id="p">drawn</p>
+<ol start="2000000000" style="list-style-type:upper-roman"><li>huge start</li><li>next</li></ol>
+<ol start="3998" style="list-style-type:lower-roman"><li>3998</li><li>3999</li><li>4000</li></ol>
+<ol start="0" style="list-style-type:lower-alpha"><li>zero</li></ol>

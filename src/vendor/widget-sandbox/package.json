@@ -1,6 +1,6 @@
 {
   "name": "@telegram/widget-sandbox",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "No-network sandbox for untrusted HTML widgets: QuickJS worker, DOM shim, validator and renderer core (the web host; the same bundles ship to the native packages)",
   "private": true,
   "type": "module",

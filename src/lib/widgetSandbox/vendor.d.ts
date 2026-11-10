@@ -225,6 +225,18 @@ declare module 'widget-sandbox/shared/gesture-policy' {
   export type BubbleAction = 'menu' | 'swipe' | 'scroll' | 'back';
 }
 
+declare module 'widget-sandbox/shared/layout-policy' {
+  /** The boxes one layout of a widget may make afresh, and so many more for each of its nodes. */
+  export const LAYOUT_BOXES: number;
+  export const LAYOUT_BOXES_PER_NODE: number;
+  export function layoutBudget(nodes: number): number;
+  /** Whether a declared `display` (or `all`) may compute to a grid container. */
+  export function mayDisplayGrid(value: string): boolean;
+  export function mayAllGrid(value: string): boolean;
+  /** A selector list widened to every element it may match before the DOM changes by an op. */
+  export function widenSelector(selector: string): string;
+}
+
 declare module 'widget-sandbox/shared/sdk-policy' {
   import type {ChatType, WidgetContext, WidgetViewer} from 'widget-sandbox/host/widget-host';
 

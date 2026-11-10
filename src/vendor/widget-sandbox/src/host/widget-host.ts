@@ -930,7 +930,8 @@ export class WidgetHost {
           this.opts.onDiag?.('renderer-violation', 'a limit report with an unknown code or no count');
           break;
         }
-        if (this.policy === 'compat' || this.dead) break;
+        // tweb: the layout budget's stops the widget in every policy (layout-policy.ts): its grids are gone
+        if ((this.policy === 'compat' && limit.code !== 'layout-limit') || this.dead) break;
         const reason = paintLimitMessage(limit.code, limit.count);
         this.opts.onDiag?.(limit.code, reason);
         this.die(reason);

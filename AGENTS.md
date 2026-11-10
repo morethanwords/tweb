@@ -143,7 +143,7 @@ Either way every `rootScope.managers` call is answered from
 ### Widget sandbox
 
 HTML widgets — messages whose media is `messageMediaWidget` (layer 233), a zlib stream of
-the widget's source — run on widget-sandbox v0.6.2, vendored in `src/vendor/widget-sandbox`
+the widget's source — run on widget-sandbox v0.6.3, vendored in `src/vendor/widget-sandbox`
 (its `UPSTREAM.md` lists tweb's own changes, with the measurements behind them). In every
 browser the engine runs **off the page's thread** (the `worker` transport): one engine
 worker per page runs every widget, each in a copy of a QuickJS VM (wasm) warmed once there

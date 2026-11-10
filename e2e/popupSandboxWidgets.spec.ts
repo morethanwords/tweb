@@ -26,7 +26,7 @@ declare global {
   }
 }
 
-// HTML widgets (messageMediaWidget) in the widget sandbox, `?widgets=1`: widget-sandbox v0.6.2's engine, validator and
+// HTML widgets (messageMediaWidget) in the widget sandbox, `?widgets=1`: widget-sandbox v0.6.3's engine, validator and
 // renderer, fed from the fixtures (its corpus, its attack corpus and its conformance set) — no account, no server. What
 // users get in every engine is the `worker` transport: every widget's QuickJS in the page's engine worker, each in a
 // copy of an engine warmed once, drawing on a shadow root in the page, whose layout queries the widget's code waits for
@@ -1058,6 +1058,51 @@ test('a widget dense with scopes compiles and runs with every variable where it 
   // another's place changes the sum, a corrupted table aborts the wasm
   await open(page, 'attacks/parser-scope-oob');
   await expect(page.locator(SHADOW).locator('#p')).toHaveText('ok|187', FIRST_DRAW);
+});
+
+test('markup that runs a hand-made renderer out of memory or time is laid out at once, or stops the widget (v0.6.3\'s render-* attacks)', async({page}) => {
+  // the widget's DOM is the browser's to lay out: a var() of 10^9 tokens, repeating gradients of no period, 40 nested
+  // flex and 30 nested table boxes and a roman list from 2000000000 must not hold the page, each one drawn and a frame
+  // coming after it (a layout of 2^depth passes never ends, and the test with it)
+  await open(page, 'attacks/render-var-expansion');
+  const widget = (name: string) => page.locator(`section[data-story-id="attacks/render-${name}"]`).locator(SHADOW);
+  const nextFrame = () => page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+  for(const name of ['var-expansion', 'gradient-zero-period', 'nested-flex', 'nested-table', 'marker-huge-start']) {
+    await page.evaluate(async(name) => (await window.widgetSandbox()).open(name), 'attacks/render-' + name);
+    await expect(widget(name).locator('#p')).toHaveText('drawn', FIRST_DRAW);
+    if(name.startsWith('nested-')) await expect(widget(name).getByText('deep')).toBeVisible();
+    await nextFrame();
+  }
+  // an over-long variable is invalid at computed-value time: the fallback applies, and without one, nothing
+  await page.evaluate(async() => (await window.widgetSandbox()).open('attacks/render-var-expansion'));
+  const sizes = await widget('var-expansion').locator('#fallback').evaluate((fallback) => [
+    getComputedStyle(fallback).width,
+    getComputedStyle(fallback.parentElement.querySelector('#unset')).marginLeft
+  ]);
+  expect(sizes).toEqual(['120px', '0px']);
+  // 30 nested grids: WebKit lays a grid in a grid out twice a level (2^30 passes), so the layout budget stops the
+  // widget before the page lays them out
+  const reason = await page.evaluate(async() => {
+    const {loadWidgetFixture} = await window.e2eImport('/src/lib/widgetSandbox/fixtures.ts');
+    return window.e2eRunUntilDead(await loadWidgetFixture('attacks/render-nested-grid') as string);
+  });
+  expect(reason).toMatch(/^Layout limit exceeded: \d+ boxes to lay out afresh, of nested grids$/);
+  await nextFrame();
+});
+
+test('the layout budget stops a widget before the page lays out the grids it nests later: built by its script, or made grids by a class', async({page}) => {
+  await open(page, 'compat/calculator');
+  const reasons = await page.evaluate(async() => [
+    await window.e2eRunUntilDead('<style>.g{display:grid}</style><p id="p">drawn</p><script>setTimeout(function() {' +
+      'var at = document.body; for(var i = 0; i < 30; i++) { var d = document.createElement("div"); d.className = "g"; at.appendChild(d); at = d; }' +
+      'at.textContent = "deep"; }, 50);</script>'),
+    await window.e2eRunUntilDead('<style>.on div{display:grid}</style><div id="r">' + '<div>'.repeat(30) + 'deep' + '</div>'.repeat(30) + '</div>' +
+      '<script>setTimeout(function() { document.getElementById("r").className = "on"; }, 50);</script>'),
+    // three grids in one another, with 1400 nodes in the last: nothing a layout cannot do at once
+    await window.e2eRunUntilDead('<style>.g{display:grid}</style><div class="g"><div class="g"><div class="g">' + '<i>x</i>'.repeat(700) + '</div></div></div>')
+  ]);
+  expect(reasons.slice(0, 2)).toEqual([expect.stringMatching(/^Layout limit exceeded/), expect.stringMatching(/^Layout limit exceeded/)]);
+  expect(reasons[2]).toBe('');
 });
 
 test('a shared widget is polled while it watches its shared state and is in view, and the new value reaches it', async({page}) => {
@@ -2494,7 +2539,7 @@ test('the attack corpus leaks nothing: no request leaves the page, nothing reach
     };
   }, CANARY);
   expect(aimed).toBe(true);
-  expect(names).toHaveLength(121);
+  expect(names).toHaveLength(127);
   // one after another, each started on its own in view: it runs (or the sandbox stops it), is poked where a vector might
   // want a tap, and has the time its deferred payloads take — the latest aims 150 ms after the start, or after the tap
   for(const name of names) {

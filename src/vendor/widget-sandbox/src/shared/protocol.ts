@@ -220,6 +220,8 @@ export type RendererToHost =
    * Past a paint limit (paint-policy.ts, docs/decisions.md "Heavy boxes"): more than 16 heavy boxes (`paint-limit`, with
    * their count) or more than 2 with backdrop-filter (`backdrop-limit`). The renderer has already drawn the frame without
    * the effects; the host stops the widget (`die`) with `paintLimitMessage(code, count)`. Once per widget, strict only.
+   * tweb: or past the layout budget (`layout-limit`, layout-policy.ts): the renderer has taken the grids past it away,
+   * in every policy.
    */
   | { type: 'limit'; code: PaintLimitCode; count: number }
   /** With `policy` `paintReports`: the heavy-box counts whenever they change (tooling; a host ignores it). */

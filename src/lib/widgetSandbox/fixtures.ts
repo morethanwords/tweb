@@ -2,7 +2,7 @@ import type {MessageMedia} from '@layer';
 import {zlibSync} from 'fflate';
 
 /**
- * Widgets to look at and test with: a copy of part of widget-sandbox v0.6.2 — its showcase, defaults and compat
+ * Widgets to look at and test with: a copy of part of widget-sandbox v0.6.3 — its showcase, defaults and compat
  * corpus, its interactive widgets and bot demos (they ask the sandbox's mock bot, mockBot.ts), the resize and safe-area
  * ones, its attack corpus, and its conformance set (`conformance/auto`, `/visual`, `/sdk`) — and tweb's own bench widgets
  * (`bench/`, lib/widgetSandbox/bench.ts), loaded on demand.

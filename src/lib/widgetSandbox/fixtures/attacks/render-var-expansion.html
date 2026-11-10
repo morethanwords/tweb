@@ -1,0 +1,15 @@
+<!-- Renderer exhaustion: nine custom properties, each referring to the one before ten times. Under 1 KB of CSS
+     that substitutes to 10^9 tokens: a renderer that expands var() without a size limit runs out of memory (twidget
+     before 8c6d311 grew past 1.5 GB on --a9; a million tokens, --a6, cost 592 MB). css-variables lets an engine
+     treat a variable that is too long as invalid at computed-value time
+     (https://drafts.csswg.org/css-variables/#long-variables), as Chromium does. Expected: #fallback is 120px wide (the
+     over-long --a9 takes the fallback), #unset keeps margin-left 0 (no fallback: the declaration is invalid, so
+     unset), and the renderer's memory stays where it was. twidget caps a declaration at 16,384 tokens after
+     substitution; a custom property past it has the guaranteed-invalid value, and so does one that refers to it
+     without a fallback. No canary hits. -->
+<style>
+:root{--a0:1px;--a1:var(--a0) var(--a0) var(--a0) var(--a0) var(--a0) var(--a0) var(--a0) var(--a0) var(--a0) var(--a0);--a2:var(--a1) var(--a1) var(--a1) var(--a1) var(--a1) var(--a1) var(--a1) var(--a1) var(--a1) var(--a1);--a3:var(--a2) var(--a2) var(--a2) var(--a2) var(--a2) var(--a2) var(--a2) var(--a2) var(--a2) var(--a2);--a4:var(--a3) var(--a3) var(--a3) var(--a3) var(--a3) var(--a3) var(--a3) var(--a3) var(--a3) var(--a3);--a5:var(--a4) var(--a4) var(--a4) var(--a4) var(--a4) var(--a4) var(--a4) var(--a4) var(--a4) var(--a4);--a6:var(--a5) var(--a5) var(--a5) var(--a5) var(--a5) var(--a5) var(--a5) var(--a5) var(--a5) var(--a5);--a7:var(--a6) var(--a6) var(--a6) var(--a6) var(--a6) var(--a6) var(--a6) var(--a6) var(--a6) var(--a6);--a8:var(--a7) var(--a7) var(--a7) var(--a7) var(--a7) var(--a7) var(--a7) var(--a7) var(--a7) var(--a7);--a9:var(--a8) var(--a8) var(--a8) var(--a8) var(--a8) var(--a8) var(--a8) var(--a8) var(--a8) var(--a8);}
+</style>
+<p id="p">drawn</p>
+<div id="fallback" style="width:var(--a9,120px);height:24px;background:#4a8"></div>
+<div id="unset" style="margin-left:var(--a8);width:80px;height:24px;background:#88a"></div>

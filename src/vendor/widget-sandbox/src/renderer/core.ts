@@ -19,6 +19,7 @@ import { PROFILE_UA_STYLESHEET } from '../shared/profile-tables';
 import { THEME_VARIABLES, contentSafeAreaVariables, themeVariables } from '../shared/sdk-policy';
 import { GestureArbiter, claimOf, type GestureClaim, type GestureVerdict, type PointerKind } from '../shared/gesture-policy';
 import { PaintCounter, animationPaint, boxPaint, boxShadowBlurred, boxShadowWithoutBlur, hidesSubtree, type BoxPaint, type PaintKeyframe, type PaintVerdict } from '../shared/paint-policy';
+import { LAYOUT_LEVELS, layoutBudget, mayAllGrid, mayAnimate, mayDisplayGrid, widenSelector } from '../shared/layout-policy';
 import { AnimationState, applyAnims, cssAnimationList, isCSSAnimation, isCSSTransition } from './web-animations';
 import { TOUCH_ACTION_CLAIM, engineTouchAction } from './touch-action';
 
@@ -118,6 +119,7 @@ const firstChildOf = getter(Node.prototype, 'firstChild');
 const nextSiblingOf = getter(Node.prototype, 'nextSibling');
 const localNameOf = getter(Element.prototype, 'localName');
 const setTextContent = setter(Node.prototype, 'textContent');
+const textContentOf = getter(Node.prototype, 'textContent');
 const setCharData = setter(CharacterData.prototype, 'data');
 const htmlStyleOf = getter(HTMLElement.prototype, 'style');
 const svgStyleOf = getter(SVGElement.prototype, 'style');
@@ -363,13 +365,17 @@ function forget(node: Node) {
       resizeObserver.unobserve(node); observed.delete(node);
       // tweb: nor is its own play state held (while hidden), nor its boxes waiting to be counted
       heldPlayStates.delete(node); paintDirty.delete(node); paintDirtySelf.delete(node);
+      // tweb: nor what may make it a grid (the layout budget)
+      inlineGrid.delete(node);
+      for (const aid of animatedGrid.get(node) ?? []) gridAnimations.delete(aid);
+      animatedGrid.delete(node);
     }
     if (node instanceof HTMLCanvasElement) { canvasPixelsTotal -= canvasPixels.get(node) ?? 0; canvasPixels.delete(node); }
     // tweb: its text's parts leave the emoji budget (emojiRuns)
     const entry = isText(node) ? wrapped.get(node) : undefined;
     if (entry) { emojiParts -= entry.extra; wrapped.delete(node as Text); }
     // tweb: what the sheet overrode counts again (refreshSheets no longer sees it to notice it went)
-    if (node instanceof HTMLStyleElement && widgetStyles.delete(node)) { paintSheetsDirty = true; paintEverything(); }
+    if (node instanceof HTMLStyleElement && widgetStyles.delete(node)) { paintSheetsDirty = layoutSheetsDirty = true; paintEverything(); }
   }
   for (let c = firstChildOf(node); c; c = nextSiblingOf(c)) forget(c);
 }
@@ -1215,6 +1221,8 @@ function onEvent(e: Event) {
 let lastSize = '';
 let lastViewport = '';
 function reportSize() {
+  // tweb: the size is a layout (the layout budget is counted before)
+  checkLayout();
   const viewport = env.viewport();
   const msg: RendererToHost = { type: 'size', width: HTML.clientWidth, height: env.docHeight(), ...viewport };
   const key = JSON.stringify(msg);
@@ -1853,6 +1861,213 @@ function drawWithoutEffects() {
     if (value) style.setProperty(prop, value, 'important');
     else style.removeProperty(prop);
   }
+  // tweb: the widget's selectors see the sheet the renderer put in (the layout budget)
+  checkLayout(true);
+}
+
+// ───────────────────────── tweb: the layout budget (layout-policy.ts, UPSTREAM.md item 14) ─────────────────────────
+//
+// The page lays the widget out in a task nothing interrupts, and WebKit lays a grid that is a grid's item out again for
+// each pass its parent makes, two a level (20 nested grids: 3.2 s). Before anything can lay it out — a batch's end, a
+// scroll or a canvas's text inside one, a query, the size — the renderer counts the boxes that layout makes afresh,
+// every node once for each pass of the elements above it that may be grids, and past the budget a native renderer keeps
+// it takes away the grids from the level where the rest fits (display: none) and stops the widget (`limit`). What may be
+// a grid comes from declarations, matched by selector: a computed value is a layout of its own here. Counted again
+// after an op that can change it, and after the renderer's own changes to the DOM; a widget without anything that may
+// be a grid costs a read of its sheets when they change.
+
+/** Past the budget: the widget's grids from some level on are gone, and it takes no more ops. */
+let layoutStopped = false;
+/** An op changed what may be a grid, or where (counted before the next layout). */
+let layoutDirty = false;
+/** A stylesheet of the widget's changed, came or went: the rules are read again. */
+let layoutSheetsDirty = true;
+/** The rules that may make a grid, their selectors widened to what they may match (layout-policy.ts) and joined. */
+let gridSelector = '';
+/** One of the widget's @keyframes may set a grid's display: what runs an animation may be a grid. */
+let gridKeyframes = false;
+/** Elements whose own declarations (the style attribute) may make them grids. */
+const inlineGrid = new Set<Element>();
+/** A script's animations whose keyframes may set a grid's display, by id: their targets, and the ids by target. */
+const gridAnimations = new Map<number, Element>();
+const animatedGrid = new Map<Element, Set<number>>();
+/** What each <style> of the widget's holds that may make a grid, read from its text (kept while the text is the same). */
+const gridRules = new WeakMap<HTMLStyleElement, { text: string; grids: string[]; animated: string[]; keyframes: boolean }>();
+
+const mayGrid = (el: Element) => inlineGrid.has(el) || animatedGrid.has(el) || (gridSelector !== '' && matches(el, gridSelector));
+
+/** Whether `el`'s own declarations may make it a grid; noted for the count. */
+function noteInlineGrid(el: Element) {
+  const style = styleOf(el);
+  if (mayDisplayGrid(style.getPropertyValue('display')) || mayAllGrid(style.getPropertyValue('all')) ||
+    (gridKeyframes && mayAnimate(style.getPropertyValue('animation-name'), style.getPropertyValue('animation')))) inlineGrid.add(el);
+  else inlineGrid.delete(el);
+}
+
+/** The script's animation `aid` now may make `el` a grid (null: makes nothing one, or is gone). */
+function noteGridAnimation(aid: number, el: Element | null) {
+  const was = gridAnimations.get(aid);
+  if (was === el || (!was && !el)) return;
+  if (was) {
+    const aids = animatedGrid.get(was);
+    aids?.delete(aid);
+    if (!aids?.size) animatedGrid.delete(was);
+    gridAnimations.delete(aid);
+  }
+  if (el) {
+    gridAnimations.set(aid, el);
+    let aids = animatedGrid.get(el);
+    if (!aids) animatedGrid.set(el, aids = new Set());
+    aids.add(aid);
+  }
+  layoutDirty = true;
+}
+
+/** After an op: what it can have changed of what may be a grid, or of where it is. */
+function layoutAfter(op: RenderOp) {
+  switch (op.op) {
+    case 'el': {
+      const el = nodes.get(op.id);
+      if (!(el instanceof Element)) return;
+      if (el instanceof HTMLStyleElement) { widgetStyles.add(el); layoutSheetsDirty = true; }
+      if (op.attrs.some(([name]) => name.toLowerCase() === 'style')) noteInlineGrid(el);
+      if (op.adopt) layoutDirty = true;
+      return;
+    }
+    // a node comes or goes, and what a structural selector matches with it; a text's too, which `:empty` reads and the
+    // client's emoji wrap in an element or unwrap (`+`, `~`)
+    case 'ins': case 'rm': case 'data':
+      layoutDirty = true;
+      return;
+    case 'attr': case 'rattr': {
+      const el = nodes.get(op.id);
+      if (!(el instanceof Element)) return;
+      if (op.name.toLowerCase() === 'style') noteInlineGrid(el);
+      layoutDirty = true;
+      return;
+    }
+    case 'style': {
+      const el = nodes.get(op.id);
+      if (!(el instanceof Element) || !/^(?:display|all|animation(?:-name)?)$/i.test(op.name)) return;
+      noteInlineGrid(el);
+      layoutDirty = true;
+      return;
+    }
+    case 'css':
+      layoutSheetsDirty = layoutDirty = true;
+      return;
+  }
+}
+
+/**
+ * What a <style> holds that may make a grid. Read from its text, parsed as a sheet of its own: a <style> out of the
+ * document has no sheet, and a widget built before its renderer is in the page (or moved, `rebind`) would count none
+ * of its rules and be laid out once attached with nothing to count it again. One the widget made but never put in
+ * counts too, which only over-counts.
+ */
+function sheetGrids(el: HTMLStyleElement) {
+  const text = textContentOf(el) as string ?? '';
+  const known = gridRules.get(el);
+  if (known && known.text === text) return known;
+  const info = { text, grids: [] as string[], animated: [] as string[], keyframes: false };
+  const walk = (rules: CSSRuleList) => {
+    for (let i = 0; i < rules.length; i++) {
+      const r = rules[i] as CSSRule & { selectorText?: string; keyText?: string; style?: CSSStyleDeclaration; cssRules?: CSSRuleList };
+      if (r.style) {
+        const grid = mayDisplayGrid(r.style.getPropertyValue('display')) || mayAllGrid(r.style.getPropertyValue('all'));
+        if (typeof r.selectorText === 'string') {
+          if (grid) info.grids.push(r.selectorText);
+          else if (mayAnimate(r.style.getPropertyValue('animation-name'), r.style.getPropertyValue('animation'))) info.animated.push(r.selectorText);
+        } else if (grid && typeof r.keyText === 'string') info.keyframes = true;
+      }
+      // rules inside @media, @container, @supports count whatever their condition: it changes without an op
+      if (r.cssRules) walk(r.cssRules);
+    }
+  };
+  let rules: CSSRuleList | null = null;
+  try {
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(text);
+    rules = sheet.cssRules;
+  } catch {
+    try { rules = (sheetOf(el) as CSSStyleSheet | null)?.cssRules ?? null; } catch {}
+  }
+  if (!rules) {
+    // a browser without constructed sheets, and the <style> out of the document: anything may be a grid, read again next time
+    if (text.trim()) info.grids.push('*');
+    return info;
+  }
+  try { walk(rules); } catch { info.grids.push('*'); }
+  gridRules.set(el, info);
+  return info;
+}
+
+/** The widget's stylesheets read again: the rules that may make a grid, and whether an animation may. */
+function readGridSheets() {
+  layoutSheetsDirty = false;
+  const grids: string[] = [];
+  const animated: string[] = [];
+  let keyframes = false;
+  for (const el of widgetStyles) {
+    const info = sheetGrids(el);
+    grids.push(...info.grids);
+    animated.push(...info.animated);
+    keyframes ||= info.keyframes;
+  }
+  if (keyframes !== gridKeyframes) {
+    gridKeyframes = keyframes;
+    for (const node of nodes.values()) if (node instanceof Element && getAttribute(node, 'style') !== null) noteInlineGrid(node);
+  }
+  gridSelector = (keyframes ? grids.concat(animated) : grids).map((selector) => {
+    const wide = widenSelector(selector);
+    // one this cannot parse may match anything
+    try { matches(HTML, wide); return wide; } catch { return '*'; }
+  }).join(',');
+}
+
+/**
+ * Before anything lays the widget out: the boxes the layout makes afresh, and past the budget the stop. `always`:
+ * counted whatever was counted before, the widget stopped too — after the renderer changed the DOM itself (the stopped
+ * badge, the sheet without effects), which the widget's selectors see as they see its own changes.
+ */
+function checkLayout(always = false) {
+  if (!HTML || (!always && (!layoutDirty || layoutStopped))) return;
+  layoutDirty = false;
+  if (layoutSheetsDirty) readGridSheets();
+  // nothing may be a grid: every node is laid out once, which no budget the node cap allows is short of
+  if (!gridSelector && !inlineGrid.size && !animatedGrid.size) return;
+  // the nodes by how many elements that may be grids are above them (the widget's own nodes; the renderer's are not
+  // counted, what is in them is)
+  const levels: number[] = [];
+  let count = 0;
+  const visit = (node: Node, level: number) => {
+    const own = ids.has(node);
+    if (own) { count++; levels[level] = (levels[level] ?? 0) + 1; }
+    if (!(node instanceof Element)) return;
+    const below = own && level < LAYOUT_LEVELS - 1 && mayGrid(node) ? level + 1 : level;
+    for (let c = firstChildOf(node); c; c = nextSiblingOf(c)) visit(c, below);
+  };
+  visit(HTML, 0);
+  const budget = layoutBudget(count);
+  let boxes = 0, keep = 0;
+  for (let level = 0; level < levels.length; level++) {
+    boxes += (levels[level] ?? 0) * 2 ** level;
+    if (boxes > budget) break;
+    keep = level;
+  }
+  if (boxes <= budget) return;
+  // every element that may be a grid with `keep` such ones above it goes, and what is under it: what stays is laid out
+  // within the budget (trusted renderer content only)
+  const cut = (el: Element, level: number) => {
+    const grid = ids.has(el) && mayGrid(el);
+    if (grid && level >= keep) return styleOf(el).setProperty('display', 'none', 'important');
+    for (let c = firstChildOf(el); c; c = nextSiblingOf(c)) if (c instanceof Element) cut(c, grid ? level + 1 : level);
+  };
+  cut(HTML, 0);
+  // the host hears it once and stops the widget
+  if (layoutStopped) return;
+  layoutStopped = true;
+  post({ type: 'limit', code: 'layout-limit', count: Math.min(boxes, Number.MAX_SAFE_INTEGER) });
 }
 
 // ───────────────────────── wiring ─────────────────────────
@@ -1860,11 +2075,16 @@ function drawWithoutEffects() {
 function onMessage(msg: HostToRenderer) {
   switch (msg.type) {
     case 'ops':
-      if (paintStopped) break;
+      if (paintStopped || layoutStopped) break;
       for (const op of msg.ops) {
+        // tweb: a scroll and a canvas's text read the layout (the layout budget is counted before)
+        if (op.op === 'prop' || op.op === 'call' || op.op === 'canvas') checkLayout();
+        if (layoutStopped) break;
         try { if (paintOn) paintBefore(op); applyOp(op); } catch (e) { violation('op failed: ' + String(e)); }
         if (paintOn) try { paintAfter(op); } catch {}
+        try { layoutAfter(op); } catch { layoutDirty = layoutSheetsDirty = true; }
       }
+      checkLayout();
       scheduleCanvas();
       if (!env.deferSize) reportSize();
       // a task of the hidden widget (its timers go on, slowly) may have started a transition
@@ -1872,6 +2092,7 @@ function onMessage(msg: HostToRenderer) {
       break;
     case 'query': {
       let res: { result: unknown; binary?: ArrayBuffer };
+      checkLayout();
       try { res = answer(msg.query); } catch (e) { res = { result: { error: String(e) } }; }
       post({ type: 'result', qid: msg.qid, result: res.result, binary: res.binary }, res.binary ? [res.binary] : []);
       break;
@@ -1890,7 +2111,7 @@ function onMessage(msg: HostToRenderer) {
       preventKeys = new Set(msg.keys);
       break;
     case 'anim': {
-      if (paintStopped) break;
+      if (paintStopped || layoutStopped) break;
       // tweb: a CSS animation or transition the widget's own call reaches is the widget's to play or pause, not the
       // host's (pausedTransitions); while the host keeps the widget hidden, one it plays is held all the same (heldCss)
       const reached: Animation[] = [];
@@ -1903,6 +2124,17 @@ function onMessage(msg: HostToRenderer) {
         if (hostHidden && !r.cancelled) reached.push(a);
       }
       try { applyAnims(animations, msg.now, msg.anims, (id) => nodes.get(id)); } catch (e) { violation('anim failed: ' + String(e)); }
+      // tweb: a script's keyframes may set a display (the layout budget), counted before the animation is laid out; one
+      // removed, or given other keyframes, may not any more
+      for (const r of msg.anims) {
+        if ('remove' in r) noteGridAnimation(r.aid, null);
+        else if ('keyframes' in r) {
+          const target = nodes.get(r.target);
+          const grid = r.keyframes.some((f) => mayDisplayGrid(f.values.display ?? '') || mayAllGrid(f.values.all ?? ''));
+          noteGridAnimation(r.aid, grid && target instanceof Element ? target : null);
+        }
+      }
+      checkLayout();
       // the engine started or moved some while the host keeps the widget hidden
       if (hostHidden) {
         pauseForHost();
@@ -2063,11 +2295,14 @@ function freeze(reason: string, fatal: boolean) {
     '[data-tw-badge]{position:fixed;right:6px;bottom:6px;z-index:2147483647;font:11px/1.3 system-ui,sans-serif;color:#fff;background:rgba(60,60,60,.75);padding:2px 7px;border-radius:9px;pointer-events:none;user-select:none}');
   insertBefore(HEAD, style, null);
   // tweb: a host that only parks the widget (no reason) keeps the picture without a badge
-  if (!reason) return;
-  const badge = createElement(doc, 'div');
-  setAttribute(badge, 'data-tw-badge', fatal ? 'fatal' : 'paused');
-  setTextContent(badge, reason);
-  insertBefore(BODY, badge, null);
+  if (reason) {
+    const badge = createElement(doc, 'div');
+    setAttribute(badge, 'data-tw-badge', fatal ? 'fatal' : 'paused');
+    setTextContent(badge, reason);
+    insertBefore(BODY, badge, null);
+  }
+  // tweb: the widget's selectors see what the renderer put in as they see their own changes (the layout budget)
+  checkLayout(true);
 }
 
 let sizeObservers: ResizeObserver[] = [];

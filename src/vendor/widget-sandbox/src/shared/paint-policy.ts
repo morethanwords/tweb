@@ -38,8 +38,9 @@ export const PAINT_HEAVY_BOXES = 16;
 /** Of them, boxes with `backdrop-filter` (it blurs whatever is under it: the most expensive effect per pixel). */
 export const PAINT_BACKDROP_BOXES = 2;
 
-export type PaintLimitCode = 'paint-limit' | 'backdrop-limit';
-export const PAINT_LIMIT_CODES: readonly PaintLimitCode[] = ['paint-limit', 'backdrop-limit'];
+// tweb: `layout-limit`, the layout budget's (layout-policy.ts, UPSTREAM.md item 14), comes the same way, in every policy
+export type PaintLimitCode = 'paint-limit' | 'backdrop-limit' | 'layout-limit';
+export const PAINT_LIMIT_CODES: readonly PaintLimitCode[] = ['paint-limit', 'backdrop-limit', 'layout-limit'];
 
 /** The computed values a box is judged by (CSS serialisation; an empty string or a missing value is the initial one). */
 export interface PaintStyle {
@@ -207,6 +208,7 @@ export function animationPaint(keyframes: readonly PaintKeyframe[]): BoxPaint | 
 
 /** The reason a host stops the widget with (`onDead`, the diagnostics), the same on every platform. */
 export function paintLimitMessage(code: PaintLimitCode, count: number): string {
+  if (code === 'layout-limit') return `Layout limit exceeded: ${count} boxes to lay out afresh, of nested grids`;
   return code === 'backdrop-limit'
     ? `Paint limit exceeded: ${count} boxes with backdrop-filter (max ${PAINT_BACKDROP_BOXES})`
     : `Paint limit exceeded: ${count} boxes with shadows, filters or transparency (max ${PAINT_HEAVY_BOXES})`;
