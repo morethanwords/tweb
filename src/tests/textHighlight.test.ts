@@ -20,7 +20,7 @@ vi.mock('@helpers/dom/textHighlight.scss?inline', () => ({default: '::highlight(
 import liteMode from '@helpers/liteMode';
 import type {TextHighlight, TextHighlightOptions, TextLineBox} from '@helpers/dom/textHighlight';
 import createHighlight, {
-  computeFullRange,
+  computeFullRanges,
   computeLineBoxes,
   computeNarrowing,
   computeRanges,
@@ -221,14 +221,21 @@ describe('computeLineBoxes', () => {
   });
 });
 
-describe('computeFullRange', () => {
+describe('computeFullRanges', () => {
   it('spans all the searchable text, skipped subtrees at the ends excluded', () => {
     const element = html('<span>hello</span> <b>world</b><span class="time">12:00</span>');
-    const range = computeFullRange(element, '.time');
+    const ranges = computeFullRanges(element, '.time');
+    expect(ranges.length).toBe(1);
+    const [range] = ranges;
     expect(range.toString()).toBe('hello world');
     expect(range.startContainer).toBe(element.querySelector('span').firstChild);
     expect(range.endContainer).toBe(element.querySelector('b').firstChild);
-    expect(computeFullRange(html('<span class="time">12:00</span>'), '.time')).toBeUndefined();
+    expect(computeFullRanges(html('<span class="time">12:00</span>'), '.time')).toEqual([]);
+  });
+
+  it('leaves out what an inert part (a collapsed details) holds', () => {
+    const element = html('<p>before</p><div inert><p>hidden</p></div><p>after</p>');
+    expect(computeFullRanges(element).map((range) => range.toString())).toEqual(['before', 'after']);
   });
 });
 

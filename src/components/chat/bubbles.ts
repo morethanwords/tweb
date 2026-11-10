@@ -614,8 +614,9 @@ const BUBBLE_HIGHLIGHT_DURATION = 2000;
 const BUBBLE_TEXT_HIGHLIGHT_DURATION = 4000;
 // * fade of the "active" highlight, matches the one ChatSelection uses for `is-selected`
 const BUBBLE_ACTIVE_DURATION = 200;
-// * parts of `.message` that are not the message text (link preview / fact-check boxes included)
-const BUBBLE_TEXT_HIGHLIGHT_SKIP = '.time, .reactions, .reply, .code-header, .webpage';
+// * parts of `.message` that are not the message text (link preview / fact-check boxes included, a video's countdown in a
+// * rich message, which ticks every second)
+const BUBBLE_TEXT_HIGHLIGHT_SKIP = '.time, .reactions, .reply, .code-header, .webpage, .video-time';
 
 /** what a jump is really about inside the message it lands on, see `ChatBubbles.scrollToBubble` */
 type MessageFocus = {

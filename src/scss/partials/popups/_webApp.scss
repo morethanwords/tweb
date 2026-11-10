@@ -2,11 +2,13 @@
 @use "popupVariables" as *;
 
 .popup-web-app {
+  --p-primary-text-color: var(--primary-text-color);
   --p-secondary-text-color: var(--secondary-text-color);
   --p-light-secondary-text-color: var(--light-secondary-text-color);
   --p-border-color: var(--border-color);
 
   .btn-menu {
+    --primary-text-color: var(--p-primary-text-color);
     --secondary-text-color: var(--p-secondary-text-color);
     --light-secondary-text-color: var(--p-light-secondary-text-color);
     --border-color: var(--p-border-color);

@@ -514,7 +514,9 @@ export default class WebApp {
       const textRgbColor = rgbaToRgb([...textColor, textOpacity], rgb);
       // const borderColor = rgbaToRgb([...rgb, 1 - 0.08], rgb || rgbaToRgb([255, 255, 255, 0.08], rgb));
       backgroundColor = hex;
-      this.title.style.color = `rgb(${textColor.join(',')})`;
+      const primaryTextColor = `rgb(${textColor.join(',')})`;
+      this.title.style.color = primaryTextColor;
+      this.header.style.setProperty('--primary-text-color', primaryTextColor);
       this.header.style.setProperty('--secondary-text-color', `rgb(${textRgbColor.join(', ')})`);
       this.header.style.setProperty('--light-secondary-text-color', `rgba(${textColor.join(', ')}, ${0.08})`);
       // this.header.style.setProperty('--border-color', `rgb(${borderColor.join(', ')})`);
@@ -522,6 +524,7 @@ export default class WebApp {
     } else {
       backgroundColor = this.getThemeParams()[color.color_key];
       this.title.style.color = '';
+      this.header.style.removeProperty('--primary-text-color');
       this.header.style.removeProperty('--secondary-text-color');
       this.header.style.removeProperty('--light-secondary-text-color');
       this.header.style.removeProperty('--border-color');
