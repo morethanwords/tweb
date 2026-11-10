@@ -72,3 +72,39 @@ test('a search scrolled to more pages lets its found list go when it ends', asyn
   middlewareHelper.destroy();
   expect([...held.values()].every((count) => count === 0)).toBe(true);
 });
+
+test('an empty search loads the chat history and its total count', async() => {
+  const getHistory = vi.fn(async() => ({count: 123, history: [], isEnd: {top: true, bottom: true, both: true}}));
+  rootScope.managers = {
+    appMessagesManager: {
+      toggleHistoryKeySubscription: vi.fn(),
+      getHistory
+    }
+  } as any;
+  const middleware = getMiddleware();
+  let dispose: () => void, loader: ReturnType<typeof createSearchLoader>;
+  createRoot((_dispose) => {
+    dispose = _dispose;
+    loader = createSearchLoader({
+      middleware: middleware.get(),
+      rowsMiddleware: middleware.get(),
+      peerId: (7).toPeerId(true),
+      threadId: 42,
+      monoforumThreadId: undefined,
+      query: ''
+    });
+  });
+  try {
+    await loader().loadMore();
+    expect(getHistory).toHaveBeenCalledWith(expect.objectContaining({
+      peerId: (7).toPeerId(true),
+      threadId: 42,
+      inputFilter: undefined,
+      query: ''
+    }));
+    expect(loader().count).toBe(123);
+  } finally {
+    dispose();
+    middleware.destroy();
+  }
+});
