@@ -27,6 +27,10 @@ import type {Message, WalletTransaction} from '@layer';
 import type {WalletPendingTransfer} from '@components/wallet/store';
 import type {WalletTransactionLive} from '@components/wallet/transactionPopup';
 import {createSignal} from 'solid-js';
+import Button from '@components/button';
+import Modes from '@config/modes';
+import rootScope from '@lib/rootScope';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 /** Lays `values` over `target`'s own properties; the returned call puts back what was there. */
 function overlay<T extends object>(target: T, values: Partial<T>) {
@@ -138,6 +142,39 @@ async function showWalletAmount(ctx: PopupStoryContext, options: {address?: bool
 }
 
 defineStories('Wallet', [
+  {
+    id: 'wallet/profileCard',
+    fixtureOnly: true,
+    title: 'Wallet: balance card from a profile',
+    managers: walletSandboxManagers(),
+    open: async(ctx) => {
+      const managers = bindManagersToSession(rootScope.managers);
+      const {default: showWalletProfileCard} = await import('@components/wallet/profileCardPopup');
+      const peerId = ctx.peer('private');
+      const user = await managers.appUsersManager.getUser(peerId.toUserId());
+      const source = Button('btn-primary btn-color-primary', {asDiv: !Modes.a11y});
+      source.dataset.walletProfileCardSource = '';
+      source.textContent = '1,720.58 GRAM';
+      Object.assign(source.style, {position: 'fixed', insetInlineEnd: '32px', top: '160px', width: '180px'});
+      document.body.append(source);
+      let popup: ReturnType<typeof showWalletProfileCard>;
+      const open = () => popup = showWalletProfileCard({
+        source,
+        peerId,
+        card: {balance: '1720580000000', address: walletSandboxOtherAddress},
+        managers,
+        name: [user.first_name, user.last_name].filter(Boolean).join(' ')
+      });
+      source.addEventListener('click', open);
+      if(Modes.a11y) source.focus();
+      open();
+      return () => {
+        popup?.close();
+        source.removeEventListener('click', open);
+        source.remove();
+      };
+    }
+  },
   {
     // * not a popup: transfer cards the way a chat shows them, two of them settling a moment after opening
     id: 'wallet/chatCards',
