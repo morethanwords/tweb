@@ -214,7 +214,9 @@
   display: grid;
   place-items: center;
   font-size: 40px;
+  line-height: 1;
   font-weight: 600;
+  translate: 0 -2px;
   color: var(--wallet-usd);
   opacity: 0;
 
@@ -433,6 +435,8 @@
 
 // * a line that comes and goes: it grows into its place and fades in, and what is centred around it follows
 .collapse {
+  flex: none;
+  min-height: 0;
   width: 100%;
   display: grid;
   grid-template-rows: 0fr;
@@ -567,7 +571,6 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: .25rem;
 }
 
 // * the recipient's alert (ⓘ): the linked user, and the address card (iOS)
@@ -598,11 +601,11 @@
 }
 
 .commentPrivacy {
-  margin: 0 -.5rem;
+  margin: .25rem 0 0;
 }
 
 .commentCaption {
-  padding: 0 1rem;
+  padding: .25rem 1rem 0;
   font-size: .875rem;
   line-height: 1.25rem;
   color: var(--secondary-text-color);
