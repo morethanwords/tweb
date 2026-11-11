@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{p as e,s as t,y as n}from"./solid-B0Du5GQu.js";import{c as r,g as i,o as a}from"./web-FH1QzTRi.js";import{t as o}from"./classNames-HGN7N_ne.js";import{t as s}from"./mountAuthFlow-BzJ4EENL.js";var c=i(`<div class=input-wrapper>`),l=i(`<div>`);function u(i){let u=()=>i.inputWrapper!==!1;return(()=>{var d=l();return r(d,()=>i.header,null),r(d,e(t,{get when(){return u()},get fallback(){return i.children},get children(){var e=c();return r(e,()=>i.children),e}}),null),n(()=>a(d,o(s.card,i.class))),d})()}export{u as t};
+//# sourceMappingURL=AuthCard-BLsHPo1q.js.map

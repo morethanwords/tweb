@@ -1,3 +1,0 @@
-//# allFunctionsCalledOnLoad
-import{b as e}from"./solid-B0Du5GQu.js";import{u as t}from"./web-FH1QzTRi.js";import{t as n}from"./classname-DzY_wM2a.js";import{n as r}from"./clickEvent-BSZZBdkr.js";import{ft as i}from"./confirmationPopup-ry54_ds_.js";import{t as a}from"./createListenerSetter-DbQDNj2V.js";var o=o=>{let s=new i,c=a();o.ref instanceof Function&&o.ref?.(s.element);let[l]=e(()=>[o.peerId,o.threadId],async([e,t])=>(await s.update({peerId:e,threadId:t,dialog:!1,onlyFirstName:o.onlyFirstName,username:o.username,limitSymbols:o.limitSymbols,withIcons:o.withIcons}),o.onClick&&r(s.element,o.onClick,{listenerSetter:c}),!0));return n(s.element,()=>o.class),t(()=>t(()=>!!l())()&&s.element)};export{o as t};
-//# sourceMappingURL=peerTitleTsx-Bqro7TBq.js.map

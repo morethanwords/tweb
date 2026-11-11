@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{Rt as e}from"./getChatMigratedTo-BbJ5dceR.js";function t(e,t){return e>0?e:t>0?t:11}function n(e){if(!e)return 0;let t=0;for(let n of e)n.reaction._!==`reactionPaid`&&++t;return t}function r(e,t=11){return n(e)>=t}function i(t,n,i=11){return!t?.length||!r(n,i)?t:t.filter(t=>t._===`reactionPaid`||n.some(n=>e(n.reaction,t)))}export{r as n,t as r,i as t};
+//# sourceMappingURL=filterReactionsAtUniqCap-ZdbxFaUr.js.map

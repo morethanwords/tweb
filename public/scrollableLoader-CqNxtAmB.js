@@ -1,3 +1,0 @@
-//# allFunctionsCalledOnLoad
-import{a as e}from"./idb-TtMs89K7.js";var t=class{constructor(t){this.loading=!1,this.loaded=!1,e(this,t),t.scrollable.onScrolledBottom=()=>{this.load()}}load(){if(this.loaded)return Promise.resolve();if(this.loading)return this.promise;this.loading=!0,this.promise=this.getPromise().then(e=>{this.loading=!1,this.promise=void 0,e?(this.loaded=!0,this.scrollable.onScrolledBottom=null):this.scrollable.checkForTriggers()},()=>{this.promise=void 0,this.loading=!1})}};export{t};
-//# sourceMappingURL=scrollableLoader-CqNxtAmB.js.map

@@ -1,6 +1,6 @@
 ### Unreleased
-<!-- animated emoji: 🎵 5188621441926438751, 📝 5334882760735598374, 🧰 5449428597922079323 -->
-A small update with two things you'll notice: your music looks right, and articles copy the way they look.
+<!-- animated emoji: 🎵 5188621441926438751, 📝 5334882760735598374, ⭐ 5435957248314579621, 👍 5469770542288478598, 🧰 5449428597922079323 -->
+A small update with a few things you'll notice: your music looks right, articles copy the way they look, the Premium star comes alive, and channels get the reactions settings of the other apps.
 
 #### 🎵 Music with its cover
 A song you send now shows its title, artist and cover, taken from the file itself.
@@ -12,19 +12,42 @@ Copy part of an article and paste it into the message field: headings, lists, qu
 
 **Copy** in an article's menu takes all of it, and other apps still get its plain text.
 
+#### ⭐ A star you can spin
+The star at the top of the Telegram Premium and Telegram Stars screens is now a 3D star that turns and sparkles.
+
+Give it a spin with your finger or the mouse.
+
+#### 👍 Reactions in channels
+Channel admins can now allow any emoji as a reaction, limit how many reactions a post can get and turn on paid reactions.
+
+Everything is in the channel's **Reactions** settings, just like in Telegram's other apps.
+
 #### More new things
 - An article's menu tells you which packs its custom emoji come from.
+- Articles sit in their message like ordinary messages: rounded photo corners and the time on the last line.
+- A link preview with a large photo fills the whole message, even under a reply.
+- A tap on a quote hidden in a collapsed part of an article opens that part.
 
 <details><summary>🧰 Fixes</summary>
 
 - the message about an update could fail to arrive while another Web K tab was open;
 - that message in the "Telegram" chat could not be deleted;
+- some chats could be missing from the chat list;
+- the chat jumped a line when a sender's name came in a moment late;
+- a reply's quote could flicker when the message it quotes was loaded again;
+- the arrow button at the bottom of a chat scrolled one screen at a time instead of going to the end;
+- a video without a preview picture could not be opened;
+- a bot's widget could freeze Safari;
+- the Stars count on a paid reaction slid aside after the second tap;
+- the close and menu buttons of a mini app disappeared on a dark header;
+- a verification icon next to a name could turn black in dark mode;
 - a forwarded article with videos showed each of them twice;
 - a custom emoji in an article's heading disappeared after the article was edited;
 - after switching to another account, a tab could slow down until it ran out of memory;
 - a bot's widget could keep the colors of the chat opened before it;
 - buttons in windows flickered as the window opened;
-- the monkey on the sign-in code screen appeared a moment late.
+- the monkey on the sign-in code screen appeared a moment late;
+- and smaller fixes in reactions, articles and the moderation window.
 
 </details>
 
