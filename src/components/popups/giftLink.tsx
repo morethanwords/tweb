@@ -1,9 +1,9 @@
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import {PaymentsCheckedGiftCode} from '@layer';
-import renderImageFromUrl from '@helpers/dom/renderImageFromUrl';
+import Star3D from '@components/star3D';
 import {LangPackKey, i18n} from '@lib/langPack';
 import {InviteLink} from '@components/sidebarLeft/tabs/inviteLink';
-import {createSignal, JSX, onCleanup, onMount} from 'solid-js';
+import {createSignal, JSX, onCleanup} from 'solid-js';
 import {formatDaysDuration, formatFullSentTime} from '@helpers/date';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {ChatSetPeerOptions} from '@lib/appImManager';
@@ -183,13 +183,12 @@ export default async function showGiftLinkPopup(
       });
     });
 
-    let img: HTMLImageElement;
     let confirmButton: HTMLButtonElement;
 
     const wrapper = (
       <div class="popup-gift-link-wrapper">
         <MediaHeader marginTop marginBottom>
-          <MediaHeader.Sticker size={120} element={<img alt="" ref={img} />} />
+          <MediaHeader.Sticker size={126} element={<Star3D kind="premium" size={120} />} />
           <MediaHeader.Title size={20}>{i18n(titleLangKey)}</MediaHeader.Title>
           <MediaHeader.Subtitle>
             {
@@ -216,11 +215,6 @@ export default async function showGiftLinkPopup(
         )}
       </div>
     );
-
-    // after mount: `decode()` on an image still being moved into the tree rejects as "broken"
-    onMount(() => {
-      renderImageFromUrl(img, `assets/img/premium-star${window.devicePixelRatio > 1 ? '@2x' : ''}.png`);
-    });
 
     return (
       <PopupElement

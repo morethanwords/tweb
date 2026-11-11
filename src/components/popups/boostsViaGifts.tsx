@@ -4,11 +4,11 @@ import I18n, {FormatterArguments, LangPackKey, _i18n, i18n, join} from '@lib/lan
 import CheckboxField from '@components/checkboxField';
 import Section from '@components/section';
 import RangeStepsSelector from '@components/rangeStepsSelector';
-import {Accessor, For, JSX, createEffect, createMemo, createSignal, onCleanup, onMount, untrack} from 'solid-js';
+import {Accessor, For, JSX, createEffect, createMemo, createSignal, onCleanup, untrack} from 'solid-js';
 import tsNow from '@helpers/tsNow';
 import showDatePickerPopup from '@components/popups/datePicker';
 import {formatFullSentTime, formatMonthsDuration} from '@helpers/date';
-import renderImageFromUrl from '@helpers/dom/renderImageFromUrl';
+import Star3D from '@components/star3D';
 import Icon from '@components/icon';
 import {AvatarNew} from '@components/avatarNew';
 import Button from '@components/button';
@@ -194,7 +194,6 @@ export default async function showBoostsViaGiftsPopup(
     };
 
     const createNextIcon = () => Icon('next', 'popup-boosts-specific-next');
-    let img: HTMLImageElement;
 
     let prepaidRowContainer: JSX.Element, giveawayTypeRows: JSX.Element;
     if(prepaidGiveaway) {
@@ -608,7 +607,8 @@ export default async function showBoostsViaGiftsPopup(
     const ret = (
       <>
         <MediaHeader marginTop marginBottom>
-          <div class="popup-boosts-star-container"><img alt="" class="popup-boosts-star" ref={img} /></div>
+          {/* 24 px of room above and below the star */}
+          <MediaHeader.Sticker size={168} element={() => <Star3D kind={stars() ? 'stars' : 'premium'} size={120} />} />
           <MediaHeader.Title size={20}>{i18n('BoostsViaGifts.Title')}</MediaHeader.Title>
           <MediaHeader.Subtitle>{i18n(isPrepaid() && prepaidGiveaway._ === 'prepaidGiveaway' ? 'BoostingGetMoreBoosts' : 'BoostingGetMoreBoosts2')}</MediaHeader.Subtitle>
         </MediaHeader>
@@ -629,11 +629,6 @@ export default async function showBoostsViaGiftsPopup(
         {!specific() && notSpecific2}
       </>
     );
-
-    // after mount: `decode()` on an image still being moved into the tree rejects as "broken"
-    onMount(() => {
-      renderImageFromUrl(img, `assets/img/premiumboostsstar${window.devicePixelRatio > 1 ? '@2x' : ''}.png`);
-    });
 
     const createGiveawayStoreInput = async(): Promise<InputStorePaymentPurpose> => {
       const peers = await Promise.all(peerIds().map((peerId) => rootScope.managers.appPeersManager.getInputPeerById(peerId)));

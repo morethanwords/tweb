@@ -20,6 +20,7 @@ import showStickersPopup from '@components/popups/stickers';
 import PremiumOptionsForm from '@components/premium/premiumOptionsForm';
 import RowTsx from '@components/rowTsx';
 import createNewBadge from '@components/newBadge';
+import Star3D from '@components/star3D';
 import PopupElement from '@components/popups/indexTsx';
 import MediaHeader from '@components/mediaHeader';
 import SponsoredToggle from '@components/premium/sponsoredToggle';
@@ -52,6 +53,8 @@ export function getGiftDetails(data: PremiumPromoData) {
  */
 export default function PromoSlide(props: {
   data: PremiumPromoData,
+  /** false while another slide is shown: the 3D star holds still */
+  active?: boolean,
   onSelectFeature: (feature: PremiumPromoFeatureType) => void,
   onSelectPeriod: (option: PremiumSubscriptionOption) => void,
   onClose: (callback?: () => void) => void
@@ -89,7 +92,7 @@ export default function PromoSlide(props: {
         <div class="popup-title" dir="auto">{i18n(headingTitleKey(props.data))}</div>
       </div>
       <div class="popup-body">
-        <HeaderImage data={props.data} />
+        <HeaderImage data={props.data} active={props.active} />
         <Heading data={props.data} onClose={props.onClose} />
         <Show when={withOptions()}>
           <PremiumOptionsForm
@@ -150,10 +153,19 @@ function PremiumFeatures(props: {
   );
 }
 
-function HeaderImage(props: {data: PremiumPromoData}) {
+function HeaderImage(props: {data: PremiumPromoData, active?: boolean}) {
   const emojiStatusId = props.data.emojiStatusId;
 
   if(!emojiStatusId) {
+    // Business has no 3D coin yet, so it keeps the picture
+    if(props.data.type !== 'business') {
+      return (
+        <div class="popup-premium-header-image-container is-star">
+          <Star3D kind="premium" size={120} active={props.active} />
+        </div>
+      );
+    }
+
     return (
       <div class="popup-premium-header-image-container">
         <img class="popup-premium-header-image" src={`${maybe2x('assets/img/premium-star')}.png`} alt="" />

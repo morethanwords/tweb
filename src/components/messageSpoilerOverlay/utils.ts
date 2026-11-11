@@ -118,9 +118,8 @@ function blendColors(base: RGBA, overlay: RGBA): RGBA {
 }
 
 // * what the element and its ancestors paint, one over another, up to `until` (not included)
-function blendBackgrounds(element: HTMLElement, until?: Element) {
+function blendBackgrounds(element: HTMLElement, until?: Element, maxDepth = 10) {
   let color: RGBA = {r: 0, g: 0, b: 0, a: 0};
-  let maxDepth = 10;
 
   while(element && element !== until && color.a < 1 && maxDepth--) {
     const bgColor = window.getComputedStyle(element).backgroundColor;
@@ -136,8 +135,9 @@ function blendBackgrounds(element: HTMLElement, until?: Element) {
 
 const toRgb = (color: RGBA) => `rgb(${color.r}, ${color.g}, ${color.b})`;
 
-export function computeFinalBackgroundColor(element: HTMLElement) {
-  const color = blendBackgrounds(element);
+// * `maxDepth`: how many boxes up to look; what is not opaque by then has no colour of its own (undefined)
+export function computeFinalBackgroundColor(element: HTMLElement, maxDepth?: number) {
+  const color = blendBackgrounds(element, undefined, maxDepth);
   return color.a === 1 ? toRgb(color) : undefined;
 }
 

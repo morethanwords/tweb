@@ -284,7 +284,7 @@ const onFetch = (event: FetchEvent): void => {
     import.meta.env.PROD &&
     !IS_SAFARI &&
     event.request.url.indexOf(location.origin + '/') === 0 &&
-    event.request.url.match(/\.(js|css|jpe?g|json|wasm|png|mp3|svg|tgs|ico|woff2?|ttf)(?:\?.*)?$/)
+    event.request.url.match(/\.(js|css|jpe?g|json|wasm|png|mp3|svg|tgs|ico|woff2?|ttf|mesh)(?:\?.*)?$/)
   ) {
     return event.respondWith(requestCache(event));
   }

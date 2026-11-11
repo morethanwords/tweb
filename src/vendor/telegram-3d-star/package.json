@@ -1,0 +1,26 @@
+{
+  "name": "telegram-3d-star",
+  "version": "1.1.0",
+  "description": "The 3D Premium star and Telegram Stars star for the web, in WebGL 1.",
+  "type": "module",
+  "license": "GPL-2.0-only",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./assets/*": "./assets/*",
+    "./posters/*": "./posters/*"
+  },
+  "types": "./dist/index.d.ts",
+  "files": ["dist", "assets", "posters", "LICENSE", "README.md"],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p tsconfig.json --removeComments && tsc -p tsconfig.json --emitDeclarationOnly",
+    "pretest": "npm run build",
+    "test": "node --test \"tests/*.test.ts\""
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
+  }
+}

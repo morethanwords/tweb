@@ -6,16 +6,6 @@
   --popup-width: 26.25rem;
   --popup-max-height: 43.5rem;
 
-  &-star {
-    width: 140px;
-    height: 128px;
-    margin-left: -4px;
-
-    &-container {
-      text-align: center;
-    }
-  }
-
   &-type {
     // the leading checkbox + media layout comes from `row-with-checkbox-and-media`
     .row-title {

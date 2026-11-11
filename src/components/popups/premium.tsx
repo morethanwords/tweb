@@ -306,6 +306,7 @@ function PremiumContent(props: {
       <div class="tabs-container premium-tabs" ref={tabsEl}>
         <PromoSlide
           data={data}
+          active={tabIndex() === 0}
           onSelectFeature={(value) => {
             const editor = data.type === 'business' && data.isPremiumActive && BUSINESS_EDITORS[value];
             if(editor) {

@@ -1,4 +1,5 @@
 import {Middleware} from '@helpers/middleware';
+import loadDecodedImage from '@helpers/dom/loadDecodedImage';
 import createVideoForDrawing from '@components/mediaEditor/canvas/createVideoForDrawing';
 import {MediaType} from '@components/mediaEditor/types';
 
@@ -29,10 +30,7 @@ export async function loadTexture({gl, mediaSrc, mediaType, videoTime, waitToSee
   let media: LoadTextureMedia;
 
   if(mediaType === 'image') {
-    const image = new Image();
-    image.src = mediaSrc;
-
-    await image.decode();
+    const image = await loadDecodedImage(mediaSrc);
 
     media = {
       image,

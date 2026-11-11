@@ -1,16 +1,14 @@
 /* @refresh reload */
 
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
-import maybe2x from '@helpers/maybe2x';
 import {InputInvoice, MessageMedia, PaymentsPaymentForm, Photo, Document, StarsTopupOption, StarsTransaction, StarsTransactionPeer, MessageExtendedMedia, ChatInvite, StarsSubscription, StarsGiftOption, InputStorePaymentPurpose, WebDocument} from '@layer';
 import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import Section from '@components/section';
-import {createMemo, createRoot, createSignal, For, JSX, Show} from 'solid-js';
+import {createMemo, createRoot, createSignal, For, JSX, Show, untrack} from 'solid-js';
 import paymentsWrapCurrencyAmount, {formatNanoton} from '@helpers/paymentsWrapCurrencyAmount';
 import {createPaymentPopup} from '@components/popups/payment';
 import useStars, {prefetchStars} from '@stores/stars';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
-import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
 import {createLoadableList} from '@components/sidebarRight/tabs/statistics';
 import Row from '@components/rowTsx';
 import showSendGiftPicker from '@components/popups/sendGiftPicker';
@@ -26,6 +24,7 @@ import wrapPhoto from '@components/wrappers/photo';
 import isWebDocument from '@appManagers/utils/webDocs/isWebDocument';
 import {wrapChatInviteAvatar, wrapChatInviteTitle} from '@components/popups/joinChatInvite';
 import MediaHeader from '@components/mediaHeader';
+import StarsHero, {createStarsParticles} from '@components/popups/starsHero';
 import tsNow from '@helpers/tsNow';
 import {wrapCallDuration as wrapDuration} from '@components/wrappers/wrapDuration';
 import {getStarsSubscriptionPresentation} from '@appManagers/utils/payments/starsSubscription';
@@ -432,7 +431,7 @@ export default function showStarsPopup(options: PopupStarsOptions = {}) {
   let appConfig$: MTAppConfig;
   let purchaseBlocked: boolean;
   let toppedUp: boolean;
-  let content: JSX.Element;
+  let content: JSX.Element | (() => JSX.Element);
   let scrollableRef: ScrollableContextValue;
   // the transactions list asks for more as the popup scrolls
   let onScrolledBottom: () => void;
@@ -759,7 +758,7 @@ export default function showStarsPopup(options: PopupStarsOptions = {}) {
     return (
       <>
         <MediaHeader class="popup-stars-intro">
-          {image}
+          {options.ton || options.giftPeerId ? image : <StarsHero />}
           {avatar}
           <MediaHeader.Title>{title}</MediaHeader.Title>
           <MediaHeader.Subtitle>{subtitle}</MediaHeader.Subtitle>
@@ -802,7 +801,7 @@ export default function showStarsPopup(options: PopupStarsOptions = {}) {
             onScrolledBottom={() => onScrolledBottom?.()}
           >
             <PopupElement.Body>
-              {content}
+              {typeof content === 'function' ? content() : content}
             </PopupElement.Body>
           </PopupElement.Scrollable>
         </PopupElement>
@@ -848,11 +847,8 @@ export default function showStarsPopup(options: PopupStarsOptions = {}) {
             return stickerDiv;
           });
         }
-        const img = document.createElement('img');
-        img.alt = '';
-        img.classList.add('popup-stars-image');
-        await renderImageFromUrlPromise(img, `assets/img/${maybe2x(options.giftPeerId ? 'stars_pay' : 'stars')}.png`);
-        return img;
+        // the gold star is 3D with its own particles; gifting shows the recipient instead
+        return options.giftPeerId ? createStarsParticles() : undefined;
       })(),
       options.peerId || options.paymentForm?.bot_id || options.giftPeerId ? wrapPeerTitle({peerId: options.peerId || options.giftPeerId || options.paymentForm.bot_id.toPeerId(false)}) : undefined,
       options.giftPeerId ? managers.appPaymentsManager.getStarsGiftOptions(options.giftPeerId.toUserId()) : managers.appPaymentsManager.getStarsTopupOptions(),
@@ -889,7 +885,8 @@ export default function showStarsPopup(options: PopupStarsOptions = {}) {
       return;
     }
 
-    content = renderContent(image, peerTitle, avatar);
+    // the 3D star starts inside the popup, which owns and ends it: not here
+    content = () => untrack(() => renderContent(image, peerTitle, avatar));
     openPopup();
   }
 

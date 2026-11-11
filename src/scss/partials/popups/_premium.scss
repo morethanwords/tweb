@@ -126,6 +126,19 @@
       &.is-emoji-status {
         width: 100px;
       }
+
+      // the 120 px 3D star, centred, with 4 px of room above it; the heading sits 12 px under the star (4 + 120 + 12)
+      &.is-star {
+        width: 100px;
+        height: 128px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        + .popup-premium-heading-text-container {
+          margin-top: calc(137px - 0.75rem);
+        }
+      }
     }
   }
 

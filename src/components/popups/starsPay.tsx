@@ -1,9 +1,8 @@
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import {formatFullSentTime} from '@helpers/date';
-import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
-import maybe2x from '@helpers/maybe2x';
 import MediaHeader from '@components/mediaHeader';
+import StarsHero, {createStarsParticles} from '@components/popups/starsHero';
 import getGiftAssetName from '@helpers/getGiftAssetName';
 import {InputInvoice, MessageMedia, PaymentsPaymentForm, PaymentsPaymentReceipt, StarsTransaction, Message, Photo, Document, Chat, WebDocument} from '@layer';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
@@ -303,11 +302,7 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
     const managers = bindManagersToSession(rootScope.managers);
     const [image, {title: transactionTitle, media: avatar}, link] = await Promise.all([
       (async() => {
-        const img = document.createElement('img');
-        img.alt = '';
-        img.classList.add('popup-stars-image');
-        await renderImageFromUrlPromise(img, `assets/img/${maybe2x(boost ? 'stars' : 'stars_pay')}.png`);
-        return img;
+        return (boost ? undefined : createStarsParticles());
       })(),
       (async() => {
         const result = await getStarsTransactionTitleAndMedia({
@@ -662,7 +657,7 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
         return (
           <div class="popup-stars-pay-padding">
             <MediaHeader class="popup-stars-intro">
-              {image}
+              {boost ? <StarsHero /> : image}
               <div class="popup-stars-pay-images">
                 <div
                   class="popup-stars-pay-avatar"

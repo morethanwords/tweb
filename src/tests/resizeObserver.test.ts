@@ -165,3 +165,59 @@ describe('resizeObserver', () => {
     expect(observerInstance.unobserve).toHaveBeenCalledWith(element);
   });
 });
+
+// toHaveBeenCalledWith compares elements structurally: every empty div is equal to another, so compare identities
+const observed = (o: ResizeObserverMock) => o.observe.mock.calls.map((c) => c[0]);
+const unobserved = (o: ResizeObserverMock) => o.unobserve.mock.calls.map((c) => c[0]);
+
+describe('resizeObserver follows the app window', () => {
+  it('carries observed elements to the new window\'s observer', async() => {
+    const {setAppWindow} = await import('@helpers/appWindow');
+    const first = resizeObserverInstances[0];
+    const element = document.createElement('div');
+    const callback = vi.fn();
+    const stay = document.createElement('div');
+    const stayCallback = vi.fn();
+    const gone = document.createElement('div');
+
+    observeResize(element, callback);
+    observeResize(stay, stayCallback);
+    observeResize(gone, vi.fn());
+    unobserveResize(gone);
+
+    const before = resizeObserverInstances.length;
+    const pip = {ResizeObserver: ResizeObserverMock} as unknown as Window;
+    setAppWindow(pip);
+    try {
+      expect(resizeObserverInstances).toHaveLength(before + 1);
+      const next = resizeObserverInstances[before];
+      expect(first.disconnect).toHaveBeenCalledTimes(1);
+      expect(observed(next)).toContain(element);
+      expect(observed(next)).toContain(stay);
+      expect(observed(next)).not.toContain(gone);
+
+      const entry = {target: element} as unknown as ResizeObserverEntry;
+      next.callback([entry], next);
+      expect(callback).toHaveBeenCalledWith(entry);
+
+      unobserveResize(element, callback);
+      expect(unobserved(next)).toContain(element);
+      expect(unobserved(first)).not.toContain(element);
+
+      // new elements go to the new observer
+      const late = document.createElement('div');
+      observeResize(late, vi.fn());
+      expect(observed(next)).toContain(late);
+
+      // and back
+      setAppWindow(window);
+      const back = resizeObserverInstances[before + 1];
+      expect(next.disconnect).toHaveBeenCalledTimes(1);
+      expect(observed(back)).toContain(stay);
+      expect(observed(back)).toContain(late);
+      expect(observed(back)).not.toContain(element);
+    } finally {
+      setAppWindow(window);
+    }
+  });
+});

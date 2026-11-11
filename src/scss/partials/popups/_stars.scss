@@ -30,6 +30,15 @@
     transform: translateX(-3px); // * fix image alignment
   }
 
+  // the gold 3D star, centred, with 12 px of room above and below it
+  &-hero {
+    height: 144px;
+    transform: none; // the picture's alignment fix does not apply to a centred star
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   &-intro {
     margin-bottom: 1.5rem;
   }

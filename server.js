@@ -20,7 +20,10 @@ app.use((req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
 });
-app.use(compression());
+// * the 3D star's mesh is served as `model/mesh`, which compression's MIME list calls incompressible: it packs to 70%
+app.use(compression({
+  filter: (req, res) => /\.mesh(?:\?|$)/.test(req.url) || compression.filter(req, res)
+}));
 if(serveDist) {
   app.use(express.static('dist'));
 }

@@ -30,7 +30,7 @@ export interface AnimationItem {
   staleTimer?: ReturnType<typeof setTimeout>
 };
 
-export type AnimationItemType = 'lottie' | 'dots' | 'video' | 'emoji' | 'widget';
+export type AnimationItemType = 'lottie' | 'dots' | 'video' | 'emoji' | 'widget' | 'star';
 
 export interface AnimationItemWrapper {
   remove: () => void;

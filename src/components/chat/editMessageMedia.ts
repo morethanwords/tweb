@@ -11,7 +11,7 @@ import type {MediaEditorProps} from '@components/mediaEditor/mediaEditor';
 import type {LangPackKey} from '@lib/langPack';
 import {MAX_EDITABLE_VIDEO_SIZE} from '@components/mediaEditor/support';
 import {getMediaTypeForMessage} from '@components/chat/utils';
-import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
+import createImageSource from '@helpers/dom/createImageSource';
 import deferredPromise from '@helpers/cancellablePromise';
 import {getFileNameByLocation} from '@helpers/fileName';
 import {Middleware} from '@helpers/middleware';
@@ -89,11 +89,7 @@ export function getOpenMediaVideoPayload(document: Document.document): OpenMedia
   };
 }
 
-export async function createImageSource(url: string) {
-  const img = new Image();
-  await renderImageFromUrlPromise(img, url);
-  return img;
-}
+export {createImageSource};
 
 export async function createVideoSource(url: string, middleware?: Middleware) {
   // loaded here and not at the top so that merely ASKING whether a message can be

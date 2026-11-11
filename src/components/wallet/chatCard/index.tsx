@@ -10,7 +10,8 @@ import type {Appearance, GemView} from '@components/wallet/visual/gem/stage';
 import type WalletGem from '@components/wallet/gem';
 import type {CardGemHold} from '@components/wallet/chatCard/gemHold';
 import type {Middleware} from '@helpers/middleware';
-import animationIntersector, {AnimationItemGroup, AnimationItemNested} from '@components/animationIntersector';
+import {AnimationItemGroup} from '@components/animationIntersector';
+import useAnimationPlaying from '@hooks/useAnimationPlaying';
 import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {toFriendlyTonAddress} from '@lib/wallet/tonAddress';
@@ -253,11 +254,7 @@ export default function WalletChatCard(props: {
 
   // * it plays and stands with the chat's other animations (animationIntersector): out of sight, while the app's
   // * window is not in use, under a popup or a peek that holds the chat's
-  const [gemPlays, setGemPlays] = createSignal(false);
-  const gemPlayer = new AnimationItemNested({
-    onPlay: () => setGemPlays(true),
-    onPause: () => setGemPlays(false)
-  });
+  const [gemPlays, observeGemPlays] = useAnimationPlaying();
 
   /** the live gem, while there is one: none until its renderer comes, without WebGL2 or while it stands still */
   let gem: GemView;
@@ -608,14 +605,12 @@ export default function WalletChatCard(props: {
 
   onMount(() => {
     onCleanup(trackWalletCardAngle(card));
-    animationIntersector.addAnimation({
-      animation: gemPlayer,
+    observeGemPlays({
       group: props.animationGroup,
       observeElement: gemBox,
       controlled: props.middleware,
       type: 'dots'
     });
-    onCleanup(() => animationIntersector.removeAnimationByPlayer(gemPlayer));
     if(look() === 'sending') {
       startSendingLook();
     } else if(awaitingRead) {

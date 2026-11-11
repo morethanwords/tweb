@@ -22,6 +22,7 @@
 import {IS_SAFARI} from '@environment/userAgent';
 import IS_WEB_ASSEMBLY_BASELINE_SUPPORTED from '@environment/webAssemblyBaselineSupport';
 import IS_WEB_ASSEMBLY_SIMD_SUPPORTED from '@environment/webAssemblySimdSupport';
+import fetchArrayBuffer from '@helpers/fetchArrayBuffer';
 import withTimeout from '@helpers/schedulers/withTimeout';
 import stopTrack from '@lib/calls/helpers/stopTrack';
 import {RNNOISE_SAMPLE_RATE} from '@lib/calls/noiseSuppression/rnnoiseDenoiser';
@@ -116,19 +117,10 @@ export function describeNoiseSuppressionStatus(status: NoiseSuppressionStatus) {
     (status.bypassed ? `, bypassed: ${status.bypassed}` : '');
 }
 
-async function fetchAsset(url: string) {
-  const response = await fetch(url);
-  if(!response.ok) {
-    throw new Error(`${url}: HTTP ${response.status}`);
-  }
-
-  return response.arrayBuffer();
-}
-
 function loadAssets() {
   return assetsPromise ??= Promise.all([
-    fetchAsset(IS_WEB_ASSEMBLY_SIMD_SUPPORTED ? rnnoiseWasmUrl : rnnoiseNoSimdWasmUrl),
-    fetchAsset(rnnoiseWeightsUrl)
+    fetchArrayBuffer(IS_WEB_ASSEMBLY_SIMD_SUPPORTED ? rnnoiseWasmUrl : rnnoiseNoSimdWasmUrl),
+    fetchArrayBuffer(rnnoiseWeightsUrl)
   ]).then((assets) => {
     assetsLoaded = true;
     return assets;
