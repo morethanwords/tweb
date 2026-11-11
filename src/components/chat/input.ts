@@ -94,7 +94,8 @@ import AutocompleteHelperController from '@components/chat/autocompleteHelperCon
 import AutocompleteHelper from '@components/chat/autocompleteHelper';
 import MentionsHelper from '@components/chat/mentionsHelper';
 import fixSafariStickyInput from '@helpers/dom/fixSafariStickyInput';
-import ReplyKeyboard from '@components/chat/replyKeyboard';
+import ReplyKeyboard, {KEYBOARD_DURATION} from '@components/chat/replyKeyboard';
+import {EASING_Y} from '@components/chat/bubbleShape';
 import InlineHelper from '@components/chat/inlineHelper';
 import debounce, {DebounceReturnType} from '@helpers/schedulers/debounce';
 import {putPreloader} from '@components/putPreloader';
@@ -1908,19 +1909,51 @@ export default class ChatInput {
       this.listenerSetter.add(this.emoticonsDropdown)('close', this.onEmoticonsClose);
 
       if(emoticonsDropdown === this.emoticonsDropdown) {
-        const observer = new ResizeObserver(() => {
+        const updateEmoticonsHeight = () => {
+          if(this.emoticonsClosing) return;
           const panel = this.emoticonsDropdown.getElement();
           const under = panel.parentElement === this.chatInput && panel.classList.contains('is-under') && panel.offsetHeight > 0;
           const style = under && getComputedStyle(panel);
           const height = under ? panel.offsetHeight + parseFloat(style.marginTop) : 0;
           this.chatInput.classList.toggle('has-emoticons-under', under);
           if(this.emoticonsUnderHeight !== height) {
+            const previous = this.emoticonsUnderHeight;
+            this.emoticonsSlide?.cancel();
+            this.emoticonsSlide = undefined;
+            const motion = liteMode.isAvailable('motion') &&
+              this.chatInput.isConnected &&
+              this.chatInput.ownerDocument.visibilityState !== 'hidden' &&
+              (!previous || !height);
             this.emoticonsUnderHeight = height;
-            this.notifyChatInputHeight();
+            this.notifyChatInputHeight(motion ? KEYBOARD_DURATION : undefined);
+            if(motion) {
+              const animation = this.emoticonsSlide = this.chatInput.animate(
+                [{translate: `0 ${height - previous}px`}, {translate: '0 0'}],
+                {duration: KEYBOARD_DURATION, easing: EASING_Y}
+              );
+              animation.finished.then(() => {
+                if(this.emoticonsSlide === animation) this.emoticonsSlide = undefined;
+              }, noop);
+            }
           }
+        };
+        const observer = new ResizeObserver(updateEmoticonsHeight);
+        this.listenerSetter.add(this.emoticonsDropdown)('openAfterLayout', () => {
+          this.emoticonsClosing = false;
+          updateEmoticonsHeight();
+        });
+        this.listenerSetter.add(this.emoticonsDropdown)('closed', () => {
+          this.emoticonsClosing = false;
+          this.emoticonsSlide?.cancel();
+          this.emoticonsSlide = undefined;
+          updateEmoticonsHeight();
+          if(this.emoticonsDropdown.chatInput === this) this.replyKeyboard?.resume();
         });
         observer.observe(this.chatInput);
-        this.chat.destroyMiddlewareHelper.onDestroy(() => observer.disconnect());
+        this.chat.destroyMiddlewareHelper.onDestroy(() => {
+          observer.disconnect();
+          this.emoticonsSlide?.cancel();
+        });
         createRoot((dispose) => {
           this.chat.destroyMiddlewareHelper.onDestroy(dispose);
           createEffect(() => {
@@ -2663,8 +2696,20 @@ export default class ChatInput {
 
   private onEmoticonsClose = () => {
     this.onEmoticonsToggle(false);
+    if(this.emoticonsUnderHeight && liteMode.isAvailable('motion') &&
+      this.chatInput.isConnected && this.chatInput.ownerDocument.visibilityState !== 'hidden') {
+      const height = this.emoticonsUnderHeight;
+      this.emoticonsClosing = true;
+      this.emoticonsSlide?.cancel();
+      this.emoticonsUnderHeight = 0;
+      this.notifyChatInputHeight(KEYBOARD_DURATION);
+      this.emoticonsSlide = this.chatInput.animate(
+        [{translate: '0 0'}, {translate: `0 ${height}px`}],
+        {duration: KEYBOARD_DURATION, easing: EASING_Y, fill: 'forwards'}
+      );
+    }
     // * a bot keyboard that came while the user had it open: once it is closed, which it is after the event
-    if(this.emoticonsDropdown.chatInput === this) queueMicrotask(() => this.replyKeyboard?.resume());
+    if(this.emoticonsDropdown.chatInput === this && !this.emoticonsClosing) queueMicrotask(() => this.replyKeyboard?.resume());
   };
 
   // * the emoji panel the user has open over or under this field: the panel is every chat's
@@ -3877,13 +3922,15 @@ export default class ChatInput {
   }
 
   private emoticonsUnderHeight = 0;
+  private emoticonsSlide?: Animation;
+  private emoticonsClosing = false;
 
-  private notifyChatInputHeight() {
+  private notifyChatInputHeight(duration?: number) {
     const baseHeight = CHAT_INPUT_BASE_HEIGHT;
     const helperPx = this.helperVisible ? 48 : 0;
     const collapsedHeight = Math.max(baseHeight, this.messageInputNaturalHeight + 8) + helperPx;
     this.chatInput?.style.setProperty('--message-input-collapsed-height', `${collapsedHeight}px`);
-    this.chat.updateChatInputHeight(collapsedHeight - baseHeight + this.emoticonsUnderHeight);
+    this.chat.updateChatInputHeight(collapsedHeight - baseHeight + this.emoticonsUnderHeight, duration);
   }
 
   public passEventToInput(e: KeyboardEvent): void {
