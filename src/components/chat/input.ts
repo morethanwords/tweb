@@ -1914,7 +1914,8 @@ export default class ChatInput {
           const panel = this.emoticonsDropdown.getElement();
           const under = panel.parentElement === this.chatInput && panel.classList.contains('is-under') && panel.offsetHeight > 0;
           const style = under && getComputedStyle(panel);
-          const height = under ? panel.offsetHeight + parseFloat(style.marginTop) : 0;
+          const height = under ? panel.offsetHeight + parseFloat(style.marginTop) -
+            parseFloat(style.getPropertyValue('--emoticons-bottom-offset')) : 0;
           this.chatInput.classList.toggle('has-emoticons-under', under);
           if(this.emoticonsUnderHeight !== height) {
             const previous = this.emoticonsUnderHeight;

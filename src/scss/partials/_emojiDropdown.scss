@@ -76,6 +76,7 @@ $menu-search-translateY: -#{$menu-height};
   }
 
   &.is-under {
+    --emoticons-bottom-offset: 0px;
     --width: 100%;
     --height: min(282px, var(--under-input-max-height));
     position: relative;
@@ -92,6 +93,7 @@ $menu-search-translateY: -#{$menu-height};
     }
 
     @include respond-to(handhelds) {
+      --emoticons-bottom-offset: var(--page-chats-padding);
       --width: calc(100% + var(--page-chats-padding) * 2);
       max-width: none;
       margin-inline: calc(-1 * var(--page-chats-padding));
