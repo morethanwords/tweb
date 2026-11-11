@@ -773,7 +773,7 @@ namespace I18n {
 
   function scheduleWarmTimeStrings(dateTimeFormat: Intl.DateTimeFormat, timeStrings: Map<number, string>) {
     const warm = () => warmTimeStrings(dateTimeFormat, timeStrings);
-    self.requestIdleCallback ? self.requestIdleCallback(warm) : setTimeout(warm, 100);
+    globalThis.requestIdleCallback ? globalThis.requestIdleCallback(warm) : setTimeout(warm, 100);
   }
 
   function formatTimeString(date: Date) {
