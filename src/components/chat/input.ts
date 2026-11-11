@@ -1908,6 +1908,19 @@ export default class ChatInput {
       this.listenerSetter.add(this.emoticonsDropdown)('close', this.onEmoticonsClose);
 
       if(emoticonsDropdown === this.emoticonsDropdown) {
+        const observer = new ResizeObserver(() => {
+          const panel = this.emoticonsDropdown.getElement();
+          const under = panel.parentElement === this.chatInput && panel.classList.contains('is-under') && panel.offsetHeight > 0;
+          const style = under && getComputedStyle(panel);
+          const height = under ? panel.offsetHeight + parseFloat(style.marginTop) : 0;
+          this.chatInput.classList.toggle('has-emoticons-under', under);
+          if(this.emoticonsUnderHeight !== height) {
+            this.emoticonsUnderHeight = height;
+            this.notifyChatInputHeight();
+          }
+        });
+        observer.observe(this.chatInput);
+        this.chat.destroyMiddlewareHelper.onDestroy(() => observer.disconnect());
         createRoot((dispose) => {
           this.chat.destroyMiddlewareHelper.onDestroy(dispose);
           createEffect(() => {
@@ -3863,12 +3876,14 @@ export default class ChatInput {
     return draftRestored;
   }
 
+  private emoticonsUnderHeight = 0;
+
   private notifyChatInputHeight() {
     const baseHeight = CHAT_INPUT_BASE_HEIGHT;
     const helperPx = this.helperVisible ? 48 : 0;
     const collapsedHeight = Math.max(baseHeight, this.messageInputNaturalHeight + 8) + helperPx;
     this.chatInput?.style.setProperty('--message-input-collapsed-height', `${collapsedHeight}px`);
-    this.chat.updateChatInputHeight(collapsedHeight - baseHeight);
+    this.chat.updateChatInputHeight(collapsedHeight - baseHeight + this.emoticonsUnderHeight);
   }
 
   public passEventToInput(e: KeyboardEvent): void {
