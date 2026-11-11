@@ -300,6 +300,81 @@
       transform: translate3d(calc(-25vw * var(--reflect)), 0, 0);
       opacity: 0;
     }
+
+    &.has-mobile-navigation .settings-mobile-navigation-spacer {
+      display: block;
+      height: calc(72px + env(safe-area-inset-bottom));
+      flex: 0 0 calc(72px + env(safe-area-inset-bottom));
+    }
+
+    &.has-mobile-navigation.has-chat-action .mobile-main-navigation,
+    &.has-mobile-navigation.has-contact-action .mobile-main-navigation {
+      width: min(288px, calc(100vw - 100px));
+    }
+
+    &.has-mobile-navigation.has-chat-action .mobile-main-navigation-dock,
+    &.has-mobile-navigation.has-contact-action .mobile-main-navigation-dock {
+      gap: 12px;
+
+      .mobile-main-navigation-actions {
+        width: 56px;
+        flex-basis: 56px;
+      }
+    }
+
+    &.mobile-dock-static {
+      .mobile-main-navigation-dock,
+      .mobile-main-navigation,
+      .mobile-main-navigation-actions,
+      .mobile-main-navigation-item,
+      .mobile-main-navigation-actions > #new-menu,
+      .mobile-main-navigation-actions > .contact-add-button {
+        transition: none !important;
+      }
+    }
+
+    &.mobile-root-switching .sidebar-slider.animating .tabs-tab {
+      transition-duration: 125ms;
+    }
+
+    &.mobile-root-switching .sidebar-slider.animating-fade .tabs-tab {
+      animation-duration: 125ms !important;
+    }
+
+    .mobile-main-navigation-actions > #new-menu,
+    .mobile-main-navigation-actions > .contact-add-button {
+      position: absolute !important;
+      inset: 0;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(.85) !important;
+
+      @include animation-level(1) {
+        transition: opacity 160ms ease !important;
+      }
+
+      @include animation-level(2) {
+        transition: opacity 160ms ease, transform 180ms cubic-bezier(.2, .8, .2, 1) !important;
+      }
+    }
+
+    &.has-chat-action .mobile-main-navigation-actions > #new-menu:not(.is-hidden),
+    &.has-contact-action .mobile-main-navigation-actions > .contact-add-button {
+      opacity: 1;
+      pointer-events: auto;
+      transform: scale(1) !important;
+    }
+
+    &.has-chat-action .mobile-main-navigation-actions > #new-menu:not(.is-hidden) {
+      --translateY: 0;
+    }
+
+    &.has-mobile-navigation .item-main .sidebar-content .btn-corner {
+      bottom: calc(86px + env(safe-area-inset-bottom));
+    }
   }
 
   @include respond-to(floating-left-sidebar) {
@@ -560,6 +635,112 @@
     @include animation-level(2) {
       transition: transform var(--transition-standard-in);
     }
+  }
+}
+
+.settings-mobile-navigation-spacer {
+  display: none;
+}
+
+.mobile-main-navigation-dock {
+  display: none;
+
+  @include respond-to(handhelds) {
+    #column-left.has-mobile-navigation & {
+      display: flex;
+      position: absolute;
+      z-index: 20;
+      bottom: calc(8px + env(safe-area-inset-bottom));
+      left: 50%;
+      width: fit-content;
+      max-width: calc(100% - 16px);
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      transform: translateX(-50%);
+
+      @include animation-level(2) {
+        transition: gap 180ms cubic-bezier(.2, .8, .2, 1);
+      }
+    }
+  }
+}
+
+.mobile-main-navigation-actions {
+  position: relative;
+  flex: 0 0 0;
+  width: 0;
+  height: 56px;
+
+  @include animation-level(2) {
+    transition: width 180ms cubic-bezier(.2, .8, .2, 1), flex-basis 180ms cubic-bezier(.2, .8, .2, 1);
+  }
+
+  #new-menu:not(.menu-open) .animated-button-icon-icon-first,
+  #new-menu.menu-open .animated-button-icon-icon-last {
+    visibility: visible;
+    @include animation-level-icon-in();
+  }
+}
+
+.mobile-main-navigation {
+  display: flex;
+  flex: 0 0 auto;
+
+  @include respond-to(handhelds) {
+    #column-left.has-mobile-navigation & {
+      width: min(288px, calc(100vw - 32px));
+      height: 56px;
+      padding: 4px;
+      border: 1px solid var(--border-color);
+      border-radius: 28px;
+      background: rgba(var(--surface-color-rgb), .88);
+      box-shadow: 0 8px 28px rgba(0, 0, 0, .16);
+      backdrop-filter: blur(20px);
+
+      @include animation-level(2) {
+        transition: width 180ms cubic-bezier(.2, .8, .2, 1);
+      }
+    }
+  }
+
+}
+
+.mobile-main-navigation-item {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 2px 0;
+  border: 0;
+  border-radius: 24px;
+  background: transparent;
+  color: var(--secondary-text-color);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+
+  @include animation-level(1) {
+    transition: background-color 130ms ease, color 130ms ease;
+  }
+
+  .tgico {
+    font-size: 22px;
+  }
+
+  &.is-active {
+    background: var(--primary-color);
+    color: #fff;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
   }
 }
 

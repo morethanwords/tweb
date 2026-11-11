@@ -520,6 +520,7 @@ const Settings = () => {
           <span class={styles.versionOn}>{i18n('Experimental.OnNotice')}</span>
         </Show>
       </A11yButton>
+      <div class="settings-mobile-navigation-spacer" aria-hidden="true" />
     </>
   );
 };

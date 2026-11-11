@@ -54,6 +54,8 @@ export default class SidebarSlider {
   protected middlewareHelper: MiddlewareHelper;
   public onOpenTab: () => MaybePromise<void>;
   public onTabsCountChange?: () => void;
+  protected instantSwitch = false;
+  protected fastSwitch = false;
 
   constructor(options: SidebarSliderOptions) {
     safeAssign(this, options);
@@ -157,13 +159,13 @@ export default class SidebarSlider {
         // @ts-ignore
         tab.onOpenAfterTimeout?.();
         tab.shown.resolve();
-      }, TRANSITION_TIME);
+      }, this.instantSwitch ? 0 : this.fastSwitch ? TRANSITION_TIME / 2 : TRANSITION_TIME);
     }
 
     this.pushNavigationItem(tab);
 
     this.historyTabIds.push(id);
-    this._selectTab(id instanceof SliderSuperTab ? id.container : id);
+    this._selectTab(id instanceof SliderSuperTab ? id.container : id, !this.instantSwitch);
     return true;
   }
 
@@ -183,7 +185,8 @@ export default class SidebarSlider {
   }
 
   private async closeTabsNaturallyUntil(
-    target?: SliderSuperTab
+    target?: SliderSuperTab,
+    animate?: boolean
   ): Promise<boolean> {
     while(
       this.historyTabIds.length &&
@@ -205,7 +208,7 @@ export default class SidebarSlider {
         }
       }
 
-      this.closeTab(tabId, undefined, false);
+      this.closeTab(tabId, animate, false);
     }
 
     return !target || this.historyTabIds.includes(target);
@@ -216,8 +219,8 @@ export default class SidebarSlider {
   // gets to show its popup. If the user declines (the confirmation rejects),
   // stop and return false; the declined tab and everything beneath it stay open.
   // Unlike closeAllTabs, which force-closes every tab and ignores confirmation.
-  public closeAllTabsNaturally(): Promise<boolean> {
-    return this.closeTabsNaturallyUntil();
+  public closeAllTabsNaturally(animate?: boolean): Promise<boolean> {
+    return this.closeTabsNaturallyUntil(undefined, animate);
   }
 
   public closeTabsUntilTab(target: SliderSuperTab): Promise<boolean> {

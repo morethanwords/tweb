@@ -161,6 +161,10 @@ export class AppSidebarLeft extends SidebarSlider {
   private hasUpdate: boolean;
 
   private onResize: () => void;
+  private mobileNavigation: HTMLElement;
+  private mobileNavigationActions: HTMLElement;
+  private mobileNavigationButtons: HTMLButtonElement[];
+  private mobileNavigationSwitching = false;
 
   constructor() {
     super({
@@ -226,7 +230,13 @@ export class AppSidebarLeft extends SidebarSlider {
     this.buttonsContainer = this.backBtn.parentElement;
 
     this.newBtnMenu = this.createNewChatsMenuButton();
-    sidebarHeader.nextElementSibling.append(this.newBtnMenu);
+    const newBtnMenuHome = sidebarHeader.nextElementSibling;
+    const positionNewBtnMenu = () => {
+      (mediaSizes.isMobile ? this.mobileNavigationActions || this.sidebarEl : newBtnMenuHome).append(this.newBtnMenu);
+      if(this.mobileNavigation) this.updateMobileNavigation();
+    };
+    positionNewBtnMenu();
+    mediaSizes.addEventListener('changeScreen', positionNewBtnMenu);
 
     this.updateBtn = document.createElement('div');
     this.updateBtn.className = 'btn-circle rp btn-corner z-depth-1 btn-update is-hidden';
@@ -479,6 +489,7 @@ export class AppSidebarLeft extends SidebarSlider {
     });
 
     this.initSidebarResize();
+    this.initMobileNavigation();
     appDialogsManager.onSomeDrawerToggle = () => {
       this.onSomethingOpenInsideChange();
     };
@@ -562,12 +573,118 @@ export class AppSidebarLeft extends SidebarSlider {
     return this.closeAllTabs();
   }
 
+  private initMobileNavigation() {
+    const dock = document.createElement('div');
+    dock.className = 'mobile-main-navigation-dock';
+    const navigation = document.createElement('nav');
+    navigation.className = 'mobile-main-navigation';
+    navigation.setAttribute('aria-label', 'Main navigation');
+    const actions = document.createElement('div');
+    actions.className = 'mobile-main-navigation-actions';
+
+    const items: {key: 'chats' | 'contacts' | 'settings', icon: Parameters<typeof Icon>[0], title: LangPackKey}[] = [
+      {key: 'chats', icon: 'round_chats_filled', title: 'Chats'},
+      {key: 'contacts', icon: 'user', title: 'Contacts'},
+      {key: 'settings', icon: 'settings', title: 'Settings'}
+    ];
+
+    this.mobileNavigationButtons = items.map(({key, icon, title}) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'mobile-main-navigation-item';
+      button.dataset.tab = key;
+      button.append(Icon(icon), i18n(title));
+      button.addEventListener('click', async() => {
+        if(this.mobileNavigationSwitching ||
+          button.classList.contains('is-active') && this.getHistory().length <= 1) return;
+
+        const currentSection = this.mobileNavigationButtons.find((item) => item.classList.contains('is-active'))?.dataset.tab;
+        const sameDockSize = (currentSection === 'chats' || currentSection === 'contacts') &&
+          (key === 'chats' || key === 'contacts');
+        this.sidebarEl.classList.toggle('mobile-dock-static', sameDockSize);
+        this.mobileNavigationSwitching = true;
+        this.instantSwitch = !liteMode.isAvailable('animations');
+        this.fastSwitch = !this.instantSwitch;
+        if(this.fastSwitch) {
+          this.sidebarEl.classList.add('mobile-root-switching');
+          this._selectTab.setTransitionTime(125);
+        }
+        try {
+          const history = this.getHistory();
+          const currentRoot = history.length === 1 ? history[0] : undefined;
+          const nextTab = key === 'contacts' ? this.createTab(AppContactsTab) :
+            key === 'settings' ? this.createTab(AppSettingsTab) : undefined;
+
+          if(nextTab && (currentRoot instanceof AppContactsTab || currentRoot instanceof AppSettingsTab)) {
+            const confirmation = currentRoot.isConfirmationNeededOnClose?.();
+            if(confirmation) {
+              const confirmed = await Promise.resolve(confirmation).then(() => true, () => false);
+              if(!confirmed) return;
+            }
+
+            if(key === 'contacts' && currentRoot instanceof AppSettingsTab) {
+              this.tabsContainer.insertBefore(nextTab.container, currentRoot.container);
+            }
+            this.updateMobileNavigation(key);
+            await nextTab.open();
+            this.removeTabFromHistory(currentRoot);
+            appNavigationController.removeByType('left');
+            this.pushNavigationItem(nextTab);
+          } else {
+            if(!await this.closeEverythingInsideNaturally(!this.instantSwitch)) return;
+            this.updateMobileNavigation(key);
+            if(nextTab) await nextTab.open();
+          }
+        } finally {
+          if(this.fastSwitch) await pause(125);
+          this._selectTab.setTransitionTime(250);
+          this.sidebarEl.classList.remove('mobile-root-switching');
+          this.instantSwitch = false;
+          this.fastSwitch = false;
+          this.mobileNavigationSwitching = false;
+          this.updateMobileNavigation();
+          this.sidebarEl.classList.remove('mobile-dock-static');
+        }
+      });
+      navigation.append(button);
+      return button;
+    });
+
+    this.mobileNavigation = navigation;
+    this.mobileNavigationActions = actions;
+    dock.append(navigation, actions);
+    this.sidebarEl.append(dock);
+    if(mediaSizes.isMobile) actions.append(this.newBtnMenu);
+    this.updateMobileNavigation();
+  }
+
+  private updateMobileNavigation(selectedOverride?: 'chats' | 'contacts' | 'settings') {
+    if(!this.mobileNavigation || this.mobileNavigationSwitching && !selectedOverride) return;
+    const history = this.getHistory();
+    const rootTab = history[0];
+    const selected = selectedOverride || (rootTab instanceof AppContactsTab ? 'contacts' :
+      rootTab instanceof AppSettingsTab ? 'settings' : 'chats');
+    const visible = !this.isSearchActive && !appDialogsManager.forumTab &&
+      (!!selectedOverride || history.length === 0 || history.length === 1 && selected !== 'chats');
+
+    this.sidebarEl.classList.toggle('has-mobile-navigation', visible);
+    this.sidebarEl.classList.toggle('has-chat-action', visible && selected === 'chats');
+    this.sidebarEl.classList.toggle('has-contact-action', visible && selected === 'contacts');
+    this.newBtnMenu.inert = mediaSizes.isMobile && !(visible && selected === 'chats');
+    for(const button of this.mobileNavigationButtons) {
+      const active = button.dataset.tab === selected;
+      button.classList.toggle('is-active', active);
+      if(active) button.setAttribute('aria-current', 'page');
+      else button.removeAttribute('aria-current');
+    }
+  }
+
   // Like closeEverythingInside, but closes stacked tabs the "natural" way (via
   // the back arrow) so a tab can still confirm before closing. Returns false —
   // without touching the search or the forum — if the user declines a tab's
   // close confirmation, so the caller can cancel whatever triggered the close.
-  public async closeEverythingInsideNaturally() {
-    if(!await this.closeAllTabsNaturally()) {
+  public async closeEverythingInsideNaturally(animate?: boolean) {
+    if(!await this.closeAllTabsNaturally(animate)) {
       return false;
     }
 
@@ -597,6 +714,7 @@ export class AppSidebarLeft extends SidebarSlider {
       appDialogsManager.forumTab.container.inert = hasRealTabs;
     }
     useHasOpenLeftTabs()[1](isFloating);
+    this.updateMobileNavigation();
 
     // Keep the pop-out flag in sync with the actual tabs state regardless of
     // the early-return paths below. If we only set it inside the
@@ -689,6 +807,8 @@ export class AppSidebarLeft extends SidebarSlider {
   private initSidebarResize() {
     this.onTabsCountChange = () => {
       this.onSomethingOpenInsideChange();
+      // SidebarSlider notifies while opening a tab, before adding it to history.
+      queueMicrotask(() => this.updateMobileNavigation());
     }
 
     installColumnResize({
@@ -784,7 +904,8 @@ export class AppSidebarLeft extends SidebarSlider {
     }, {
       icon: 'user',
       text: 'Contacts',
-      onClick: onContactsClick
+      onClick: onContactsClick,
+      verify: () => !mediaSizes.isMobile
     }, {
       icon: 'wallet',
       text: 'WalletAttachMoney',
@@ -807,6 +928,7 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'settings',
       text: 'Settings',
       separator: true,
+      verify: () => !mediaSizes.isMobile,
       onClick: () => {
         closeTabsBefore(() => {
           this.createTab(AppSettingsTab).open();
