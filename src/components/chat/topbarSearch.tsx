@@ -118,7 +118,7 @@ export const createSearchLoader = (options: LoadOptions) => {
     threadId: searchType === 'this' || !searchType ? threadId : undefined,
     monoforumThreadId,
     query,
-    inputFilter: {_: 'inputMessagesFilterEmpty'},
+    inputFilter: query?.trim() || fromPeerId || reaction || searchType ? {_: 'inputMessagesFilterEmpty'} : undefined,
     limit: 30,
     fromPeerId,
     savedReaction: reaction ? [reaction as Reaction.reactionEmoji] : undefined,
@@ -908,7 +908,7 @@ export default function TopbarSearch(props: {
 
     const current = {searchType: _searchType, query};
 
-    if(!isSender && !fromPeerId && !_reaction && isEmptyQuery) {
+    if(!isSender && !fromPeerId && !_reaction && isEmptyQuery && (!isSmallScreen() || _isHashtag)) {
       setCount();
       setTotalCount();
       onLoad();
@@ -1192,6 +1192,8 @@ export default function TopbarSearch(props: {
       return;
     }
 
+    props.chat.topbar.container.classList.add('is-searching-mobile');
+
     const index = () => whichMessage(target());
 
     const footerElement = SearchFooter({
@@ -1250,6 +1252,7 @@ export default function TopbarSearch(props: {
     });
 
     onCleanup(() => {
+      props.chat.topbar.container.classList.remove('is-searching-mobile');
       footerElement.remove();
       setShowingSmallResults(false);
       onShowingSmallResultsChange();

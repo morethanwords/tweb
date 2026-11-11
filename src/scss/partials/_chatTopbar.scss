@@ -165,6 +165,10 @@ body.is-pinned-audio-shown, body.is-calling.forwards {
     }
 	}
 
+  &.is-searching-mobile .chat-info-container {
+    visibility: hidden;
+  }
+
 	.chat-utils {
 		display: flex;
 		align-items: center;
