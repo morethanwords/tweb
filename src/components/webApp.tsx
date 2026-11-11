@@ -1081,7 +1081,7 @@ export default class WebApp {
       url: this.getWebViewUrl(this.webViewResultUrl.url), // fixme
       origin: this.getSameOrigin(),
       sandbox: SANDBOX_ATTRIBUTES,
-      allow: 'camera; microphone; geolocation; accelerometer; gyroscope; magnetometer; device-orientation; clipboard-write;',
+      allow: 'camera; microphone; geolocation; accelerometer; gyroscope; magnetometer; device-orientation; clipboard-write; xr-spatial-tracking;',
       onLoad: () => this.showWebViewContent()
     });
 
