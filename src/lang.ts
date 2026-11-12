@@ -1,4 +1,6 @@
 const lang = {
+  'Chat.ParkDraft': 'Set message aside',
+  'Chat.RestoreParkedDraft': 'Swap with saved message',
   'Animations': 'Animations',
   'AttachAlbum': 'Album',
   'Appearance.Color.Hex': 'HEX',
