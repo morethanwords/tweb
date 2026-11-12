@@ -8,6 +8,7 @@ describe('mobile message taps', () => {
   let listeners: ListenerSetter;
   let onTap: ReturnType<typeof vi.fn<(event: MouseEvent) => void>>;
   let onDoubleTap: ReturnType<typeof vi.fn<(bubble: HTMLElement) => void>>;
+  let isSelecting: boolean;
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -19,8 +20,9 @@ describe('mobile message taps', () => {
     listeners = new ListenerSetter();
     onTap = vi.fn();
     onDoubleTap = vi.fn();
+    isSelecting = false;
     attachMessageTap({element, listenerSetter: listeners,
-      getBubble: (event) => (event.target as HTMLElement).closest('.bubble'),
+      getBubble: (event) => !isSelecting ? (event.target as HTMLElement).closest('.bubble') : undefined,
       onTap, onDoubleTap});
   });
 
@@ -117,6 +119,27 @@ describe('mobile message taps', () => {
 
   it('opens immediately for keyboard activation', () => {
     bubble.click();
+    expect(onTap).toHaveBeenCalledOnce();
+    expect(onDoubleTap).not.toHaveBeenCalled();
+  });
+
+  it.each(['ltr', 'rtl'])('does not open a menu when a tap deselects the last message (%s)', (direction) => {
+    element.dir = direction;
+    isSelecting = true;
+    bubble.addEventListener('mousedown', (event) => {
+      isSelecting = false;
+      event.preventDefault();
+      event.stopPropagation();
+    }, {once: true});
+    tap();
+    vi.runAllTimers();
+    expect(isSelecting).toBe(false);
+    expect(onTap).not.toHaveBeenCalled();
+    expect(onDoubleTap).not.toHaveBeenCalled();
+
+    // The deselection must not count as the first tap of a quick reaction.
+    tap();
+    vi.runAllTimers();
     expect(onTap).toHaveBeenCalledOnce();
     expect(onDoubleTap).not.toHaveBeenCalled();
   });

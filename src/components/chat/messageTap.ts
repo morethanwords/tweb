@@ -11,6 +11,7 @@ export default function attachMessageTap(options: {
   onDoubleTap: (bubble: HTMLElement) => void
 }) {
   let pending: {event: MouseEvent, bubble: HTMLElement, timer: number};
+  let ignoreClick = false;
   const clear = () => {
     if(pending) window.clearTimeout(pending.timer);
     pending = undefined;
@@ -19,7 +20,20 @@ export default function attachMessageTap(options: {
   options.listenerSetter.add(options.element)('touchmove', clear, {passive: true});
   options.listenerSetter.add(options.element)('touchcancel', clear);
   options.listenerSetter.add(options.element)('contextmenu', clear);
+  // Selection handles mousedown inside the bubbles and may deselect the last
+  // message there. Its following click still belongs to that selection action.
+  options.listenerSetter.add(options.element)('mousedown', (event) => {
+    if(event.button !== 0) return;
+    ignoreClick = !options.getBubble(event);
+    if(ignoreClick) clear();
+  }, {capture: true});
   options.listenerSetter.add(options.element)('click', (event) => {
+    const ignored = ignoreClick && event.detail !== 0;
+    ignoreClick = false;
+    if(ignored) {
+      clear();
+      return;
+    }
     const bubble = !event.defaultPrevented && event.button === 0 && options.getBubble(event);
     if(!bubble) {
       clear();
