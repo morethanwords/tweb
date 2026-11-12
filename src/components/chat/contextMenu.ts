@@ -11,6 +11,7 @@ import {toastNew} from '@components/toast';
 import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import getSelectionElementFromTarget from '@components/chat/getSelectionElementFromTarget';
+import attachMessageTap from '@components/chat/messageTap';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import isSelectionEmpty from '@helpers/dom/isSelectionEmpty';
@@ -325,12 +326,10 @@ export default class ChatContextMenu {
         listenerOptions: {capture: true}
       });
 
-      attachClickEvent(element, (e) => {
+      attachMessageTap({element, listenerSetter: this.attachListenerSetter, getBubble: (e) => {
         if(this.chat.selection.isSelecting) {
           return;
         }
-
-        this.chat.log('touchend', e);
 
         const badSelectors = [
           '.name',
@@ -350,16 +349,17 @@ export default class ChatContextMenu {
           '.webpage',
           '.bubbles-group-avatar',
           '.bubble-service-button',
-          '.time-widget-network'
+          '.time-widget-network',
+          'reaction-element',
+          '.code-header-button'
         ];
         const good = !(e.target as HTMLElement).closest(badSelectors.join(', '));
         if(good) {
-          cancelEvent(e);
-          // onContextMenu((e as TouchEvent).changedTouches[0]);
-          // onContextMenu((e as TouchEvent).changedTouches ? (e as TouchEvent).changedTouches[0] : e as MouseEvent);
-          this.onContextMenu(e);
+          return getSelectionElementFromTarget(e.target);
         }
-      }, {listenerSetter: this.attachListenerSetter});
+      }, onTap: this.onContextMenu, onDoubleTap: (bubble) => {
+        void this.sendQuickReaction(bubble).catch((error) => this.chat.log('quick reaction error', error));
+      }});
     } else attachContextMenuListener({
       element,
       callback: this.onContextMenu,
@@ -407,6 +407,20 @@ export default class ChatContextMenu {
         contextMenuController.close();
       }
     });
+  }
+
+  private async sendQuickReaction(bubble: HTMLElement) {
+    const {chat, managers} = this;
+    if(chat.selection.isSelecting || chat.type === ChatType.Pinned || chat.type === ChatType.Logs || chat.type === ChatType.Static) return;
+    const peerId = chat.peerId;
+    let message = chat.getMessage(makeFullMid(bubble.dataset.peerId.toPeerId(), +bubble.dataset.mid));
+    if(message?._ !== 'message' || message.pFlags.is_outgoing || isEphemeralMessage(message)) return;
+
+    message = await managers.appMessagesManager.getGroupsFirstMessage(message);
+    const {reactions} = await managers.appReactionsManager.getAvailableReactionsByMessage(message, true);
+    const reaction = reactions.find((reaction) => reaction._ !== 'reactionPaid');
+    if(!reaction || chat.peerId !== peerId || !bubble.isConnected || chat.selection.isSelecting) return;
+    chat.sendReaction({message, reaction});
   }
 
   public onContextMenu = (e: MouseEvent | Touch | TouchEvent) => {

@@ -76,14 +76,28 @@ $menu-search-translateY: -#{$menu-height};
   }
 
   &.is-under {
+    --emoticons-bottom-offset: 0px;
     --width: 100%;
     --height: min(282px, var(--under-input-max-height));
     position: relative;
     transform: none;
     inset: unset;
-    border-radius: unset;
+    border-radius: 1.25rem 1.25rem 0 0;
+    margin-top: 8px;
     max-width: 100%;
     max-height: 100%;
+
+    @include animation-level(2) {
+      transition: none;
+      opacity: 1;
+    }
+
+    @include respond-to(handhelds) {
+      --emoticons-bottom-offset: var(--page-chats-padding);
+      --width: calc(100% + var(--page-chats-padding) * 2);
+      max-width: none;
+      margin-inline: calc(-1 * var(--page-chats-padding));
+    }
   }
 
   &.active {
@@ -146,6 +160,12 @@ $menu-search-translateY: -#{$menu-height};
     margin: .25rem .1875rem .1875rem;
     border-radius: $border-radius-medium;
     overflow: hidden;
+  }
+}
+
+@include respond-to(handhelds) {
+  .chat-input-main.has-emoticons-under {
+    bottom: calc(-1 * var(--page-chats-padding));
   }
 }
 

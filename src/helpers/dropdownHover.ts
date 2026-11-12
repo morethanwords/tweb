@@ -39,6 +39,10 @@ export default class DropdownHover extends EventListenerBase<{
   protected detachClickEvent: () => void;
   private keyboardTrigger: HTMLElement;
 
+  protected getCloseDelay(): number {
+    return IS_TOUCH_SUPPORTED || !liteMode.isAvailable('animations') ? 0 : ANIMATION_DURATION;
+  }
+
   constructor(options: {
     element: DropdownHover['element'],
     ignoreOutClickClassName?: string
@@ -275,7 +279,7 @@ export default class DropdownHover extends EventListenerBase<{
         this.element.style.display = 'none';
         this.forceClose = false;
         this.dispatchEvent('closed');
-      }, delay);
+      }, this.getCloseDelay());
 
       /* if(isTouchSupported) {
         const scrollHeight = this.container.scrollHeight;
