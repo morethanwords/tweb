@@ -7,7 +7,7 @@
     "start": "node --max-old-space-size=12048 node_modules/webpack-dev-server/bin/webpack-dev-server.js --config webpack.dev.js",
     "start:production": "webpack-dev-server --config webpack.prod.js",
     "serve": "npm run build; node server.js",
-    "build": "npm run generate-changelog; webpack --config webpack.prod.js",
+    "build": "pnpm run generate-changelog && node --openssl-legacy-provider node_modules/webpack/bin/webpack.js --config webpack.prod.js",
     "build:dev": "webpack --config webpack.dev.js",
     "test": "jest --config=jest.config.js",
     "profile": "webpack --profile --json > stats.json --config webpack.prod.js",
@@ -15,7 +15,12 @@
     "whybundled": "npm run profile && whybundled stats.json",
     "generate-mtproto-types": "node ./src/scripts/generate_mtproto_types.js src/",
     "generate-changelog": "node ./src/scripts/generate_changelog.js",
-    "change-version": "node ./src/scripts/change_version.js"
+    "change-version": "node ./src/scripts/change_version.js",
+    "typecheck": "tsc --noEmit",
+    "test:relay": "jest --runInBand src/tests/relayUrl.test.ts src/tests/relayTransport.test.ts",
+    "lint": "eslint src/lib/mtproto/relayUrl.ts src/tests/relay*.test.ts deploy/*.cjs tests/*.cjs && node deploy/generate-routes.cjs --check",
+    "test:container": "node tests/container.cjs",
+    "test:build-env": "node --test tests/build-env.cjs"
   },
   "author": "",
   "license": "GPL-3.0-only",
@@ -38,6 +43,7 @@
     "@types/chrome": "0.0.139",
     "@types/jest": "^26.0.23",
     "@types/serviceworker-webpack-plugin": "^1.0.2",
+    "@typescript-eslint/parser": "5.62.0",
     "autoprefixer": "^9.8.6",
     "babel-jest": "^26.6.3",
     "babel-loader": "^8.2.2",
@@ -45,6 +51,7 @@
     "compression": "^1.7.4",
     "css-loader": "^3.6.0",
     "dotenv-webpack": "^7.0.3",
+    "eslint": "8.57.1",
     "express": "^4.17.1",
     "fast-png": "^5.0.4",
     "handlebars": "^4.7.7",
@@ -74,6 +81,11 @@
     "webpack-cli": "^3.3.12",
     "webpack-merge": "^4.2.2",
     "webpack-retry-chunk-load-plugin": "^1.5.0",
-    "worker-loader": "^3.0.8"
+    "worker-loader": "^3.0.8",
+    "ws": "8.18.3"
+  },
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=22 <25"
   }
 }

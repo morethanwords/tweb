@@ -13,6 +13,7 @@ import MTTransport, { MTConnectionConstructable } from './transports/transport';
 import Modes from '../../config/modes';
 import { indexOfAndSplice } from '../../helpers/array';
 import App from '../../config/app';
+import { MTPROTO_RELAY_PATH, relayUrl } from './relayUrl';
 
 /// #if MTPROTO_HAS_HTTP
 import HTTP from './transports/http';
@@ -68,14 +69,14 @@ export class DcConfigurator {
 
     const oooohLetMeLive: MTConnectionConstructable = (IS_SAFARI && IS_WEB_WORKER && typeof(SocketProxied) !== 'undefined') /* || true */ ? SocketProxied : Socket;
 
-    return new TcpObfuscated(oooohLetMeLive, dcId, chosenServer, logSuffix, retryTimeout);
+    return new TcpObfuscated(oooohLetMeLive, dcId, relayUrl(chosenServer), logSuffix, retryTimeout);
   };
   /// #endif
 
   /// #if MTPROTO_HAS_HTTP
   private transportHTTP = (dcId: DcId, connectionType: ConnectionType, suffix: string) => {
     let chosenServer: string;
-    if(Modes.ssl || !Modes.http) {
+    if(Modes.ssl || !Modes.http || MTPROTO_RELAY_PATH) {
       const subdomain = this.sslSubdomains[dcId - 1] + (connectionType !== 'client' ? '-1' : '');
       const path = Modes.test ? 'apiw_test1' : 'apiw1';
       chosenServer = 'https://' + subdomain + '.web.telegram.org/' + path;
@@ -89,7 +90,7 @@ export class DcConfigurator {
     }
 
     const logSuffix = connectionType === 'upload' ? '-U' : connectionType === 'download' ? '-D' : '';
-    return new HTTP(dcId, chosenServer, logSuffix);
+    return new HTTP(dcId, relayUrl(chosenServer), logSuffix);
   };
   /// #endif
 

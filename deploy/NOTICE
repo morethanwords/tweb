@@ -1,0 +1,5 @@
+Telegram Web K MTProto relay fork, distributed under GPL-3.0-only.
+Copyright notices and dependencies: /UPSTREAM-README.md and /LICENSE.
+Modifications: same-origin MTProto routing and container/deployment tooling.
+Distributors must provide the complete corresponding source, including submodules
+and build scripts, for the exact image revision. See docs/deployment.md.

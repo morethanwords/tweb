@@ -7,6 +7,7 @@ const ServiceWorkerWebpackPlugin = require('serviceworker-webpack-plugin');
 const { RetryChunkLoadPlugin } = require('webpack-retry-chunk-load-plugin');
 const fs = require('fs');
 const Dotenv = require('dotenv-webpack');
+const { DefinePlugin } = require('webpack');
 
 const allowedIPs = ['127.0.0.1'];
 const devMode = process.env.NODE_ENV !== 'production';
@@ -101,6 +102,7 @@ module.exports = {
 
   output: {
     globalObject: 'this',
+    publicPath: '/',
     path: path.resolve(__dirname, 'public'),
     filename: '[name].[chunkhash].bundle.js',
     chunkFilename: '[name].[chunkhash].chunk.js'
@@ -149,6 +151,9 @@ module.exports = {
 
   plugins: [
     new Dotenv(),
+    new DefinePlugin({
+      'process.env.VITE_MTPROTO_RELAY_PATH': JSON.stringify(process.env.VITE_MTPROTO_RELAY_PATH || '')
+    }),
     
     new ServiceWorkerWebpackPlugin({
       entry: path.join(__dirname, 'src/lib/serviceWorker/index.service.ts'),

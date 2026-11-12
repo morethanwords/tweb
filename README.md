@@ -1,6 +1,13 @@
 ## Telegram Web K
 Based on Webogram, patched and improved. Available for everyone here: https://web.telegram.org/k/
 
+This fork adds an optional same-origin MTProto relay and a single Caddy production
+image for an existing HAProxy. See [deployment](docs/deployment.md) and
+[architecture, tests and upstream updates](docs/mtproto-relay.md).
+Use Node 22, Corepack and the pinned pnpm version (`corepack enable`,
+`corepack install`, `pnpm install --frozen-lockfile`). The pnpm lockfile is authoritative
+for this fork; the npm instructions below are preserved from the upstream README.
+
 
 ### Developing
 Install dependencies with:

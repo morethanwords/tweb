@@ -20,7 +20,7 @@ import { InputFile, InputFileLocation, InputWebFileLocation, UploadFile, UploadW
 import { DcId, WorkerTaskVoidTemplate } from "../../types";
 import CacheStorageController from "../cacheStorage";
 import cryptoWorker from "../crypto/cryptoworker";
-import fileManager from "../fileManager";
+import fileManager from "../filemanager";
 import { logger, LogTypes } from "../logger";
 import apiManager from "./apiManager";
 import { isWebpSupported } from "./mtproto.worker";

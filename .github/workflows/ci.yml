@@ -1,0 +1,86 @@
+name: CI
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master, 'feat/**']
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .node-version
+      - name: Activate packageManager version
+        run: |
+          corepack enable
+          corepack install
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint
+      - run: pnpm run typecheck
+      - run: pnpm test --runInBand
+      - run: pnpm run test:build-env
+      - name: Build production client
+        env:
+          VITE_MTPROTO_RELAY_PATH: /mtproto
+          SOURCE_REVISION: ${{ github.sha }}
+          API_ID: ${{ vars.API_ID }}
+          API_HASH: ${{ vars.API_HASH }}
+        run: |
+          node deploy/build-env.cjs
+          pnpm run build
+          node deploy/prepare-static.cjs
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: deploy/Dockerfile
+          load: true
+          tags: telegram-web-k:ci
+          build-args: |
+            SOURCE_REVISION=${{ github.sha }}
+            SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
+            API_ID=${{ vars.API_ID }}
+            API_HASH=${{ vars.API_HASH }}
+          cache-from: type=gha,scope=tweb
+          cache-to: type=gha,mode=max,scope=tweb
+      - name: Container and mock TLS/WebSocket tests
+        env:
+          TEST_IMAGE: telegram-web-k:ci
+          EXPECTED_REVISION: ${{ github.sha }}
+        run: pnpm run test:container
+      - name: Runtime vulnerability gate
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: telegram-web-k:ci
+          format: table
+          output: trivy.txt
+          severity: CRITICAL
+          ignore-unfixed: false
+          exit-code: '1'
+          timeout: 15m
+      - name: Scan summary
+        if: always()
+        run: |
+          if test -f trivy.txt; then
+            {
+              printf '\n```text\n'
+              cat trivy.txt
+              printf '\n```\n'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

@@ -1,0 +1,95 @@
+{
+	admin off
+	auto_https off
+	persist_config off
+	grace_period 10s
+	storage file_system {
+		root /tmp/caddy
+	}
+	# Do not emit request objects (which can contain domain credentials) on errors.
+	log default {
+		format filter {
+			wrap json
+			fields {
+				request delete
+			}
+		}
+	}
+}
+
+# Arguments: local path, fixed upstream hostname, fixed upstream path, method, ID.
+(telegram) {
+	@relay{args[4]} expression `{http.request.uri} == "{args[0]}" && {http.request.method} == "{args[3]}"`
+	handle @relay{args[4]} {
+		rewrite * {args[2]}
+		reverse_proxy https://{args[1]} {
+			header_up -*
+			header_up Host {args[1]}
+			header_up Content-Type application/octet-stream
+			header_up Connection {http.request.header.Connection}
+			header_up Upgrade {http.request.header.Upgrade}
+			header_up Sec-WebSocket-Key {http.request.header.Sec-WebSocket-Key}
+			header_up Sec-WebSocket-Version {http.request.header.Sec-WebSocket-Version}
+			header_up Sec-WebSocket-Protocol {http.request.header.Sec-WebSocket-Protocol}
+			header_down -Set-Cookie
+			header_down -WWW-Authenticate
+			header_down -Proxy-Authenticate
+			transport http {
+				tls_server_name {args[1]}
+				versions 1.1
+				compression off
+				dial_timeout 10s
+				response_header_timeout 60s
+			}
+			@redirect status 3xx
+			handle_response @redirect {
+				respond "Upstream redirect rejected" 502
+			}
+		}
+	}
+}
+
+:8080 {
+	root * /srv
+	encode gzip
+	header X-Content-Type-Options nosniff
+
+	@healthy {
+		path /healthz
+		method GET HEAD
+		file /index.html
+	}
+	handle @healthy {
+		header Cache-Control no-store
+		respond "ok" 200
+	}
+	handle /healthz {
+		respond "Static build missing" 503
+	}
+
+	import relay-routes.caddy
+	@unknownRelay path /mtproto /mtproto/*
+	handle @unknownRelay {
+		respond "Not found" 404
+	}
+
+	handle {
+		@immutable path_regexp hashed \.[a-f0-9]{20,64}\.(?:bundle\.worker\.js|bundle\.js|chunk\.js|css)$
+		header @immutable Cache-Control "public, max-age=31536000, immutable"
+		@mutable not path_regexp hashed \.[a-f0-9]{20,64}\.(?:bundle\.worker\.js|bundle\.js|chunk\.js|css)$
+		header @mutable Cache-Control no-cache
+		@sw path /sw.js
+		header @sw Service-Worker-Allowed /
+		# Missing assets must fail; only navigations get the SPA entry point.
+		@spa {
+			method GET HEAD
+			header Accept *text/html*
+			not file {path}
+			not path_regexp extension \.[A-Za-z0-9]+$
+		}
+		rewrite @spa /index.html
+		file_server {
+			precompressed br gzip
+		}
+	}
+}

@@ -1,0 +1,29 @@
+services:
+  web:
+    image: ${IMAGE:-ghcr.io/OWNER/telegram-web-k}${IMAGE_REF:-:${IMAGE_TAG:-main}}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m,uid=10001,gid=10001,mode=1700
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    user: "10001:10001"
+    stop_grace_period: 15s
+    # Example limits; size these for simultaneous connections and file transfers.
+    cpus: 2
+    mem_limit: 512m
+    pids_limit: 128
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8080/healthz]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"

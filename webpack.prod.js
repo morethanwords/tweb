@@ -60,6 +60,7 @@ module.exports = merge(common, {
 
     new WebpackOnBuildPlugin(function(stats) {
       const newlyCreatedAssets = stats.compilation.assets;
+      fs.writeFileSync(path.resolve(buildDir, 'build-assets.json'), JSON.stringify(Object.keys(newlyCreatedAssets)));
 
       const unlinked = [];
       fs.readdir(path.resolve(buildDir), (err, files) => {

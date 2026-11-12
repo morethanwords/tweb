@@ -11,3 +11,7 @@ public3
 session_name.session
 tasks.txt
 yarn.lock
+deploy/.env
+source.tar.gz
+trivy.txt
+public/build-assets.json
