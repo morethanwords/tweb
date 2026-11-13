@@ -52,14 +52,17 @@ upstream и явного расширения allowlist. Неизвестный 
 
 Маршруты сопоставляются с полным URI и HTTP method. Произвольных hostname, URL,
 query parameters или dynamic upstream в production нет. Неизвестный `/mtproto/*`
-возвращает 404 до SPA fallback. Запросы на разрешённые Telegram endpoints доступны
-любому, кому доступен сайт; это ограниченный relay, без отдельного пользовательского backend.
+после Basic Auth возвращает 404 до SPA fallback. Caddy проверяет Basic Auth для
+всех путей, кроме `/healthz`; без авторизации — 401 до обращения к upstream.
+Логин и bcrypt-хеш задаются в runtime через `BASIC_AUTH_USER`/`BASIC_AUTH_PASSWORD_HASH`.
+Отдельного пользовательского backend нет; credentials сайта не являются Telegram session.
 
 Caddy проверяет TLS upstream, выставляет фиксированные Host/SNI, сохраняет бинарный
 body, Upgrade и WebSocket subprotocol `binary`. Все входящие upstream-заголовки
 удаляются, затем восстанавливается минимальный набор для MTProto/WebSocket. Cookies,
 Authorization, Forwarded, X-Forwarded-*, Origin, Referer и произвольные auth-заголовки
-не передаются Telegram. Set-Cookie и auth challenges удаляются из ответа; redirects
+не передаются Telegram, в том числе Authorization после успешного Basic Auth.
+Set-Cookie и auth challenges удаляются из ответа; redirects
 upstream преобразуются в 502, чтобы fetch не перешёл на прямой Telegram URL.
 
 Протокол и криптография не менялись. VPS видит сетевые метаданные и зашифрованные

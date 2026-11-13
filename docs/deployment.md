@@ -1,5 +1,10 @@
 # Развёртывание за существующим HAProxy
 
+Для сервера с 3x-ui, отдельным `xui-edge.service` и TCP/SNI на 443 используйте
+[пошаговую инструкцию для max.leocat.fyi](deployment-3x-ui.md).
+Пример HTTPS frontend ниже предназначен для HAProxy, который уже завершает TLS;
+он не подходит для прямой вставки в TCP frontend 3x-ui.
+
 ## Локальная сборка и запуск
 
 Нужны Docker с BuildKit, для разработки — Node из `.node-version`, Corepack и pnpm
@@ -8,7 +13,12 @@
 ```sh
 git submodule update --init --recursive
 docker build -f deploy/Dockerfile -t telegram-web-k:local .
-docker run --rm -p 127.0.0.1:8080:8080 telegram-web-k:local
+# Введите пароль интерактивно; команда выведет bcrypt-хеш:
+docker run --rm -it telegram-web-k:local hash-password
+# Подставьте полученный хеш вместо PASTE_BCRYPT_HASH:
+docker run --rm -p 127.0.0.1:8080:8080 \
+  -e BASIC_AUTH_USER=admin \
+  -e 'BASIC_AUTH_PASSWORD_HASH=PASTE_BCRYPT_HASH' telegram-web-k:local
 # В другом терминале:
 curl -f http://127.0.0.1:8080/healthz
 ```
@@ -39,6 +49,47 @@ Defaults централизованы в `deploy/build-env.cjs`; менять wo
 новый commit: существующий `sha-*` tag намеренно не пересобирается.
 `API_HASH` приложения не является
 пользовательским MTProto auth key. Runtime environment не меняет frontend-конфигурацию.
+
+## Basic Auth для доступа к приложению
+
+Caddy требует HTTP Basic Auth для страниц, статики, Service Worker и `/mtproto/*`.
+Единственное исключение — `/healthz`, чтобы Docker/HAProxy проверяли сервер без пароля.
+Без credentials или с неверным паролем ответ — `401` с `WWW-Authenticate`; браузер
+показывает стандартный запрос логина и пароля перед загрузкой приложения.
+
+На VPS задайте `BASIC_AUTH_USER` и `BASIC_AUTH_PASSWORD_HASH` в `.env` рядом с Compose:
+
+```dotenv
+BASIC_AUTH_USER=admin
+BASIC_AUTH_PASSWORD_HASH='$2a$14$ПОЛНЫЙ_ХЕШ_ИЗ_CADDY'
+```
+
+Создайте хеш локальным образом, как показано выше, либо опубликованным:
+
+```sh
+docker run --rm -it ghcr.io/zkhvroman/telegram-web-k:main hash-password
+```
+
+Это **bcrypt-хеш**, не открытый пароль. Одинарные кавычки в Compose `.env` сохраняют
+символы `$` в хеше. Не передавайте этот файл напрямую в `docker run --env-file`:
+формат этого флага отличается от Compose и сохраняет кавычки как часть значения.
+Для `docker run` используйте `-e`, как в примере локального запуска.
+
+Эти два параметра относятся к runtime, не к GitHub Variables `API_ID`/`API_HASH`.
+Они не встраиваются в JavaScript или Docker image. Compose требует оба значения,
+а Caddy с пустой парой не запускается: отсутствие конфигурации не открывает сайт.
+После изменения логина/хеша выполните `docker compose up -d`; пересборка не нужна.
+
+HTTPS завершает существующий HAProxy; он должен сохранять Authorization на участке
+HAProxy → Caddy. Сам Caddy удаляет Authorization перед отправкой запроса Telegram.
+Не включайте кэширование защищённых ответов на HAProxy/CDN. Статика имеет `private`
+cache policy, а ответы 401 и relay — `no-store`.
+
+Basic Auth закрывает сетевой доступ, но не удаляет уже скачанные данные из браузера
+и Service Worker cache. Это отдельный пароль доступа к сайту, не Telegram login/2FA.
+После включения защиты на ранее открытом сайте перезагрузите страницу; проверьте
+авторизацию и работу файлов/worker в целевых браузерах.
+Описание механизма: [Caddy basic_auth](https://caddyserver.com/docs/caddyfile/directives/basic_auth).
 
 ## Настройка GitHub
 
@@ -100,6 +151,7 @@ cd ~/telegram-web-k
 cp .env.example .env
 # Укажите реальный owner вместо OWNER (нижний регистр):
 sed -i 's|ghcr.io/OWNER/telegram-web-k|ghcr.io/YOUR_OWNER/telegram-web-k|' .env
+# Задайте BASIC_AUTH_USER и BASIC_AUTH_PASSWORD_HASH в .env по инструкции выше.
 # При приватном package: интерактивно введите read:packages token.
 docker login ghcr.io
 docker compose pull
@@ -145,8 +197,8 @@ browser origin, поэтому HTTPS→WSS не зависит от довери
 sudo haproxy -c -f /etc/haproxy/haproxy.cfg
 sudo systemctl reload haproxy
 curl -fsS https://telegram.example.com/healthz
-curl -I https://telegram.example.com/
-curl -I https://telegram.example.com/sw.js
+curl -I https://telegram.example.com/ # Без credentials ожидается 401.
+curl -I --user admin https://telegram.example.com/sw.js # curl запросит пароль.
 ```
 
 Если HAProxy работает в Docker, подключите его и сервис `web` к общей external network,
@@ -176,7 +228,7 @@ networks:
 ```sh
 curl -sS --connect-timeout 10 --max-time 20 -o /dev/null -w '%{http_code}\n' \
   -X POST --data-binary '' https://venus.web.telegram.org/apiw1
-curl --http1.1 -i --max-time 5 \
+curl --http1.1 -i --user admin --max-time 5 \
   -H 'Connection: Upgrade' -H 'Upgrade: websocket' \
   -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Protocol: binary' \
   -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
@@ -190,7 +242,8 @@ curl --http1.1 -i --max-time 5 \
 
 Ручной acceptance в браузере:
 
-1. Откройте HTTPS домен, DevTools → Network (включая workers), войдите в свой Telegram
+1. Откройте HTTPS домен, введите логин/пароль Basic Auth. Затем откройте
+   DevTools → Network (включая workers), войдите в свой Telegram
    аккаунт и проверьте 2FA, если она включена. В production используйте собственный
    доверенный домен, поскольку он обслуживает код, который получает Telegram session.
 2. Все MTProto WS имеют `wss://ваш-домен/mtproto/...`, HTTP POST — тот же домен.
@@ -216,7 +269,7 @@ docker image inspect --format '{{json .RepoDigests}}' "$(docker inspect --format
 # Сохраните ghcr.io/...@sha256:... в журнале deployment.
 docker compose pull && docker compose up -d
 docker compose ps
-curl -fsS https://telegram.example.com/build-info.json
+curl -fsS --user admin https://telegram.example.com/build-info.json
 ```
 
 Для закрепления/отката задайте в `.env` `IMAGE_REF=@sha256:НУЖНЫЙ_DIGEST`; он имеет
@@ -228,7 +281,7 @@ curl -fsS https://telegram.example.com/build-info.json
 docker compose logs --tail=100 web
 docker inspect --format '{{json .State.Health}}' "$(docker compose ps -q web)"
 docker compose exec web caddy validate --config /etc/caddy/Caddyfile
-curl -i http://127.0.0.1:8080/mtproto/unknown  # 404, не index.html
+curl -i --user admin http://127.0.0.1:8080/mtproto/unknown # С credentials: 404; без них: 401.
 ```
 
 Если Caddy здоров, но Telegram не подключается: проверьте DNS/egress 443 VPS, TLS/SNI,

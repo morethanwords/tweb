@@ -2,6 +2,9 @@ services:
   web:
     image: ${IMAGE:-ghcr.io/OWNER/telegram-web-k}${IMAGE_REF:-:${IMAGE_TAG:-main}}
     restart: unless-stopped
+    environment:
+      BASIC_AUTH_USER: ${BASIC_AUTH_USER:?Set BASIC_AUTH_USER in deploy/.env}
+      BASIC_AUTH_PASSWORD_HASH: ${BASIC_AUTH_PASSWORD_HASH:?Set a bcrypt BASIC_AUTH_PASSWORD_HASH in deploy/.env}
     ports:
       - "127.0.0.1:8080:8080"
     read_only: true

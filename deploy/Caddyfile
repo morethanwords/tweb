@@ -54,6 +54,13 @@
 	encode gzip
 	header X-Content-Type-Options nosniff
 
+	# Authenticate before any static/relay handler; health probes stay anonymous.
+	@protected not path /healthz
+	header @protected Cache-Control no-store
+	basic_auth @protected bcrypt "Telegram Web K" {
+		"{$BASIC_AUTH_USER}" "{$BASIC_AUTH_PASSWORD_HASH}"
+	}
+
 	@healthy {
 		path /healthz
 		method GET HEAD
@@ -75,9 +82,9 @@
 
 	handle {
 		@immutable path_regexp hashed \.[a-f0-9]{20,64}\.(?:bundle\.worker\.js|bundle\.js|chunk\.js|css)$
-		header @immutable Cache-Control "public, max-age=31536000, immutable"
+		header @immutable Cache-Control "private, max-age=31536000, immutable"
 		@mutable not path_regexp hashed \.[a-f0-9]{20,64}\.(?:bundle\.worker\.js|bundle\.js|chunk\.js|css)$
-		header @mutable Cache-Control no-cache
+		header @mutable Cache-Control "private, no-cache"
 		@sw path /sw.js
 		header @sw Service-Worker-Allowed /
 		# Missing assets must fail; only navigations get the SPA entry point.

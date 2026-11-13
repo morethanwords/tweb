@@ -7,6 +7,7 @@
 
 Browser/Worker → HTTPS/WSS → существующий HAProxy → HTTP :8080 → Caddy → фиксированные
 Telegram HTTPS/WSS endpoints. Caddy также обслуживает свежую сборку Web K и `/healthz`.
+Все пути, кроме `/healthz`, защищены runtime Basic Auth (логин и bcrypt-хеш).
 Runtime: non-root, read-only root filesystem, tmpfs, без Node.js и дополнительных ports.
 URL builder подключён в общей точке выбора транспорта; direct fallback в relay-режиме
 отсутствует. Матрица main/file/test DC содержит 32 разрешённых маршрута.
@@ -45,7 +46,10 @@ Solid.js и Premium. Текущая технология сохранена. `VI
 
 ```sh
 docker build -f deploy/Dockerfile -t telegram-web-k:local .
-docker run --rm -p 127.0.0.1:8080:8080 telegram-web-k:local
+docker run --rm -it telegram-web-k:local hash-password
+# Подставьте полученный хеш вместо PASTE_BCRYPT_HASH:
+docker run --rm -p 127.0.0.1:8080:8080 -e BASIC_AUTH_USER=admin \
+  -e 'BASIC_AUTH_PASSWORD_HASH=PASTE_BCRYPT_HASH' telegram-web-k:local
 curl -f http://127.0.0.1:8080/healthz
 ```
 
@@ -54,6 +58,7 @@ curl -f http://127.0.0.1:8080/healthz
 ```sh
 cp deploy/.env.example deploy/.env
 # В deploy/.env заменить OWNER на zkhvroman, при необходимости указать IMAGE_REF digest.
+# Задать BASIC_AUTH_USER и BASIC_AUTH_PASSWORD_HASH (bcrypt, в одинарных кавычках).
 docker compose --env-file deploy/.env -f deploy/compose.yaml pull
 docker compose --env-file deploy/.env -f deploy/compose.yaml up -d
 ```
@@ -111,6 +116,13 @@ authorization/файлов, update, rollback и диагностика: [deploym
 
 AMD64 runtime проверен под эмуляцией на ARM64 Docker Desktop. CI на GitHub пока
 не запускался; локальная проверка workflows не подтверждает registry permissions.
+
+Дополнительная проверка Basic Auth (2026-11-13): локальный образ
+`telegram-web-k:basic-auth` собран и прошёл container tests. Проверены 401 для страниц,
+статики и relay без credentials, неверный пароль, отклонение WebSocket Upgrade без
+авторизации, доступ с верной парой, анонимные GET/HEAD `/healthz`, сохранение bcrypt-хеша
+через Compose `.env`, отказ запуска без настроек и отсутствие Authorization на upstream.
+Все 32 маршрута и HTTPS/WSS через настоящий HAProxy повторно проверены с Basic Auth.
 
 ## Ограничения и ручные действия
 

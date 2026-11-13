@@ -33,7 +33,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run lint
       - run: pnpm run typecheck
-      - run: pnpm test --runInBand
+      - run: pnpm run test --runInBand
       - run: pnpm run test:build-env
       - name: Build production client
         env:

@@ -4,6 +4,8 @@ Based on Webogram, patched and improved. Available for everyone here: https://we
 This fork adds an optional same-origin MTProto relay and a single Caddy production
 image for an existing HAProxy. See [deployment](docs/deployment.md) and
 [architecture, tests and upstream updates](docs/mtproto-relay.md).
+For a server with 3x-ui and its separate HAProxy SNI edge, use the
+[3x-ui deployment guide](docs/deployment-3x-ui.md).
 Use Node 22, Corepack and the pinned pnpm version (`corepack enable`,
 `corepack install`, `pnpm install --frozen-lockfile`). The pnpm lockfile is authoritative
 for this fork; the npm instructions below are preserved from the upstream README.
