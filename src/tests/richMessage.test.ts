@@ -466,6 +466,45 @@ describe('getRichMessageBubbleEdges', () => {
     expect(getRichMessageBubbleEdges([captioned, paragraph]).firstMedia).toBe(0);
   });
 
+  // * the message's time is drawn over such media, as over a photo with no caption (iOS's rich message)
+  test('a photo, a video, a slideshow, a collage or a map with nothing under it ends the message', () => {
+    const blocks: PageBlock[] = [
+      photo,
+      {_: 'pageBlockVideo', pFlags: {}, video_id: '2', caption: noCaption} as PageBlock,
+      {_: 'pageBlockSlideshow', items: [photo, photo], caption: noCaption} as PageBlock,
+      {_: 'pageBlockCollage', items: [photo, photo], caption: noCaption} as PageBlock,
+      {_: 'pageBlockMap', geo: {_: 'geoPoint', pFlags: {}, long: 1, lat: 2, access_hash: 0}, zoom: 15, w: 300, h: 200, caption: noCaption} as PageBlock
+    ];
+    for(const block of blocks) {
+      expect(getRichMessageBubbleEdges([paragraph, block]), block._).toMatchObject({lastMedia: 1, lastParagraph: -1});
+      // * a cover's, passing over the anchors after it
+      expect(getRichMessageBubbleEdges([paragraph, {_: 'pageBlockCover', cover: block} as PageBlock, anchor]).lastMedia, block._).toBe(1);
+      // * at the top too
+      expect(getRichMessageBubbleEdges([block, paragraph]).firstMedia, block._).toBe(0);
+      // * a caption alone, or a credit alone, is drawn under it
+      const captioned = {...block, caption: {_: 'pageCaption', text: text('caption'), credit: {_: 'textEmpty'}}} as PageBlock;
+      const credited = {...block, caption: {_: 'pageCaption', text: {_: 'textEmpty'}, credit: text('credit')}} as PageBlock;
+      expect(getRichMessageBubbleEdges([paragraph, captioned]).lastMedia, block._).toBe(-1);
+      expect(getRichMessageBubbleEdges([paragraph, credited, anchor]).lastMedia, block._).toBe(-1);
+      // * text after it ends the message instead
+      expect(getRichMessageBubbleEdges([block, paragraph])).toMatchObject({lastMedia: -1, lastParagraph: 1});
+    }
+  });
+
+  test('an embed, an audio, a document, a table or a list at the end is not media the time goes over', () => {
+    const blocks: PageBlock[] = [
+      {_: 'pageBlockEmbed', pFlags: {}, url: 'https://example.com', caption: noCaption} as PageBlock,
+      {_: 'pageBlockAudio', audio_id: '3', caption: noCaption} as PageBlock,
+      {_: 'pageBlockDocument', document_id: '4', caption: noCaption} as PageBlock,
+      {_: 'pageBlockTable', pFlags: {}, title: {_: 'textEmpty'}, rows: []} as PageBlock,
+      {_: 'pageBlockList', items: [{_: 'pageListItemText', pFlags: {}, text: text('item')}]} as PageBlock,
+      {_: 'pageBlockHeading2', text: text('Title')}
+    ];
+    for(const block of blocks) {
+      expect(getRichMessageBubbleEdges([paragraph, block]), block._).toMatchObject({lastMedia: -1, lastParagraph: -1});
+    }
+  });
+
   test('a paragraph or a heading starts with text, other blocks with neither', () => {
     expect(getRichMessageBubbleEdges([{_: 'pageBlockHeading2', text: text('Title')}, paragraph])).toMatchObject({firstText: 0, firstMedia: -1});
     expect(getRichMessageBubbleEdges([{_: 'pageBlockPreformatted', text: text('code'), language: ''}, paragraph])).toMatchObject({firstText: -1, firstMedia: -1});

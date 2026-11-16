@@ -828,6 +828,49 @@ function placeBubbleTime(timeSpan: HTMLElement, text: string) {
   timeSpan.classList.toggle('is-block', isBubbleTimeBlock(text));
 }
 
+// * where a bubble's reactions stand, by what the bubble is now: placed again when that changes (a rich message's
+// * time going over the media it ends with or back)
+function placeBubbleReactions(bubble: HTMLElement, reactionsElement: HTMLElement) {
+  if(bubble.timeAppenders) findAndSplice(bubble.timeAppenders, ({element}) => element === reactionsElement);
+
+  // * a bubble with no text to hold them (its time floats over its media, or it is the plate of a message this client
+  // * cannot show, which has no time at all) and a service line take them under their content
+  if(
+    bubble.classList.contains('has-floating-time') ||
+    bubble.classList.contains('service') ||
+    bubble.classList.contains('is-unsupported')
+  ) {
+    // * on the wallpaper, out of the bubble's background
+    reactionsElement.classList.add('is-outside');
+    bubble.querySelector('.bubble-content-wrapper').append(reactionsElement);
+    return;
+  }
+
+  reactionsElement.classList.remove('is-outside');
+  const timeSpan = bubble.timeSpan;
+  const messageDiv = bubble.querySelector('.message');
+
+  if(bubble.classList.contains('is-multiple-documents')) {
+    const documentContainer = messageDiv.lastElementChild as HTMLElement;
+    let documentMessageDiv = documentContainer.querySelector('.document-message');
+
+    if(!documentMessageDiv) {
+      documentMessageDiv = document.createElement('div');
+      documentMessageDiv.classList.add('document-message');
+      documentContainer.querySelector('.document-wrapper').append(documentMessageDiv);
+    }
+
+    documentMessageDiv.append(reactionsElement);
+  } else {
+    messageDiv.append(reactionsElement);
+  }
+
+  // A bubble that shows no message info (a call) has no time to carry over.
+  if(timeSpan) {
+    appendBubbleTime(bubble, reactionsElement, () => reactionsElement.append(timeSpan));
+  }
+}
+
 function shouldShowUnknownUserPlaceholder(peerSettings?: PeerSettings) {
   return peerSettings?.phone_country || peerSettings?.registration_month;
 }
@@ -4776,7 +4819,7 @@ export default class ChatBubbles {
 
     // Prevent recursive click event simulation
 
-    if((e as any)[SimulatedClickSymbol]) return;
+    if((e as any)?.[SimulatedClickSymbol]) return;
 
     const simulateClickEvent = (target: HTMLElement) => {
       const event = getSimulatedEvent(CLICK_EVENT_NAME);
@@ -6985,7 +7028,7 @@ export default class ChatBubbles {
           this.settleBotStart(middleware, startsBotFromLink);
         }
 
-        if(options.mediaTimestamp) {
+        if(options.mediaTimestamp !== undefined) {
           getHeavyAnimationPromise().then(() => {
             this.playMediaWithTimestampAndMid({
               lastMsgFullMid,
@@ -7550,6 +7593,7 @@ export default class ChatBubbles {
         this.chat.appImManager.setInnerPeer({
           stack: this.chat.appImManager.getStackFromElement(bubble),
           peerId: replyToPeerId,
+          lastMsgId: replyToMid,
           mediaTimestamp: timestamp
         });
       }
@@ -10681,7 +10725,27 @@ export default class ChatBubbles {
       };
       appendBubbleTime(bubble, messageDiv, appendTime);
 
+      // * a rich message that ends with media has its time over the media's corner, as a photo with no caption does: the
+      // * bubble's floating time, the media taking its bottom corners, the reactions out of the bubble
+      let richTimeOverMedia = false;
+      const appendRichTimeOverMedia = () => bubbleContainer.append(timeSpan);
+      const syncRichTimeOverMedia = () => {
+        const overMedia = !hasShellFooter && !!richLayout?.timeOverMedia;
+        if(overMedia === richTimeOverMedia) return;
+        richTimeOverMedia = overMedia;
+        timeSpan.classList.toggle('is-floating', overMedia);
+        bubble.classList.toggle('has-floating-time', overMedia);
+        bubble.classList.toggle('has-plain-media-tail', overMedia);
+        messageDiv.classList.toggle('is-rich-bubble-end', overMedia);
+        if(!overMedia) findAndSplice(bubble.timeAppenders, ({callback}) => callback === appendRichTimeOverMedia);
+        const reactionsElement = bubble.querySelector<HTMLElement>('reactions-element');
+        if(reactionsElement) placeBubbleReactions(bubble, reactionsElement);
+        if(overMedia) appendBubbleTime(bubble, bubbleContainer, appendRichTimeOverMedia);
+        else bubble.timeAppenders[0].callback();
+      };
+
       syncRichTime = () => {
+        syncRichTimeOverMedia();
         const text = richTimeSlot() ? richLayout.timeText : undefined;
         if(text === undefined) richBubbleTimeTexts.delete(timeSpan);
         else richBubbleTimeTexts.set(timeSpan, text);
@@ -13133,41 +13197,7 @@ export default class ChatBubbles {
       lazyLoadQueue: this.lazyLoadQueue
     });
     reactionsElement.render(changedResults, waitPromise);
-
-    // * a bubble with no text to hold them (its time floats over its media, or it is the plate of a message this client
-    // * cannot show, which has no time at all) and a service line take them under their content
-    if(
-      bubble.classList.contains('has-floating-time') ||
-      bubble.classList.contains('service') ||
-      bubble.classList.contains('is-unsupported')
-    ) {
-      // * on the wallpaper, out of the bubble's background
-      reactionsElement.classList.add('is-outside');
-      bubble.querySelector('.bubble-content-wrapper').append(reactionsElement);
-    } else {
-      const timeSpan = bubble.timeSpan;
-      const messageDiv = bubble.querySelector('.message');
-
-      // A bubble that shows no message info (a call) has no time to carry over.
-      if(timeSpan) {
-        appendBubbleTime(bubble, reactionsElement, () => reactionsElement.append(timeSpan));
-      }
-
-      if(bubble.classList.contains('is-multiple-documents')) {
-        const documentContainer = messageDiv.lastElementChild as HTMLElement;
-        let documentMessageDiv = documentContainer.querySelector('.document-message');
-
-        if(!documentMessageDiv) {
-          documentMessageDiv = document.createElement('div');
-          documentMessageDiv.classList.add('document-message');
-          documentContainer.querySelector('.document-wrapper').append(documentMessageDiv);
-        }
-
-        documentMessageDiv.append(reactionsElement);
-      } else {
-        messageDiv.append(reactionsElement);
-      }
-    }
+    placeBubbleReactions(bubble, reactionsElement);
   }
 
   private setStoryContainerDimensions(container: HTMLElement) {
@@ -15056,7 +15086,8 @@ export default class ChatBubbles {
           !this.getRenderedLength()
         ) ||
         ((this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Welcome) && !this.getRenderedLength()) ||
-        !this.chat.getHistoryStorage().count ||
+        // * an unknown total (null) is not an empty history
+        this.chat.getHistoryStorage().count === 0 ||
         (!this.getRenderedLength() && this.isHistoryNeverDrawn())
       )
     ) {

@@ -150,8 +150,6 @@ export default class AppPollResultsTab extends SliderSuperTab {
         {untrack(getSections)}
       </>
     ), div);
-
-    hotReloadGuard.appSidebarRight.toggleSidebar(true);
   }
 
   onCloseAfterTimeout() {

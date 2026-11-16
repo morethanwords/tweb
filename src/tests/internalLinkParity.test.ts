@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
   toastNew: vi.fn(),
   setInnerPeer: vi.fn(),
   openUsername: vi.fn(),
+  op: vi.fn(),
+  getChat: vi.fn(),
   showSharingPicker2Popup: vi.fn(),
   confirmationPopup: vi.fn(),
   wrapPeerTitle: vi.fn(),
@@ -54,6 +56,7 @@ vi.mock('@lib/appImManager', () => ({
   default: {
     setInnerPeer: mocks.setInnerPeer,
     openUsername: mocks.openUsername,
+    op: mocks.op,
     joinGroupCall: mocks.joinGroupCall,
     joinCallFromLink: mocks.joinCallFromLink,
     joinLiveStream: mocks.joinLiveStream,
@@ -103,8 +106,11 @@ beforeAll(async() => {
       importContactToken: mocks.importContactToken,
       importNoPaidMessagesToken: mocks.importNoPaidMessagesToken,
       resolveUserByUsername: mocks.resolveUserByUsername,
-      resolveUsername: mocks.resolveUsername
+      resolveUsername: mocks.resolveUsername,
+      isBotforum: () => false,
+      getUser: (): undefined => undefined
     },
+    appChatsManager: {getChat: mocks.getChat},
     apiManager: {getDeepLinkInfo: mocks.getDeepLinkInfo},
     appGamesManager: {shareGame: mocks.shareGame}
   } as any);
@@ -219,6 +225,35 @@ describe('proxy links', () => {
   ])('leave %s, which names no proxy, to the username', async(href) => {
     const {default: wrapUrl} = await import('@lib/richTextProcessor/wrapUrl');
     expect(wrapUrl(href).onclick).toBe('im');
+  });
+});
+
+// * `?comment=` opens the post's comments at that comment (tdesktop: local_url_handlers.cpp, CommentId before ThreadId)
+describe('comment links', () => {
+  test('a public post hands the comment, and any thread, to the chat that opens it', async() => {
+    await click('im', 'https://t.me/durov/153?comment=799032');
+    expect(mocks.openUsername).toHaveBeenCalledWith(expect.objectContaining({
+      userName: 'durov',
+      lastMsgId: 153,
+      commentId: 799032,
+      threadId: undefined
+    }));
+
+    await click('im', 'https://t.me/durov/153?thread=5&comment=799032');
+    expect(mocks.openUsername).toHaveBeenLastCalledWith(expect.objectContaining({lastMsgId: 153, commentId: 799032, threadId: 5}));
+  });
+
+  test('a private post hands the comment over too', async() => {
+    const channel = {_: 'channel', id: 1000000001, pFlags: {}};
+    mocks.getChat.mockReturnValue(channel);
+    await click('im', 'https://t.me/c/1000000001/472?comment=475');
+
+    expect(mocks.op).toHaveBeenCalledWith(expect.objectContaining({
+      peer: channel,
+      lastMsgId: 472,
+      commentId: 475,
+      threadId: undefined
+    }));
   });
 });
 

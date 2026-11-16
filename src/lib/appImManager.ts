@@ -2040,13 +2040,15 @@ export class AppImManager extends EventListenerBase<{
         const postId = params.post !== undefined ? +params.post : undefined;
         const messageId = postId || (params.message !== undefined ? +params.message : undefined);
         const threadId = params.thread !== undefined ? +params.thread : undefined;
+        const commentId = params.comment !== undefined ? +params.comment : undefined;
 
         switch(p[0]) {
           case '@': {
             this.openUsername({
               userName: p,
               lastMsgId: messageId,
-              threadId
+              threadId,
+              commentId
             });
             break;
           }
@@ -2070,6 +2072,7 @@ export class AppImManager extends EventListenerBase<{
                   peer: community,
                   lastMsgId: messageId,
                   threadId,
+                  commentId,
                   call: params.call
                 });
               })
@@ -2097,6 +2100,7 @@ export class AppImManager extends EventListenerBase<{
                 peer,
                 lastMsgId: messageId,
                 threadId,
+                commentId,
                 call: params.call
               });
             });
@@ -2220,17 +2224,18 @@ export class AppImManager extends EventListenerBase<{
       await callsController.ringRequestedCall(options.call);
     }
 
-    if(threadId) {
-      return this.openThread({
-        ...(options as any as Parameters<AppImManager['openThread']>[0]),
-        peerId
-      });
-    } else if(commentId) {
+    // * a comment wins over a thread, as in tdesktop: `?comment=` names the post's own thread
+    if(commentId && lastMsgId) {
       return this.openComment({
         peerId,
         msgId: lastMsgId,
         commentId,
         wholeAlbum: options.wholeAlbum
+      });
+    } else if(threadId) {
+      return this.openThread({
+        ...(options as any as Parameters<AppImManager['openThread']>[0]),
+        peerId
       });
     }
 
@@ -2293,19 +2298,38 @@ export class AppImManager extends EventListenerBase<{
   /**
    * Opens comment directly from original channel
    */
-  public openComment(options: {
+  public async openComment(options: {
     peerId: PeerId,
     msgId: number,
     commentId: number
   } & Pick<ChatSetPeerOptions, 'wholeAlbum'>) {
-    return this.managers.appMessagesManager.getDiscussionMessage(options.peerId, options.msgId).then((message) => {
-      if(!message) return;
-      return this.openThread({
-        peerId: message.peerId,
-        lastMsgId: options.commentId,
-        threadId: message.mid,
-        wholeAlbum: options.wholeAlbum
-      });
+    const managers = bindManagersToSession(this.managers);
+    let message: Awaited<ReturnType<typeof managers.appMessagesManager.getDiscussionMessage>>;
+    try {
+      message = await managers.appMessagesManager.getDiscussionMessage(options.peerId, options.msgId);
+    } catch(err) {
+      if(isSessionLeaving(getManagersSession(managers))) return;
+      // * tdesktop's showRepliesForMessage says why the comments did not open
+      const type = (err as ApiError)?.type;
+      if(type === 'CHANNEL_PRIVATE' || type === 'USER_BANNED_IN_CHANNEL') {
+        toastNew({langPackKey: 'Community.GroupNotAccessible'});
+      } else if(type === 'MSG_ID_INVALID') {
+        toastNew({langPackKey: 'MessageNotFound'});
+      }
+      return;
+    }
+
+    if(isSessionLeaving(getManagersSession(managers))) return;
+    if(!message) {
+      toastNew({langPackKey: 'MessageNotFound'});
+      return;
+    }
+
+    return this.openThread({
+      peerId: message.peerId,
+      lastMsgId: options.commentId,
+      threadId: message.mid,
+      wholeAlbum: options.wholeAlbum
     });
   }
 

@@ -48,7 +48,13 @@ vi.mock('@lib/solidjs/hotReloadGuard', () => ({
 }));
 
 vi.mock('@lib/richMessage', () => ({
-  getRichMessageBubbleEdges: () => ({firstMedia: -1, firstText: -1, lastMedia: -1, lastParagraph: -1}),
+  // * a photo at the end is the media the time goes over (`getRichMessageBubbleEdges` has tests of its own)
+  getRichMessageBubbleEdges: (blocks: Page.page['blocks']) => ({
+    firstMedia: -1,
+    firstText: -1,
+    lastMedia: blocks[blocks.length - 1]?._ === 'pageBlockPhoto' ? blocks.length - 1 : -1,
+    lastParagraph: -1
+  }),
   isRichMessageFullWidth: (blocks: Page.page['blocks']) => blocks.some((block) => block._ === 'pageBlockTable'),
   isRichMessagePart: (richMessage: RichMessage) => !!richMessage.pFlags.part,
   richMessageToPage: (richMessage: RichMessage): Page.page => ({
@@ -63,6 +69,8 @@ vi.mock('@lib/richMessage', () => ({
 }));
 
 let RichMessageBubble: typeof import('@components/chat/bubbles/richMessage')['RichMessageBubble'];
+type RichMessageBubbleLayout = import('@components/chat/bubbles/richMessage').RichMessageBubbleLayout;
+type MessageTextRevealCoordinator = import('@components/chat/bubbleParts/solidMessageText').MessageTextRevealCoordinator;
 
 beforeAll(async() => {
   ({RichMessageBubble} = await import('@components/chat/bubbles/richMessage'));
@@ -354,5 +362,90 @@ describe('RichMessageBubble width', () => {
 
     dispose();
     host.remove();
+  });
+});
+
+describe('RichMessageBubble time over its last media', () => {
+  const photo: Page.page['blocks'][number] = {
+    _: 'pageBlockPhoto',
+    pFlags: {},
+    photo_id: '1',
+    caption: {_: 'pageCaption', text: {_: 'textEmpty'}, credit: {_: 'textEmpty'}}
+  };
+  const withPhoto = (part: boolean): RichMessage => ({...richMessage(part), blocks: [...richMessage(part).blocks, photo]});
+
+  function mount(props: {rich: RichMessage, page: () => Page.page, showTail?: () => boolean, phase?: () => 'streaming' | 'final'}) {
+    const layouts: RichMessageBubbleLayout[] = [];
+    const host = document.createElement('div');
+    document.body.append(host);
+    const dispose = render(() => (
+      <RichMessageBubble
+        message={message()}
+        richMessage={props.rich}
+        page={props.page}
+        phase={props.phase ? props.phase() : 'final'}
+        revealCoordinator={props.showTail ? {showTail: props.showTail} as unknown as MessageTextRevealCoordinator : undefined}
+        onBubbleLayout={(layout) => layouts.push(layout)}
+      />
+    ), host);
+    return {
+      overMedia: () => !!layouts[layouts.length - 1]?.timeOverMedia,
+      isMediaLast: () => [...(host.firstElementChild as HTMLElement).classList].some((name) => /RichMessageWrapperMediaLast/.test(name)),
+      dispose: () => {
+        dispose();
+        host.remove();
+      }
+    };
+  }
+
+  test('the time goes over media the message ends with, and back as an edit ends it with text', async() => {
+    const value = withPhoto(false);
+    const [current, setCurrent] = createSignal(page(value));
+    const mounted = mount({rich: value, page: current});
+    expect(mounted.overMedia()).toBe(true);
+    expect(mounted.isMediaLast()).toBe(true);
+
+    setCurrent(page(richMessage(false)));
+    await Promise.resolve();
+    expect(mounted.overMedia()).toBe(false);
+    expect(mounted.isMediaLast()).toBe(false);
+
+    setCurrent(page(value));
+    await Promise.resolve();
+    expect(mounted.overMedia()).toBe(true);
+
+    // * gone (a translation shown as text instead): the bubble takes the time back
+    mounted.dispose();
+    expect(mounted.overMedia()).toBe(false);
+  });
+
+  test('not while "Read more" or the tail of an answer still coming is drawn after the media', async() => {
+    const part = withPhoto(true);
+    richMessageMocks.getRichMessage.mockReturnValue(new Promise(() => {}));
+    const reading = mount({rich: part, page: () => page(part)});
+    expect(reading.overMedia()).toBe(false);
+    reading.dispose();
+    richMessageMocks.getRichMessage.mockReset();
+
+    const final = withPhoto(false);
+    const [coming, setComing] = createSignal(true);
+    const streaming = mount({rich: final, page: () => page(final), showTail: coming});
+    expect(streaming.overMedia()).toBe(false);
+    // * the answer finishes: its tail goes, and the time goes over the media
+    setComing(false);
+    await Promise.resolve();
+    expect(streaming.overMedia()).toBe(true);
+    streaming.dispose();
+  });
+
+  test('not while the answer is still being streamed, even before its tail is shown', async() => {
+    const final = withPhoto(false);
+    const [phase, setPhase] = createSignal<'streaming' | 'final'>('streaming');
+    const mounted = mount({rich: final, page: () => page(final), phase});
+    expect(mounted.overMedia()).toBe(false);
+    setPhase('final');
+    await Promise.resolve();
+    expect(mounted.overMedia()).toBe(true);
+    mounted.dispose();
   });
 });

@@ -9858,7 +9858,7 @@ export class AppMessagesManager extends AppManager {
         this.saveApiResult(result);
 
         if(firstMessage?._ !== 'message' || result.messages[0] !== firstMessage) return;
-        const message = this.getMessageWithReplies(firstMessage);
+        const message = this.getDiscussionRootMessage(firstMessage);
         if(!message) return;
         const threadKey = message.peerId + '_' + message.mid;
         const channelId = message.peerId.toChatId();
@@ -12262,11 +12262,25 @@ export class AppMessagesManager extends AppManager {
     return deleted;
   }
 
-  private markChannelCutoffHistoryCountsUnknown(peerId: PeerId) {
+  /**
+   * A thread rooted above the cutoff that lost nothing to it keeps its count: every reply is newer than its root, so
+   * the count the server gave still holds. Making it unknown left an open thread saying "0 Comments" and one entered
+   * again loading forever. A monoforum's threads are keyed by peers, not by roots
+   */
+  private markChannelCutoffHistoryCountsUnknown(peerId: PeerId, availableMinId: number, reachedThreads: Set<HistoryStorage>) {
     this.invalidateHistoryStorageFetchState(this.historiesStorage?.[peerId]);
-    this.iterateHistoryStorages(this.threadsStorage?.[peerId], (historyStorage) => {
+    for(const threadId in this.threadsStorage?.[peerId]) {
+      const historyStorage = this.threadsStorage[peerId][+threadId];
+      if(
+        !reachedThreads.has(historyStorage) &&
+        !this.isChannelServerMidAtOrBefore(+threadId, availableMinId) &&
+        !this.appPeersManager.isMonoforum(peerId)
+      ) {
+        continue;
+      }
+
       this.invalidateHistoryStorageFetchState(historyStorage);
-    });
+    }
     this.iterateHistoryStorages(this.searchesStorage?.[peerId] as any, (historyStorage) => {
       this.invalidateHistoryStorageFetchState(historyStorage);
     });
@@ -12525,14 +12539,17 @@ export class AppMessagesManager extends AppManager {
       for(const mid of mids) deletedMids.add(mid);
     };
     addDeleted(this.deleteHistoryStorageMidsAtOrBefore(this.historiesStorage?.[peerId], availableMinId));
+    const reachedThreads = new Set<HistoryStorage>();
     this.iterateHistoryStorages(this.threadsStorage?.[peerId], (historyStorage) => {
-      addDeleted(this.deleteHistoryStorageMidsAtOrBefore(historyStorage, availableMinId));
+      const deleted = this.deleteHistoryStorageMidsAtOrBefore(historyStorage, availableMinId);
+      if(deleted.size) reachedThreads.add(historyStorage);
+      addDeleted(deleted);
     });
     this.iterateHistoryStorages(this.searchesStorage?.[peerId] as any, (historyStorage) => {
       addDeleted(this.deleteHistoryStorageMidsAtOrBefore(historyStorage, availableMinId));
     });
     addDeleted(this.deleteGlobalSearchMidsAtOrBefore(peerId, availableMinId));
-    this.markChannelCutoffHistoryCountsUnknown(peerId);
+    this.markChannelCutoffHistoryCountsUnknown(peerId, availableMinId, reachedThreads);
     addDeleted(this.invalidateRichMessagesAtOrBefore(peerId, availableMinId));
     addDeleted(this.appTranslationsManager.resetPeerTranslationsByChannelCutoff(peerId));
     this.appWidgetsManager.deleteWidgetStorageByChannelCutoff(peerId, availableMinId);
@@ -13900,6 +13917,17 @@ export class AppMessagesManager extends AppManager {
     return getMainGroupedMessage(this.filterMessages(message, (message) => !!(message as Message.message).replies) as Message.message[]);
   }
 
+  /**
+   * The message a discussion starts from: the one of its album that carries the replies, else the album's main one.
+   * The server may leave `replies` out of a valid root, and tdesktop does not ask for it either
+   */
+  public getDiscussionRootMessage(message: Message.message) {
+    if(message?._ !== 'message') return;
+    return this.getMessageWithReplies(message) ||
+      getMainGroupedMessage(this.filterMessages(message, (message) => message._ === 'message') as Message.message[]) ||
+      message;
+  }
+
   public getMessageWithCommentReplies(message: Message.message) {
     if(message.peerId !== REPLIES_PEER_ID) {
       message = this.getMessageWithReplies(message);
@@ -14050,6 +14078,8 @@ export class AppMessagesManager extends AppManager {
     if(
       !willFill &&
       haveSlice &&
+      // * a slice whose total is unknown (never fetched, or invalidated since) is loaded again
+      typeof(historyStorage.count) === 'number' &&
       (haveSlice.slice.length === limit || (haveSlice.fulfilled & SliceEnd.Both) === SliceEnd.Both) &&
       (!needRealOffsetIdOffset || haveSlice.slice.isEnd(SliceEnd.Bottom))
     ) {
@@ -14121,6 +14151,33 @@ export class AppMessagesManager extends AppManager {
         messages: options.isCacheableSearch ? f.map((v) => this.getMessageByPeer(v.split('_')[0].toPeerId(), +v.split('_')[1])) : undefined
       };
     });
+  }
+
+  /**
+   * The server's count is taken as it is. A page without one (`messages.messages`) is the whole history when it reaches
+   * both of its ends (a page asked from the newest message must also have come back shorter than asked: the ends of
+   * one without an offset are taken from its own length): its length is the total. Any other page neither sets its
+   * length as the total nor lowers a known one
+   */
+  private getHistoryStorageCountFromResult(
+    historyStorage: HistoryStorage,
+    historyResult: Exclude<MessagesMessages, MessagesMessages.messagesMessagesNotModified>,
+    options: Pick<RequestHistoryOptions, 'offsetId' | 'addOffset' | 'limit'>,
+    reachesBothEnds: boolean
+  ) {
+    const serverCount = (historyResult as MessagesMessages.messagesMessagesSlice).count;
+    if(typeof(serverCount) === 'number') {
+      return serverCount;
+    }
+
+    const {length} = historyResult.messages;
+    const fromNewest = !options.offsetId && !options.addOffset;
+    if(reachesBothEnds && (!fromNewest || length < options.limit)) {
+      return length;
+    }
+
+    const knownCount = historyStorage.count;
+    return typeof(knownCount) === 'number' ? Math.max(knownCount, length) : null;
   }
 
   public isHistoryResultEnd({
@@ -14363,7 +14420,6 @@ export class AppMessagesManager extends AppManager {
     historyStorage.wasFetched = true;
 
     const {
-      count,
       isBottomEnd,
       isTopEnd,
       slice,
@@ -14375,7 +14431,7 @@ export class AppMessagesManager extends AppManager {
     } = mergedResult;
 
     if(!isRequestingLegacy) {
-      historyStorage.count = count;
+      historyStorage.count = this.getHistoryStorageCountFromResult(historyStorage, historyResult, options, isTopEnd && isBottomEnd);
     }
 
     if(!inputFilter) for(let i = 0, length = messages.length; i < length; ++i) {
@@ -14496,7 +14552,12 @@ export class AppMessagesManager extends AppManager {
       if(isTopEnd && options.historyType === HistoryType.Thread) {
         const last = historyStorage.history.last;
         const firstMessage = this.getMessageByPeer(peerId, options.threadId/* last[last.length - 1] */) as Message.message;
-        const message = this.getMessageWithReplies(firstMessage);
+        const message = this.getDiscussionRootMessage(firstMessage);
+        // * the root is gone (deleted, or not loaded): the thread starts with its first reply
+        if(!message) {
+          return historyResult;
+        }
+
         const threadServiceMid = this.generateThreadServiceStartMessage(message);
         const mids = this.getMidsByMessage(message);
         const addSlice = [

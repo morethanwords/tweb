@@ -1934,7 +1934,7 @@ function Block(props: {
               cancelEvent(e);
               if(!hasDisabledNavigation(context)) void confirmOpenGoogleMaps(geo);
             }}
-            class={classNames(styles.Map, styles.MediaFrame)}
+            class={classNames(styles.Map, styles.MediaFrame, mediaEdgeClass())}
             style={{'--max-height': block.h + 'px'}}
           >
             <PhotoTsx

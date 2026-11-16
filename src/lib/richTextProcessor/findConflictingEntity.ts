@@ -3,6 +3,11 @@ import {MessageEntity} from '@layer';
 import {lowerBound} from '@helpers/array/lowerBound';
 import isEntityIntersecting from '@lib/richTextProcessor/isEntityIntersecting';
 
+/** A timestamp found in a quote stays a link (tdesktop lets them overlap, as it does a spoiler's). */
+function isInsideQuoteAllowed(currentType: MessageEntity['_'], newEntity: MessageEntity) {
+  return currentType === 'messageEntityBlockquote' && newEntity._ === 'messageEntityTimestamp';
+}
+
 function isQuoteException(newEntity: MessageEntity, singleType: MessageEntity['_']) {
   return newEntity._ === 'messageEntityBlockquote' && PASS_SINGLE_CONFLICTING_ENTITIES_WITH_QUOTE.has(singleType);
 }
@@ -13,7 +18,8 @@ function isConflictingType(currentType: MessageEntity['_'], newEntity: MessageEn
     (
       !PASS_CONFLICTING_ENTITIES.has(newEntity._) &&
       !PASS_CONFLICTING_ENTITIES.has(currentType) &&
-      !quoteException
+      !quoteException &&
+      !isInsideQuoteAllowed(currentType, newEntity)
     );
 }
 

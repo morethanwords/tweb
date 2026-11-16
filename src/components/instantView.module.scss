@@ -1,6 +1,7 @@
 @use "../scss/mixins.scss" as *;
 @use "../scss/tgico/variables.scss" as *;
 @use "../scss/variables.scss" as *;
+@use "../scss/partials/chatVariables" as *;
 
 // A rich message with nothing over it in its bubble: no reply and no name — none, or a sender's name a group shows
 // on its first message only, there but hidden on the rest (`.name` in `_chatBubble`). An ephemeral message's badge
@@ -152,6 +153,14 @@
     // right under the badge, as an ordinary photo is (the badge has no margin below it)
     :global(.bubble.has-top-badge:not(.is-reply)) & {
       margin-top: -4px;
+    }
+  }
+
+  // media it ends with reaches the bubble's bottom, the time drawn over it (`timeOverMedia`), as a photo with no
+  // caption does: the message's bottom margin is given up
+  &MediaLast {
+    :global(.message.is-rich-bubble-end) & {
+      margin-bottom: -$message-padding-bottom;
     }
   }
 
@@ -702,7 +711,7 @@
 // Media at the bubble's edge is cut by the bubble's own corners there, as a message's photo is
 // (`.attachment`: the corners its place in a group and the direction give), and square under a header or
 // over what the message draws below it (a caption leaves no media at the edge: `getRichMessageBubbleEdges`).
-// A slideshow is cut as a whole, and a collage gives its outer items the corners (`prepareAlbum`).
+// A slideshow and a map are cut as a whole, and a collage gives its outer items the corners (`prepareAlbum`).
 // The page lays its media out in its own direction, so the corners are handed over by their sides
 .RichMessageWrapper > .RichMessage[dir='ltr'] {
   --border-start-start-radius: var(--rich-corner-top-left);
@@ -726,7 +735,8 @@
   }
 }
 
-:global(.message.is-rich-bubble-end) .LastMedia.MediaFrame {
+// (comments under it as its footer: square, as over a photo's — `.with-replies .attachment`)
+:global(.bubble:not(.with-replies) .message.is-rich-bubble-end) .LastMedia.MediaFrame {
   --border-end-start-radius: inherit;
   --border-end-end-radius: inherit;
   @include bubble-corners(end);

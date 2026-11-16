@@ -374,9 +374,10 @@ export const PollMessageContent =
     const openViewResults = () => {
       if(!appSidebarRight.isTabExists(AppPollResultsTab)) {
         appSidebarRight.createTab(AppPollResultsTab).open(getOverridenMessage());
-      } else {
-        appSidebarRight.toggleSidebar(true);
       }
+
+      // * the column shows at once, whatever the tab's own load does
+      appSidebarRight.reveal();
     };
 
     const onFooterClick = wrapAsyncClickHandler(async() => {

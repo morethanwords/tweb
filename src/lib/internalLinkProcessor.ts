@@ -1449,11 +1449,13 @@ export class InternalLinkProcessor {
 
     const postId = +link.post;
     const threadId = link.thread ? +link.thread : undefined;
+    const commentId = link.comment ? +link.comment : undefined;
 
     return appImManager.op({
       peer: chat || user,
       lastMsgId: postId,
       threadId,
+      commentId,
       pollOption: link.option,
       stack: link.stack,
       mediaTimestamp: link.t && +link.t,

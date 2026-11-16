@@ -111,6 +111,12 @@ describe('a non-autoplay video without a thumbnail', () => {
     expect(openMedia).toHaveBeenCalledWith(expect.objectContaining({message}));
   });
 
+  test.each([0, 14])('opens at the timestamp %s of a timecode link, which has no event', async(timestamp) => {
+    const {attachment, message, harness} = await makePreview();
+    expect(harness.checkTargetForMediaViewer(attachment, undefined, timestamp)).toBe(true);
+    expect(openMedia).toHaveBeenCalledWith(expect.objectContaining({message, mediaTimestamp: timestamp}));
+  });
+
   test('opens from the duration label too', async() => {
     const {attachment, click} = await makePreview();
     expect(click(attachment.querySelector('.video-time'))).toBe(true);

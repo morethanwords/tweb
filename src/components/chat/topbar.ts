@@ -1529,11 +1529,7 @@ export default class ChatTopbar {
         minusFirst: this.chat.isForum
       });
       if(count === undefined && middleware()) {
-        const historyStorage = this.chat.getHistoryStorage();
-        el.compareAndUpdate(typeof(historyStorage.count) !== 'number' ?
-          {key: 'Loading', args: undefined} :
-          {args: [historyStorage.count - (this.chat.isForum ? 1 : 0)]}
-        );
+        this.setMessagesCount(el, 'Chat.Title.Comments', this.chat.getHistoryStorage().count, this.chat.isForum);
       }
 
       titleEl = el.element;
@@ -1617,6 +1613,14 @@ export default class ChatTopbar {
     this.chat.updatePinnedFloatingHeight(reservedFloatingHeight);
   };
 
+  // * a count not known yet, or made unknown again while the history loads anew, is not a zero
+  private setMessagesCount(el: I18n.IntlElement, key: LangPackKey, count: number | null, minusFirst?: boolean) {
+    el.compareAndUpdate(typeof(count) !== 'number' ?
+      {key: 'Loading', args: undefined} :
+      {key, args: [count - (minusFirst ? 1 : 0)]}
+    );
+  }
+
   private messagesCounter({
     middleware,
     key,
@@ -1640,9 +1644,7 @@ export default class ChatTopbar {
 
       createEffect(on(
         () => [this.chat.historyStorage.count, this.chat.historyStorage.wasFetched] as const,
-        ([count]) => {
-          el.compareAndUpdate({key, args: [count - (minusFirst ? 1 : 0)]});
-        },
+        ([count]) => this.setMessagesCount(el, key, count, minusFirst),
         {defer: displayLoading ? !this.chat.historyStorage.wasFetched : true}
       ));
     });

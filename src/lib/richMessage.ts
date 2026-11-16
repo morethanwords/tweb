@@ -150,8 +150,9 @@ function isFullWidthBlock(block: PageBlock): boolean {
 
 /**
  * The blocks of a rich message that meet its bubble's edges, by their index among the top-level blocks
- * (an anchor draws nothing, so it is passed over), -1 for none: a photo, a video, a slideshow or a
- * collage — a cover's too — at the top or the bottom is cut by the bubble's corners there, a paragraph
+ * (an anchor draws nothing, so it is passed over), -1 for none: a photo, a video, a slideshow, a collage
+ * or a map — a cover's too — at the top or the bottom is cut by the bubble's corners there (at the bottom,
+ * with no caption under it, the message's time is drawn over it, as over a photo), a paragraph
  * or a heading at the top starts where a message's own text does, and a paragraph with text at the end
  * takes the message's time on its last line, as tdesktop lays one out (a heading, a list, a quote, code
  * or a caption does not).
@@ -223,6 +224,7 @@ function isEdgeMediaBlock(block: PageBlock): boolean {
     case 'pageBlockVideo':
     case 'pageBlockSlideshow':
     case 'pageBlockCollage':
+    case 'pageBlockMap':
       return true;
     default:
       return false;
