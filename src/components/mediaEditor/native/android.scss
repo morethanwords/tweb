@@ -247,7 +247,7 @@
   &__weight { position: absolute; inset-inline-start: 0; inset-block-start: 35%; block-size: 30%; inline-size: 48px; pointer-events: auto; }
   &__weight-art { position: absolute; inset-inline-start: -16px; inset-block: 0; inline-size: 64px; block-size: 100%; overflow: visible; pointer-events: none; filter: drop-shadow(0 2px 4px #0005); .is-rtl & { scale: -1 1; } }
   &__weight-thumb { position: absolute; inset-inline-start: calc(-1 * var(--weight-radius)); inset-block-start: clamp(16px, var(--weight-position), calc(100% - 4.5px)); margin-block-start: calc(-1 * var(--weight-radius)); inline-size: calc(2 * var(--weight-radius)); block-size: calc(2 * var(--weight-radius)); background: #fff; border-radius: 50%; box-shadow: 0 2px 4px #0005; pointer-events: none; }
-  &__weight--dragging { .android-editor__weight-art, .android-editor__weight-thumb { transform: translateX(calc(32px * var(--reflect))); } }
+  &__weight-art, &__weight-thumb { transform: translateX(calc(var(--weight-offset) * var(--reflect))); }
   // This input has vertical writing mode: its inline axis is the rail's height.
   // Fill both axes so the resting thumb and the whole rail receive touches.
   &__weight-input { position: absolute; inset: 0; margin: 0; inline-size: 100%; block-size: 100%; opacity: 0; writing-mode: vertical-lr; direction: rtl; touch-action: none; cursor: ns-resize; }

@@ -31,8 +31,11 @@ import type {AndroidTextPreferences} from '@components/mediaEditor/native/androi
 import {availableQualityHeights, fontInfoMap, snapToAvailableQuality} from '@components/mediaEditor/utils';
 import NativeVideoQualityControl from '@components/mediaEditor/native/nativeVideoQualityControl';
 import Modes from '@config/modes';
+import {animateValue} from '@helpers/animateValue';
 import onRangeInlineArrowKey from '@helpers/dom/onRangeInlineArrowKey';
 import createFocusTrap from '@helpers/dom/focusTrap';
+import {easeOutCircApply} from '@helpers/easing/easeOutCirc';
+import liteMode from '@helpers/liteMode';
 import {withCurrentOwner} from '@helpers/solid/withCurrentOwner';
 import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import undoIcon from '@/assets/mediaEditor/android/photo_undo2.svg?url';
@@ -145,6 +148,23 @@ export default function AndroidControls(props: AndroidControlsProps) {
   const filledShapes = () => editorState.androidFilledShapes;
   const setFilledShapes = context.androidShapePreference.set;
   const [weightDragging, setWeightDragging] = createSignal(false);
+  const [weightExpansion, setWeightExpansion] = createSignal(0);
+  createEffect(() => {
+    const target = weightDragging() ? 1 : 0;
+    const from = untrack(weightExpansion);
+    if(!liteMode.isAvailable('motion') || from === target) {
+      setWeightExpansion(target);
+      return;
+    }
+    const cancel = animateValue(from, target, 200 * Math.abs(target - from), setWeightExpansion, {
+      easing: (progress) => easeOutCircApply(progress, 1)
+    });
+    onCleanup(cancel);
+  });
+  const weightRailPath = () => {
+    const top = 3 + 13 * weightExpansion();
+    return `M0 0 A${top} ${top} 0 0 1 ${top} ${top} L3 197 A3 3 0 0 1 -3 197 L${-top} ${top} A${top} ${top} 0 0 1 0 0`;
+  };
   const isText = () => editorState.currentTab === 'text';
   const currentFontInfo = () => fontInfoMap[editorState.currentTextLayerInfo.font] ?? fontInfoMap[androidEditorFonts[0].font];
   const currentFontLabel = () => [...androidEditorFonts, ...desktopEditorFonts, ...editorFonts].find(item => item.font === editorState.currentTextLayerInfo.font)?.label ?? androidEditorFonts[0].label;
@@ -426,13 +446,14 @@ export default function AndroidControls(props: AndroidControlsProps) {
         {button('Clear', i18n('Clear'), clearPaint)}
       </div>
       <Show when={editorState.currentTab === 'brush' || isText()}>
-        <div class="android-editor__weight" classList={{'android-editor__weight--dragging': weightDragging()}}>
+        <div class="android-editor__weight" classList={{'android-editor__weight--dragging': weightDragging()}}
+          style={{'--weight-offset': `${32 * weightExpansion()}px`}}>
           <svg class="android-editor__weight-art" viewBox="-16 0 64 200" preserveAspectRatio="none" aria-hidden="true">
-            <path d={weightDragging() ? 'M0 0 A16 16 0 0 1 16 16 L3 197 A3 3 0 0 1 -3 197 L-16 16 A16 16 0 0 1 0 0' : 'M0 0 A3 3 0 0 1 3 3 L3 197 A3 3 0 0 1 -3 197 L-3 3 A3 3 0 0 1 0 0'} fill="#ffffff40" />
+            <path d={weightRailPath()} fill="#ffffff40" />
           </svg>
           <div class="android-editor__weight-thumb" aria-hidden="true" style={{
             '--weight-position': `${100 * (1 - weightProgress())}%`,
-            '--weight-radius': `${weightDragging() ? 4.5 + 11.5 * weightProgress() : 12}px`
+            '--weight-radius': `${12 + (4.5 + 11.5 * weightProgress() - 12) * weightExpansion()}px`
           }} />
           <input class="android-editor__weight-input" type="range" min={weightMin()} max={weightMax()} step={paint && !isText() ? '0.01' : '0.1'}
             aria-label={I18n.format('MediaEditor.Size', true)} value={weight()}
