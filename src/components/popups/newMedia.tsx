@@ -1077,10 +1077,12 @@ export default function showNewMediaPopup(
       }
 
       const isBad: (LangPackKey | boolean)[] = sendFileParams.map((params) => {
-        const isVideoFile = () => VIDEO_MIME_TYPES_SUPPORTED.has(getFileMimeType(params.file) as any) || canConvertMov(params.file);
+        const file = prepareEditedFileForSending(params) || params.file;
+        const mimeType = getFileMimeType(file);
+        const isVideoFile = () => VIDEO_MIME_TYPES_SUPPORTED.has(mimeType as any) || canConvertMov(file);
         const a: [Set<string> | (() => boolean), LangPackKey, ChatRights][] = [
           [AUDIO_MIME_TYPES_SUPPORTED, 'GlobalAttachAudioRestricted', 'send_audios'],
-          [() => !isMediaFile(params.file), 'GlobalAttachDocumentsRestricted', 'send_docs']
+          [() => !isMediaFile(file), 'GlobalAttachDocumentsRestricted', 'send_docs']
         ];
 
         if(isMedia) {
@@ -1092,7 +1094,7 @@ export default function showNewMediaPopup(
         }
 
         const found = a.find(([verify]) => {
-          return typeof(verify) === 'function' ? verify() : verify.has(getFileMimeType(params.file));
+          return typeof(verify) === 'function' ? verify() : verify.has(mimeType);
         });
 
         if(found) {
@@ -2058,9 +2060,10 @@ export default function showNewMediaPopup(
 
   async function openDirectPhotoEditor() {
     const {openMediaEditorFromMediaRaw} = await import('@components/mediaEditor');
-    if(context.destroyed) return;
     const params = willAttach.sendFileDetails[0];
     const file = params.file as File;
+    const canImageResultInGIF = file.size <= MAX_EDITABLE_VIDEO_SIZE && await supportsVideoEncoding();
+    if(context.destroyed) return;
     const mediaSrc = params.objectURLs.create(file);
     let finished = false;
     isMediaEditorOpen = true;
@@ -2075,6 +2078,7 @@ export default function showNewMediaPopup(
        attachmentCaption: editorCaption,
        attachmentTitle: editorTitle,
       canFinishWithoutChanges: true,
+      canImageResultInGIF,
       imageType: 'image/jpeg',
       imageQuality: file.size > PHOTO_HEAVY_BYTES ? PHOTO_COMPRESSED_QUALITY : undefined,
       onEditFinish: (result) => {
@@ -2084,18 +2088,31 @@ export default function showNewMediaPopup(
       },
       onClose: () => {
         params.objectURLs.release(mediaSrc);
-        isMediaEditorOpen = false;
-        updateConfirmLock();
         if(!finished) {
           context.destroy();
           return;
         }
-        // Reuse caption validation, permissions, scheduling and the normal upload path.
-        send().catch((err) => {
+        const sendEditedPhoto = async() => {
+          if(params.editResult.isVideo) {
+            try {
+              await params.editResult.getResult();
+            } catch(error) {
+              params.editResult = undefined;
+              throw error;
+            }
+            if(context.destroyed) return;
+            // Populate the duration, poster and GIF flag before the direct send.
+            await attachFiles();
+          }
+          if(!context.destroyed) await send();
+        };
+        sendEditedPhoto().catch((err) => {
           console.error('media editor attachment send error', err);
           if(!context.destroyed) toastNew({langPackKey: 'Error.AnError'});
         }).finally(() => {
           if(context.destroyed) return;
+          isMediaEditorOpen = false;
+          updateConfirmLock();
           containerEl.append(editorCaption);
           btnConfirm.hidden = false;
           btnConfirm.style.display = '';
@@ -2378,7 +2395,7 @@ export default function showNewMediaPopup(
 
     canShowActions = false;
 
-    Promise.all(promises).then(() => {
+    return Promise.all(promises).then(() => {
       mediaContainer.replaceChildren();
       // * destroy the old items only AFTER they've left the DOM — destroying at
       // * the start of the re-render blanks the still-visible media out for the
