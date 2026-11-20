@@ -1,5 +1,5 @@
 import {Accessor, batch, createEffect, createMemo, createSignal, For, on, onCleanup, onMount, ParentProps, Show} from 'solid-js';
-import {createMutable, modifyMutable, produce} from 'solid-js/store';
+import {createMutable, modifyMutable, produce, unwrap} from 'solid-js/store';
 import {canFlipImageLayer} from '@components/mediaEditor/imageLayer/reflection';
 import {Portal} from 'solid-js/web';
 
@@ -158,12 +158,12 @@ export default function ResizableLayers() {
   function finishShape(e: PointerEvent) {
     if(!shapeLayer || e.pointerId !== shapePointer) return;
     const apply = e.type !== 'pointercancel' && (!desktopShape || !shapeMoved || draft().fits);
-    const layer: ResizableLayer = structuredClone({...shapeLayer, shapeInfo: {...shapeLayer.shapeInfo}, position: [...shapeLayer.position] as NumberPair});
+    const layer = apply ? structuredClone(unwrap(shapeLayer)) : undefined;
     discardShapeDraft();
     if(desktopShape && !apply) return;
     if(desktopShape) editorState.drawingShape = undefined;
     editorState.currentTab = 'layers';
-    if(apply) insertResizableLayer(context, layer);
+    if(layer) insertResizableLayer(context, layer);
   }
 
   const addText = useAddText();
