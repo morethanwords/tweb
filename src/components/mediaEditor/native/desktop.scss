@@ -1,0 +1,312 @@
+@use "../../../scss/mixins/animationLevel" as *;
+
+.media-editor-desktop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: #fff;
+  z-index: 5;
+
+  &__bar {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    inline-size: min(418px, calc(100% - 4px));
+    block-size: 48px;
+    border-radius: 24px;
+    background: #00000056;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    pointer-events: auto;
+  }
+
+  &__bar--bottom {
+    inset-block-end: 20px;
+    display: block;
+
+    > .media-editor-desktop__button,
+    > .media-editor-desktop__edge {
+      position: absolute;
+      inset-block-start: 0;
+    }
+  }
+  &__bar--top { inset-block-end: 74px; }
+
+  &__help-button {
+    position: absolute;
+    inset-block-start: 12px;
+    inset-inline-end: 12px;
+    pointer-events: auto;
+    background: #292d33;
+  }
+  &__help-icon { font-size: 24px; }
+  &__shortcut-help { padding: 16px; text-align: start; }
+  &__shortcut-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-block: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__button, &__edge, &__brush, &__color, &__swatch {
+    border: 0;
+    padding: 0;
+    background: none;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  &__button {
+    inline-size: 48px;
+    block-size: 48px;
+    border-radius: 50%;
+    color: #ffffffd9;
+    &:hover { color: #fff; }
+  }
+
+  &__button--active, &__button--active:hover { color: #168acd; }
+  &__button--disabled, &__button--disabled:hover { color: #ffffff26; cursor: default; }
+  &__button--text { inline-size: 42px; block-size: 42px; }
+  &__icon { display: block; background: currentColor; mask: center / contain no-repeat; }
+  &__icon--rotate { transform: scaleX(-1); }
+  &__icon--ratio { transform: translateY(1px); }
+  &__edge {
+    block-size: 48px;
+    padding-inline: 26px;
+    white-space: nowrap;
+    font-size: 14px;
+    font-weight: 600;
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      border-radius: 20px;
+      pointer-events: none;
+    }
+    &:hover::before { background: #0003; }
+  }
+  &__edge--done { color: #4db8ff; }
+  &__text { font-size: 21px; font-weight: 600; padding-block-start: 6px; }
+  &__tools { display: flex; align-items: center; justify-content: center; gap: 6px; flex: 1; min-inline-size: 0; }
+  &__tool-line { position: relative; inline-size: 214px; block-size: 36px; }
+  &__brush { position: absolute; inline-size: 36px; block-size: 36px; border-radius: 50%; }
+  &__brush[aria-pressed="true"]::before { content: ''; position: absolute; inline-size: 30px; block-size: 30px; border-radius: 50%; background: #ffffff59; }
+  &__brush-icon { inline-size: 20px; block-size: 20px; display: block; }
+  &__color {
+    position: absolute;
+    inset-inline-start: 0;
+    inset-block-start: 6px;
+    inline-size: 24px;
+    block-size: 24px;
+    border-radius: 50%;
+  }
+  &__color::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(from 75deg, #eb4b4b, #ffa500, #ff0, #8fce00, #0ff, #6080e4, #ee82ee, #eb4b4b);
+    mask-image: radial-gradient(circle, transparent 10px, #000 10px);
+  }
+  &__color-inner { position: relative; inline-size: 16px; block-size: 16px; border-radius: 50%; }
+  &__swatch { inline-size: 20px; block-size: 20px; border-radius: 50%; }
+  &__swatch[aria-pressed="true"] { outline: 2px solid #fff; outline-offset: 2px; }
+  &__custom-color {
+    position: relative;
+    inline-size: 20px;
+    block-size: 20px;
+    flex-shrink: 0;
+    cursor: pointer;
+    padding: 0;
+    border: 0;
+    background: none;
+    &::before, &::after { content: ''; position: absolute; background: #fff; border-radius: 1px; }
+    &::before { inset-inline: 3.5px; inset-block-start: 9px; block-size: 2px; }
+    &::after { inset-block: 3.5px; inset-inline-start: 9px; inline-size: 2px; }
+  }
+  &__color-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    background: #0006;
+  }
+  &__color-dialog {
+    inline-size: 390px;
+    max-inline-size: calc(100% - 16px);
+    max-block-size: calc(100% - 16px);
+    overflow: auto;
+    border-radius: 8px;
+    background: #292d33;
+    color: #fff;
+    box-shadow: 0 4px 20px #0005;
+  }
+  // color_editor.style: 256px square, 10px skips, 70px side column.
+  &__color-editor {
+    display: grid;
+    grid-template-columns: minmax(0, 256px) 70px;
+    grid-template-rows: auto 19px;
+    gap: 10px;
+    padding: 10px;
+    justify-content: center;
+  }
+  &__color-plane {
+    position: relative;
+    aspect-ratio: 1;
+    touch-action: none;
+    cursor: crosshair;
+    background: linear-gradient(to bottom, transparent, hsl(0, 0%, var(--picker-lightness))),
+      linear-gradient(calc(90deg * var(--reflect)), hsl(0, 100%, var(--picker-lightness)), hsl(60, 100%, var(--picker-lightness)), hsl(120, 100%, var(--picker-lightness)), hsl(180, 100%, var(--picker-lightness)), hsl(240, 100%, var(--picker-lightness)), hsl(300, 100%, var(--picker-lightness)), hsl(360, 100%, var(--picker-lightness)));
+    box-shadow: 0 0 1px 1px #0005;
+  }
+  &__color-mark {
+    position: absolute;
+    inline-size: 12px;
+    block-size: 12px;
+    border: 1px solid #fff;
+    border-radius: 50%;
+    transform: translate(calc(-50% * var(--reflect)), -50%);
+    pointer-events: none;
+  }
+  &__color-values { grid-column: 2; grid-row: 1 / 3; min-inline-size: 0; }
+  &__color-samples { box-shadow: 0 0 1px 1px #0005; background: repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 / 8px 8px; }
+  &__color-sample { display: block; inline-size: 100%; block-size: 34px; border: 0; padding: 0; }
+  &__color-field {
+    display: flex;
+    align-items: center;
+    block-size: 27px;
+    font-size: 13px;
+    border-block-end: 1px solid #ffffff40;
+    color: #a8a8a8;
+    &:first-of-type { margin-block-start: 13px; }
+    input {
+      appearance: textfield;
+      min-inline-size: 0;
+      inline-size: 100%;
+      padding: 3px 0;
+      border: 0;
+      outline: none;
+      border-radius: 0;
+      background: none;
+      color: #fff;
+      text-align: end;
+      font: inherit;
+      &::-webkit-inner-spin-button, &::-webkit-outer-spin-button { appearance: none; margin: 0; }
+    }
+  }
+  &__color-field--rgb { margin-block-start: 13px; }
+  &__color-field--hex { margin-block-start: 2px; }
+  &__lightness {
+    position: relative;
+    grid-column: 1;
+    grid-row: 2;
+    box-shadow: 0 0 1px 1px #0005;
+    input {
+      position: absolute;
+      inset: -8px 0;
+      inline-size: 100%;
+      block-size: 35px;
+      margin: 0;
+      appearance: none;
+      opacity: 0;
+      cursor: ew-resize;
+      &::-webkit-slider-thumb { appearance: none; inline-size: 0; block-size: 35px; }
+      &::-moz-range-thumb { inline-size: 0; block-size: 35px; border: 0; }
+    }
+  }
+  &__lightness-mark {
+    position: absolute;
+    inset-block: -6px;
+    inline-size: 0;
+    pointer-events: none;
+    &::before, &::after { content: ''; position: absolute; border-inline: 4px solid transparent; transform: translateX(calc(-50% * var(--reflect))); }
+    &::before { top: 0; border-block-start: 5px solid #64b5ef; }
+    &::after { bottom: 0; border-block-end: 5px solid #64b5ef; }
+  }
+  &__color-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 8px; }
+  &__color-action { border: 0; border-radius: 4px; background: none; color: #4db8ff; padding: 10px 16px; font-size: 14px; font-weight: 600; cursor: pointer; &:hover { background: #ffffff0d; } }
+  :where(.a11y) &__color-field:focus-within { border-block-end-color: #64b5ef; }
+  :where(.a11y) &__lightness:focus-within,
+  :where(.a11y) &__color-action:focus-visible,
+  :where(.a11y) &__color-sample:focus-visible { outline: 2px solid #64b5ef; outline-offset: 2px; }
+  &__size {
+    position: absolute;
+    inset-inline-start: -27px;
+    top: 50%;
+    transform: translateY(-50%);
+    inline-size: 87px;
+    block-size: 280px;
+    pointer-events: auto;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+  }
+  &__size--dragging { cursor: grabbing; }
+  &__size-input {
+    position: absolute;
+    // Physical geometry matches the SVG; this input's writing mode swaps the logical axes.
+    top: 36px;
+    left: 24px;
+    width: 60px;
+    height: 218px;
+    margin: 0;
+    writing-mode: vertical-lr;
+    direction: rtl;
+    opacity: 0;
+    appearance: none;
+    cursor: inherit;
+    touch-action: none;
+    &::-webkit-slider-thumb { appearance: none; width: 0; height: 0; }
+    &::-moz-range-thumb { width: 0; height: 0; border: 0; }
+  }
+  .is-rtl &__size-input { left: 3px; }
+  &__size-drawing { display: block; inline-size: 100%; block-size: 100%; pointer-events: none; }
+  .is-rtl &__size-drawing { transform: scaleX(-1); }
+  &__size-rail {
+    fill: #ffffff60;
+    @include animation-level(1) { transition: fill 150ms ease-out; }
+  }
+  &__size--expanded &__size-rail { fill: #ffffffb0; }
+  &__stickers {
+    position: absolute;
+    inset-inline-start: 50%;
+    inset-block-end: 130px;
+    inline-size: min(360px, calc(100% - 24px));
+    block-size: min(420px, calc(100% - 146px));
+    border-radius: 12px;
+    background: #383838;
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform: translateX(calc(-50% * var(--reflect)));
+  }
+  &__stickers-scroll { flex: 1; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px; }
+  &__menu.btn-menu {
+    min-inline-size: 200px;
+  }
+  &__menu-item.btn-menu-item {
+    // Keep the app's shared menu spacing, colours, focus and checkbox treatment.
+    > .btn-menu-item-icon { display: inline-flex; align-items: center; justify-content: center; }
+  }
+  &__menu-check { inline-size: 24px; block-size: 24px; visibility: hidden; }
+  &__menu-check--selected { visibility: visible; }
+
+  :where(.a11y) &__button:focus-visible,
+  :where(.a11y) &__edge:focus-visible,
+  :where(.a11y) &__brush:focus-visible,
+  :where(.a11y) &__color:focus-visible,
+  :where(.a11y) &__swatch:focus-visible,
+  :where(.a11y) &__custom-color:focus-within,
+  :where(.a11y) &__size:focus-within { outline: 2px solid #64b5ef; outline-offset: 2px; }
+}

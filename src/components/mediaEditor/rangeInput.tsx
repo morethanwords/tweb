@@ -12,6 +12,7 @@ export default function RangeInput(props: {
   label: JSX.Element;
   ariaLabel?: LangPackKey;
   value: number;
+  valueLabel?: JSX.Element;
   min: number;
   max: number;
   onChange: (value: number) => void;
@@ -47,7 +48,7 @@ export default function RangeInput(props: {
       <div class="media-editor__range-input-row">
         <div class="media-editor__range-input-label">{props.label}</div>
         {/* * a signed number: `-20` keeps its minus in front in RTL */}
-        <div class="media-editor__range-input-value" dir="ltr">{props.value}</div>
+        <div class="media-editor__range-input-value" dir="ltr">{props.valueLabel ?? props.value}</div>
       </div>
       <div class="media-editor__range-input-wrapper">
         <input

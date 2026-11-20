@@ -23,6 +23,7 @@ export default function drawStickerLayer(
   ctx.save();
   ctx.translate(layer.position[0], layer.position[1]);
   ctx.rotate(layer.rotation);
+  if(layer.stickerFlip) ctx.scale(-1, 1);
 
   const [w, h] = snapToViewport(ratio, size, size);
 

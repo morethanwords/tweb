@@ -1,6 +1,6 @@
-import {createEffect, createMemo, createSignal, on, onCleanup, onMount} from 'solid-js';
+import {Show, createEffect, createMemo, createSignal, on, onCleanup, onMount, untrack} from 'solid-js';
 import createMiddleware from '@helpers/solid/createMiddleware';
-import SwipeHandler from '@components/swipeHandler';
+import ListenerSetter from '@helpers/listenerSetter';
 import {adjustmentsConfig, AdjustmentsConfig} from '@components/mediaEditor/adjustments';
 import {HistoryItem, useMediaEditorContext} from '@components/mediaEditor/context';
 import {NumberPair} from '@components/mediaEditor/types';
@@ -10,6 +10,8 @@ import {initWebGL, RenderingPayload} from '@components/mediaEditor/webgl/initWeb
 import BrushPainter, {BrushDrawnLine} from '@components/mediaEditor/canvas/brushPainter';
 import useNormalizePoint from '@components/mediaEditor/canvas/useNormalizePoint';
 import useProcessPoint from '@components/mediaEditor/canvas/useProcessPoint';
+import useIsMobile from '@components/mediaEditor/useIsMobile';
+import createAffineBrushPreview from '@components/mediaEditor/canvas/affineBrushPreview';
 
 
 function drawAdjustedImage(gl: WebGLRenderingContext, payload: RenderingPayload) {
@@ -19,6 +21,8 @@ function drawAdjustedImage(gl: WebGLRenderingContext, payload: RenderingPayload)
 
   draw(gl, payload, {
     flip: mediaState.flip,
+    processingVersion: mediaState.adjustments.processingVersion,
+    native: mediaState.adjustments.native,
     rotation: 0,
     scale: 1,
     translation: [0, 0],
@@ -33,7 +37,24 @@ function drawAdjustedImage(gl: WebGLRenderingContext, payload: RenderingPayload)
 }
 
 export default function BrushCanvas() {
-  const {editorState, mediaState, actions, mediaSrc, mediaType} = useMediaEditorContext();
+  const context = useMediaEditorContext();
+  return <Show when={context.nativePaint?.ownsDispatch()} fallback={<LegacyBrushCanvas />}>
+    <NativePaintCanvas />
+  </Show>;
+}
+
+function NativePaintCanvas() {
+  const {nativePaint, editorState} = useMediaEditorContext();
+  const canvas = <canvas class="media-editor__brush-canvas" classList={{'media-editor__brush-canvas--active': editorState.currentTab === 'brush'}}
+    style={{opacity: editorState.isAdjusting || !nativePaint.ready() ? 0 : 1}} /> as HTMLCanvasElement;
+  editorState.brushCanvas = canvas;
+  nativePaint.connect(canvas);
+  return canvas;
+}
+
+function LegacyBrushCanvas() {
+  const {editorState, mediaState, actions, mediaSrc, mediaType, isEditingForAvatar} = useMediaEditorContext();
+  const isMobile = useIsMobile();
 
   const [fullImageGLPayload, setFullImageGLPayload] = createSignal<RenderingPayload>();
 
@@ -78,6 +99,8 @@ export default function BrushCanvas() {
     ) * 2 * editorState.pixelRatio;
 
   const fullImageCanvas = (<canvas width={editorState.mediaSize?.[0]} height={editorState.mediaSize?.[1]} />) as HTMLCanvasElement;
+  // Preview-affine hook: legacy only, not NativePaintCanvas/Android dispatch.
+  const affinePreview = createAffineBrushPreview(useMediaEditorContext(), canvas, fullImageCanvas, () => redraw());
   const gl = fullImageCanvas.getContext('webgl', {
     preserveDrawingBuffer: true
   });
@@ -107,6 +130,7 @@ export default function BrushCanvas() {
   createEffect(() => {
     const payload = fullImageGLPayload();
     drawAdjustedImage(gl, payload);
+    if(payload && affinePreview.active()) untrack(affinePreview.redraw);
   });
 
   createEffect(on(fullImageGLPayload, () => {
@@ -116,6 +140,7 @@ export default function BrushCanvas() {
 
   createEffect(
     on(() => editorState.canvasSize, () => {
+      brushPainter.cancelPreview();
       brushPainter = new BrushPainter({
         imageCanvas: editorState.imageCanvas,
         targetCanvas: canvas
@@ -125,20 +150,22 @@ export default function BrushCanvas() {
   );
 
   function resetLastLine() {
+    const nativeStyle = isEditingForAvatar ? undefined : isMobile() ? 'android' : 'desktop';
     setLastLine({
       color: editorState.currentBrush.color,
       brush: editorState.currentBrush.brush,
       size: (editorState.currentBrush.size * editorState.pixelRatio) / editorState.finalTransform.scale,
+      nativeStyle,
+      rendererVersion: nativeStyle === 'desktop' && editorState.currentBrush.brush === 'arrow' ? 1 : undefined,
+      blurRadiusRatio: nativeStyle === 'desktop' ? 20 / editorState.currentBrush.size : undefined,
       points: []
     });
   }
 
   createEffect(() => {
-    resetLastLine();
-  });
-
-  createEffect(() => {
-    if(editorState.isMoving) {
+    if(affinePreview.active()) {
+      affinePreview.redraw();
+    } else if(editorState.isMoving) {
       const transform = editorState.finalTransform;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.save();
@@ -158,6 +185,7 @@ export default function BrushCanvas() {
   });
 
   function redraw() {
+    if(affinePreview.active()) { affinePreview.redraw(); return; }
     brushPainter.clear();
     brushPainter.saveLastLine();
     processedLines().forEach((line) => brushPainter.drawLine(line));
@@ -243,11 +271,14 @@ export default function BrushCanvas() {
       brushPainter.saveLastLine();
 
       points = [];
+      if(affinePreview.active()) affinePreview.saveLastLine();
       initialPosition = undefined;
     }
 
     function startSwipe(x: number, y: number) {
       const bcr = canvas.getBoundingClientRect();
+      // Capture the shell at pointerdown, never reinterpret saved strokes after a resize.
+      resetLastLine();
 
       isShiftPressed = false;
       straightAnchorIndex = undefined;
@@ -257,83 +288,113 @@ export default function BrushCanvas() {
       points = [point];
 
       setLastLine((prev) => ({...prev, points}));
-      brushPainter.updateBlurredImage();
-      brushPainter.previewLine(processLine(lastLine()));
+      if(affinePreview.active()) affinePreview.previewLine(lastLine());
+      else {
+        brushPainter.updateBlurredImage();
+        brushPainter.previewLine(processLine(lastLine()));
+      }
 
       editorState.selectedResizableLayer = undefined;
     }
 
-    function endSwipe() {
-      if(points.length === 1) {
-        saveLastLine();
-      }
-    }
-
-    canvas.addEventListener('mousedown', (e) => {
+    const listeners = new ListenerSetter();
+    let pointerId: number;
+    let finishing = false;
+    let strokeGeneration = 0;
+    let startX: number, startY: number;
+    listeners.add(canvas)('pointerdown', (e) => {
+      if(finishing || pointerId !== undefined || !e.isPrimary || e.button !== 0) return;
+      e.preventDefault();
+      pointerId = e.pointerId;
+      startX = e.clientX;
+      startY = e.clientY;
+      canvas.setPointerCapture(pointerId);
       startSwipe(e.clientX, e.clientY);
     });
-    canvas.addEventListener('touchstart', (e) => {
-      startSwipe(e.touches[0].clientX, e.touches[0].clientY);
-    });
 
-    canvas.addEventListener('mouseup', () => {
-      endSwipe();
-    });
-    canvas.addEventListener('touchend', () => {
-      endSwipe();
-    });
+    listeners.add(canvas)('pointermove', (_e) => {
+      if(pointerId !== _e.pointerId || !initialPosition) return;
+      const position: NumberPair = [initialPosition[0] + _e.clientX - startX, initialPosition[1] + _e.clientY - startY];
 
-    const swipeHandler = new SwipeHandler({
-      element: canvas,
-      cursor: '',
-      onSwipe: (xDiff, yDiff, _e) => {
-        const position: NumberPair = [initialPosition[0] + xDiff, initialPosition[1] + yDiff];
+      const shiftKey = _e.shiftKey;
+      if(shiftKey !== isShiftPressed) {
+        isShiftPressed = shiftKey;
+        straightAnchorIndex = undefined;
+      }
 
-        const shiftKey = !!(_e as any as MouseEvent).shiftKey;
-        if(shiftKey !== isShiftPressed) {
-          isShiftPressed = shiftKey;
-          straightAnchorIndex = undefined;
+      if(isShiftPressed) {
+        straightAnchorIndex ??= Math.max(points.length - 1, 0);
+        const anchor = points[straightAnchorIndex];
+        const point = normalizePoint(snapToAngle(processScreenPoint(anchor), position));
+
+        points.length = straightAnchorIndex + 1;
+        points.push(point);
+        builtUpDistance = 0;
+      } else {
+        const point = normalizePoint(position);
+
+        if(points.length > 0) {
+          const lastPoint = points[points.length - 1];
+          builtUpDistance += distance(processPoint(lastPoint), processPoint(point));
         }
-
-        if(isShiftPressed) {
-          straightAnchorIndex ??= Math.max(points.length - 1, 0);
-          const anchor = points[straightAnchorIndex];
-          const point = normalizePoint(snapToAngle(processScreenPoint(anchor), position));
-
-          points.length = straightAnchorIndex + 1;
+        if(builtUpDistance < Math.min(lastLine().size, 12) * editorState.pixelRatio && points.length > 1) {
+          points[points.length - 1] = point;
+        } else {
           points.push(point);
           builtUpDistance = 0;
-        } else {
-          const point = normalizePoint(position);
-
-          if(points.length > 0) {
-            const lastPoint = points[points.length - 1];
-            builtUpDistance += distance(processPoint(lastPoint), processPoint(point));
-          }
-          if(builtUpDistance < Math.min(lastLine().size, 12) * editorState.pixelRatio && points.length > 1) {
-            points[points.length - 1] = point;
-          } else {
-            points.push(point);
-            builtUpDistance = 0;
-          }
         }
-
-        setLastLine((prev) => ({...prev, points}));
-        brushPainter.previewLine(processLine(lastLine()));
-      },
-      onReset() {
-        (async() => {
-          builtUpDistance = 0;
-          if(lastLine().brush === 'arrow') {
-            await brushPainter.animateArrowBrush(processLine(lastLine()));
-          }
-          saveLastLine();
-        })();
       }
+
+      setLastLine((prev) => ({...prev, points}));
+      if(affinePreview.active()) affinePreview.previewLine(lastLine());
+      else brushPainter.previewLine(processLine(lastLine()));
     });
+    const finishStroke = (event: PointerEvent) => {
+      if(pointerId !== event.pointerId) return;
+      pointerId = undefined;
+      builtUpDistance = 0;
+      const painter = brushPainter;
+      const generation = ++strokeGeneration;
+      const animation = affinePreview.active() ? affinePreview.finishLine(lastLine()) : painter.finishLine(processLine(lastLine()));
+      if(!animation) {
+        saveLastLine();
+        return;
+      }
+      finishing = true;
+      animation.then(completed => {
+        if(generation !== strokeGeneration) return;
+        finishing = false;
+        if(completed && painter === brushPainter) saveLastLine();
+      });
+    };
+    function abortStroke() {
+      ++strokeGeneration;
+      const capturedId = pointerId;
+      pointerId = undefined;
+      if(capturedId !== undefined && canvas.hasPointerCapture(capturedId)) canvas.releasePointerCapture(capturedId);
+      finishing = false;
+      points = [];
+      initialPosition = undefined;
+      builtUpDistance = 0;
+      brushPainter.cancelPreview();
+      if(affinePreview.active()) affinePreview.cancelPreview();
+    }
+    const cancelStroke = (event: PointerEvent) => {
+      // pointerup has already relinquished ownership: its normal capture loss
+      // must not cancel the terminal animation or the committed stroke.
+      if(pointerId === event.pointerId) abortStroke();
+    };
+    listeners.add(canvas)('pointerup', finishStroke);
+    listeners.add(canvas)('pointercancel', cancelStroke);
+    listeners.add(canvas)('lostpointercapture', cancelStroke);
+
+    createEffect(on(() => editorState.currentTab, () => {
+      if(editorState.currentTab !== 'brush' && (initialPosition || finishing)) abortStroke();
+    }));
 
     onCleanup(() => {
-      swipeHandler.removeListeners();
+      abortStroke();
+      listeners.removeAll();
     })
   });
 

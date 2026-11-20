@@ -13,14 +13,27 @@ type Args = {
   newRatio: number;
   scale: number;
   quality?: number;
+  desktopCropSize?: readonly [number, number];
 };
 
-export default function getResultSize({imageWidth, cropOffset, imageRatio, newRatio, scale, videoType, quality}: Args) {
-  const [w] = snapToViewport(imageRatio, cropOffset.width, cropOffset.height);
-  const [cw] = snapToViewport(newRatio, cropOffset.width, cropOffset.height);
+export default function getResultSize({imageWidth, cropOffset, imageRatio, newRatio, scale, videoType, quality, desktopCropSize}: Args) {
+  let scaledWidth: number, scaledHeight: number;
 
-  let scaledWidth = cw / (w * scale) * imageWidth,
+  if(desktopCropSize) {
+    if(videoType || quality || !Number.isFinite(desktopCropSize[0]) || desktopCropSize[0] <= 0 ||
+      !Number.isFinite(desktopCropSize[1]) || desktopCropSize[1] <= 0) {
+      throw new Error('Invalid expanded crop output policy');
+    }
+    // Web v1 client policy, not Desktop pixel parity: keep the existing
+    // 240…2560 long-side limits and floor-to-even output dimensions.
+    [scaledWidth, scaledHeight] = desktopCropSize;
+    newRatio = scaledWidth / scaledHeight;
+  } else {
+    const [w] = snapToViewport(imageRatio, cropOffset.width, cropOffset.height);
+    const [cw] = snapToViewport(newRatio, cropOffset.width, cropOffset.height);
+    scaledWidth = cw / (w * scale) * imageWidth;
     scaledHeight = scaledWidth / newRatio;
+  }
 
   const willResultInVideo = !!videoType;
 
@@ -46,6 +59,10 @@ export default function getResultSize({imageWidth, cropOffset, imageRatio, newRa
   scaledHeight = Math.floor(scaledHeight);
   scaledWidth = scaledWidth % 2 == 0 ? scaledWidth : scaledWidth - 1;
   scaledHeight = scaledHeight % 2 == 0 ? scaledHeight : scaledHeight - 1;
+
+  if(desktopCropSize && (scaledWidth < 2 || scaledHeight < 2)) {
+    throw new Error('Expanded crop is too narrow for the Web v1 even-size output policy');
+  }
 
   return [scaledWidth, scaledHeight];
 }

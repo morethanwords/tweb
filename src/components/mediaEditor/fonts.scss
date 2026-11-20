@@ -1,0 +1,40 @@
+// Editor-only family aliases: never replace the application's Roboto faces.
+@font-face {
+  font-family: 'Editor Android Roboto';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('/assets/fonts/media-editor/rmedium.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Editor Android Roboto';
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+  src: url('/assets/fonts/media-editor/rmediumitalic.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Editor Android Condensed';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('/assets/fonts/media-editor/rcondensedbold.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Editor Android Mono';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('/assets/fonts/media-editor/rmono.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Editor Android Merriweather';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('/assets/fonts/media-editor/mw_bold.ttf') format('truetype');
+}

@@ -1,8 +1,9 @@
-export default async function getFilesFromEvent(e: ClipboardEvent | DragEvent, onlyTypes = false): Promise<any[]> {
+export default async function getFilesFromEvent(e: ClipboardEvent | DragEvent, onlyTypes = false, allowDirectories = true): Promise<any[]> {
   const files: any[] = [];
 
   const scanFiles = async(entry: any, item: DataTransferItem) => {
     if(entry.isDirectory) {
+      if(!allowDirectories) throw new TypeError('Folders cannot be inserted as a photo');
       const directoryReader = entry.createReader();
       await new Promise<void>((resolve, reject) => {
         directoryReader.readEntries(async(entries: any) => {
@@ -49,7 +50,7 @@ export default async function getFilesFromEvent(e: ClipboardEvent | DragEvent, o
     for(let i = 0; i < items.length; ++i) {
       const item: DataTransferItem = items[i];
       if(item.kind === 'file') {
-        const entry = (onlyTypes ? item : item.webkitGetAsEntry()) || item.getAsFile();
+        const entry = (onlyTypes ? item : item.webkitGetAsEntry?.()) || item.getAsFile();
         promises.push(scanFiles(entry, item));
       }
     }

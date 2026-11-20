@@ -1,0 +1,18 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: .5rem;
+  padding: .5rem 1rem;
+  border: 0;
+  border-radius: 1rem;
+  background: var(--surface-color);
+  color: var(--primary-color);
+  font: inherit;
+  cursor: pointer;
+
+  :global(:where(.a11y)) &:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
+}

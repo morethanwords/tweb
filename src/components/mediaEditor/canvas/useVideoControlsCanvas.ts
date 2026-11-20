@@ -1,9 +1,8 @@
 import {createEffect, onCleanup} from 'solid-js';
-import deferredPromise from '@helpers/cancellablePromise';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {useMediaEditorContext} from '@components/mediaEditor/context';
 import {snapToViewport} from '@components/mediaEditor/utils';
-import createVideoForDrawing from '@components/mediaEditor/canvas/createVideoForDrawing';
+import createVideoForDrawing, {seekVideoForDrawing} from '@components/mediaEditor/canvas/createVideoForDrawing';
 import styles from '@components/mediaEditor/canvas/videoControls.module.scss';
 
 type Args = {
@@ -16,6 +15,8 @@ type Args = {
 
 export default function useVideoControlsCanvas({getCanvas, size}: Args) {
   const {editorState, mediaSrc} = useMediaEditorContext();
+  const middleware = createMiddleware().get();
+  let videoPromise: Promise<HTMLVideoElement>;
 
   createEffect(() => {
     const media = editorState.renderingPayload?.media;
@@ -23,39 +24,29 @@ export default function useVideoControlsCanvas({getCanvas, size}: Args) {
     if(!media || !canvas || !size.width || !size.height) return;
 
     const ratio = media.width / media.height;
+    const width = size.width, height = size.height;
 
     const ctx = canvas.getContext('2d');
 
-    let
-      deferred = deferredPromise<void>(),
-      cleaned = false
-    ;
+    const controller = new AbortController();
+    let cleaned = false;
 
     onCleanup(() => {
       cleaned = true;
-      deferred?.resolve();
+      controller.abort();
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     });
 
-    const middleware = createMiddleware().get();
-
     (async() => {
-      const video = await createVideoForDrawing(mediaSrc, {currentTime: 0, middleware});
+      const video = await (videoPromise ??= createVideoForDrawing(mediaSrc, {currentTime: 0, middleware}));
       // (window as any).myWeakRef = new WeakRef(video); // works
 
       if(cleaned) return;
 
-      video.addEventListener('seeked', () => {
-        deferred?.resolve();
-      });
+      const [chunkWidth, chunkHeight] = snapToViewport(ratio, width, height);
 
-      const [chunkWidth, chunkHeight] = snapToViewport(ratio, size.width, size.height);
-
-      for(let x = 0; x < size.width; x += chunkWidth) {
-        deferred = deferredPromise();
-        video.currentTime = x / size.width * video.duration;
-
-        await deferred;
+      for(let x = 0; x < width; x += chunkWidth) {
+        await seekVideoForDrawing(video, x / width * video.duration, controller.signal);
         if(cleaned) return;
 
         ctx.drawImage(video, x, 0, chunkWidth, chunkHeight);
@@ -73,6 +64,8 @@ export default function useVideoControlsCanvas({getCanvas, size}: Args) {
         fade.animate({opacity: [1, 0]}, {duration: 500, easing: 'ease-in-out'}).finished
         .then(() => fade.remove());
       }
-    })();
+    })().catch((error) => {
+      if(!cleaned) console.error('Failed to draw video timeline', error instanceof Error ? error.message : error?.message || error);
+    });
   });
 }

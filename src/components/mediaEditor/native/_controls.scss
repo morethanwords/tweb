@@ -1,0 +1,14 @@
+@mixin button-reset($background: transparent) {
+  appearance: none;
+  cursor: pointer;
+  color: inherit;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: $background;
+  font: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}

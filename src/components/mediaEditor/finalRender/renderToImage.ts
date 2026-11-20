@@ -1,10 +1,14 @@
 import StickerType from '@config/stickerType';
+import {prepareImageLayerDrawing} from '@components/mediaEditor/imageLayer/render';
 import {MediaEditorContextValue} from '@components/mediaEditor/context';
 import {MediaEditorFinalResultPayload} from '@components/mediaEditor/finalRender/createFinalResult';
 
 import drawStickerLayer from '@components/mediaEditor/finalRender/drawStickerLayer';
 import drawTextLayer from '@components/mediaEditor/finalRender/drawTextLayer';
+import drawShapeLayer from '@components/mediaEditor/finalRender/drawShapeLayer';
 import {ScaledLayersAndLines} from '@components/mediaEditor/finalRender/getScaledLayersAndLines';
+import {getDesktopCropOutputView} from '@components/mediaEditor/native/desktopCropExport';
+import {drawDesktopCropBackground, sampleDesktopCropBackground} from '@components/mediaEditor/native/desktopCropBackground';
 
 export type RenderToImageArgs = {
   context: MediaEditorContextValue;
@@ -28,8 +32,12 @@ export default async function renderToImage({
   ctx.drawImage(imageCanvas, 0, 0);
   ctx.drawImage(brushCanvas, 0, 0);
 
+  const images = await prepareImageLayerDrawing(context, scaledLayers);
+  try {
   scaledLayers.forEach((layer) => {
+    images.draw(ctx, layer);
     if(layer.type === 'text') drawTextLayer(context, ctx, layer);
+    if(layer.type === 'shape') drawShapeLayer(ctx, layer);
     if(layer.type === 'sticker' && (!canImageResultInGIF || layer.sticker?.sticker === StickerType.Static)) {
       const {container} = stickersLayersInfo[layer.id];
       const stickerChild = container?.lastElementChild;
@@ -48,6 +56,17 @@ export default async function renderToImage({
       drawStickerLayer(context, ctx, layer, stickerChild, ratio);
     }
   });
+  } finally {
+    images.release();
+  }
+
+  const desktop = getDesktopCropOutputView(context, resultCanvas.width, resultCanvas.height);
+  if(desktop) {
+    const original = context.editorState.renderingPayload?.media.image;
+    if(!original) throw new Error('Expanded crop original source unavailable');
+    drawDesktopCropBackground(ctx, {x: 0, y: 0, width: resultCanvas.width, height: resultCanvas.height},
+      desktop.image, sampleDesktopCropBackground(original));
+  }
 
   // Encode with the caller-supplied format/quality (defaults to JPEG at the
   // browser's default quality). NB canvas.toBlob() defaults to PNG, and a

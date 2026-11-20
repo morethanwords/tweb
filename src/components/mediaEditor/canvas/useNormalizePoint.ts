@@ -2,6 +2,8 @@ import {createMemo} from 'solid-js';
 
 import {useMediaEditorContext} from '@components/mediaEditor/context';
 import {NumberPair} from '@components/mediaEditor/types';
+import invertCanvasTransform from '@components/mediaEditor/canvas/invertCanvasTransform';
+import {mapPreviewAffine} from '@components/mediaEditor/canvas/previewAffine';
 
 
 export default function useNormalizePoint() {
@@ -10,17 +12,13 @@ export default function useNormalizePoint() {
   const size = createMemo(() => editorState.canvasSize.map((x) => x * editorState.pixelRatio));
 
   return (point: NumberPair) => {
+    if(editorState.paintPreviewAffine) return mapPreviewAffine(editorState.paintPreviewAffine.inverse, point);
     const transform = editorState.finalTransform;
     const [w, h] = size();
 
-    point = point.map((x) => x * editorState.pixelRatio) as NumberPair;
-
-    point = [
-      (point[0] - transform.translation[0] - w / 2) / transform.scale,
-      (point[1] - transform.translation[1] - h / 2) / transform.scale
-    ];
-    const r = [Math.sin(transform.rotation), Math.cos(transform.rotation)];
-    point = [point[0] * r[1] + point[1] * r[0], point[1] * r[1] - point[0] * r[0]];
-    return point;
+    return invertCanvasTransform([
+      point[0] * editorState.pixelRatio - w / 2,
+      point[1] * editorState.pixelRatio - h / 2
+    ], transform);
   };
 }

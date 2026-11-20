@@ -1,0 +1,55 @@
+.wrap {
+  position: relative;
+  color: #fff;
+}
+
+.toggle, .option {
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: .5rem;
+  padding: .5rem;
+  cursor: pointer;
+}
+
+.option:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+.options {
+  position: absolute;
+  inset-block-end: 100%;
+  inset-inline-end: 0;
+  z-index: 4;
+  padding: .5rem;
+  inline-size: min(18rem, 80vw);
+  max-block-size: 50vh;
+  overflow-y: auto;
+  background: #292929;
+  border-radius: .75rem;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.reason, .status {
+  font-size: .75rem;
+}
+
+.status {
+  position: absolute;
+  inset-block-end: 100%;
+  inset-inline-end: 0;
+  inline-size: min(18rem, 80vw);
+  background: #292929;
+}
+
+:global(:where(.a11y)) .toggle:focus-visible,
+:global(:where(.a11y)) .option:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+}

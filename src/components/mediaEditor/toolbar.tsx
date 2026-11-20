@@ -100,6 +100,7 @@ export default function Toolbar(props: {onFinish: () => void; onClose: () => voi
       dragEnd();
     });
     toolbar.addEventListener('mouseout', (e) => {
+      if(e.relatedTarget instanceof toolbar.ownerDocument.defaultView.Node && toolbar.contains(e.relatedTarget)) return;
       dragEnd();
     });
   });

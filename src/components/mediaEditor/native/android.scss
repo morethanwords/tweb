@@ -1,0 +1,271 @@
+@use "./controls" as native-controls;
+
+.android-editor {
+  --android-editor-accent: #51bdf3;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: #fff;
+  font-family: Roboto, sans-serif;
+
+  &__button, &__option, &__mirror, &__swatch {
+    @include native-controls.button-reset($background: none);
+    pointer-events: auto;
+  }
+
+  &__button {
+    min-inline-size: 40px;
+    min-block-size: 48px;
+    font-size: 14px;
+    font-weight: 500;
+    text-transform: uppercase;
+
+    &[aria-pressed="true"] { color: var(--android-editor-accent); }
+    &[aria-disabled="true"] { opacity: .6; }
+    &:active { background: #ffffff1a; }
+  }
+
+  &__bitmap { inline-size: 24px; block-size: 24px; object-fit: contain; }
+  &__brush-icon { display: inline-flex; inline-size: 28px; block-size: 28px; }
+  &__quality { font-size: 11px; border: 1.5px solid currentColor; border-radius: 5px; padding: 2px; }
+
+  &__preview-actions {
+    position: absolute;
+    inset-inline: 8px;
+    inset-block-end: max(8px, env(safe-area-inset-bottom));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  &__attachment-header {
+    position: absolute;
+    inset-inline: 8px;
+    inset-block-start: max(12px, env(safe-area-inset-top));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-block-size: 48px;
+    pointer-events: none;
+  }
+
+  &__attachment-back {
+    position: absolute;
+    inset-inline-start: 0;
+    inset-block-start: 0;
+    inline-size: 48px;
+    block-size: 48px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: #383838b3;
+    backdrop-filter: blur(20px);
+    pointer-events: auto;
+    .tgico { font-size: 24px; }
+  }
+
+  &__attachment-title {
+    max-inline-size: calc(100% - 112px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 48px;
+    text-align: center;
+  }
+
+  &__caption {
+    position: absolute;
+    inset-inline: 8px;
+    inset-block-end: calc(68px + env(safe-area-inset-bottom));
+    flex: 1;
+    min-inline-size: 0;
+    min-block-size: 48px;
+    border-radius: 22px;
+    background: #383838b3;
+    backdrop-filter: blur(20px);
+    display: flex;
+    align-items: center;
+    pointer-events: auto;
+    --section-padding-bottom: 0px;
+    --section-padding-inline: 0px;
+    --surface-color: transparent;
+    --section-box-shadow: none;
+
+    .media-editor-attachment-caption {
+      position: static;
+      inline-size: 100%;
+      max-inline-size: none;
+      margin: 0;
+    }
+
+    .input-field {
+      inline-size: 100%;
+      min-inline-size: 0;
+      color: #fff;
+    }
+
+    .input-message-input {
+      color: #fff;
+      caret-color: #fff;
+    }
+  }
+
+  &__send {
+    inline-size: 52px;
+    block-size: 52px;
+    flex-shrink: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--android-editor-accent);
+    color: #fff;
+    font-size: 20px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    cursor: pointer;
+    .tgico {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      line-height: 1;
+    }
+  }
+
+  &__capsule {
+    display: flex;
+    padding-inline: 2px;
+    border-radius: 22px;
+    background: #383838b3;
+    backdrop-filter: blur(20px);
+    pointer-events: auto;
+    .android-editor__button { inline-size: 48px; border-radius: 22px; }
+  }
+
+  &__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    block-size: 48px;
+    padding-inline: 16px;
+    pointer-events: auto;
+    background: #000;
+  }
+
+  &__crop-wheel {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: calc(48px + env(safe-area-inset-bottom));
+    margin-inline: auto;
+    max-inline-size: 400px;
+    block-size: 64px;
+    display: flex;
+    align-items: center;
+    background: #000;
+    pointer-events: auto;
+    .android-editor__button { inline-size: 70px; block-size: 64px; }
+  }
+
+  &__mirror { inline-size: 70px; block-size: 64px; flex-shrink: 0; }
+  &__wheel-track { position: relative; flex: 1; block-size: 64px; min-inline-size: 0; }
+  &__degrees { display: block; text-align: center; font-size: 14px; line-height: 18px; color: #fff; }
+  &__wheel-ticks {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-start: 0;
+    inline-size: 100%;
+    block-size: 64px;
+    .is-rtl & { scale: -1 1; }
+  }
+  &__wheel-input { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; opacity: 0; cursor: ew-resize; touch-action: none; }
+  &__ratio-access { position: absolute; inset-inline-start: 8px; inset-block-end: 120px; pointer-events: auto; }
+  &__crop-wheel ~ .android-editor__footer { position: absolute; inset-inline: 0; inset-block-end: env(safe-area-inset-bottom); }
+
+  &__adjustments { position: absolute; inset-inline: 0; inset-block-end: env(safe-area-inset-bottom); block-size: 186px; background: #000; pointer-events: auto; }
+  &__adjustment-list { block-size: 120px; overflow-y: auto; overscroll-behavior: contain; }
+  &__adjustment-row {
+    block-size: 40px;
+    .media-editor__range-input { display: grid; grid-template-columns: 80px minmax(0, 1fr); align-items: center; gap: 16px; block-size: 40px; padding-block: 0; padding-inline: 0 24px; --color: #fff; }
+    .media-editor__range-input-row { margin: 0; font-size: 12px; font-weight: 400; gap: 4px; justify-content: flex-end; }
+    .media-editor__range-input-thumb { inline-size: 16px; block-size: 16px; transition: none; }
+    .media-editor__range-input-wrapper:active .media-editor__range-input-thumb { inline-size: 16px; block-size: 16px; }
+    .media-editor__range-input-progress { transition: none; }
+    .media-editor__range-input-progress-background { background-color: #4d4d4d; }
+  }
+  &__adjustments .android-editor__footer { position: absolute; inset-inline: 0; inset-block-end: 0; }
+  &__modes { display: flex; .android-editor__button { inline-size: 56px; } }
+
+  &__paint-top { position: absolute; inset-block-start: max(12px, env(safe-area-inset-top)); inset-inline: 24px 16px; display: flex; justify-content: space-between; background: linear-gradient(#0008, transparent); }
+  &__paint-bottom { position: absolute; inset-inline: 0; inset-block-end: env(safe-area-inset-bottom); block-size: 104px; padding: 8px 8px 0; background: linear-gradient(transparent, #0008); }
+  &__tools {
+    block-size: 48px; padding-inline: 16px; display: flex; align-items: center; justify-content: space-between; gap: 0;
+    .android-editor__button {
+      position: relative;
+      min-inline-size: 28px;
+      flex: 1;
+      z-index: 0;
+      &[aria-pressed="true"] {
+        color: #fff;
+        &::before { content: ''; position: absolute; inline-size: 40px; block-size: 40px; border-radius: 50%; background: #ffffff30; z-index: -1; }
+      }
+    }
+  }
+  &__color { inline-size: 24px; block-size: 24px; border-radius: 50%; border: 2px solid #fff; box-shadow: inset 0 0 0 2px #000; }
+  &__tools--text .android-editor__button { flex: 0 1 auto; }
+  &__font {
+    position: relative;
+    max-inline-size: 128px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-block: 6px;
+    padding-inline: 12px 27px;
+    border: 1px solid #ffffff14;
+    border-radius: 32px;
+    font-size: 14px;
+    text-transform: none;
+    &::after { content: ''; position: absolute; inset-inline-end: 10px; inset-block-start: 11px; inline-size: 6px; block-size: 6px; border-inline-end: 1.5px solid; border-block-end: 1.5px solid; transform: rotate(45deg); .is-rtl & { transform: rotate(-45deg); } }
+  }
+  &__paint-navigation {
+    block-size: 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 4px;
+    .android-editor__button { font-size: 14px; font-weight: 700; text-transform: none; }
+    .android-editor__button[aria-pressed="false"] { opacity: .6; }
+  }
+  &__stickers { position: absolute; inset-inline: 8px; inset-block: 64px calc(112px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; overflow: hidden; background: #232323; border-radius: 16px; pointer-events: auto; }
+  &__stickers-scroll { flex: 1; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px; }
+  // PaintWeightChooserView: the resting thumb is centred on the screen edge;
+  // a drag brings the tapered rail and thumb 32dp into the picture.
+  &__weight { position: absolute; inset-inline-start: 0; inset-block-start: 35%; block-size: 30%; inline-size: 48px; pointer-events: auto; }
+  &__weight-art { position: absolute; inset-inline-start: -16px; inset-block: 0; inline-size: 64px; block-size: 100%; overflow: visible; pointer-events: none; filter: drop-shadow(0 2px 4px #0005); .is-rtl & { scale: -1 1; } }
+  &__weight-thumb { position: absolute; inset-inline-start: calc(-1 * var(--weight-radius)); inset-block-start: clamp(16px, var(--weight-position), calc(100% - 4.5px)); margin-block-start: calc(-1 * var(--weight-radius)); inline-size: calc(2 * var(--weight-radius)); block-size: calc(2 * var(--weight-radius)); background: #fff; border-radius: 50%; box-shadow: 0 2px 4px #0005; pointer-events: none; }
+  &__weight--dragging { .android-editor__weight-art, .android-editor__weight-thumb { transform: translateX(calc(32px * var(--reflect))); } }
+  // This input has vertical writing mode: its inline axis is the rail's height.
+  // Fill both axes so the resting thumb and the whole rail receive touches.
+  &__weight-input { position: absolute; inset: 0; margin: 0; inline-size: 100%; block-size: 100%; opacity: 0; writing-mode: vertical-lr; direction: rtl; touch-action: none; cursor: ns-resize; }
+
+  &__scrim { position: absolute; inset: 0; pointer-events: auto; }
+  &__options { position: absolute; inset-inline: 16px; inset-block-end: calc(112px + env(safe-area-inset-bottom)); max-block-size: min(55dvh, 360px); overflow-y: auto; background: #232323; border-radius: 16px; padding: 12px; pointer-events: auto; box-shadow: 0 4px 24px #0008; }
+  &__options--colors { inset-inline: 0; inset-block-end: 0; max-inline-size: 480px; max-block-size: calc(100% - 48px); margin-inline: auto; padding: 16px 0 max(8px, env(safe-area-inset-bottom)); background: #252525; border-end-start-radius: 0; border-end-end-radius: 0; &::before { content: ''; display: block; inline-size: 36px; block-size: 4px; margin: -8px auto 8px; border-radius: 2px; background: #5b5b5b; } }
+  &__options--shapes, &__options--fonts { inset-inline-start: auto; inset-inline-end: 8px; inline-size: min(220px, calc(100% - 16px)); padding: 8px 0; }
+  &__options--fonts { max-block-size: min(55dvh, 304px); .android-editor__option { min-block-size: 48px; inline-size: 100%; padding-inline: 20px; font-size: 16px; } }
+  &__options--ratios, &__options--quality { inset-inline: 24px; inset-block-end: 50%; max-block-size: 70%; transform: translateY(50%); }
+  &__option { min-block-size: 44px; padding: 8px 12px; text-align: start; justify-content: flex-start; border-radius: 8px; &[aria-pressed="true"] { background: #ffffff20; } }
+  &__palette { display: flex; gap: 12px; padding: 8px 14px 12px; overflow-x: auto; flex-shrink: 0; .android-editor__swatch { flex-shrink: 0; } }
+  &__swatch { inline-size: 28px; block-size: 28px; border: 2px solid #ffffff80; border-radius: 50%; margin: auto; &[aria-pressed="true"] { outline: 2px solid #fff; outline-offset: 3px; } }
+  &__shape-option { min-block-size: 48px; inline-size: 100%; gap: 18px; padding-inline: 18px; font-size: 16px; border-radius: 0; user-select: none; }
+}
+
+:where(.a11y) .android-editor {
+  &__button:focus-visible, &__mirror:focus-visible, &__option:focus-visible, &__swatch:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  &__weight:focus-within { outline: 2px solid #fff; outline-offset: 2px; }
+  &__wheel-track:focus-within { outline: 2px solid #fff; outline-offset: 2px; }
+}

@@ -6,12 +6,16 @@ import swipe, {SwipeDirectiveArgs} from '@helpers/useSwipe'; swipe; // keep
 import useElementSize from '@hooks/useElementSize';
 import I18n, {i18n} from '@lib/langPack';
 import Modes from '@config/modes';
+import useGlobalDocumentEvent from '@helpers/useGlobalDocumentEvent';
+import {useIsCleaned} from '@hooks/useIsCleaned';
+import {getManagersSession, isSessionLeaving} from '@lib/accounts/getCurrentAccount';
 
 import {IconTsx} from '@components/iconTsx';
 import ripple from '@components/ripple'; ripple; // keep
 import showTooltip from '@components/tooltip';
 
 import {SetVideoTimeFlags, useMediaEditorContext} from '@components/mediaEditor/context';
+import useIsMobile from '@components/mediaEditor/useIsMobile';
 
 import useVideoControlsCanvas from '@components/mediaEditor/canvas/useVideoControlsCanvas';
 
@@ -78,7 +82,12 @@ function handleNormalizedSliderKeyDown(event: KeyboardEvent, options: {
 }
 
 const VideoControls: Component<{}> = () => {
-  const {editorState, mediaState, actions, isVideoAvatarMode} = useMediaEditorContext();
+  const {editorState, mediaState, actions, managers, isVideoAvatarMode, isEditingForAvatar} = useMediaEditorContext();
+  const isMobile = useIsMobile();
+  const isCleaned = useIsCleaned();
+  const session = getManagersSession(managers);
+  const isVisible = () => isEditingForAvatar ? editorState.currentTab === 'adjustments' :
+    editorState.currentTab === 'preview' || !isMobile() && editorState.currentTab === 'crop';
 
   const [cropper, setCropper] = createSignal<HTMLDivElement>();
   const [isDraggingSomething, setIsDraggingSomething] = createSignal(false);
@@ -160,7 +169,7 @@ const VideoControls: Component<{}> = () => {
 
   createEffect(() => {
     if(!Modes.a11y) return;
-    controlsContainer.inert = editorState.currentTab !== 'adjustments';
+    controlsContainer.inert = !isVisible();
   });
 
   const leftHandleSwipeArgs: SwipeDirectiveArgs = {
@@ -250,11 +259,27 @@ const VideoControls: Component<{}> = () => {
     }
   };
 
+  let scrubVideo: HTMLVideoElement, resumeAfterScrub = false;
+  const cancelScrub = () => {
+    if(!scrubVideo) return;
+    scrubVideo = undefined;
+    resumeAfterScrub = false;
+    swiping = undefined;
+    setIsDraggingSomething(false);
+  };
+  useGlobalDocumentEvent('pointercancel', cancelScrub);
+  useGlobalDocumentEvent('touchcancel', cancelScrub);
+
   const cursorSwipeArgs: SwipeDirectiveArgs = {
     globalCursor: () => 'col-resize',
     onStart: () => {
       swiping = 'cursor';
       setIsDraggingSomething(true);
+      // Android PhotoViewer remembers actual playback for TYPE_PROGRESS only.
+      // Let initVideoPlayback own pausing/resuming; no second play/seek waiter.
+      scrubVideo = isMobile() && !isVideoAvatarMode && !isEditingForAvatar ? editorState.renderingPayload?.media?.video : undefined;
+      resumeAfterScrub = !!scrubVideo && !scrubVideo.paused && !scrubVideo.ended;
+      if(scrubVideo) editorState.isPlaying = false;
     },
     onMove: (xDiff, __, e) => {
       if(swiping !== 'cursor') return;
@@ -262,12 +287,26 @@ const VideoControls: Component<{}> = () => {
       editorState.isPlaying = false;
       handleCursorMove(e);
     },
-    onEnd: () => void setIsDraggingSomething(false)
+    onEnd: (_, __, event) => {
+      const video = scrubVideo, resume = resumeAfterScrub;
+      scrubVideo = undefined;
+      resumeAfterScrub = false;
+      if(isCleaned()) return;
+      setIsDraggingSomething(false);
+      if(!video || swiping !== 'cursor' || isSessionLeaving(session)) return;
+      if(event.type !== 'pointerup' && event.type !== 'touchend') return;
+      if(!isMobile() || isVideoAvatarMode || isEditingForAvatar || !isVisible() || editorState.renderingPayload?.media?.video !== video) return;
+      // useSwipe drops a queued last move on release. Commit this event's seek
+      // synchronously before handing playback back to its existing effect.
+      handleCursorMove(event, true);
+      if(resume) editorState.isPlaying = true;
+    }
   };
 
-  const handleCursorMove = (e: PointerEvent | TouchEvent) => {
+  const handleCursorMove = (e: PointerEvent | TouchEvent, skipSameTime = false) => {
     editorState.isPlaying = false;
-    actions.setVideoTime(clamp(getPositionInCropper(e, cropper()), mediaState.videoCropStart, mediaState.videoCropStart + mediaState.videoCropLength));
+    const position = clamp(getPositionInCropper(e, cropper()), mediaState.videoCropStart, mediaState.videoCropStart + mediaState.videoCropLength);
+    if(!skipSameTime || position !== mediaState.currentVideoTime) actions.setVideoTime(position);
   };
 
   const onMiddlePartClick = (e: MouseEvent) => {
@@ -321,7 +360,7 @@ const VideoControls: Component<{}> = () => {
       ref={controlsContainer}
       class={styles.Container}
       classList={{
-        [styles.hidden]: editorState.currentTab !== 'adjustments',
+        [styles.hidden]: !isVisible(),
         [styles.changed]: mediaState.videoCropLength !== 1
       }}
       style={{
@@ -329,7 +368,7 @@ const VideoControls: Component<{}> = () => {
         '--length': mediaState.videoCropLength,
         '--current-time': mediaState.currentVideoTime
       }}
-      aria-hidden={editorState.currentTab !== 'adjustments'}
+      aria-hidden={!isVisible()}
     >
       <div class={styles.InnerContainer}>
         {!isVideoAvatarMode && (

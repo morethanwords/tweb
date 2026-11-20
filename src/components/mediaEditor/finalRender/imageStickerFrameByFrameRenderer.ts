@@ -1,7 +1,7 @@
 import deferredPromise from '@helpers/cancellablePromise';
 import {ObjectURLScope} from '@helpers/objectUrl';
-import appDownloadManager from '@lib/appDownloadManager';
 import {Document} from '@layer';
+import {checkDocumentRendererSource, downloadDocumentRendererBlob, type DocumentRendererSource} from '@components/mediaEditor/finalRender/documentRendererSource';
 
 import {StickerFrameByFrameRenderer} from '@components/mediaEditor/finalRender/types';
 
@@ -10,11 +10,17 @@ export default class ImageStickerFrameByFrameRenderer implements StickerFrameByF
   private objectURLs = new ObjectURLScope();
   private destroyed = false;
 
+  constructor(private source?: DocumentRendererSource) {}
+
+  private checkSource() {
+    checkDocumentRendererSource(this.source, () => this.destroy());
+  }
+
   async init(doc: Document.document) {
-    const blob = await appDownloadManager.downloadMedia({
-      media: doc
-    });
-    if(this.destroyed) return;
+    if(this.destroyed) throw new Error('Image renderer disposed');
+    const blob = await downloadDocumentRendererBlob(doc, this.source);
+    this.checkSource();
+    if(this.destroyed) throw new Error('Image renderer disposed');
 
     const image = (this.image = new Image());
     image.src = this.objectURLs.create(blob);
@@ -26,6 +32,8 @@ export default class ImageStickerFrameByFrameRenderer implements StickerFrameByF
     });
 
     await deferred;
+    this.checkSource();
+    if(this.destroyed) throw new Error('Image renderer disposed');
   }
 
   getTotalFrames() {
@@ -36,9 +44,10 @@ export default class ImageStickerFrameByFrameRenderer implements StickerFrameByF
     return this.image.naturalWidth / this.image.naturalHeight;
   }
 
-  async renderFrame() {}
+  async renderFrame() { this.checkSource(); }
 
   getRenderedFrame() {
+    this.checkSource();
     return this.image;
   }
 

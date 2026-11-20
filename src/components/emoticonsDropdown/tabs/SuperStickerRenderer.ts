@@ -7,10 +7,11 @@ import LazyLoadQueueRepeat from '@components/lazyLoadQueueRepeat';
 import wrapSticker from '@components/wrappers/sticker';
 import safeAssign from '@helpers/object/safeAssign';
 import {getMiddleware, Middleware} from '@helpers/middleware';
-import noop from '@helpers/noop';
+import {logger, LogTypes} from '@lib/logger';
 
 export default class SuperStickerRenderer {
   public lazyLoadQueue: LazyLoadQueueRepeat;
+  private owned: Set<HTMLElement> = new Set();
   private animated: Set<HTMLElement> = new Set();
   private regularLazyLoadQueue: LazyLoadQueue;
   private group: AnimationItemGroup;
@@ -19,6 +20,11 @@ export default class SuperStickerRenderer {
   private visibleRenderOptions: Partial<Parameters<typeof wrapSticker>[0]>;
   private withLock: boolean
   private playOnHover: boolean
+  private log = logger('SuperStickerRenderer', LogTypes.Error);
+
+  private onRenderError = (error: ApiError) => {
+    if(error?.type !== 'MIDDLEWARE') this.log.error('renderSticker error:', error);
+  };
 
   constructor(options: {
     regularLazyLoadQueue: LazyLoadQueue;
@@ -34,14 +40,14 @@ export default class SuperStickerRenderer {
 
     this.lazyLoadQueue = new LazyLoadQueueRepeat(undefined, ({target, visible}) => {
       if(!visible) {
-        this.processInvisible(target);
+        this.processInvisible(target).catch(this.onRenderError);
       }
     }, this.intersectionObserverInit);
   }
 
   public clear() {
     this.lazyLoadQueue.clear();
-    this.animated.forEach((element) => {
+    this.owned.forEach((element) => {
       element.middlewareHelper?.destroy();
     });
     this.animated.clear();
@@ -68,7 +74,25 @@ export default class SuperStickerRenderer {
       }
     }
 
-    element.middlewareHelper ??= middleware ? middleware.create() : getMiddleware();
+    if(middleware && !middleware()) return element;
+    if(!element.middlewareHelper) {
+      element.middlewareHelper = middleware ? middleware.create() : getMiddleware();
+      this.owned.add(element);
+      element.middlewareHelper.onDestroy(() => {
+        this.owned.delete(element);
+        this.animated.delete(element);
+        this.lazyLoadQueue.delete({div: element});
+        this.rendererByElement.delete(element);
+      });
+      if(this.playOnHover) {
+        const onMouseEnter = () => {
+          const renderer = this.rendererByElement.get(element);
+          if(renderer && 'playOrRestart' in renderer) renderer.playOrRestart();
+        };
+        element.addEventListener('mouseenter', onMouseEnter);
+        element.middlewareHelper.onDestroy(() => element.removeEventListener('mouseenter', onMouseEnter));
+      }
+    }
 
     // * This will wrap only a thumb
     /* !doc.animated &&  */ wrapSticker({
@@ -80,16 +104,7 @@ export default class SuperStickerRenderer {
       loadPromises,
       middleware: element.middlewareHelper.get(),
       ...(doc.animated ? {} : this.visibleRenderOptions || {})
-    });
-
-    if(this.playOnHover) {
-      element.addEventListener('mouseenter', () => {
-        const renderer = this.rendererByElement.get(element);
-        if(renderer && 'playOrRestart' in renderer) {
-          renderer.playOrRestart()
-        }
-      })
-    }
+    }).then(result => result.render).catch(this.onRenderError);
 
     return element;
   }
@@ -126,16 +141,21 @@ export default class SuperStickerRenderer {
 
   private rendererByElement = new WeakMap<HTMLElement, Awaited<Awaited<ReturnType<typeof wrapSticker>>['render']>>();
   private processVisible = async(element: HTMLElement) => {
+    if(!this.animated.has(element)) return;
+    element.middlewareHelper ??= getMiddleware();
+    const previousMiddleware = element.middlewareHelper.get();
     const docId = element.dataset.docId;
     const doc = await this.managers.appDocsManager.getDoc(docId);
+    if(!previousMiddleware() || !this.animated.has(element) || !this.lazyLoadQueue.intersector.isVisible(element)) return;
 
     const size = mediaSizes.active.esgSticker.width;
 
-    element.middlewareHelper ??= getMiddleware();
     element.middlewareHelper.clean();
+    const middleware = element.middlewareHelper.get();
+    this.rendererByElement.delete(element);
 
     // console.log('processVisibleDiv:', element);
-    const promise = wrapSticker({
+    const result = await wrapSticker({
       doc,
       div: element,
       width: size,
@@ -146,30 +166,23 @@ export default class SuperStickerRenderer {
       play: true,
       loop: true,
       withLock: this.withLock,
-      middleware: element.middlewareHelper.get(),
+      middleware,
       ...(this.visibleRenderOptions || {})
-    }).then(({render}) => render);
-
-    promise.then(() => {
-      // clearTimeout(timeout);
-      this.checkAnimationContainer(element, this.lazyLoadQueue.intersector.isVisible(element));
-    }, noop);
-
-    if(this.playOnHover) {
-      promise.then(renderer => {
-        this.rendererByElement.set(element, renderer);
-      });
-    }
-
-    /* let timeout = window.setTimeout(() => {
-      console.error('processVisibleDiv timeout', div, doc);
-    }, 1e3); */
-    return promise;
+    });
+    // Keep one promise owned by the lazy-load queue, including hover publication.
+    const renderer = await result.render;
+    if(!middleware() || !this.animated.has(element)) return;
+    this.checkAnimationContainer(element, this.lazyLoadQueue.intersector.isVisible(element));
+    if(this.playOnHover) this.rendererByElement.set(element, renderer);
+    return renderer;
   };
 
   public processInvisible = async(element: HTMLElement) => {
+    if(!this.animated.has(element)) return;
+    const middleware = element.middlewareHelper?.get();
     const docId = element.dataset.docId;
     const doc = await this.managers.appDocsManager.getDoc(docId);
+    if(!this.animated.has(element) || middleware && !middleware()) return;
 
     // the await above is a real worker round-trip - the cell may be back on
     // screen; demolishing it now would yank a live canvas (visible blink).
@@ -185,6 +198,7 @@ export default class SuperStickerRenderer {
     this.checkAnimationContainer(element, false);
 
     element.middlewareHelper?.clean();
+    this.rendererByElement.delete(element);
     // no replaceChildren - the thumb re-wrap adopts the dead canvas (pixels
     // retained) as its bottom layer and retires it only under the decoded
     // preview img (replacePreviousMedia), so a mis-timed demolition can never

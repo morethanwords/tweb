@@ -14,9 +14,15 @@ export type StickersSearch = ReturnType<typeof createStickersSearch>;
  * the user's own stickers for the emoji the query stands for come at once, the server's search follows
  * once typing pauses, and its later pages as the results are scrolled toward their end. A sticker comes
  * once, wherever it was found first — `shown` are those already on the screen. Its pages come after
- * waits, so `managers` are the session's.
+ * waits, so `managers` are the session's. `isActive`, when supplied, also ties every dispatch and
+ * publication to the caller's lifetime (including while its account session is leaving).
  */
-export default function createStickersSearch(managers: ReadingManagers, query: string, shown: MyDocument[] = []) {
+export default function createStickersSearch(
+  managers: ReadingManagers,
+  query: string,
+  shown: MyDocument[] = [],
+  isActive: () => boolean = () => true
+) {
   const shownIds: Set<DocId> = new Set(shown.map((doc) => doc.id));
   const take = (stickers: MyDocument[]) => stickers.filter((doc) => !shownIds.has(doc.id) && !!shownIds.add(doc.id));
 
@@ -26,6 +32,7 @@ export default function createStickersSearch(managers: ReadingManagers, query: s
   let failed = false;
   let loading = false, destroyed = false;
   let observer: IntersectionObserver, disarm: () => void;
+  const alive = () => !destroyed && isActive();
 
   /**
    * The server's next stickers, without what came already: pages on until one brings a sticker not shown
@@ -33,17 +40,18 @@ export default function createStickersSearch(managers: ReadingManagers, query: s
    * more. Nothing while a page is on its way or once all came.
    */
   const more = (): Promise<MyDocument[]> => {
-    if(loading || destroyed || nextOffset === undefined) {
+    if(loading || !alive() || nextOffset === undefined) {
       return;
     }
 
     loading = true;
     failed = false;
     // * a query typed on before the pause is never asked for
-    return (nextOffset ? Promise.resolve() : pause(SERVER_SEARCH_DELAY)).then(async() => {
+    return (nextOffset ? Promise.resolve() : pause(SERVER_SEARCH_DELAY)).then(async(): Promise<MyDocument[]> => {
       let stickers: MyDocument[] = [];
-      while(!stickers.length && !destroyed && nextOffset !== undefined) {
+      while(!stickers.length && alive() && nextOffset !== undefined) {
         const page = await managers.appStickersManager.searchStickersOnServer(query, nextOffset);
+        if(!alive()) return [];
         nextOffset = page.nextOffset;
         stickers = take(page.stickers);
       }
@@ -51,6 +59,7 @@ export default function createStickersSearch(managers: ReadingManagers, query: s
       return stickers;
     }).catch(() => {
       // * the offset stays: a later scroll asks for the page again
+      if(!alive()) return [] as MyDocument[];
       failed = true;
       return [] as MyDocument[];
     }).finally(() => {
@@ -73,15 +82,16 @@ export default function createStickersSearch(managers: ReadingManagers, query: s
     const rearm = () => {
       disarm?.();
       disarm = undefined;
-      if(!destroyed) {
+      if(alive()) {
         observer.unobserve(sentinel);
         observer.observe(sentinel);
       }
     };
 
     const load = () => {
+      if(!alive()) return;
       more()?.then(async(stickers) => {
-        if(destroyed) {
+        if(!alive()) {
           return;
         }
 
@@ -89,7 +99,7 @@ export default function createStickersSearch(managers: ReadingManagers, query: s
           await onStickers(stickers);
         }
 
-        if(destroyed) {
+        if(!alive()) {
           return;
         }
 
@@ -111,12 +121,12 @@ export default function createStickersSearch(managers: ReadingManagers, query: s
     };
 
     observer = new IntersectionObserver((entries) => {
-      if(entries[entries.length - 1].isIntersecting) {
+      if(alive() && entries[entries.length - 1].isIntersecting) {
         load();
       }
     }, {root, rootMargin: `0px 0px ${PRELOAD_SCREENS * 100}% 0px`});
 
-    if(nextOffset === 0) {
+    if(alive() && nextOffset === 0) {
       load();
     }
 
@@ -126,12 +136,16 @@ export default function createStickersSearch(managers: ReadingManagers, query: s
   return {
     query,
     /** The user's own stickers for the query: they come first */
-    local: () => managers.appStickersManager.searchStickers(query).then(take),
+    local: (): Promise<MyDocument[]> => {
+      if(!alive()) return Promise.resolve([]);
+      return managers.appStickersManager.searchStickers(query).then((stickers) => alive() ? take(stickers) : []);
+    },
     /**
      * What to show first: the user's own stickers, or with none of those the server's first page —
      * whether anything is found at all is then the server's to say, unless its page did not come (`failed`)
      */
-    first: (own: MyDocument[]): Promise<MyDocument[]> => own.length ? Promise.resolve(own) : (more() || Promise.resolve([])),
+    first: (own: MyDocument[]): Promise<MyDocument[]> => !alive() ? Promise.resolve([]) :
+      own.length ? Promise.resolve(own) : (more() || Promise.resolve([])),
     more,
     /** The last page asked for did not come: nothing came is then no answer, `paginate` asks again */
     failed: () => failed,

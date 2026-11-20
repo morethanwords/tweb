@@ -154,7 +154,7 @@ function CommonStateWriter(log: ReturnType<typeof logger>) {
   return w;
 }
 
-const STATE_STEPS = {
+export const STATE_STEPS = {
   REFRESH: (writer: ReturnType<typeof StateWriter>) => {
     const time = Date.now();
     if((writer.state.stateCreatedTime + REFRESH_EVERY) < time) {
@@ -169,7 +169,10 @@ const STATE_STEPS = {
   },
   VALIDATE: <T>(writer: ReturnType<typeof AnyStateWriter<T>>, init: T) => {
     const SKIP_VALIDATING_PATHS: Set<string> = new Set([
-      'settings.themes'
+      'settings.themes',
+      // Optional versioned account preference. The manager interprets v1 only;
+      // preserve unknown/malformed values rather than resetting them on load.
+      'androidEditorPreferences'
     ]);
 
     validateInitObject(init, writer.state, (missingKey) => {
