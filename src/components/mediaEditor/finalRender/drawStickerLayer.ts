@@ -12,11 +12,7 @@ export default function drawStickerLayer(
   ratio: number,
   densityAware = true
 ) {
-  const {editorState: {stickersLayersInfo, pixelRatio}} = context;
-
-  const {container} = stickersLayersInfo[layer.id];
-  const stickerChild = container?.lastElementChild;
-  if(!stickerChild) return;
+  const {editorState: {pixelRatio}} = context;
 
   const size = STICKER_SIZE * layer.scale * (densityAware ? pixelRatio : 1);
 
