@@ -32,6 +32,7 @@ import PeerTitle from '@components/peerTitle';
 import {PopupPeerCheckboxOptions} from '@components/popups/peer';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import cancelEvent from '@helpers/dom/cancelEvent';
+import {dispatchTransferConsumer} from '@helpers/dom/transferConsumer';
 import openTextLinkMenu from '@helpers/dom/openTextLinkMenu';
 import disableTransition from '@helpers/dom/disableTransition';
 import type {TextHighlightMatch} from '@helpers/dom/textHighlight';
@@ -3419,6 +3420,7 @@ export class AppImManager extends EventListenerBase<{
     attachType?: 'media' | 'document',
     files?: Awaited<ReturnType<typeof getFilesFromEvent>>
   ) => {
+    if(dispatchTransferConsumer(e)) return;
     const newMediaPopup = getCurrentNewMediaPopup();
     // * the chat the files came in on: once another takes its place while they are read (an account switch
     // * puts the next account's chat there), they are for no chat shown

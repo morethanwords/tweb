@@ -1,5 +1,7 @@
 import {MediaEditorContextValue} from '@components/mediaEditor/context';
-import {fontInfoMap, getContrastColor} from '@components/mediaEditor/utils';
+import {fontInfoMap} from '@components/mediaEditor/utils';
+import getTextAppearance from '@components/mediaEditor/textAppearance';
+import {getEditorFontCss} from '@components/mediaEditor/fonts';
 import {ResizableLayer} from '@components/mediaEditor/types';
 
 export default function drawTextLayer(
@@ -49,11 +51,12 @@ export default function drawTextLayer(
   let prevY = -renderingInfo.height / 2;
   const boxLeft = -renderingInfo.width / 2;
   const fontInfo = fontInfoMap[layer.textInfo.font];
+  const appearance = getTextAppearance(layer.textInfo);
 
-  if(layer.textInfo.style === 'background') {
+  if(appearance.backgroundColor && renderingInfo.path) {
     ctx.translate(boxLeft, prevY);
 
-    ctx.fillStyle = layer.textInfo.color;
+    ctx.fillStyle = appearance.backgroundColor;
     const path = new Path2D(renderingInfo.path.join(' '));
 
     ctx.fill(path);
@@ -63,26 +66,20 @@ export default function drawTextLayer(
   renderingInfo.lines.forEach((line) => {
     const yOffset = line.height * fontInfo.baseline;
     let xOffset = 0.2 * layer.textInfo.size;
-    if(layer.textInfo.style === 'background') xOffset = 0.3 * layer.textInfo.size;
+    if(appearance.backgroundColor) xOffset = 0.3 * layer.textInfo.size;
 
-    ctx.font = `${fontInfo.fontWeight} ${layer.textInfo.size}px ${fontInfo.fontFamily}`;
+    ctx.font = getEditorFontCss(fontInfo, layer.textInfo.size);
 
     const x = boxLeft + xOffset + line.left,
       y = prevY + yOffset;
 
-    if(layer.textInfo.style === 'outline') {
+    if(appearance.outlineColor) {
       ctx.lineWidth = layer.textInfo.size * 0.15;
-      ctx.strokeStyle = layer.textInfo.color;
+      ctx.strokeStyle = appearance.outlineColor;
       ctx.strokeText(line.content, x, y);
-      ctx.fillStyle = getContrastColor(layer.textInfo.color);
-      ctx.fillText(line.content, x, y);
-    } else if(layer.textInfo.style === 'background') {
-      ctx.fillStyle = getContrastColor(layer.textInfo.color);
-      ctx.fillText(line.content, x, y);
-    } else {
-      ctx.fillStyle = layer.textInfo.color;
-      ctx.fillText(line.content, x, y);
     }
+    ctx.fillStyle = appearance.textColor;
+    ctx.fillText(line.content, x, y);
     prevY += line.height;
   });
 

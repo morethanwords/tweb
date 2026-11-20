@@ -10,7 +10,9 @@ import BrushPainter from '@components/mediaEditor/canvas/brushPainter';
 import {useCropOffset} from '@components/mediaEditor/canvas/useCropOffset';
 import {EditingMediaState, useMediaEditorContext} from '@components/mediaEditor/context';
 import {NumberPair} from '@components/mediaEditor/types';
-import {checkIfHasAnimatedStickers, cleanupWebGl, snapToAvailableQuality} from '@components/mediaEditor/utils';
+import {checkIfHasAnimatedStickers, cleanupWebGl, fontInfoMap, snapToAvailableQuality} from '@components/mediaEditor/utils';
+import {loadEditorFont} from '@components/mediaEditor/fonts';
+import '@components/mediaEditor/fonts.scss';
 import {draw} from '@components/mediaEditor/webgl/draw';
 import {initWebGL} from '@components/mediaEditor/webgl/initWebGL';
 import getResultSize from '@components/mediaEditor/finalRender/getResultSize';
@@ -20,6 +22,12 @@ import renderToActualVideo from '@components/mediaEditor/finalRender/renderToAct
 import renderToImage from '@components/mediaEditor/finalRender/renderToImage';
 import renderToVideoGIF from '@components/mediaEditor/finalRender/renderToVideoGIF';
 import spawnAnimatedPreview from '@components/mediaEditor/finalRender/spawnAnimatedPreview';
+import type {ReadyNativeVideoDecision} from '@components/mediaEditor/finalRender/renderNativeVideo';
+import {getDesktopCropExport} from '@components/mediaEditor/native/desktopCropExport';
+import {getAndroidPaintExport} from '@components/mediaEditor/native/androidPaintExport';
+import {createAndroidPaintRenderer} from '@components/mediaEditor/native/androidPaintRenderer';
+import {drawAndroidPainting} from '@components/mediaEditor/native/androidPaintAdapter';
+import {classifyEditorDocument, prepareEditorGif} from '@components/mediaEditor/animatedDocument';
 
 
 export type MediaEditorFinalResultPayload = {
@@ -50,11 +58,42 @@ const log = logger('MediaEditor.createFinalResult');
 export async function createFinalResult(): Promise<MediaEditorFinalResult> {
   const context = useMediaEditorContext();
   const {editorState, mediaState, mediaSrc, mediaType, canImageResultInGIF} = context;
-  const {resizableLayers, adjustments} = mediaState;
-
   const owner = getOwner();
+  if(context.nativePaint && !context.nativePaint.finishShape()) throw new Error('Android paint shape could not finish');
+  const androidPaint = getAndroidPaintExport(context);
+  // Validate before video resolution, sizing and the original-blob shortcut.
+  const desktopCrop = getDesktopCropExport(context);
 
   const cropOffset = useCropOffset();
+  let nativeVideo: ReadyNativeVideoDecision;
+
+  // Before any layer/font snapshot, including the later video/brush preview paths.
+  // Nothing inside the measurement adapter calls back into export.
+  const textWork = context.textSessions.finish();
+  if(textWork) await textWork;
+  // An explicit descriptor owns export, including when edits made it invalid.
+  // Never fall through to legacy sizing/bitrate or the original-blob shortcut.
+  if(mediaState.nativeVideoQuality) {
+    if(!context.nativeVideo) throw new Error('Native video quality unavailable');
+    const decision = await context.nativeVideo.resolveForExport();
+    if(decision.status !== 'ready') throw new Error('Native video quality unavailable: ' + decision.reason);
+    nativeVideo = decision;
+  }
+  const {resizableLayers, adjustments} = mediaState;
+
+  // A GIF-only document must not silently fall through to still-image export.
+  const gifLayers = resizableLayers.filter(layer => layer.sticker?.type === 'gif' && !layer.sticker.sticker);
+  if(gifLayers.length) await Promise.all(gifLayers.map(layer => prepareEditorGif(context, layer.sticker, () => true)));
+  for(const layer of resizableLayers) {
+    if(!layer.sticker) continue;
+    const source = classifyEditorDocument(layer.sticker);
+    if(source.kind === 'unsupported') throw new Error('Unsupported editor document: ' + source.reason);
+  }
+
+  await Promise.all(resizableLayers.filter(layer => layer.type === 'text' && layer.textInfo).map(layer =>
+    loadEditorFont(fontInfoMap[layer.textInfo.font], layer.textInfo.size,
+      layer.textRenderingInfo?.lines.map(line => line.content).join('\n') || '')
+  ));
 
   const hasAnimatedStickers = checkIfHasAnimatedStickers(resizableLayers) && canImageResultInGIF;
 
@@ -68,7 +107,8 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
     scale: mediaState.scale,
     videoType,
     imageRatio: editorState.mediaRatio,
-    cropOffset: cropOffset()
+    cropOffset: cropOffset(),
+    desktopCropSize: desktopCrop?.geometry.size
   });
 
   const maxQuality = snapToAvailableQuality(maxHeight);
@@ -80,8 +120,10 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
     videoType,
     imageRatio: editorState.mediaRatio,
     cropOffset: cropOffset(),
-    quality: willResultInVideo ? Math.min(maxQuality, mediaState.videoQuality) : undefined
+    quality: willResultInVideo ? Math.min(maxQuality, mediaState.videoQuality) : undefined,
+    desktopCropSize: desktopCrop?.geometry.size
   });
+  if(nativeVideo) [scaledWidth, scaledHeight] = nativeVideo.plan.candidate.encoderSize;
 
   // Profile video avatars must stay small (server profile-video size limits +
   // the avatar is only ever shown tiny). Cap the square output to 800px; the
@@ -124,7 +166,11 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
 
   // No modifications to a video: return the original blob and skip the render pipeline.
   // The animated preview is still produced so the caller can animate it into the target slot.
-  if(mediaType === 'video' && !context.hasModifications()) {
+  // The UI's modification flag is throttled. A numeric quality reduction must
+  // already own export if Done follows the choice before that flag catches up.
+  const legacyQualityReduced = mediaType === 'video' && mediaState.videoQuality > 0 &&
+    mediaState.videoQuality < snapToAvailableQuality(payload.media.height);
+  if(mediaType === 'video' && !nativeVideo && !legacyQualityReduced && !context.hasModifications()) {
     const originalBlob = await context.getMediaBlob();
     if(!originalBlob) throw new Error('Failed to get original media blob');
 
@@ -169,6 +215,8 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
   const drawToImageCanvas = () => {
     draw(gl, payload, {
       ...finalTransform,
+      processingVersion: adjustments.processingVersion,
+      native: adjustments.native,
       imageSize: [payload.media.width, payload.media.height],
       ...(Object.fromEntries(
         adjustmentsConfig.map(({key, to100}) => {
@@ -187,9 +235,18 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
   brushCanvas.width = scaledWidth;
   brushCanvas.height = scaledHeight;
 
-  const brushPainter = new BrushPainter({targetCanvas: brushCanvas, imageCanvas});
-  brushPainter.saveLastLine();
-  scaledLines.forEach((line) => brushPainter.drawLine(line));
+  if(androidPaint) {
+    const paint = await createAndroidPaintRenderer(androidPaint);
+    try {
+      drawAndroidPainting(brushCanvas.getContext('2d'), paint.canvas, [payload.media.width, payload.media.height], finalTransform);
+    } finally {
+      paint.dispose();
+    }
+  } else {
+    const brushPainter = new BrushPainter({targetCanvas: brushCanvas, imageCanvas});
+    brushPainter.saveLastLine();
+    scaledLines.forEach((line) => brushPainter.drawLine(line));
+  }
 
   const resultCanvas = document.createElement('canvas');
   resultCanvas.width = scaledWidth;
@@ -200,6 +257,7 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
     if(mediaType === 'video')
       return runWithOwner(owner, () => renderToActualVideo({
         renderingPayload: payload,
+        nativeVideo,
         hasAnimatedStickers,
         scaledWidth,
         scaledHeight,
@@ -233,7 +291,15 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
     });
   })();
 
-  const renderResult = await renderPromise;
+  let renderResult: Awaited<typeof renderPromise>;
+  try {
+    renderResult = await renderPromise;
+  } catch(error) {
+    // Decoding/preview can reject before handing back getResult(), so
+    // the normal completion cleanup below has not yet been installed.
+    try { cleanupWebGl(gl); } catch{}
+    throw error;
+  }
 
   const animatedPreview = renderResult.preview ? await spawnAnimatedPreview({
     context,

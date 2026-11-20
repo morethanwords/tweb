@@ -10,12 +10,10 @@ import LargeButton from '@components/mediaEditor/largeButton';
 import RangeInput from '@components/mediaEditor/rangeInput';
 import {fontInfoMap, textLayerInfoDefaults} from '@components/mediaEditor/utils';
 import {FontKey, TextLayerInfo} from '@components/mediaEditor/types';
-import {createStoredValue, Optional} from '../createStoredValue';
+import {createStoredValue, Optional} from '@components/mediaEditor/createStoredValue';
+import {editorFonts, textAlignments, textStyles, textSizeMin, textSizeMax} from '@components/mediaEditor/controlConfig';
 import A11yButton from '@components/a11yButton';
 
-
-const textSizeMin = 16;
-const textSizeMax = 64;
 
 export default function TextTab() {
   const {editorState} = useMediaEditorContext();
@@ -28,18 +26,16 @@ export default function TextTab() {
     validate: (value) => value in fontInfoMap ? Optional.value(value as FontKey) : Optional.none()
   });
 
-  const availableAlignments = ['left', 'center', 'right'];
   const [savedAlignment, setSavedAlignment] = createStoredValue<string>({
     key: 'textAlignment',
     defaultValue: textLayerInfoDefaults.alignment,
-    validate: (value) => availableAlignments.includes(value) ? Optional.value(value) : Optional.none()
+    validate: (value) => textAlignments.some(item => item.value === value) ? Optional.value(value) : Optional.none()
   });
 
-  const availableStyles = ['normal', 'outline', 'background'];
   const [savedStyle, setSavedStyle] = createStoredValue<string>({
     key: 'textStyle',
     defaultValue: textLayerInfoDefaults.style,
-    validate: (value) => availableStyles.includes(value) ? Optional.value(value) : Optional.none()
+    validate: (value) => textStyles.some(item => item.value === value) ? Optional.value(value) : Optional.none()
   });
 
   const [savedSize, setSavedSize] = createStoredValue<number>({
@@ -116,9 +112,7 @@ export default function TextTab() {
           role="group"
           aria-label={I18n.format('MediaEditor.TextAlignment', true)}
         >
-          {toggleButton('align_left', 'left', 'MediaEditor.AlignLeft', () => editorState.currentTextLayerInfo.alignment, setSavedAlignment)}
-          {toggleButton('align_center', 'center', 'MediaEditor.AlignCenter', () => editorState.currentTextLayerInfo.alignment, setSavedAlignment)}
-          {toggleButton('align_right', 'right', 'MediaEditor.AlignRight', () => editorState.currentTextLayerInfo.alignment, setSavedAlignment)}
+          {textAlignments.map(item => toggleButton(item.icon, item.value, item.label, () => editorState.currentTextLayerInfo.alignment, setSavedAlignment))}
         </div>
 
         <div
@@ -126,9 +120,7 @@ export default function TextTab() {
           role="group"
           aria-label={I18n.format('MediaEditor.TextStyle', true)}
         >
-          {toggleButton('fontframe_filled', 'normal', 'MediaEditor.TextStyle.Normal', () => editorState.currentTextLayerInfo.style, setSavedStyle)}
-          {toggleButton('fontframe', 'outline', 'MediaEditor.TextStyle.Outline', () => editorState.currentTextLayerInfo.style, setSavedStyle)}
-          {toggleButton('fontframe_bg_filled', 'background', 'MediaEditor.TextStyle.Background', () => editorState.currentTextLayerInfo.style, setSavedStyle)}
+          {textStyles.map(item => toggleButton(item.icon, item.value, item.label, () => editorState.currentTextLayerInfo.style, setSavedStyle))}
         </div>
       </div>
 
@@ -147,14 +139,7 @@ export default function TextTab() {
 
       <div class="media-editor__label">{i18n('MediaEditor.Font')}</div>
 
-      {fontButton(i18n('MediaEditor.Fonts.Roboto'), 'roboto')}
-      {fontButton(i18n('MediaEditor.Fonts.SuezOne'), 'suez')}
-      {fontButton(i18n('MediaEditor.Fonts.FugazOne'), 'fugaz')}
-      {fontButton(i18n('MediaEditor.Fonts.CourierPrime'), 'courier')}
-      {fontButton(i18n('MediaEditor.Fonts.Chewy'), 'chewy')}
-      {fontButton(i18n('MediaEditor.Fonts.Sedan'), 'sedan')}
-      {fontButton(i18n('MediaEditor.Fonts.RubikBubbles'), 'bubbles')}
-      {fontButton(i18n('MediaEditor.Fonts.Playwrite'), 'playwrite')}
+      {editorFonts.map(item => fontButton(i18n(item.label), item.font))}
     </>
   );
 }

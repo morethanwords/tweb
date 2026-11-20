@@ -9,6 +9,7 @@ import {StoragesResults} from '@appManagers/utils/storages/loadStorages';
 import commonStateStorage from '@lib/commonStateStorage';
 import callbackify from '@helpers/callbackify';
 import isObject from '@helpers/object/isObject';
+import {canonicalAndroidColor, insertAndroidPaletteColor, isAndroidEditorColor, normalizeAndroidCustomColors} from '@components/mediaEditor/native/androidPalette';
 
 export type ResetStoragesPromise = CancellablePromise<{
   storages: Map<keyof StoragesResults, (PeerId | UserId | ChatId)[]>,
@@ -36,6 +37,44 @@ export default class AppStateManager {
 
   public getState() {
     return Promise.resolve(this.state);
+  }
+
+  public getAndroidFilledShapes() {
+    const saved = this.state.androidEditorPreferences;
+    return saved?.version === 1 && saved.filledShapes === true;
+  }
+
+  public getAndroidEditorPreferences() {
+    const saved = this.state.androidEditorPreferences;
+    return {filledShapes: this.getAndroidFilledShapes(), text: saved?.version === 1 ? saved.text : undefined,
+      customColors: saved?.version === 1 ? saved.customColors : undefined};
+  }
+
+  public setAndroidEditorPreferences(patch: {filledShapes?: boolean; text?: NonNullable<State['androidEditorPreferences']>['text']; customColors?: string[]}) {
+    const saved = this.state.androidEditorPreferences;
+    // Do not downgrade a future schema or discard its unknown fields. A v1
+    // gesture merges only what it changed, including within the text record.
+    if(saved && saved.version !== 1) return Promise.resolve();
+    return this.pushToState('androidEditorPreferences', {
+      ...saved,
+      version: 1,
+      filledShapes: saved?.filledShapes === true,
+      ...patch,
+      ...(patch.text ? {text: {...saved?.text, ...patch.text}} : {})
+    });
+  }
+
+  public setAndroidFilledShapes(filledShapes: boolean) {
+    return this.setAndroidEditorPreferences({filledShapes: filledShapes === true});
+  }
+
+  public selectAndroidEditorColor(value: string) {
+    const saved = this.state.androidEditorPreferences;
+    if((saved && saved.version !== 1) || !isAndroidEditorColor(value)) return Promise.resolve();
+    const colors = normalizeAndroidCustomColors(saved?.customColors);
+    const next = insertAndroidPaletteColor(colors, canonicalAndroidColor(value));
+    if(next === colors) return Promise.resolve();
+    return this.setAndroidEditorPreferences({customColors: next});
   }
 
   public setByKey(key: string, value: any) {

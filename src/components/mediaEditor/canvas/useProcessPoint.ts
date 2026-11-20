@@ -2,6 +2,7 @@ import {createMemo} from 'solid-js';
 
 import {useMediaEditorContext} from '@components/mediaEditor/context';
 import {NumberPair} from '@components/mediaEditor/types';
+import {mapPreviewAffine} from '@components/mediaEditor/canvas/previewAffine';
 
 export default function useProcessPoint(densityAware = true) {
   const {editorState} = useMediaEditorContext();
@@ -9,6 +10,10 @@ export default function useProcessPoint(densityAware = true) {
   const size = createMemo(() => editorState.canvasSize.map((x) => x * editorState.pixelRatio));
 
   return (point: NumberPair) => {
+    if(editorState.paintPreviewAffine) {
+      const projected = mapPreviewAffine(editorState.paintPreviewAffine.forward, point);
+      return projected.map(value => value * (densityAware ? editorState.pixelRatio : 1)) as NumberPair;
+    }
     const [w, h] = size();
 
     const transform = editorState.finalTransform;

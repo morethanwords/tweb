@@ -13,6 +13,9 @@ import Modes from '@config/modes';
 import {batch, createEffect, createSignal, on, onCleanup, onMount, Show} from 'solid-js';
 import {modifyMutable, produce} from 'solid-js/store';
 import onRangeInlineArrowKey from '@helpers/dom/onRangeInlineArrowKey';
+import useCropActions from '@components/mediaEditor/canvas/useCropActions';
+import desktopCropSession from '@components/mediaEditor/native/desktopCropSession';
+import {hasDesktopCropDescriptor, isDesktopCropGeometryActive} from '@components/mediaEditor/native/desktopCropGeometry';
 
 
 const DEGREE_DIST_PX = 42;
@@ -26,7 +29,9 @@ function rotationFromMove(amount: number) {
 }
 
 export default function RotationWheel() {
-  const {editorState, mediaState, actions} = useMediaEditorContext();
+  const context = useMediaEditorContext();
+  const {editorState, mediaState, actions} = context;
+  const crop = useCropActions();
 
   const isCropping = () => editorState.currentTab === 'crop';
 
@@ -76,6 +81,7 @@ export default function RotationWheel() {
 
     const swipeHandler = new SwipeHandler({
       element: swiperEl,
+      verifyTouchTarget: () => !(context.canUseDesktopExpandedCrop && hasDesktopCropDescriptor(context)),
       onStart() {
         initialScale = mediaState.scale;
         currentDiff = movedDiff();
@@ -220,14 +226,18 @@ export default function RotationWheel() {
   );
 
   function rotateLeft() {
-    const newRotation = (Math.round((mediaState.rotation / Math.PI) * 2) * Math.PI) / 2 - Math.PI / 2;
-
-    animateToNewRotationOrRatio(newRotation);
-
-    resetWheelWithAnimation();
+    crop.rotate(-Math.PI / 2);
   }
 
   function flipImage() {
+    if(context.canUseDesktopExpandedCrop) {
+      if(!isDesktopCropGeometryActive(context)) return;
+      const session = desktopCropSession(context);
+      session.commit(session.descriptor(), true);
+      const axis = Math.abs(Math.round(mediaState.rotation / Math.PI * 2)) & 1;
+      mediaState.flip[axis] *= -1;
+      return;
+    }
     editorState.isMoving = true;
     const isReversedRatio = Math.abs(Math.round((mediaState.rotation / Math.PI) * 2)) & 1;
     const snapTo1 = (value: number) => value < 0 ? -1 : 1;
@@ -247,6 +257,7 @@ export default function RotationWheel() {
     .replace(/^-0$/, '0');
 
   const setFineRotation = (degrees: number) => {
+    if(context.canUseDesktopExpandedCrop && hasDesktopCropDescriptor(context)) return;
     cancelResetAnimation?.();
     initialScale = mediaState.scale;
     batch(() => {
@@ -294,7 +305,7 @@ export default function RotationWheel() {
           min={-TOTAL_DEGREES_SIDE}
           max={TOTAL_DEGREES_SIDE}
           step={1}
-          disabled={editorState.isMoving}
+          disabled={editorState.isMoving || context.canUseDesktopExpandedCrop && hasDesktopCropDescriptor(context)}
           value={Number(value())}
           aria-label={I18n.format('MediaEditor.FineRotation', true)}
           aria-valuetext={`${value()}°`}

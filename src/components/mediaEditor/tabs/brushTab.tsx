@@ -6,12 +6,10 @@ import LargeButton from '@components/mediaEditor/largeButton';
 import RangeInput from '@components/mediaEditor/rangeInput';
 import Space from '@components/space';
 import {i18n} from '@lib/langPack';
-import {createEffect, JSX, untrack} from 'solid-js';
-import {createStoredValue, Optional} from '../createStoredValue';
-import {brushDefaults} from '../utils';
-
-const brushSizeMin = 2;
-const brushSizeMax = 32;
+import {createEffect, JSX, onCleanup, untrack} from 'solid-js';
+import {createStoredValue, Optional} from '@components/mediaEditor/createStoredValue';
+import {brushDefaults} from '@components/mediaEditor/utils';
+import {brushSizeMin, brushSizeMax} from '@components/mediaEditor/controlConfig';
 
 export default function BrushTab() {
   const {editorState, mediaType} = useMediaEditorContext();
@@ -91,6 +89,10 @@ export default function BrushTab() {
   const hasColor = () => editorState.currentBrush.brush in savedBrushColors;
 
   let timeoutId = 0;
+  onCleanup(() => {
+    window.clearTimeout(timeoutId);
+    editorState.previewBrushSize = undefined;
+  });
   function removeSizePreview() {
     window.clearTimeout(timeoutId);
     timeoutId = window.setTimeout(() => {

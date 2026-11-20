@@ -1,4 +1,5 @@
 import {createSignal, getOwner, runWithOwner} from 'solid-js';
+import {prepareImageLayerDrawing} from '@components/mediaEditor/imageLayer/render';
 
 import deferredPromise from '@helpers/cancellablePromise';
 import noop from '@helpers/noop';
@@ -10,14 +11,13 @@ import {FRAMES_PER_SECOND, STICKER_SIZE} from '@components/mediaEditor/finalRend
 import {MediaEditorFinalResultPayload} from '@components/mediaEditor/finalRender/createFinalResult';
 import drawStickerLayer from '@components/mediaEditor/finalRender/drawStickerLayer';
 import drawTextLayer from '@components/mediaEditor/finalRender/drawTextLayer';
+import drawShapeLayer from '@components/mediaEditor/finalRender/drawShapeLayer';
 import {generateVideoPreview} from '@components/mediaEditor/finalRender/generateVideoPreview';
 import {ScaledLayersAndLines} from '@components/mediaEditor/finalRender/getScaledLayersAndLines';
-import ImageStickerFrameByFrameRenderer from '@components/mediaEditor/finalRender/imageStickerFrameByFrameRenderer';
-import LottieStickerFrameByFrameRenderer from '@components/mediaEditor/finalRender/lottieStickerFrameByFrameRenderer';
 import {StickerFrameByFrameRenderer} from '@components/mediaEditor/finalRender/types';
-import VideoStickerFrameByFrameRenderer from '@components/mediaEditor/finalRender/videoStickerFrameByFrameRenderer';
+import {createEditorDocumentRenderer, prepareEditorGif} from '@components/mediaEditor/animatedDocument';
+import {captureDocumentRendererSource} from '@components/mediaEditor/finalRender/documentRendererSource';
 import createMp4VideoEncoder from '@components/mediaEditor/finalRender/createMp4VideoEncoder';
-import StickerType from '@config/stickerType';
 
 type Args = {
   scaledLayers: ScaledLayersAndLines['scaledLayers'];
@@ -40,6 +40,8 @@ export default async function renderToVideoGIF({
 }: Args) {
   const owner = getOwner();
   const context = useMediaEditorContext();
+  const documentSource = captureDocumentRendererSource(context.managers);
+  const images = await prepareImageLayerDrawing(context, scaledLayers);
 
   const {editorState: {pixelRatio}, dontCreatePreview} = context;
 
@@ -49,6 +51,8 @@ export default async function renderToVideoGIF({
   const renderers = new Map<number, StickerFrameByFrameRenderer>();
 
   let canceled = false;
+  let stopped = false;
+  let encoder: VideoEncoder | undefined;
 
   const CANCELED = Symbol('canceled');
   const canceledDeferred = deferredPromise<never>();
@@ -64,16 +68,19 @@ export default async function renderToVideoGIF({
 
   async function renderFrame(encoder: VideoEncoder, frameNo: number) {
     const promises = Array.from(renderers.values()).map((renderer) =>
-      renderer.renderFrame(frameNo % (renderer.getTotalFrames() + 1))
+      renderer.renderFrame(frameNo % renderer.getTotalFrames())
     );
     await Promise.all(promises);
+    throwIfCanceled();
 
     ctx.clearRect(0, 0, scaledWidth, scaledHeight);
     ctx.drawImage(imageCanvas, 0, 0);
     ctx.drawImage(brushCanvas, 0, 0);
 
     scaledLayers.forEach((layer) => {
+      images.draw(ctx, layer);
       if(layer.type === 'text') drawTextLayer(context, ctx, layer);
+      if(layer.type === 'shape') drawShapeLayer(ctx, layer);
       if(layer.type === 'sticker' && renderers.has(layer.id)) {
         const renderer = renderers.get(layer.id);
         drawStickerLayer(context, ctx, layer, renderer.getRenderedFrame(), renderer.getRatio());
@@ -88,43 +95,44 @@ export default async function renderToVideoGIF({
     videoFrame.close();
   }
 
-  function cleanup(encoder: VideoEncoder) {
-    encoder.close();
-    Array.from(renderers.values()).forEach((renderer) => renderer.destroy());
+  function cleanup() {
+    stopped = true;
+    try { encoder?.close(); } catch{}
+    encoder = undefined;
+    Array.from(renderers.values()).forEach((renderer) => {
+      try { renderer.destroy(); } catch{}
+    });
+    renderers.clear();
+  }
+
+  function cancel() {
+    if(canceled) return;
+    canceled = true;
+    canceledDeferred.reject(CANCELED);
+    cleanup();
   }
 
   const resultPromise = new Promise<MediaEditorFinalResultPayload>(async(resolve, reject) => {
-    let encoder: VideoEncoder | undefined;
-
-    const finishCanceled = () => {
-      if(encoder) {
-        try { cleanup(encoder); } catch{}
-      } else {
-        Array.from(renderers.values()).forEach((renderer) => {
-          try { renderer.destroy(); } catch{}
-        });
-      }
-      reject(CANCELED);
-    };
-
     try {
       let maxFrames = 0;
 
       const [mp4Encoder] = await raceCancel(Promise.all([
-        createMp4VideoEncoder({width: scaledWidth, height: scaledHeight, frameRate: FRAMES_PER_SECOND}),
+        createMp4VideoEncoder({width: scaledWidth, height: scaledHeight, frameRate: FRAMES_PER_SECOND}).then(result => {
+          if(stopped) { try { result.encoder.close(); } catch{} throw CANCELED; }
+          encoder = result.encoder;
+          return result;
+        }),
         ...scaledLayers.map(async(layer) => {
           if(!layer.sticker) return;
 
-          const stickerType = layer.sticker?.sticker;
-          let renderer: StickerFrameByFrameRenderer;
-
-          if(stickerType === StickerType.Static) renderer = new ImageStickerFrameByFrameRenderer();
-          if(stickerType === StickerType.Lottie) renderer = new LottieStickerFrameByFrameRenderer();
-          if(stickerType === StickerType.WebM) renderer = new VideoStickerFrameByFrameRenderer();
-          if(!renderer) return;
+          const blob = layer.sticker.type === 'gif' && !layer.sticker.sticker ?
+            await prepareEditorGif(context, layer.sticker, () => !canceled && !stopped) : undefined;
+          const renderer = await createEditorDocumentRenderer(layer.sticker, blob, documentSource);
+          if(canceled || stopped) { try { renderer.destroy(); } catch{} throw CANCELED; }
 
           renderers.set(layer.id, renderer);
           await renderer.init(layer.sticker!, STICKER_SIZE * layer.scale * pixelRatio);
+          throwIfCanceled();
           maxFrames = Math.max(maxFrames, renderer.getTotalFrames());
         }),
         delay(200)
@@ -133,11 +141,11 @@ export default async function renderToVideoGIF({
 
       encoder = mp4Encoder.encoder;
 
-      for(let frameNo = 0; frameNo <= maxFrames; frameNo++) {
+      for(let frameNo = 0; frameNo < maxFrames; frameNo++) {
         throwIfCanceled();
 
         await raceCancel(renderFrame(encoder, frameNo));
-        setProgress(frameNo / maxFrames);
+        setProgress((frameNo + 1) / maxFrames);
       }
 
       await raceCancel(encoder.flush());
@@ -145,15 +153,16 @@ export default async function renderToVideoGIF({
       const blob = await raceCancel(mp4Encoder.finalize());
       throwIfCanceled();
 
-      cleanup(encoder);
+      cleanup();
 
       resolve({
         blob,
         hasSound: false
       });
     } catch(e) {
+      cleanup();
       if(e === CANCELED || canceled) {
-        finishCanceled();
+        reject(CANCELED);
         return;
       }
       reject(e);
@@ -162,19 +171,24 @@ export default async function renderToVideoGIF({
 
   let result: MediaEditorFinalResultPayload;
 
-  resultPromise.then((value) => (result = value)).catch(noop);
+  resultPromise.then((value) => (result = value)).finally(images.release).catch(noop);
+
+  let preview: Blob;
+  try {
+    preview = dontCreatePreview ? undefined : await runWithOwner(owner, () => generateVideoPreview({scaledWidth, scaledHeight}));
+  } catch(error) {
+    cancel();
+    await resultPromise.catch(noop);
+    throw error;
+  }
 
   return {
-    preview: dontCreatePreview ? undefined : await runWithOwner(owner, () => generateVideoPreview({scaledWidth, scaledHeight})),
+    preview,
     isVideo: true,
     getResult: () => {
       return result ?? resultPromise;
     },
-    cancel: () => {
-      if(canceled) return;
-      canceled = true;
-      canceledDeferred.reject(CANCELED);
-    },
+    cancel,
     creationProgress
   };
 }

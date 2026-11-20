@@ -1,0 +1,32 @@
+.root {
+  position: absolute;
+  border: 1px solid white;
+  touch-action: none;
+}
+
+.move {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: move;
+}
+
+.handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  transform: translate(-50%, -50%);
+  border: 2px solid white;
+  border-radius: 50%;
+  padding: 0;
+  background: #333;
+  touch-action: none;
+}
+
+:global(:where(.a11y)) .handle:focus-visible,
+:global(:where(.a11y)) .move:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}

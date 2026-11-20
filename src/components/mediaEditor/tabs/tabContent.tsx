@@ -16,6 +16,7 @@ import {
 type TabContentContextValue = {
   container: Accessor<HTMLDivElement>;
   scrollAmount: Accessor<number>;
+  thumbStripHost?: Accessor<HTMLDivElement>;
 };
 export const TabContentContext = createContext<TabContentContextValue>();
 

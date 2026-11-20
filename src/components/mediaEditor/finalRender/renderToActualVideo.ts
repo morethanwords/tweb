@@ -1,4 +1,5 @@
 import {createSignal, getOwner, runWithOwner} from 'solid-js';
+import {prepareImageLayerDrawing} from '@components/mediaEditor/imageLayer/render';
 import {animate} from '@helpers/animation';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import ListenerSetter from '@helpers/listenerSetter';
@@ -15,13 +16,13 @@ import {FRAMES_PER_SECOND, STICKER_SIZE} from '@components/mediaEditor/finalRend
 import {MediaEditorFinalResultPayload} from '@components/mediaEditor/finalRender/createFinalResult';
 import drawStickerLayer from '@components/mediaEditor/finalRender/drawStickerLayer';
 import drawTextLayer from '@components/mediaEditor/finalRender/drawTextLayer';
+import drawShapeLayer from '@components/mediaEditor/finalRender/drawShapeLayer';
 import {generateVideoPreview} from '@components/mediaEditor/finalRender/generateVideoPreview';
 import {ScaledLayersAndLines} from '@components/mediaEditor/finalRender/getScaledLayersAndLines';
-import ImageStickerFrameByFrameRenderer from '@components/mediaEditor/finalRender/imageStickerFrameByFrameRenderer';
-import LottieStickerFrameByFrameRenderer from '@components/mediaEditor/finalRender/lottieStickerFrameByFrameRenderer';
 import {StickerFrameByFrameRenderer} from '@components/mediaEditor/finalRender/types';
-import VideoStickerFrameByFrameRenderer from '@components/mediaEditor/finalRender/videoStickerFrameByFrameRenderer';
-import StickerType from '@config/stickerType';
+import {createEditorDocumentRenderer, prepareEditorGif} from '@components/mediaEditor/animatedDocument';
+import {captureDocumentRendererSource} from '@components/mediaEditor/finalRender/documentRendererSource';
+import renderNativeVideo, {type ReadyNativeVideoDecision} from '@components/mediaEditor/finalRender/renderNativeVideo';
 
 
 type Args = {
@@ -36,6 +37,7 @@ type Args = {
   drawToImageCanvas: () => void;
   brushCanvas: HTMLCanvasElement;
   resultCanvas: HTMLCanvasElement;
+  nativeVideo?: ReadyNativeVideoDecision;
 };
 
 const EXPECTED_FPS = 30;
@@ -56,9 +58,17 @@ export default async function renderToActualVideo({
   imageCanvas,
   drawToImageCanvas,
   brushCanvas,
-  resultCanvas
+  resultCanvas,
+  nativeVideo
 }: Args) {
   const context = useMediaEditorContext();
+  if(nativeVideo) {
+    const videoThumbnailPosition = context.mediaState.videoThumbnailPosition;
+    if(scaledLayers.length) throw new Error('Native video quality unavailable with visual edits');
+    const blob = await context.getMediaBlob();
+    if(!blob) throw new Error('Source video unavailable');
+    return renderNativeVideo(blob, nativeVideo, context.dontCreatePreview, videoThumbnailPosition);
+  }
 
   const {
     editorState: {pixelRatio},
@@ -70,6 +80,8 @@ export default async function renderToActualVideo({
   const {media: {video}} = renderingPayload;
 
   const owner = getOwner();
+  const documentSource = captureDocumentRendererSource(context.managers);
+  const images = await prepareImageLayerDrawing(context, scaledLayers);
 
   // Profile video avatars must stay within the server's spec — ≤30fps and ≤10s
   // (official clients cap there). Without this a high-res 60fps source produces
@@ -88,6 +100,7 @@ export default async function renderToActualVideo({
   const [progress, setProgress] = creationProgress;
 
   const renderers = new Map<number, StickerFrameByFrameRenderer>();
+  let stopped = false;
 
   const thumbnailCanvas = document.createElement('canvas');
   [thumbnailCanvas.width, thumbnailCanvas.height] = snapToViewport(scaledWidth / scaledHeight, Math.min(scaledWidth, THUMBNAIL_MAX_SIZE), Math.min(scaledHeight, THUMBNAIL_MAX_SIZE));
@@ -204,13 +217,10 @@ export default async function renderToActualVideo({
       scaledLayers.map(async(layer) => {
         if(!layer.sticker) return;
 
-        const stickerType = layer.sticker?.sticker;
-        let renderer: StickerFrameByFrameRenderer;
-
-        if(stickerType === StickerType.Static) renderer = new ImageStickerFrameByFrameRenderer();
-        if(stickerType === StickerType.Lottie) renderer = new LottieStickerFrameByFrameRenderer();
-        if(stickerType === StickerType.WebM) renderer = new VideoStickerFrameByFrameRenderer();
-        if(!renderer) return;
+        const blob = layer.sticker.type === 'gif' && !layer.sticker.sticker ?
+          await prepareEditorGif(context, layer.sticker, () => !canceled && !stopped) : undefined;
+        const renderer = await createEditorDocumentRenderer(layer.sticker, blob, documentSource);
+        if(canceled || stopped) { renderer.destroy(); throw ThrowReason.Canceled; }
 
         renderers.set(layer.id, renderer);
         await renderer.init(layer.sticker!, STICKER_SIZE * layer.scale * pixelRatio);
@@ -314,6 +324,7 @@ export default async function renderToActualVideo({
     );
 
     await Promise.all(promises);
+    throwIfCanceled();
 
     drawToImageCanvas();
 
@@ -322,7 +333,9 @@ export default async function renderToActualVideo({
     ctx.drawImage(brushCanvas, 0, 0);
 
     scaledLayers.forEach((layer) => {
+      images.draw(ctx, layer);
       if(layer.type === 'text') drawTextLayer(context, ctx, layer);
+      if(layer.type === 'shape') drawShapeLayer(ctx, layer);
       if(layer.type === 'sticker' && renderers.has(layer.id)) {
         const renderer = renderers.get(layer.id);
         drawStickerLayer(context, ctx, layer, renderer.getRenderedFrame(), renderer.getRatio());
@@ -353,9 +366,11 @@ export default async function renderToActualVideo({
     progressRAF = requestAnimationFrame(() => updateProgress(targetProgress));
   }
 
-  function cleanup(encoder: VideoEncoder) {
-    encoder.close();
+  function cleanup(encoder?: VideoEncoder) {
+    stopped = true;
+    try { encoder?.close(); } catch{}
     Array.from(renderers.values()).forEach((renderer) => renderer.destroy());
+    renderers.clear();
     listenerSetter.removeAll();
     cancelAnimationFrame(progressRAF);
     video.src = '';
@@ -364,7 +379,14 @@ export default async function renderToActualVideo({
 
   setProgress(0);
 
-  const preview = dontCreatePreview ? undefined : await runWithOwner(owner, () => generateVideoPreview({scaledWidth, scaledHeight}));
+  let preview: Blob;
+  try {
+    preview = dontCreatePreview ? undefined : await runWithOwner(owner, () => generateVideoPreview({scaledWidth, scaledHeight}));
+  } catch(error) {
+    cleanup();
+    images.release();
+    throw error;
+  }
 
   const resultPromise = new Promise<MediaEditorFinalResultPayload>(async(resolve, reject) => {
     let encoder: VideoEncoder | undefined;
@@ -376,17 +398,6 @@ export default async function renderToActualVideo({
       try {
         video.pause();
       } catch{}
-      if(encoder) {
-        try {
-          cleanup(encoder);
-        } catch{}
-      } else {
-        Array.from(renderers.values()).forEach((renderer) => {
-          try { renderer.destroy(); } catch{}
-        });
-        listenerSetter.removeAll();
-        cancelAnimationFrame(progressRAF);
-      }
       reject(ThrowReason.Canceled);
     };
 
@@ -396,7 +407,11 @@ export default async function renderToActualVideo({
       video.addEventListener('seeked', () => void firstFrameSeekDeferred.resolve(), {once: true});
 
       const initResults = await raceCancel(Promise.all([
-        initMuxerAndEncoder(),
+        initMuxerAndEncoder().then(result => {
+          if(stopped) { result.encoder.close(); throw ThrowReason.Canceled; }
+          encoder = result.encoder;
+          return result;
+        }),
         delay(200),
         firstFrameSeekDeferred,
         initStickerRenderers()
@@ -411,7 +426,7 @@ export default async function renderToActualVideo({
 
       animate(() => {
         if(encodingPausedDeferred) return true;
-        if(canceled) {
+        if(canceled || stopped) {
           done = true;
           return false;
         }
@@ -435,7 +450,7 @@ export default async function renderToActualVideo({
           await prepareAndRenderFrame(encoder, frameNo);
         } catch(e: unknown) {
           if(e === ThrowReason.Canceled || canceled) throw ThrowReason.Canceled;
-          if(typeof e !== 'number') break;
+          if(typeof e !== 'number') throw e;
 
           if(e === ThrowReason.EncodingPaused) await raceCancel(encodingPausedDeferred);
           else if(e === ThrowReason.TimeLoopback) break;
@@ -498,6 +513,7 @@ export default async function renderToActualVideo({
         }
       });
     } catch(e: unknown) {
+      cleanup(encoder);
       if(e === ThrowReason.Canceled || canceled) {
         finishCanceled();
         return;
@@ -515,7 +531,7 @@ export default async function renderToActualVideo({
 
   let result: MediaEditorFinalResultPayload;
 
-  resultPromise.then((value) => (result = value)).catch(noop);
+  resultPromise.then((value) => (result = value)).finally(images.release).catch(noop);
 
   return {
     preview,

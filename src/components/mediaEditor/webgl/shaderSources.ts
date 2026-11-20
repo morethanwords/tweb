@@ -1,3 +1,45 @@
+import {NATIVE_CURVES_SAMPLE_COUNT} from '@components/mediaEditor/webgl/nativeCurves';
+
+// FilterShaders.java:458–500, 21f7d109. UV row order is preserved in the FBO;
+// the existing final vertex shader alone performs the canvas Y inversion.
+export const nativeSharpenVertexSource = `
+precision highp float;
+attribute vec2 aPosition;
+attribute vec2 aUv;
+uniform vec2 uSize;
+varying vec2 vUv;
+varying vec2 vLeft;
+varying vec2 vRight;
+varying vec2 vTop;
+varying vec2 vBottom;
+void main() {
+  gl_Position = vec4(aPosition * 2.0 - 1.0, 0.0, 1.0);
+  vUv = aUv;
+  vec2 dx = vec2(1.0 / uSize.x, 0.0);
+  vec2 dy = vec2(0.0, 1.0 / uSize.y);
+  vLeft = aUv - dx;
+  vRight = aUv + dx;
+  vTop = aUv + dy;
+  vBottom = aUv - dy;
+}`;
+
+export const nativeSharpenFragmentSource = `
+precision highp float;
+uniform sampler2D uSource;
+uniform float uStrength;
+varying vec2 vUv;
+varying vec2 vLeft;
+varying vec2 vRight;
+varying vec2 vTop;
+varying vec2 vBottom;
+void main() {
+  vec4 result = texture2D(uSource, vUv);
+  vec3 neighbours = texture2D(uSource, vLeft).rgb + texture2D(uSource, vRight).rgb
+    + texture2D(uSource, vTop).rgb + texture2D(uSource, vBottom).rgb;
+  result.rgb = result.rgb * (1.0 + 4.0 * uStrength) - neighbours * uStrength;
+  gl_FragColor = result;
+}`;
+
 export const vertexShaderSource = `
 precision highp float;
 
@@ -10,6 +52,8 @@ uniform vec2 uFlip;
 uniform vec2 uImageSize;
 uniform vec2 uResolution;
 uniform vec2 uTranslation;
+uniform mat3 uPreviewAffine;
+uniform float uPreviewAffineEnabled;
 
 varying highp vec2 vTextureCoord;
 
@@ -34,6 +78,12 @@ void main(void) {
 
   // Translate and normalize
   position = ((position + uTranslation) / uResolution) * 2.0 - 1.0;
+
+  if(uPreviewAffineEnabled > 0.5) {
+    // Apply before clipping, from the same source domain as layers/brush points.
+    vec2 source = (aVertexPosition - uImageSize / 2.0) * uFlip;
+    position = ((uPreviewAffine * vec3(source, 1.0)).xy / uResolution) * 2.0 - 1.0;
+  }
 
   gl_Position = vec4(position * vec2(1, -1), 0.0, 1.0);
   vTextureCoord = aTextureCoord;
@@ -62,6 +112,130 @@ uniform float uHighlights;
 uniform float uVignette;
 uniform float uGrain;
 uniform float uSharpen;
+uniform vec4 uTintShadows;
+uniform vec4 uTintHighlights;
+uniform vec4 uBlur;
+uniform vec2 uBlurCenter;
+uniform sampler2D uCurvesTexture;
+uniform float uCurvesEnabled;
+uniform float uNativeProcessing;
+uniform float uOriginal;
+uniform vec4 uCurve0;
+uniform vec4 uCurve1;
+uniform vec4 uCurve2;
+uniform vec4 uCurve3;
+uniform vec4 uCurve4;
+uniform vec4 uCurveChannelsEnabled;
+
+// Exact pre-versioned polynomial and selected-channel semantics (9c2bfa101).
+vec4 legacyCurve(float value) {
+  float p = clamp(value, 0.0, 1.0) * 4.0;
+  vec4 a; vec4 b; vec4 c; vec4 d;
+  if(p < 1.0) { a = uCurve0; b = uCurve0; c = uCurve1; d = uCurve2; }
+  else if(p < 2.0) { a = uCurve0; b = uCurve1; c = uCurve2; d = uCurve3; }
+  else if(p < 3.0) { a = uCurve1; b = uCurve2; c = uCurve3; d = uCurve4; }
+  else { a = uCurve2; b = uCurve3; c = uCurve4; d = uCurve4; }
+  float t = p - min(3.0, floor(p));
+  return clamp(0.5 * (2.0*b + (c-a)*t + (2.0*a-5.0*b+4.0*c-d)*t*t + (3.0*b-a-3.0*c+d)*t*t*t), 0.0, 1.0);
+}
+
+vec3 applyLegacyCurves(vec3 color) {
+  if(uCurvesEnabled < 0.5) return color;
+  if(uCurveChannelsEnabled.a > 0.5) {
+    float hi = max(max(color.r, color.g), color.b);
+    float lo = min(min(color.r, color.g), color.b);
+    float light = (hi + lo) * 0.5;
+    float target = legacyCurve(light).a;
+    // Preserve HSL hue/saturation while changing the master luminance curve.
+    float chroma = hi - lo;
+    float saturation = chroma / max(0.00001, 1.0 - abs(2.0 * light - 1.0));
+    saturation *= smoothstep(0.0, 0.1, light) * (1.0 - smoothstep(0.8, 1.0, light));
+    vec3 hue = (color - vec3(light)) / max(chroma, 0.00001);
+    color = vec3(target) + hue * saturation * (1.0 - abs(2.0 * target - 1.0));
+  }
+  if(uCurveChannelsEnabled.r > 0.5) color.r = legacyCurve(color.r).r;
+  if(uCurveChannelsEnabled.g > 0.5) color.g = legacyCurve(color.g).g;
+  if(uCurveChannelsEnabled.b > 0.5) color.b = legacyCurve(color.b).b;
+  return color;
+}
+
+// Android FilterShaders.java:544–607,623–636,683–685 (21f7d109).
+vec3 rgbToHsl(vec3 color) {
+  vec3 hsl;
+  float lo = min(min(color.r, color.g), color.b);
+  float hi = max(max(color.r, color.g), color.b);
+  float delta = hi - lo;
+  hsl.z = (hi + lo) / 2.0;
+  if(delta == 0.0) {
+    hsl.xy = vec2(0.0);
+  } else {
+    hsl.y = hsl.z < 0.5 ? delta / (hi + lo) : delta / (2.0 - hi - lo);
+    vec3 deltaRgb = ((vec3(hi) - color) / 6.0 + delta / 2.0) / delta;
+    if(color.r == hi) hsl.x = deltaRgb.b - deltaRgb.g;
+    else if(color.g == hi) hsl.x = 1.0 / 3.0 + deltaRgb.r - deltaRgb.b;
+    else hsl.x = 2.0 / 3.0 + deltaRgb.g - deltaRgb.r;
+    if(hsl.x < 0.0) hsl.x += 1.0;
+    else if(hsl.x > 1.0) hsl.x -= 1.0;
+  }
+  return hsl;
+}
+
+float hueToRgb(float f1, float f2, float hue) {
+  if(hue < 0.0) hue += 1.0;
+  else if(hue > 1.0) hue -= 1.0;
+  if(6.0 * hue < 1.0) return f1 + (f2 - f1) * 6.0 * hue;
+  if(2.0 * hue < 1.0) return f2;
+  if(3.0 * hue < 2.0) return f1 + (f2 - f1) * (2.0 / 3.0 - hue) * 6.0;
+  return f1;
+}
+
+vec3 hslToRgb(vec3 hsl) {
+  if(hsl.y == 0.0) return vec3(hsl.z);
+  float f2 = hsl.z < 0.5 ? hsl.z * (1.0 + hsl.y) : hsl.z + hsl.y - hsl.y * hsl.z;
+  float f1 = 2.0 * hsl.z - f2;
+  return vec3(hueToRgb(f1, f2, hsl.x + 1.0 / 3.0), hueToRgb(f1, f2, hsl.x), hueToRgb(f1, f2, hsl.x - 1.0 / 3.0));
+}
+
+vec4 curve(float value) {
+  float index = floor(clamp(value / (1.0 / ${NATIVE_CURVES_SAMPLE_COUNT}.0), 0.0, ${NATIVE_CURVES_SAMPLE_COUNT - 1}.0));
+  // Native LINEAR sampling is deliberately NOT at the texel center.
+  return texture2D(uCurvesTexture, vec2(1.0 / ${NATIVE_CURVES_SAMPLE_COUNT}.0 * index, 0.0));
+}
+
+vec3 applyCurves(vec3 color) {
+  if(uNativeProcessing < 0.5) return applyLegacyCurves(color);
+  if(uCurvesEnabled < 0.5) return color;
+  vec3 hsl = rgbToHsl(color);
+  hsl.y = mix(0.0, hsl.y, smoothstep(0.0, 0.1, hsl.z) * (1.0 - smoothstep(0.8, 1.0, hsl.z)));
+  hsl.z = curve(hsl.z).a;
+  color = hslToRgb(hsl);
+  return vec3(curve(color.r).r, clamp(curve(color.g).g, 0.0, 1.0), clamp(curve(color.b).b, 0.0, 1.0));
+}
+
+vec3 tintRaise(vec3 color) {
+  return -0.003671 * color*color*color + 0.3842 * color*color + 0.3764 * color + 0.2515;
+}
+
+vec4 selectiveBlur(vec4 sharp) {
+  if(uBlur.x < 0.5) return sharp;
+  float aspect = uImageSize.y / uImageSize.x;
+  vec2 delta = vTextureCoord - uBlurCenter;
+  delta.y *= aspect;
+  float distanceToCenter = uBlur.x < 1.5 ? length(delta) : abs(dot(delta, vec2(cos(uBlur.w), sin(uBlur.w))));
+  float amount = smoothstep(max(0.0, uBlur.y - uBlur.z), uBlur.y, distanceToCenter);
+  if(amount < 0.001) return sharp;
+  vec4 blurred = vec4(0.0);
+  float weight = 0.0;
+  vec2 radius = vec2(0.012, 0.012 / aspect);
+  for(int x = -2; x <= 2; x++) {
+    for(int y = -2; y <= 2; y++) {
+      float w = exp(-float(x*x+y*y) * 0.5);
+      blurred += texture2D(uSampler, clamp(vTextureCoord + vec2(float(x), float(y)) * radius, 0.0, 1.0)) * w;
+      weight += w;
+    }
+  }
+  return mix(sharp, blurred / weight, amount);
+}
 
 
 // Constants
@@ -79,7 +253,7 @@ const lowp float grainsize = 2.3;
 
 highp vec3 rgbToYuv(vec3 rgb){
     highp float y = 0.299*rgb.r + 0.587*rgb.g + 0.114*rgb.b;
-    return vec3(y, 0.493*(rgb.b-y), 0.877*(rgb.r-y));
+    return vec3(y, (rgb.b-y) / 1.772, (rgb.r-y) / 1.402);
 }
 
 highp vec3 yuvToRgb(vec3 yuv){
@@ -88,9 +262,9 @@ highp vec3 yuvToRgb(vec3 yuv){
     highp float v = yuv.z;
 
     highp vec3 r = vec3(
-        y + 1.0/0.877*v,
-        y - 0.39393*u - 0.58081*v,
-        y + 1.0/0.493*u
+        y + 1.402*v,
+        y - (0.299 * 1.402 / 0.587)*v - (0.114 * 1.772 / 0.587)*u,
+        y + 1.772*u
     );
     return r;
 }
@@ -100,9 +274,8 @@ float colorLuminosity(vec3 color) {
 }
 
 float easeInOutSigmoid(float x, float k) {
-  x = clamp(x, 0.0, 1.0);
-  float sigmoid = 1.0 / (1.0 + exp(-k * (x - 0.5)));
-  return sigmoid;
+  if(x > 0.5) return 1.0 - pow(2.0 - 2.0 * x, 1.0 / (1.0 - k)) * 0.5;
+  return pow(2.0 * x, 1.0 / (1.0 - k)) * 0.5;
 }
 
 highp vec4 rnm(in highp vec2 tc) {
@@ -175,8 +348,11 @@ lowp vec2 coordRot(in lowp vec2 tc, in lowp float angle) {
 
 
 // Adjustments
+// Telegram Android 21f7d109 FilterShaders.toolsFragmentShaderCode / PhotoFilterView getters.
+const float toolEpsilon = 0.005;
 
 vec4 brightness(vec4 color, float value) {
+  if(abs(value) <= toolEpsilon) return color;
   float mag = value * 1.045;
   float exppower = 1.0 + abs(mag);
 
@@ -184,11 +360,9 @@ vec4 brightness(vec4 color, float value) {
     exppower = 1.0 / exppower;
   }
 
-  color.r = 1.0 - pow((1.0 - color.r + 1e-4), exppower);
-  color.g = 1.0 - pow((1.0 - color.g + 1e-4), exppower);
-  color.b = 1.0 - pow((1.0 - color.b + 1e-4), exppower);
-
-  color.rgb = clamp(color.rgb, 0.0, 1.0);
+  color.r = 1.0 - pow(1.0 - color.r, exppower);
+  color.g = 1.0 - pow(1.0 - color.g, exppower);
+  color.b = 1.0 - pow(1.0 - color.b, exppower);
 
   return color;
 }
@@ -199,11 +373,13 @@ vec4 contrast(vec4 color, float value) {
 }
 
 vec4 saturation(vec4 color, float value) {
+  if(value > 0.0) value *= 1.05;
   vec3 grayscale = vec3(colorLuminosity(color.rgb));
-  return vec4(mix(grayscale, color.rgb, 1.0 + value), color.a);
+  return vec4(clamp(mix(grayscale, color.rgb, 1.0 + value), 0.0, 1.0), color.a);
 }
 
 vec4 warmth(vec4 color, float value) {
+  if(abs(value) <= toolEpsilon) return color;
   highp vec3 yuvVec;
 
   if(value > 0.0) {
@@ -217,10 +393,11 @@ vec4 warmth(vec4 color, float value) {
   highp float curveScale = sin(luma * 3.14159);
   yuvColor += 0.375 * value * curveScale * yuvVec;
 
-  return vec4(clamp(yuvToRgb(yuvColor), 0.0, 1.0), color.a);
+  return vec4(yuvToRgb(yuvColor), color.a);
 }
 
 vec4 fade(vec4 color, float value) {
+  if(abs(value) <= toolEpsilon) return color;
   highp vec3 co1 = vec3(-0.9772);
   highp vec3 co2 = vec3(1.708);
   highp vec3 co3 = vec3(-0.1603);
@@ -232,10 +409,7 @@ vec4 fade(vec4 color, float value) {
   highp vec3 comp4 = co4;
 
   highp vec3 finalComponent = comp1 + comp2 + comp3 + comp4;
-  highp vec3 difference = finalComponent - color.rgb;
-  highp vec3 scalingValue = vec3(0.9);
-
-  highp vec3 faded = color.rgb + (difference * scalingValue);
+  highp vec3 faded = finalComponent + color.rgb * 0.1;
 
   return vec4((color.rgb * (1.0 - value)) + (faded * value), color.a);
 }
@@ -245,7 +419,7 @@ vec4 highlights(vec4 color, float highlights, float shadows) {
 
   mediump float shadow = clamp((pow(hsLuminance, 1.0 / shadows) + (-0.76) * pow(hsLuminance, 2.0 / shadows)) - hsLuminance, 0.0, 1.0);
   mediump float highlight = clamp((1.0 - (pow(1.0 - hsLuminance, 1.0 / (2.0 - highlights)) + (-0.8) * pow(1.0 - hsLuminance, 2.0 / (2.0 - highlights)))) - hsLuminance, -1.0, 0.0);
-  lowp vec3 hsresult = vec3(0.0, 0.0, 0.0) + ((hsLuminance + shadow + highlight) - 0.0) * ((color.rgb - vec3(0.0, 0.0, 0.0)) / (hsLuminance - 0.0));
+  lowp vec3 hsresult = ((hsLuminance + shadow + highlight)) * (color.rgb / max(hsLuminance, 0.00001));
 
   mediump float contrastedLuminance = ((hsLuminance - 0.5) * 1.5) + 0.5;
   mediump float whiteInterp = contrastedLuminance * contrastedLuminance * contrastedLuminance;
@@ -261,6 +435,7 @@ vec4 highlights(vec4 color, float highlights, float shadows) {
 }
 
 vec4 vignette(vec4 color, float value) {
+  if(abs(value) <= toolEpsilon) return color;
   vec2 coord = vTextureCoord.xy;
 
   const lowp float midpoint = 0.7;
@@ -273,7 +448,7 @@ vec4 vignette(vec4 color, float value) {
 }
 
 vec4 grain(vec4 color, float value) {
-  if(value < 0.001) return color;
+  if(abs(value) <= toolEpsilon) return color;
   vec2 coord = vTextureCoord.xy;
 
   highp vec3 rotOffset = vec3(1.425, 3.892, 5.835);
@@ -293,7 +468,7 @@ vec4 grain(vec4 color, float value) {
 vec4 sharpen(float value) {
   vec2 coord = vTextureCoord.xy;
 
-  vec2 step = 1.0 / uResolution.xy;
+  vec2 step = 1.0 / uImageSize.xy;
 
   vec3 texA = texture2D( uSampler, coord + vec2(-step.x, -step.y) * 1.5 ).rgb;
   vec3 texB = texture2D( uSampler, coord + vec2( step.x, -step.y) * 1.5 ).rgb;
@@ -313,16 +488,38 @@ vec4 sharpen(float value) {
 void main(void) {
   vec4 color = texture2D(uSampler, vTextureCoord);
 
-  color = sharpen(uSharpen * 0.45 + uEnhance * .15);
-  color = grain(color, uGrain * 0.04);
-  color = saturation(color, uSaturation + uEnhance * .2);
-  color = warmth(color, uWarmth);
-  color = fade(color, uFade);
+  if(uOriginal > 0.5) {
+    gl_FragColor = color;
+    return;
+  }
+
+  // Original preview supplies zero adjustments: bypass every stage, including sharpening.
+  if(uEnhance == 0.0 && uSharpen == 0.0 && uBrightness == 0.0 && uContrast == 0.0 &&
+     uSaturation == 0.0 && uWarmth == 0.0 && uFade == 0.0 && uShadows == 0.0 &&
+     uHighlights == 0.0 && uVignette == 0.0 && uGrain == 0.0 && uBlur.x < 0.5 &&
+     uCurvesEnabled < 0.5 && uTintShadows.a == 0.0 && uTintHighlights.a == 0.0) {
+    gl_FragColor = color;
+    return;
+  }
+
+  // Still approximate: source-based blur/sharpen and Enhance's coupled preset are not
+  // Android's skin / histogram Enhance / sharpen / tools / final selective-blur passes.
+  // Versioned photos already sharpened into RGBA8; native video skips sharpen.
+  // Enhance and selective blur remain legacy approximations in this slice.
+  color = selectiveBlur(uNativeProcessing > 0.5 ? color : sharpen(uSharpen * 0.45 + uEnhance * .15));
+  color.rgb = applyCurves(color.rgb);
 
   color = highlights(color, (uHighlights + uEnhance * 0.15) * 0.75 + 1.0, (uShadows - uEnhance * 0.075) * 0.55 + 1.0);
   color = contrast(color, uContrast + uEnhance * 0.1);
+  color = fade(color, uFade);
+  color = saturation(color, uSaturation + uEnhance * .2);
+
+  color.rgb = clamp(mix(color.rgb, mix(color.rgb, tintRaise(color.rgb), uTintShadows.rgb), uTintShadows.a), 0.0, 1.0);
+  color.rgb = clamp(mix(color.rgb, mix(color.rgb, 1.0 - tintRaise(1.0 - color.rgb), 1.0 - uTintHighlights.rgb), uTintHighlights.a), 0.0, 1.0);
 
   color = brightness(color, uBrightness + uEnhance * .25);
+  color = warmth(color, uWarmth);
+  color = grain(color, uGrain * 0.04);
   color = vignette(color, uVignette);
 
   gl_FragColor = color;

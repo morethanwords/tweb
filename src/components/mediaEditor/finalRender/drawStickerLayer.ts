@@ -12,17 +12,14 @@ export default function drawStickerLayer(
   ratio: number,
   densityAware = true
 ) {
-  const {editorState: {stickersLayersInfo, pixelRatio}} = context;
-
-  const {container} = stickersLayersInfo[layer.id];
-  const stickerChild = container?.lastElementChild;
-  if(!stickerChild) return;
+  const {editorState: {pixelRatio}} = context;
 
   const size = STICKER_SIZE * layer.scale * (densityAware ? pixelRatio : 1);
 
   ctx.save();
   ctx.translate(layer.position[0], layer.position[1]);
   ctx.rotate(layer.rotation);
+  if(layer.stickerFlip) ctx.scale(-1, 1);
 
   const [w, h] = snapToViewport(ratio, size, size);
 

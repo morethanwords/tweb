@@ -1,0 +1,12 @@
+.media-editor__text-line,
+.media-editor__text-layer-layout > div {
+  position: relative;
+  box-sizing: border-box;
+  padding: 0 var(--text-line-padding, .2em);
+  min-height: 1.33em;
+  min-width: var(--text-line-min-width, 0);
+  width: max-content;
+  // Physical alignment belongs to the text, not to the interface direction.
+  margin-left: var(--text-line-margin-left);
+  margin-right: var(--text-line-margin-right);
+}

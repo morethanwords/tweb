@@ -265,6 +265,13 @@ export type State = {
   authState: AuthState,
   /** Who it is kept for: Web A signs other users in and out of the same slot (see loadState) */
   userId?: UserId,
+  /** Android photo-editor preference, account-local; absence is the v1 default. */
+  androidEditorPreferences?: {
+    version: 1;
+    filledShapes: boolean;
+    text?: {font?: string; style?: string; alignment?: string; color?: string};
+    customColors?: string[];
+  },
   /** Key: `getPinnedMessagesKey(peerId, threadId)` — thread-scoped in a forum topic. */
   hiddenPinnedMessages: {[peerIdOrThreadKey: string]: number},
   /** Key: a history storage's (a topic's is its own), value: the message of the bot keyboard the user closed there. */
@@ -658,6 +665,7 @@ export const STATE_INIT: State = {
     _: IS_MOBILE ? 'authStateSignIn' : 'authStateSignQr'
   },
   userId: undefined,
+  androidEditorPreferences: undefined,
   hiddenPinnedMessages: {},
   closedReplyKeyboards: {},
   droppedForceReplies: {},

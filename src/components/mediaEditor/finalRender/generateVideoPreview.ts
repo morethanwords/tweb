@@ -1,10 +1,12 @@
 import {unwrap} from 'solid-js/store';
+import {prepareImageLayerDrawing} from '@components/mediaEditor/imageLayer/render';
 import {useCropOffset} from '@components/mediaEditor/canvas/useCropOffset';
 import useProcessPoint from '@components/mediaEditor/canvas/useProcessPoint';
 import {useMediaEditorContext} from '@components/mediaEditor/context';
 import {snapToViewport} from '@components/mediaEditor/utils';
 import drawStickerLayer from '@components/mediaEditor/finalRender/drawStickerLayer';
 import drawTextLayer from '@components/mediaEditor/finalRender/drawTextLayer';
+import drawShapeLayer from '@components/mediaEditor/finalRender/drawShapeLayer';
 
 
 type Args = {
@@ -17,7 +19,7 @@ export async function generateVideoPreview({scaledWidth, scaledHeight}: Args) {
 
   const {
     editorState: {
-      canvasSize: [cw, ch], imageCanvas, brushCanvas, currentTab, stickersLayersInfo, finalTransform: {scale}
+      canvasSize: [cw, ch], imageCanvas, brushCanvas, currentTab, stickersLayersInfo, pixelRatio, finalTransform: {scale}
     },
     mediaState: {
       resizableLayers, rotation
@@ -57,8 +59,13 @@ export async function generateVideoPreview({scaledWidth, scaledHeight}: Args) {
     } : undefined
   }));
 
+  const images = await prepareImageLayerDrawing(context, processedLayers);
+  try {
   processedLayers.forEach((layer) => {
+    images.draw(mirrorCtx, layer, pixelRatio);
     if(layer.type === 'text') drawTextLayer(context, mirrorCtx, layer, false);
+    // Shapes use source-image pixels; this preview canvas uses CSS pixels.
+    if(layer.type === 'shape') drawShapeLayer(mirrorCtx, {...layer, scale: layer.scale / pixelRatio});
 
     if(layer.type === 'sticker') {
       const {container} = stickersLayersInfo[layer.id];
@@ -77,6 +84,9 @@ export async function generateVideoPreview({scaledWidth, scaledHeight}: Args) {
       drawStickerLayer(context, mirrorCtx, layer, stickerChild, ratio, false);
     }
   });
+  } finally {
+    images.release();
+  }
 
   if(isCropping) {
     previewCtx.drawImage(

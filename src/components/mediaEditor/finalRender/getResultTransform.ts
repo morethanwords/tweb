@@ -2,6 +2,7 @@ import {FinalTransform} from '@components/mediaEditor/canvas/useFinalTransform';
 import {useCropOffset} from '@components/mediaEditor/canvas/useCropOffset';
 import {MediaEditorContextValue} from '@components/mediaEditor/context';
 import {getSnappedViewportsScale} from '@components/mediaEditor/utils';
+import {getDesktopCropOutputView} from '@components/mediaEditor/native/desktopCropExport';
 
 export type GetResultTransformArgs = {
   context: MediaEditorContextValue;
@@ -20,6 +21,11 @@ export default function getResultTransform({
   imageHeight,
   cropOffset
 }: GetResultTransformArgs): FinalTransform {
+  const desktop = getDesktopCropOutputView(context, scaledWidth, scaledHeight, [imageWidth, imageHeight]);
+  if(desktop) {
+    return {...desktop.transform, translation: [desktop.transform.translation[0] - scaledWidth / 2,
+      desktop.transform.translation[1] - scaledHeight / 2]};
+  }
   const {
     editorState: {canvasSize},
     mediaState: {scale, translation, rotation, flip, currentImageRatio}

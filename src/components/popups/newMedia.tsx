@@ -77,6 +77,7 @@ import {unwrapSolidElement} from '@helpers/solid/wrapSolidComponent';
 import showMakePaidPopup from '@components/popups/makePaid';
 import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
 import Icon from '@components/icon';
+import PeerTitle from '@components/peerTitle';
 import {MediaEditorFinalResult, MediaEditorFinalResultPayload} from '@components/mediaEditor/finalRender/createFinalResult';
 import RenderProgressCircle from '@components/mediaEditor/renderProgressCircle';
 import {delay} from '@components/mediaEditor/utils';
@@ -94,7 +95,7 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import ButtonMenu, {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import contextMenuController from '@helpers/contextMenuController';
 import createContextMenu from '@helpers/dom/createContextMenu';
-import {positionMenuTrigger} from '@helpers/positionMenu';
+import {positionFloatingMenu} from '@helpers/positionMenu';
 import {makeDateFromTimestamp} from '@helpers/date/makeDateFromTimestamp';
 import Section from '@components/section';
 import {canAddMultipleRichMessageMedia, isVisualRichMessageMimeType} from '@helpers/files/richMessageMediaInsertPolicy';
@@ -302,6 +303,14 @@ export default function showNewMediaPopup(
     return file;
   }));
 
+  // Keep documents, albums, GIFs and paid media on their existing send surface.
+  const directPhotoEditor = window.matchMedia('(max-width: 800px)').matches &&
+    willAttachType === 'media' && files.length === 1 && /^image\/(jpeg|png|webp)$/.test(files[0].type) &&
+    !chat.input.editMessage && !richMessageInsert;
+  const editorCaption = document.createElement('div');
+  editorCaption.classList.add('media-editor-attachment-caption');
+  const editorTitle = directPhotoEditor ? new PeerTitle({peerId: chat.peerId, threadId: chat.threadId}).element : undefined;
+
   // * every file given was empty: there is nothing to send
   if(inputFiles.length && !files.length) {
     return;
@@ -491,12 +500,12 @@ export default function showNewMediaPopup(
           messageInputField = inputField;
         },
         btnConfirm,
-        sendOnShortcut: true,
-        ai: chat.input.getAiEditorContext()
+        sendOnShortcut: !directPhotoEditor,
+        ai: directPhotoEditor ? undefined : chat.input.getAiEditorContext()
       });
 
       Portal({
-        mount: containerEl,
+        mount: directPhotoEditor ? editorCaption : containerEl,
         children
       });
     });
@@ -1068,10 +1077,12 @@ export default function showNewMediaPopup(
       }
 
       const isBad: (LangPackKey | boolean)[] = sendFileParams.map((params) => {
-        const isVideoFile = () => VIDEO_MIME_TYPES_SUPPORTED.has(getFileMimeType(params.file) as any) || canConvertMov(params.file);
+        const file = prepareEditedFileForSending(params) || params.file;
+        const mimeType = getFileMimeType(file);
+        const isVideoFile = () => VIDEO_MIME_TYPES_SUPPORTED.has(mimeType as any) || canConvertMov(file);
         const a: [Set<string> | (() => boolean), LangPackKey, ChatRights][] = [
           [AUDIO_MIME_TYPES_SUPPORTED, 'GlobalAttachAudioRestricted', 'send_audios'],
-          [() => !isMediaFile(params.file), 'GlobalAttachDocumentsRestricted', 'send_docs']
+          [() => !isMediaFile(file), 'GlobalAttachDocumentsRestricted', 'send_docs']
         ];
 
         if(isMedia) {
@@ -1083,7 +1094,7 @@ export default function showNewMediaPopup(
         }
 
         const found = a.find(([verify]) => {
-          return typeof(verify) === 'function' ? verify() : verify.has(getFileMimeType(params.file));
+          return typeof(verify) === 'function' ? verify() : verify.has(mimeType);
         });
 
         if(found) {
@@ -1734,7 +1745,9 @@ export default function showNewMediaPopup(
           listenForClick: true,
           middleware: params.middlewareHelper.get(),
           buttons: [],
-          position: (_, menu) => positionMenuTrigger(moreButton, menu, 'top-right'),
+          position: (_, menu) => {
+            positionFloatingMenu(moreButton.getBoundingClientRect(), menu, 'top-start');
+          },
           filterButtons: async() => {
             await showActions(true);
             const actions = activeActionsMenu;
@@ -2033,11 +2046,80 @@ export default function showNewMediaPopup(
         chat.input.setDraft(wasDraft, false, true);
       }
     });
-    setShow(true);
+    if(directPhotoEditor && !willAttach.stars) {
+      openDirectPhotoEditor();
+    } else {
+      if(directPhotoEditor) containerEl.append(editorCaption);
+      setShow(true);
+    }
 
     const resolveOpenAnimation = () => openAnimationDeferred.resolve();
     listenerSetter.add(context.element)('transitionend', resolveOpenAnimation, {once: true});
     pause(400).then(resolveOpenAnimation); // reduced motion has no transition to end
+  }
+
+  async function openDirectPhotoEditor() {
+    const {openMediaEditorFromMediaRaw} = await import('@components/mediaEditor');
+    const params = willAttach.sendFileDetails[0];
+    const file = params.file as File;
+    const canImageResultInGIF = file.size <= MAX_EDITABLE_VIDEO_SIZE && await supportsVideoEncoding();
+    if(context.destroyed) return;
+    const mediaSrc = params.objectURLs.create(file);
+    let finished = false;
+    isMediaEditorOpen = true;
+    updateConfirmLock();
+    btnConfirm.hidden = true;
+    btnConfirm.style.display = 'none';
+    openMediaEditorFromMediaRaw({
+      mediaType: 'image',
+      mediaSrc,
+      getMediaBlob: async() => file,
+      managers: context.managers,
+       attachmentCaption: editorCaption,
+       attachmentTitle: editorTitle,
+      canFinishWithoutChanges: true,
+      canImageResultInGIF,
+      imageType: 'image/jpeg',
+      imageQuality: file.size > PHOTO_HEAVY_BYTES ? PHOTO_COMPRESSED_QUALITY : undefined,
+      onEditFinish: (result) => {
+        result.animatedPreview?.remove();
+        params.editResult = result;
+        finished = true;
+      },
+      onClose: () => {
+        params.objectURLs.release(mediaSrc);
+        if(!finished) {
+          context.destroy();
+          return;
+        }
+        const sendEditedPhoto = async() => {
+          if(params.editResult.isVideo) {
+            try {
+              await params.editResult.getResult();
+            } catch(error) {
+              params.editResult = undefined;
+              throw error;
+            }
+            if(context.destroyed) return;
+            // Populate the duration, poster and GIF flag before the direct send.
+            await attachFiles();
+          }
+          if(!context.destroyed) await send();
+        };
+        sendEditedPhoto().catch((err) => {
+          console.error('media editor attachment send error', err);
+          if(!context.destroyed) toastNew({langPackKey: 'Error.AnError'});
+        }).finally(() => {
+          if(context.destroyed) return;
+          isMediaEditorOpen = false;
+          updateConfirmLock();
+          containerEl.append(editorCaption);
+          btnConfirm.hidden = false;
+          btnConfirm.style.display = '';
+          setShow(true);
+        });
+      }
+    });
   }
 
   function appendMediaToContainer(params: SendFileParams) {
@@ -2313,7 +2395,7 @@ export default function showNewMediaPopup(
 
     canShowActions = false;
 
-    Promise.all(promises).then(() => {
+    return Promise.all(promises).then(() => {
       mediaContainer.replaceChildren();
       // * destroy the old items only AFTER they've left the DOM — destroying at
       // * the start of the re-render blanks the still-visible media out for the

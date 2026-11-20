@@ -1,9 +1,10 @@
 import {HistoryItem, MediaEditorState} from '@components/mediaEditor/context';
 import {FontInfo, FontKey, NumberPair, ResizableLayer, TextLayerInfo} from '@components/mediaEditor/types';
-import StickerType from '@config/stickerType';
-import {IS_FIREFOX} from '@environment/userAgent';
+import {nativeFontInfoMap} from '@components/mediaEditor/fonts';
+import {classifyEditorDocument} from '@components/mediaEditor/animatedDocument';
 import {hexaToHsla} from '@helpers/color';
 import {logger} from '@lib/logger';
+import {unwrap} from 'solid-js/store';
 
 export const log = logger('Media editor');
 
@@ -78,6 +79,10 @@ export function processHistoryItem(item: HistoryItem, mediaState: any) {
     obj = obj[path.pop()];
 
   let key = path.pop();
+  // History owns its snapshots. Replayed objects must not become mutable live payloads.
+  // Leave primitives (including removal markers and symbols) alone.
+  const oldValue = item.oldValue !== null && typeof item.oldValue === 'object' ?
+    structuredClone(unwrap(item.oldValue)) : item.oldValue;
 
   if(obj instanceof Array) {
     key = key as number;
@@ -85,13 +90,13 @@ export function processHistoryItem(item: HistoryItem, mediaState: any) {
     if(key === -1) key = obj.length;
 
     if(item.newValue === HistoryItem.RemoveArrayItem)
-      obj.splice(key, 0, item.oldValue);
+      obj.splice(key, 0, oldValue);
     else if(item.oldValue === HistoryItem.RemoveArrayItem)
       obj.splice(key, 1);
     else
-      obj[key] = item.oldValue;
+      obj[key] = oldValue;
   } else {
-    obj[key] = item.oldValue;
+    obj[key] = oldValue;
   }
 }
 
@@ -105,9 +110,7 @@ export function traverseObjectDeep(obj: any) {
  * WebGL: a blocked GPU, a headless browser) has nothing to free; throwing here stopped the editor's
  * cleanup halfway, and the editor could not be closed.
  */
-export function cleanupWebGl(gl: WebGLRenderingContext | null) {
-  gl?.getExtension('WEBGL_lose_context')?.loseContext();
-}
+export {cleanupWebGl} from '@helpers/webgl/cleanupWebGl';
 
 export const availableQualityHeights = [
   240,
@@ -133,12 +136,12 @@ export function snapToAvailableQuality(videoHeight: number) {
 
 export function checkIfHasAnimatedStickers(layers: ResizableLayer[]) {
   return !!layers.find((layer) => {
-    const stickerType = layer.sticker?.sticker;
-    return stickerType === StickerType.Lottie || (!IS_FIREFOX && stickerType === StickerType.WebM);
+    return classifyEditorDocument(layer.sticker).animated;
   });
 };
 
 export const fontInfoMap: Record<FontKey, FontInfo> = {
+  ...nativeFontInfoMap,
   roboto: {
     fontFamily: '\'Roboto\'',
     fontWeight: 500,

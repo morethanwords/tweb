@@ -3,10 +3,9 @@ import {JSX, splitProps} from 'solid-js';
 import {IconTsx} from '@components/iconTsx';
 import {i18n} from '@lib/langPack';
 
-import {animateToNewRotationOrRatio} from '@components/mediaEditor/canvas/animateToNewRotationOrRatio';
+import useCropActions from '@components/mediaEditor/canvas/useCropActions';
 import {useMediaEditorContext} from '@components/mediaEditor/context';
 import LargeButton, {MediaEditorLargeButtonProps} from '@components/mediaEditor/largeButton';
-import {withCurrentOwner} from '@helpers/solid/withCurrentOwner';
 
 const ratioRects = {
   '1x1': () => <rect x="4" y="4" width="16" height="16" rx="2" stroke="white" stroke-width="1.66" />,
@@ -47,15 +46,10 @@ function Item(
 }
 
 export default function CropTab() {
-  const {editorState, mediaState, actions, isEditingForAvatar} = useMediaEditorContext();
+  const {editorState, isEditingForAvatar} = useMediaEditorContext();
+  const {setAspectRatio: onRatioClick} = useCropActions();
 
   const isActive = (what?: string) => editorState.fixedImageRatioKey === what;
-
-  const onRatioClick = withCurrentOwner((ratio?: string) => {
-    editorState.fixedImageRatioKey = ratio;
-    animateToNewRotationOrRatio(mediaState.rotation);
-    actions.resetRotationWheel();
-  });
 
   return (
     <>

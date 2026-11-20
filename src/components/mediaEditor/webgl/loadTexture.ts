@@ -2,6 +2,7 @@ import {Middleware} from '@helpers/middleware';
 import loadDecodedImage from '@helpers/dom/loadDecodedImage';
 import createVideoForDrawing from '@components/mediaEditor/canvas/createVideoForDrawing';
 import {MediaType} from '@components/mediaEditor/types';
+import configureBoundTexture from '@components/mediaEditor/webgl/configureBoundTexture';
 
 
 type LoadTextureArgs = {
@@ -53,10 +54,7 @@ export async function loadTexture({gl, mediaSrc, mediaType, videoTime, waitToSee
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, media.video || media.image);
 
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  configureBoundTexture(gl);
 
   return {media, texture};
 }

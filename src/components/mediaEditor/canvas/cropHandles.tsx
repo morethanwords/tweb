@@ -1,21 +1,32 @@
 import _getConvenientPositioning from '@components/mediaEditor/canvas/getConvenientPositioning';
+import getCropCoverageScale from '@components/mediaEditor/canvas/getCropCoverageScale';
 import {useCropOffset} from '@components/mediaEditor/canvas/useCropOffset';
 import {useMediaEditorContext} from '@components/mediaEditor/context';
 import {NumberPair} from '@components/mediaEditor/types';
 import {snapToViewport} from '@components/mediaEditor/utils';
-import SwipeHandler from '@components/swipeHandler';
-import {getOverlayRoot} from '@helpers/appWindow';
+import SwipeHandler, {ZoomDetails} from '@components/swipeHandler';
+import {getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import {animateValue} from '@helpers/animateValue';
+import liteMode from '@helpers/liteMode';
 import {lerp, lerpArray} from '@helpers/lerp';
 import throttle from '@helpers/schedulers/throttle';
 import {withCurrentOwner} from '@helpers/solid/withCurrentOwner';
-import {batch, createEffect, createMemo, createSignal, on, onCleanup, onMount} from 'solid-js';
+import {batch, createEffect, createMemo, createSignal, on, onCleanup, onMount, Show} from 'solid-js';
 import {modifyMutable, produce} from 'solid-js/store';
+import DesktopCropHandles from '@components/mediaEditor/canvas/desktopCropHandles';
+import SpotlightMask from '@components/mediaEditor/canvas/cropSpotlight';
+import {isDesktopCropGeometryActive} from '@components/mediaEditor/native/desktopCropGeometry';
 
 
 const MAX_SCALE = 20;
 
 export default function CropHandles() {
+  const context = useMediaEditorContext();
+  return <Show when={isDesktopCropGeometryActive(context)} fallback={<LegacyCropHandles />}><DesktopCropHandles /></Show>;
+}
+
+function LegacyCropHandles() {
+  const context = useMediaEditorContext();
   const {editorState, mediaState, isEditingForAvatar, isEditingForumAvatar} = useMediaEditorContext();
 
   const isCropping = () => editorState.currentTab === 'crop';
@@ -63,6 +74,16 @@ export default function CropHandles() {
 
     cancelSizeAnimation?.();
 
+    if(!liteMode.isAvailable('motion')) {
+      batch(() => {
+        setDiff(targetDiff);
+        setLeftTopDiff(targetLeftTopDiff);
+        setLeftTop(targetLeftTop);
+        setSize(targetSize);
+      });
+      return;
+    }
+
     cancelSizeAnimation = animateValue(0, 1, 200, (progress) => {
       batch(() => {
         setDiff(lerpArray(initialDiff, targetDiff, progress) as NumberPair);
@@ -107,10 +128,53 @@ export default function CropHandles() {
     let initialScale: number;
     let initialTranslation: NumberPair;
     let firstTarget: EventTarget;
+    let pinch: {scale: number; translation: NumberPair; center: NumberPair};
+    const ownerDocument = cropArea.ownerDocument;
+
+    // SwipeHandler supplies cumulative factors from the second touch down.
+    // Snapshot then (not at the first move), including any preceding one-finger pan.
+    const startPinch = (event: TouchEvent) => {
+      if(!isCropping() || isEditingForAvatar || getAppWindow().innerWidth > 800 ||
+        event.touches.length !== 2 || firstTarget !== cropArea) return;
+      const box = cropArea.getBoundingClientRect();
+      const win = ownerDocument.defaultView;
+      pinch = {
+        scale: mediaState.scale,
+        translation: [...mediaState.translation],
+        // ZoomDetails centers are page coordinates; crop geometry is physical,
+        // not reading-order geometry, including in RTL and Document PiP.
+        center: [box.left + win.scrollX + box.width / 2, box.top + win.scrollY + box.height / 2]
+      };
+    };
+
+    const zoomPinch = (details: ZoomDetails) => {
+      if(!pinch || !isCropping() || !editorState.mediaSize || !(details.zoomFactor > 0)) return;
+      const pivot: NumberPair = [details.initialCenterX - pinch.center[0], details.initialCenterY - pinch.center[1]];
+      let scale = Math.min(MAX_SCALE, pinch.scale * details.zoomFactor);
+      // Fit in the image's unrotated axes using the existing crop bounds helper.
+      // This is the minimum coverage scale, not a hard-coded scale=1: a locked
+      // crop and a straightened/quarter-turned photo have different minima.
+      const bounds = getConvenientPositioning({scale, rotation: mediaState.rotation, translation: [0, 0]});
+      scale = Math.min(MAX_SCALE, scale * getCropCoverageScale(bounds));
+      const factor = scale / pinch.scale;
+      const translation: NumberPair = [
+        pivot[0] + (pinch.translation[0] - pivot[0]) * factor + details.dragOffsetX,
+        pivot[1] + (pinch.translation[1] - pivot[1]) * factor + details.dragOffsetY
+      ];
+      const positioned = getConvenientPositioning({scale, rotation: mediaState.rotation, translation});
+      const dx = Math.max(0, positioned.cropMaxX - positioned.imageMaxX) - Math.max(0, positioned.imageMinX - positioned.cropMinX);
+      const dy = Math.max(0, positioned.cropMaxY - positioned.imageMaxY) - Math.max(0, positioned.imageMinY - positioned.cropMinY);
+      const sin = Math.sin(mediaState.rotation), cos = Math.cos(mediaState.rotation);
+      batch(() => {
+        mediaState.scale = scale;
+        mediaState.translation = [translation[0] + dx * cos - dy * sin, translation[1] + dy * cos + dx * sin];
+      });
+    };
 
     const resizeSwipeHandlers = multipliers.map(({el, left, top}) => {
       return new SwipeHandler({
         element: el,
+        verifyTouchTarget: event => !(context.canUseDesktopExpandedCrop && 'ctrlKey' in event && event.ctrlKey),
         setCursorTo: getOverlayRoot(),
         onStart() {
           initialScale = mediaState.scale;
@@ -212,8 +276,9 @@ export default function CropHandles() {
           if(firstTarget !== el) return (firstTarget = undefined);
           firstTarget = undefined;
 
-          const newWidth = size()[0] + diff()[0],
-            newHeight = size()[1] + diff()[1];
+          const resizeDiff = diff();
+          const newWidth = size()[0] + resizeDiff[0],
+            newHeight = size()[1] + resizeDiff[1];
           const newRatio = newWidth / newHeight;
 
           const upScale = Math.min(cropOffset().width / newWidth, cropOffset().height / newHeight);
@@ -225,24 +290,22 @@ export default function CropHandles() {
 
           const targetScale = mediaState.scale * upScale;
           const targetTranslation = [
-            upScale * (mediaState.translation[0] + -diff()[0] * left * 0.5),
-            upScale * (mediaState.translation[1] + -diff()[1] * top * 0.5)
+            upScale * (mediaState.translation[0] + -resizeDiff[0] * left * 0.5),
+            upScale * (mediaState.translation[1] + -resizeDiff[1] * top * 0.5)
           ];
 
-          animateValue(
-            0,
-            1,
-            200,
-            (progress) => {
-              modifyMutable(mediaState, produce((state) => {
-                state.scale = lerp(initialScale, targetScale, progress);
-                state.translation = lerpArray(initialTranslation, targetTranslation, progress) as NumberPair;
-              }));
-            },
-            {
-              onEnd: () => editorState.isMoving = false
-            }
-          );
+          const updateTransform = (progress: number) => {
+            modifyMutable(mediaState, produce((state) => {
+              state.scale = lerp(initialScale, targetScale, progress);
+              state.translation = lerpArray(initialTranslation, targetTranslation, progress) as NumberPair;
+            }));
+          };
+          if(liteMode.isAvailable('motion')) {
+            animateValue(0, 1, 200, updateTransform, {onEnd: () => editorState.isMoving = false});
+          } else {
+            updateTransform(1);
+            editorState.isMoving = false;
+          }
 
           el.classList.remove('media-editor__crop-handles-circle--anti-flicker');
         }
@@ -251,11 +314,16 @@ export default function CropHandles() {
 
     const translationSwipeHandler = new SwipeHandler({
       element: cropArea,
+      // SwipeHandler also wires trackpad zoom when onZoom is present. Leave
+      // desktop wheel input entirely to the editor's existing wheel listener.
+      verifyTouchTarget: event => isCropping() && event.type !== 'wheel',
+      onZoom: zoomPinch,
       onStart() {
         initialTranslation = mediaState.translation;
         editorState.isMoving = true;
       },
       onSwipe(xDiff, yDiff, e) {
+        if(pinch) return;
         if(!firstTarget) firstTarget = e.target;
         if(firstTarget !== cropArea) return;
 
@@ -285,13 +353,25 @@ export default function CropHandles() {
         boundDiff = [boundDiff[0] / resistance, boundDiff[1] / resistance];
       },
       onReset() {
+        if(pinch) {
+          pinch = undefined;
+          firstTarget = undefined;
+          editorState.isMoving = false;
+          return;
+        }
         if(firstTarget !== cropArea) return (firstTarget = undefined);
         firstTarget = undefined;
 
         const prevTranslation = mediaState.translation;
+        const targetTranslation: NumberPair = [prevTranslation[0] - boundDiff[0], prevTranslation[1] - boundDiff[1]];
+        if(!liteMode.isAvailable('motion')) {
+          mediaState.translation = targetTranslation;
+          editorState.isMoving = false;
+          return;
+        }
         animateValue(
           prevTranslation,
-          [prevTranslation[0] - boundDiff[0], prevTranslation[1] - boundDiff[1]] as const,
+          targetTranslation,
           120,
           (value) => mediaState.translation = value,
           {
@@ -309,8 +389,22 @@ export default function CropHandles() {
     };
 
     cropArea.addEventListener('wheel', wheelListener);
+    cropArea.addEventListener('touchstart', startPinch, {capture: true, passive: true});
+    const cancelTouch = () => translationSwipeHandler.reset();
+    ownerDocument.addEventListener('touchcancel', cancelTouch);
+    const stopCropGesture = () => {
+      // Reset may call onReset; pinch coverage is already clamped synchronously.
+      translationSwipeHandler.reset();
+      pinch = undefined;
+    };
+    createEffect(on(isCropping, cropping => {
+      if(!cropping) stopCropGesture();
+    }, {defer: true}));
 
     onCleanup(() => {
+      cropArea.removeEventListener('wheel', wheelListener);
+      cropArea.removeEventListener('touchstart', startPinch, true);
+      ownerDocument.removeEventListener('touchcancel', cancelTouch);
       resizeSwipeHandlers.forEach((handler) => handler.removeListeners());
       translationSwipeHandler.removeListeners();
     });
@@ -407,6 +501,7 @@ export default function CropHandles() {
         ref={cropArea}
         class="media-editor__crop-handles"
         classList={{
+          'media-editor__crop-handles--native': !isEditingForAvatar,
           'media-editor__crop-handles--hidden': !isCropping()
         }}
         style={{
@@ -437,38 +532,3 @@ export default function CropHandles() {
     </>
   );
 }
-
-const SpotlightMask = (props: {
-  id: string;
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-  roundness?: number;
-}) => {
-  const {editorState} = useMediaEditorContext();
-
-  return (
-    <>
-      <div
-        class="media-editor__spotlight-background"
-        style={{
-          mask: `url(#${props.id})`
-        }}
-      />
-      <svg class="media-editor__spotlight-mask-svg" width="0" height="0">
-        <mask id={props.id}>
-          <rect x="0" y="0" width={editorState.canvasSize?.[0] + 1} height={editorState.canvasSize?.[1] + 1} fill="white"/>
-          <rect
-            x={props.left}
-            y={props.top}
-            width={props.width}
-            height={props.height}
-            rx={props.roundness}
-            fill="black"
-          />
-        </mask>
-      </svg>
-    </>
-  );
-};

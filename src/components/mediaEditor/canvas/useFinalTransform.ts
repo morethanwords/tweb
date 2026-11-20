@@ -1,11 +1,14 @@
 import {batch, createEffect, createMemo, createSignal, on, onCleanup} from 'solid-js';
 import {modifyMutable, produce} from 'solid-js/store';
 import {animateValue} from '@helpers/animateValue';
+import liteMode from '@helpers/liteMode';
 import {lerp, lerpArray} from '@helpers/lerp';
 import {useMediaEditorContext} from '@components/mediaEditor/context';
 import {NumberPair} from '@components/mediaEditor/types';
 import {getSnappedViewportsScale} from '@components/mediaEditor/utils';
 import {useCropOffset} from '@components/mediaEditor/canvas/useCropOffset';
+import desktopCropSession from '@components/mediaEditor/native/desktopCropSession';
+import {isDesktopCropGeometryActive} from '@components/mediaEditor/native/desktopCropGeometry';
 
 
 export type FinalTransform = {
@@ -13,9 +16,35 @@ export type FinalTransform = {
   translation: NumberPair;
   rotation: number;
   scale: number;
+  transparentOutside?: boolean;
 };
 
 export default function useFinalTransform() {
+  const context = useMediaEditorContext();
+  const active = createMemo(() => isDesktopCropGeometryActive(context));
+  createEffect(on(active, enabled => {
+    if(enabled) useDesktopFinalTransform();
+    else useLegacyFinalTransform();
+  }));
+}
+
+function useDesktopFinalTransform() {
+  const context = useMediaEditorContext();
+  const {editorState} = context;
+  const session = desktopCropSession(context);
+  createEffect(() => {
+    const view = session.view(), size = editorState.canvasSize;
+    if(!view || !size) return;
+    const {transform} = view;
+    Object.assign(editorState.finalTransform, transform, {
+      scale: transform.scale * editorState.pixelRatio,
+      translation: [(transform.translation[0] - size[0] / 2) * editorState.pixelRatio,
+        (transform.translation[1] - size[1] / 2) * editorState.pixelRatio]
+    });
+  });
+}
+
+function useLegacyFinalTransform() {
   const {editorState, mediaState} = useMediaEditorContext();
 
   const cropOffset = useCropOffset();
@@ -27,6 +56,12 @@ export default function useFinalTransform() {
     on(isCropping, () => {
       if(isFirstEffect) {
         isFirstEffect = false;
+        return;
+      }
+
+      if(!liteMode.isAvailable('motion')) {
+        editorState.cropTabAnimationProgress = isCropping() ? 1 : 0;
+        editorState.isMoving = false;
         return;
       }
 
@@ -176,6 +211,7 @@ export default function useFinalTransform() {
     // console.log('cropTranslation', cropTranslation)
 
     modifyMutable(editorState.finalTransform, produce(t => {
+      t.transparentOutside = false;
       t.flip = mediaState.flip,
       t.rotation = mediaState.rotation,
       t.scale = mediaState.scale * editorState.pixelRatio * snappedImageScale * toCropScale;
