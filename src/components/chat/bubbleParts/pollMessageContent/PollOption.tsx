@@ -10,12 +10,13 @@ import clamp from '@helpers/number/clamp';
 import formatNumber from '@helpers/number/formatNumber';
 import {createDelayed} from '@helpers/solid/createDelayed';
 import createMiddleware from '@helpers/solid/createMiddleware';
+import {I18nTsx} from '@helpers/solid/i18n';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
 import {Document, MessageMedia, Photo} from '@layer';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {LocalTextWithEntities} from '@types';
-import {Accessor, createEffect, createMemo, createSignal, JSX, Match, onCleanup, onMount, Show, splitProps, Switch} from 'solid-js';
+import {Accessor, createEffect, createMemo, createSignal, createUniqueId, JSX, Match, onCleanup, onMount, Show, splitProps, Switch} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
 import {InMessageCheckbox} from '../inMessageCheckbox';
@@ -41,14 +42,15 @@ export const PollOption = (props: {
   sticker?: GetStickerMediaResult;
   geo?: MessageMedia.messageMediaGeo | MessageMedia.messageMediaVenue;
   webPage?: GetWebPageMediaResult;
-  clickable?: boolean;
   text: LocalTextWithEntities;
+  groupName: string;
   checked: boolean;
   onToggle: () => void;
   allowMultipleAnswers: boolean;
   hasCorrectAnswer: boolean;
   pollViewerPayload?: DataPollViewerIdxDirectivePayload;
   isPendingVote?: boolean;
+  votePending: boolean;
   hideResults?: boolean;
   initialIdx?: number;
   highlighted?: boolean;
@@ -64,6 +66,16 @@ export const PollOption = (props: {
   let clickableAreaElement: HTMLDivElement;
 
   const isShowingResult = createMemo(() => !!props.result);
+  const canActivate = createMemo(() => !isShowingResult() || props.voteRestricted);
+  const checked = createMemo(() => props.result?.chosen ?? props.checked);
+  const showResultStats = createMemo(() => isShowingResult() && !props.hideResults);
+  const labelId = createUniqueId();
+  const resultId = createUniqueId();
+
+  const activate = () => {
+    if(canActivate() && !props.votePending) props.onToggle();
+  };
+
 
   const [canAnimate, setCanAnimate] = createSignal(false);
 
@@ -121,14 +133,42 @@ export const PollOption = (props: {
         ref={clickableAreaElement}
         class={styles.clickableArea}
         classList={{
-          [styles.pointerDisabled]: isShowingResult() && !props.voteRestricted,
+          [styles.pointerDisabled]: !canActivate(),
           [styles.outgoing]: contextProps.isOutgoing,
           [styles.hovered]: props.highlighted && !props.slowHighlighted
         }}
         use:ripple
-        onClick={props.onToggle}
-      />
-      <div class={styles.checkContainer}>
+        onClick={activate}
+      >
+        <input
+          class='sr-only'
+          type={props.allowMultipleAnswers ? 'checkbox' : 'radio'}
+          name={props.groupName}
+          checked={checked()}
+          tabIndex={canActivate() ? 0 : -1}
+          aria-labelledby={labelId}
+          aria-describedby={showResultStats() ? resultId : undefined}
+          aria-disabled={!canActivate() || props.votePending}
+          onClick={(event) => {
+            event.stopPropagation();
+            if(!canActivate() || props.votePending || props.voteRestricted) {
+              event.preventDefault();
+              activate();
+              return;
+            }
+
+            activate();
+            // A native click toggles checked before firing. Keep it in sync with the vote state.
+            event.currentTarget.checked = checked();
+          }}
+          on:keydown={(event) => {
+            if(event.key !== 'Enter' || event.isComposing) return;
+            event.preventDefault();
+            if(!event.repeat) event.currentTarget.click();
+          }}
+        />
+      </div>
+      <div class={styles.checkContainer} aria-hidden='true'>
         <Transition name='fade'>
           <Switch>
             <Match when={props.isPendingVote}>
@@ -139,7 +179,7 @@ export const PollOption = (props: {
             <Match when={!isShowingResult() || props.hideResults}>
               <InMessageCheckbox
                 class={styles.checkbox}
-                checked={isShowingResult() ? props.result?.chosen : props.checked}
+                checked={checked()}
                 isOutgoing={contextProps.isOutgoing}
                 round={!props.allowMultipleAnswers}
               />
@@ -154,15 +194,21 @@ export const PollOption = (props: {
       </div>
       <div class={styles.pollOptionSpacerFirst}></div>
       <div class={styles.labelRow}>
-        <div class={styles.labelText}>
+        <div class={styles.labelText} id={labelId}>
           <TranslatableMessageTsx
             peerId={contextProps.peerId}
             textWithEntities={{_: 'textWithEntities', text: props.text.text, entities: unwrap(props.text.entities)}}
             richTextOptions={{middleware: createMiddleware().get(), loadPromises: unwrap(contextProps.loadPromises)}}
           />
         </div>
+        <Show when={showResultStats()}>
+          <span class='sr-only' id={resultId}>
+            <I18nTsx key='Chat.Poll.MembersVoted' args={[props.result.voters.toString()]} />
+            {' · '}{percentage()}%
+          </span>
+        </Show>
         <Show when={isShowingResult() && props.result.voters}>
-          <div class={styles.labelStats}>
+          <div class={styles.labelStats} aria-hidden={showResultStats()}>
             <div class={styles.labelNumber}>
               {formatNumber(props.result.voters, 1)}
             </div>
