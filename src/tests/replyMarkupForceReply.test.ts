@@ -1,6 +1,7 @@
 import {AppMessagesManager, HistoryStorage} from '@appManagers/appMessagesManager';
 import {Message, ReplyMarkup} from '@layer';
 import '@helpers/peerIdPolyfill';
+import {makeBotMessage} from '@/tests/helpers/botMessage';
 
 const PEER_ID = 10 as PeerId;
 const BOT_ID = 100 as UserId;
@@ -24,18 +25,7 @@ function makeStorage(): HistoryStorage {
 }
 
 function makeMessage(mid: number, reply_markup: ReplyMarkup): Message.message {
-  return {
-    _: 'message',
-    pFlags: {},
-    id: mid,
-    mid,
-    peerId: PEER_ID,
-    peer_id: {_: 'peerUser', user_id: BOT_ID},
-    from_id: {_: 'peerUser', user_id: BOT_ID},
-    date: 1,
-    message: '',
-    reply_markup
-  } as Message.message;
+  return makeBotMessage(mid, PEER_ID, BOT_ID, reply_markup);
 }
 
 describe('layer 229 force_reply markups', () => {

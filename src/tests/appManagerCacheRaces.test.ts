@@ -1209,7 +1209,8 @@ describe('manager cache race guards', () => {
       storage.key = `${peerId}_history`;
       Object.assign(manager, {
         getMessageFromStorage: (): undefined => undefined,
-        fixDialogUnreadMentionsIfNoMessage: vi.fn()
+        fixDialogUnreadMentionsIfNoMessage: vi.fn(),
+        getDialogOnly: (): undefined => undefined
       });
 
       const promise = manager.getRichMessage(peerId, mid);

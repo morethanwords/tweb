@@ -214,14 +214,20 @@ export default class SlicedArray<T extends ItemType> {
       }
     }
 
+    // * the overlap is cut by value, not by position: the stored part can hold a value the new slice has not (a local
+    // * message between two server ones) or miss one it has, and a count would drop or repeat values at the seam
     if(upperIndex !== -1 && -1 !== lowerIndex) {
 
     } else if(upperIndex !== -1) {  // ([1, 2, 3] | [1, 2, 3, 4, 5]) -> [1, 2, 3, 4, 5]
-      const sliced = slice.slice(foundSlice.length - upperIndex);
-      foundSlice.push(...sliced);
+      const last = foundSlice[foundSlice.length - 1];
+      const from = slice.findIndex((value) => this.compareValue(value, last) < 0);
+      if(from !== -1) {
+        foundSlice.push(...slice.slice(from));
+      }
     } else if(lowerIndex !== -1) {  // ([1, 2, 3] | [-1, 0, 1]) -> [-1, 0, 1, 2, 3]
-      const sliced = slice.slice(0, slice.length - lowerIndex - 1);
-      foundSlice.unshift(...sliced);
+      const first = foundSlice[0];
+      const to = slice.findIndex((value) => this.compareValue(value, first) <= 0);
+      foundSlice.unshift(...slice.slice(0, to === -1 ? slice.length : to));
     } else {
       let insertIndex = 0;
       for(const length = this.slices.length; insertIndex < length; ++insertIndex) { // * maybe should iterate from the end, could be faster ?

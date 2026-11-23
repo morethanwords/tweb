@@ -347,8 +347,11 @@ export class ApiFileManager extends AppManager {
       }
     }
 
-    // a rich message's media past its bytes is still uploading: the messages manager gives it up
-    return canceled || !!this.appMessagesManager?.cancelPreparedRichMessageMedia(fileName);
+    // a rich message's media past its bytes is still uploading, or a file send waits its turn to upload: the
+    // messages manager gives it up
+    return canceled ||
+      !!this.appMessagesManager?.cancelPreparedRichMessageMedia(fileName) ||
+      !!this.appMessagesManager?.cancelQueuedFileSend(fileName);
   }
 
   public cancelDownloadByReference(reference: ReferenceBytes) {

@@ -5,13 +5,14 @@ import pause from '@helpers/schedulers/pause';
 
 // An album goes whole or not at all: a file that cannot be sent leaves the others unsent too, failed with
 // it, so that each can be deleted; none is left waiting for good. A file whose upload was cancelled is left
-// out, and an album with nothing left sends nothing.
+// out, and an album with nothing left sends nothing. Its caption goes with its first file sent, however long
+// each file takes to upload.
 
 const peerId = (-77 as ChatId).toPeerId(true);
 
 type Call = {method: string, params: any};
 
-function setup(fail: {upload?: number[], cancel?: number[], uploadMedia?: number[]}) {
+function setup(fail: {upload?: number[], cancel?: number[], uploadMedia?: number[], slow?: number[]}) {
   const manager = new AppMessagesManager();
   const messages: Message.message[] = [];
   vi.spyOn(manager, 'sendFile').mockImplementation(async() => {
@@ -27,10 +28,13 @@ function setup(fail: {upload?: number[], cancel?: number[], uploadMedia?: number
       random_id: 'r' + idx
     } as Message.message;
     messages.push(message);
-    const send = () => {
-      if(fail.upload?.includes(idx)) return Promise.reject({type: 'FILE_PART_INVALID'});
-      if(fail.cancel?.includes(idx)) return Promise.reject({type: 'UPLOAD_CANCELED'});
-      return Promise.resolve({_: 'inputMediaUploadedPhoto', file: {name: 'f' + idx}, pFlags: {}});
+    // * pending until it is sent or its send is called off, as the real sendFile makes it (beforeMessageSending)
+    ((manager as any).pendingByRandomId ??= {})[message.random_id] = {};
+    const send = async() => {
+      if(fail.slow?.includes(idx)) await pause(10);
+      if(fail.upload?.includes(idx)) throw {type: 'FILE_PART_INVALID'};
+      if(fail.cancel?.includes(idx)) throw {type: 'UPLOAD_CANCELED'};
+      return {_: 'inputMediaUploadedPhoto', file: {name: 'f' + idx}, pFlags: {}};
     };
     return {message, send} as any;
   });
@@ -69,10 +73,9 @@ function setup(fail: {upload?: number[], cancel?: number[], uploadMedia?: number
 }
 
 const files = (count: number) => Array.from({length: count}, () => ({file: new Blob(['x'])} as any));
-const sentRandomIds = (calls: Call[]) => {
-  return calls.filter(({method}) => method === 'messages.sendMultiMedia')
-  .map(({params}) => params.multi_media.map((media: any) => media.random_id));
-};
+const sentMedia = (calls: Call[]) => calls.filter(({method}) => method === 'messages.sendMultiMedia')
+.map(({params}) => params.multi_media);
+const sentRandomIds = (calls: Call[]) => sentMedia(calls).map((multiMedia) => multiMedia.map((media: any) => media.random_id));
 
 describe('an album with a file that cannot be sent', () => {
   test.each([
@@ -106,5 +109,22 @@ describe('an album with a file that cannot be sent', () => {
 
     expect(calls).toEqual([]);
     expect(messages.map((message) => message.error)).toEqual([undefined, undefined]);
+  });
+});
+
+describe('an album with a caption', () => {
+  const sentCaptions = (calls: Call[]) => sentMedia(calls)
+  .map((multiMedia) => multiMedia.map((media: any) => [media.random_id, media.message]));
+
+  test.each([
+    ['with its first file, though another file is uploaded first', {slow: [0]}, [['r0', 'An album'], ['r1', ''], ['r2', '']]],
+    ['with the next file when the first one was cancelled', {cancel: [0], slow: [1]}, [['r1', 'An album'], ['r2', '']]]
+  ])('sends it %s', async(_name, fail, captions) => {
+    const {manager, calls} = setup(fail);
+
+    await manager.sendGrouped({peerId, sendFileDetails: files(3), caption: 'An album'});
+    await pause(0);
+
+    expect(sentCaptions(calls)).toEqual([captions]);
   });
 });

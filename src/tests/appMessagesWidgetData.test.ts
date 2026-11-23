@@ -1,5 +1,6 @@
 import '@helpers/peerIdPolyfill';
 import {AppMessagesManager} from '@appManagers/appMessagesManager';
+import {makeDeletingMessagesManager} from '@/tests/helpers/deletingMessagesManager';
 
 // A widget's state, changed by the bot (updateMessageWidgetData) or a poll of a shared widget: kept in the loaded
 // message, which then goes through the edit path its bubble hands to the running widget.
@@ -61,20 +62,8 @@ describe('AppMessagesManager.setMessagesWidgetData', () => {
 // reads the account's remembered heights and stored keys).
 describe('AppMessagesManager.onUpdateDeleteMessages and widget storage', () => {
   function setup() {
-    const manager = new AppMessagesManager() as any;
-    const appWidgetsManager = {deleteWidgetStorage: vi.fn(), deleteWidgetStorageByLegacyMids: vi.fn()};
     const handleDeletedMessages = vi.fn(() => ({count: 0, unread: 0, unreadMentions: 0, unreadReactions: 0, msgs: new Set(), byThreadKey: new Map()}));
-    Object.assign(manager, {
-      appWidgetsManager,
-      handleDeletedMessages,
-      appMessagesIdsManager: {generateMessageId: (id: number) => id},
-      rootScope: {dispatchEvent: () => {}},
-      getMessageByPeer: (): undefined => undefined,
-      getHistoryMessagesStorage: () => new Map(),
-      getHistoryStorage: () => ({history: new Set(), count: 0}),
-      getDialogOnly: (): undefined => undefined,
-      clearSearchCountersCache: () => {}
-    });
+    const {manager, appWidgetsManager} = makeDeletingMessagesManager({handleDeletedMessages});
     return {manager, appWidgetsManager, handleDeletedMessages};
   }
 

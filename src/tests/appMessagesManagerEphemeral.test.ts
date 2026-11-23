@@ -1406,6 +1406,29 @@ describe('AppMessagesManager ephemeral messages', () => {
     // replaced, not mutated: only top-level writes reach the mirror
     expect(baseHistory.replyMarkup).not.toBe(asked);
     expect((baseHistory.replyMarkup as ReplyMarkup.replyKeyboardForceReply).pFlags.hidden).toBe(true);
+
+    // a photo with no text answers it too (tdesktop's lastForceReplyReplied)
+    manager.mergeReplyKeyboard(baseHistory, make(703, now + 3, {
+      reply_markup: {_: 'replyKeyboardForceReply', pFlags: {}}
+    }));
+    expect(manager.mergeReplyKeyboard(baseHistory, make(704, now + 4, {
+      pFlags: {out: true},
+      media: {_: 'messageMediaPhoto', pFlags: {}},
+      reply_to_mid: 703
+    }))).toBe(true);
+    expect((baseHistory.replyMarkup as ReplyMarkup.replyKeyboardForceReply).pFlags.hidden).toBe(true);
+
+    // a pin of the prompt answers nothing, though its service message points at the prompt as well
+    manager.mergeReplyKeyboard(baseHistory, make(705, now + 5, {
+      reply_markup: {_: 'replyKeyboardForceReply', pFlags: {}}
+    }));
+    expect(manager.mergeReplyKeyboard(baseHistory, {
+      ...make(706, now + 6, {pFlags: {out: true}, reply_to_mid: 705}),
+      _: 'messageService',
+      action: {_: 'messageActionPinMessage'}
+    } as any as Message.message)).toBe(false);
+    expect(baseHistory.replyMarkup?.mid).toBe(705);
+    expect((baseHistory.replyMarkup as ReplyMarkup.replyKeyboardForceReply).pFlags.hidden).toBeFalsy();
   });
 
   describe('welcome messages (layer 229)', () => {
