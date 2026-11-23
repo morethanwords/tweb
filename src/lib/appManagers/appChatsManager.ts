@@ -12,6 +12,7 @@ import {MessagesSetChatAvailableReactions, ChannelAdminLogEvent, ChannelParticip
 import {AppManager} from '@appManagers/manager';
 import hasRights, {isSendRight} from '@appManagers/utils/chats/hasRights';
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
+import {isBannedParticipant} from '@appManagers/utils/chats/isBannedParticipant';
 import {AppStoragesManager} from '@appManagers/appStoragesManager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import {randomLong} from '@helpers/random';
@@ -1132,20 +1133,39 @@ export class AppChatsManager extends AppManager {
     });
 
     const timestamp = tsNow(true);
-    const update = this.generateUpdateChannelParticipant({
-      chatId: id,
-      wasChannel,
-      prevParticipant: participant,
-      newParticipant: Object.keys(bannedRights.pFlags).length ? {
+    // * a restriction, or lifting one, leaves the member's tag where it was
+    const rank = isObject(participant) ? (participant as ChannelParticipant.channelParticipant).rank : undefined;
+    // * a member let off their restrictions stays one (desktop's applyEditBanned); one who was removed, or one
+    // * the caller knew nothing of, is no member
+    const wasMember = isObject(participant) &&
+      participant._ !== 'channelParticipantLeft' &&
+      !isBannedParticipant(participant);
+    let newParticipant: ChannelParticipant;
+    if(Object.keys(bannedRights.pFlags).length) {
+      newParticipant = {
         _: 'channelParticipantBanned',
         date: timestamp,
         banned_rights: bannedRights,
         kicked_by: this.appUsersManager.getSelf().id,
         peer: this.appPeersManager.getOutputPeer(peerId),
-        // * a restriction leaves the member's tag where it was
-        rank: isObject(participant) ? (participant as ChannelParticipant.channelParticipant).rank : undefined,
+        rank,
         pFlags: bannedRights.pFlags.view_messages ? {left: true} : {}
-      } : undefined
+      };
+    } else if(wasMember) {
+      newParticipant = {
+        _: 'channelParticipant',
+        date: (participant as ChannelParticipant.channelParticipant).date ?? timestamp,
+        user_id: peerId.isUser() ? peerId.toUserId() : 0,
+        peer: peerId.isUser() ? undefined : this.appPeersManager.getOutputPeer(peerId),
+        rank
+      };
+    }
+
+    const update = this.generateUpdateChannelParticipant({
+      chatId: id,
+      wasChannel,
+      prevParticipant: participant,
+      newParticipant
     });
 
     this.apiUpdatesManager.processLocalUpdate(update);

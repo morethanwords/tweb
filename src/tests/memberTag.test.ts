@@ -2,6 +2,7 @@ import {describe, expect, it} from 'vitest';
 import '@helpers/peerIdPolyfill';
 import type {Chat, ChatParticipants} from '@layer';
 import hasRights from '@appManagers/utils/chats/hasRights';
+import {makeSupergroup} from '@/tests/helpers/supergroup';
 import {
   applyChatParticipantRank,
   canEditMemberTag,
@@ -14,25 +15,6 @@ import {
 
 const MY_ID = 100 as PeerId;
 const OTHER_ID = 200 as PeerId;
-
-function makeSupergroup(options: Partial<{
-  creator: boolean,
-  admin: Partial<Record<'manage_ranks' | 'ban_users', true>>,
-  banned: Partial<Record<'edit_rank' | 'send_media', true>>,
-  defaultBanned: Partial<Record<'edit_rank', true>>
-}> = {}): Chat.channel {
-  return {
-    _: 'channel',
-    id: 1,
-    title: 'Group',
-    photo: {_: 'chatPhotoEmpty'},
-    date: 0,
-    pFlags: {megagroup: true, creator: options.creator || undefined},
-    admin_rights: options.admin && {_: 'chatAdminRights', pFlags: options.admin},
-    banned_rights: options.banned && {_: 'chatBannedRights', pFlags: options.banned, until_date: 0},
-    default_banned_rights: {_: 'chatBannedRights', pFlags: options.defaultBanned || {}, until_date: 0}
-  } as Chat.channel;
-}
 
 describe('member tags', () => {
   describe('rights', () => {

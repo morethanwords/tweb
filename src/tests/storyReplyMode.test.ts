@@ -5,13 +5,12 @@ import {AppMessagesManager} from '@appManagers/appMessagesManager';
 import AppBoostsManager from '@appManagers/appBoostsManager';
 import {Chat, ChatBannedRights, ChatFull} from '@layer';
 import '@helpers/peerIdPolyfill';
+import {bannedRights as banned} from '@/tests/helpers/bannedRights';
 
 const self = (1 as UserId).toPeerId();
 const user = (2 as UserId).toPeerId();
 const groupId = 10 as ChatId;
 const group = groupId.toPeerId(true);
-
-const banned = (flags: ChatBannedRights['pFlags']): ChatBannedRights => ({_: 'chatBannedRights', pFlags: flags, until_date: 0});
 
 // * a member of a supergroup: no admin rights, the group's own restrictions and the member's in person
 function groupChat(options: {

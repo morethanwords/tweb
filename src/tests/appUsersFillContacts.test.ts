@@ -1,7 +1,7 @@
-import {AppUsersManager} from '@appManagers/appUsersManager';
 import makeError from '@helpers/makeError';
 import withTimeout from '@helpers/schedulers/withTimeout';
 import '@helpers/peerIdPolyfill';
+import {makeContactsManager} from '@/tests/helpers/contactsManager';
 
 // The dialogs of a custom folder wait for the contacts (dialogsStorage.prepareFolderForFilter, before getDialogs
 // reads them and calls itself again), and so does the contacts list. When contacts.getContacts failed (a flood wait,
@@ -12,19 +12,7 @@ const HUNG = 'hung';
 const settled = <T>(promise: Promise<T>) => withTimeout(promise, 50, HUNG);
 const flood = () => makeError('FLOOD_WAIT_30' as ErrorType);
 
-function setup() {
-  const manager = new AppUsersManager();
-  const invokeApi = vi.fn();
-  Object.assign(manager, {
-    apiManager: {invokeApi},
-    appStateManager: {pushToState: vi.fn()},
-    peersStorage: {requestPeer: vi.fn(), releasePeer: vi.fn()},
-    rootScope: {myId: (1 as UserId).toPeerId(false)}
-  });
-  manager.clear(true);
-
-  return {manager, invokeApi};
-}
+const setup = makeContactsManager;
 
 describe('the contacts, when their request fails', () => {
   test('let whoever waits for them go on with the ones known', async() => {

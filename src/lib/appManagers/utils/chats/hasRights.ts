@@ -1,5 +1,6 @@
 import {Chat, ChatAdminRights, ChatBannedRights} from '@layer';
 import {ChatRights} from '@appManagers/appChatsManager';
+import combineParticipantBannedRights from '@appManagers/utils/chats/combineParticipantBannedRights';
 
 // * what a member sends: the rights a group's restrictions take away, and the member's boosts can give back
 export const isSendRight = (action: ChatRights) => action === 'embed_links' || action.startsWith('send_');
@@ -47,7 +48,13 @@ export default function hasRights(
 
   if(!rights) {
     const defaultBans = defaultBansLifted && isSendRight(action) ? NO_BANS : chat.default_banned_rights;
-    rights = chat.admin_rights || (chat as Chat.channel).banned_rights || defaultBans;
+    const ownBans = (chat as Chat.channel).banned_rights;
+    // * a member's own restrictions and the group's add up: one restricted in something else is still held by what
+    // * the group forbids everyone (desktop's amRestricted, Android's canUserDoAction). What boosts lift is the
+    // * group's part only
+    rights = chat.admin_rights || (ownBans && defaultBans !== NO_BANS ?
+      combineParticipantBannedRights(chat as Chat.channel, ownBans) :
+      ownBans || defaultBans);
 
     if(!rights) {
       return false;

@@ -514,16 +514,18 @@ export class AppProfileManager extends AppManager {
    * asking knows
    */
   public isUserKnownBlocked(userId: UserId) {
-    const userFull = this.usersFull[userId];
-    if(userFull) {
-      return !!userFull.pFlags.blocked;
-    }
-
-    if(!this.usersBlocked.has(userId)) {
+    const blocked = this.getKnownBlocked(userId);
+    if(blocked === undefined) {
       Promise.resolve().then(() => this.getProfile(userId)).catch(noop);
     }
 
-    return !!this.usersBlocked.get(userId);
+    return !!blocked;
+  }
+
+  // * what the full profile says, even one that ran out, or else the last block update; nothing when neither is here
+  private getKnownBlocked(userId: UserId) {
+    const userFull = this.usersFull[userId];
+    return userFull ? !!userFull.pFlags.blocked : this.usersBlocked.get(userId);
   }
 
   /**
@@ -626,9 +628,14 @@ export class AppProfileManager extends AppManager {
     });
   }
 
+  /**
+   * Whether the user is blocked, without waiting: while a profile that ran out is asked anew, what is known meanwhile
+   * (that profile, or the last block update) - not nothing, which shows a blocked user's chat with the usual composer
+   * until the answer comes. Nothing only when nothing is known
+   */
   public isCachedUserBlocked(userId: UserId) {
     const result = this.isUserBlocked(userId);
-    return result instanceof Promise ? undefined : result;
+    return result instanceof Promise ? this.getKnownBlocked(userId) : result;
   }
 
   public async getFullPhoto(peerId: PeerId) {

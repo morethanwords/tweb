@@ -31,7 +31,9 @@ import forgetFailedRequest from '@helpers/forgetFailedRequest';
 import {NULL_PEER_ID, TEST_NO_STORIES} from '@appManagers/constants';
 import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import pause from '@helpers/schedulers/pause';
+import noop from '@helpers/noop';
 import createSerializedQueue from '@helpers/createSerializedQueue';
+import makeError from '@helpers/makeError';
 import type {State} from '@config/state';
 
 export type User = MTUser.user;
@@ -138,22 +140,7 @@ export class AppUsersManager extends AppManager {
       //   } else console.warn('No user by id:', userId);
       // },
 
-      updateUserName: (update) => {
-        const userId = update.user_id;
-        const user = this.users[userId];
-        if(!user) {
-          return;
-        }
-
-        this.forceUserOnline(userId);
-        this.saveApiUser({
-          ...user,
-          first_name: update.first_name,
-          last_name: update.last_name,
-          username: undefined,
-          usernames: update.usernames
-        }, true);
-      },
+      updateUserName: this.onUpdateUserName,
 
       updateUserEmojiStatus: (update) => {
         const userId = update.user_id;
@@ -279,8 +266,7 @@ export class AppUsersManager extends AppManager {
   };
 
   public indexMyself() {
-    const userId = this.getSelf().id;
-    this.contactsIndex.indexObject(userId, this.getUserSearchText(userId));
+    this.indexContact(this.getSelf().id);
   }
 
   public get userId() {
@@ -530,9 +516,13 @@ export class AppUsersManager extends AppManager {
     return !fullUser?.send_paid_messages_stars;
   }
 
+  private indexContact(id: UserId) {
+    this.contactsIndex.indexObject(id, this.getUserSearchText(id));
+  }
+
   private pushContact(id: UserId) {
     this.contactsList.add(id);
-    this.contactsIndex.indexObject(id, this.getUserSearchText(id));
+    this.indexContact(id);
     this.peersStorage.requestPeer(id.toPeerId(), 'contact');
   }
 
@@ -854,10 +844,17 @@ export class AppUsersManager extends AppManager {
     if(oldUser === undefined) {
       this.users[userId] = user;
       this.mirrorUser(user);
+
+      // * one first seen as a contact (made by phone, added on another device) joins the contacts list it is not
+      // * in yet, as desktop's setIsContact does when the status was not known; before the list is, its fill brings them
+      if(user.pFlags.contact && this.contactsKnown) {
+        this.onContactUpdated(userId, true, this.contactsList.has(userId));
+      }
     } else {
       const changedTitle = user.first_name !== oldUser.first_name ||
         user.last_name !== oldUser.last_name ||
         changedUsername;
+      const changedPhone = user.phone !== oldUser.phone;
 
       const oldPhotoId = (oldUser.photo as UserProfilePhoto.userProfilePhoto)?.photo_id;
       const newPhotoId = (user.photo as UserProfilePhoto.userProfilePhoto)?.photo_id;
@@ -879,6 +876,10 @@ export class AppUsersManager extends AppManager {
       const wasContact = !!oldUser.pFlags.contact;
       const newContact = !!user.pFlags.contact;
 
+      // * what writing to them costs changed: a full profile kept here holds what it cost for me before
+      const changedRequirement = +(oldUser.send_paid_messages_stars || 0) !== +(user.send_paid_messages_stars || 0) ||
+        !!oldUser.pFlags.contact_require_premium !== !!user.pFlags.contact_require_premium;
+
       const storiesCallback = this.appStoriesManager.saveApiPeerStories(user, oldUser);
       // History/profile responses often repeat the same user. Keep mirroring the normalized
       // payload, but don't announce a change that would invalidate an unchanged chat screen.
@@ -888,10 +889,21 @@ export class AppUsersManager extends AppManager {
       safeReplaceObject(oldUser, user);
       this.mirrorUser(oldUser);
 
+      // * contact search finds a contact by what they are called now (an edited contact, new usernames)
+      if((changedTitle || changedPhone) && this.contactsList.has(userId)) {
+        this.indexContact(userId);
+      }
+
       if(!unchanged) this.rootScope.dispatchEvent('user_update', userId);
 
       if(wasContact !== newContact) {
         this.onContactUpdated(userId, newContact, wasContact);
+      }
+
+      // * it is asked anew and stays as it was until then, as desktop asks again once a price shows up
+      // * (MessageMoneyRestrictionsKnown dropped): the price shown and the send are not the old one's
+      if(changedRequirement && this.appProfileManager.getCachedFullUser(userId)) {
+        Promise.resolve(this.appProfileManager.getProfile(userId, true)).catch(noop);
       }
 
       storiesCallback?.();
@@ -921,6 +933,26 @@ export class AppUsersManager extends AppManager {
       });
     }
   }
+
+  private onUpdateUserName = (update: Update.updateUserName) => {
+    const userId = update.user_id;
+    const user = this.users[userId];
+    if(!user) {
+      return;
+    }
+
+    // * a contact is shown by the name I saved them under: the name they gave themselves does not replace it, only
+    // * their usernames change (desktop, Android and Web A alike)
+    const keepName = user.pFlags.contact && !user.pFlags.self;
+    this.forceUserOnline(userId);
+    this.saveApiUser({
+      ...user,
+      first_name: keepName ? user.first_name : update.first_name,
+      last_name: keepName ? user.last_name : update.last_name,
+      username: undefined,
+      usernames: update.usernames
+    }, true);
+  };
 
   private onUpdateUserStatus = (update: Update.updateUserStatus) => {
     const user = this.users[update.user_id];
@@ -1208,9 +1240,8 @@ export class AppUsersManager extends AppManager {
       phones: [phone]
     }]).then((userIds) => {
       if(!userIds.length) {
-        const error = new Error();
-        (error as any).type = 'NO_USER';
-        throw error;
+        // * a plain object: an Error reaches the page through postMessage without its `type`
+        throw makeError('NO_USER');
       }
 
       return userIds[0];
