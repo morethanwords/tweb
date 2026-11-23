@@ -46,6 +46,9 @@ const READ_FEATURED_STICKERS_DELAY = 1000;
 const FAVED_STICKERS_KEY = 'favedStickers:';
 const RECENT_STICKERS_KEY = 'recentStickers:';
 
+// * the first character of the key of a search by emoji that reads the user's own sets (getStickersByEmoticon)
+const OUR_STICKERS_SEARCH = '1';
+
 export type FoundStickersPage = {
   stickers: MyDocument[],
   // * undefined once the server has nothing more
@@ -117,7 +120,7 @@ export class AppStickersManager extends AppManager {
       updateNewStickerSet: (update) => {
         const stickerSet = update.stickerset as MyMessagesStickerSet;
         this.saveStickerSet(stickerSet, this.getCacheKey(getStickerSetInputById(stickerSet.set)));
-        this.rootScope.dispatchEvent('stickers_installed', stickerSet.set);
+        this.onStickerSetChanged('stickers_installed', stickerSet.set);
       },
 
       updateRecentStickers: () => this.onStickersUpdated('recent', true),
@@ -862,7 +865,7 @@ export class AppStickersManager extends AppManager {
       set = this.updateStickerSet(set, (set) => {
         delete set.installed_date;
       }, true);
-      this.rootScope.dispatchEvent('stickers_deleted', set);
+      this.onStickerSetChanged('stickers_deleted', set);
       return true;
     }
 
@@ -886,7 +889,7 @@ export class AppStickersManager extends AppManager {
         delete set.pFlags.archived;
         set.installed_date = tsNow(true);
       });
-      this.rootScope.dispatchEvent('stickers_installed', set);
+      this.onStickerSetChanged('stickers_installed', set);
     }
 
     // the server made room for this set by archiving the least used ones
@@ -902,7 +905,22 @@ export class AppStickersManager extends AppManager {
       set.pFlags.archived = true;
       set.installed_date ||= tsNow(true);
     }, true);
-    this.rootScope.dispatchEvent('stickers_deleted', set);
+    this.onStickerSetChanged('stickers_deleted', set);
+  }
+
+  /**
+   * A set added to the user's or taken out of them: every list of sets is told, and the searches by emoji that read the
+   * user's own sets (the composer's suggestions, the panel's search) are made anew from now on - kept, they would go on
+   * suggesting a removed set's stickers, and none of an added one's, for the emoji searched before
+   */
+  private onStickerSetChanged(name: 'stickers_installed' | 'stickers_deleted', set: StickerSet.stickerSet) {
+    for(const cacheKey in this.getStickersByEmoticonsPromises) {
+      if(cacheKey[0] === OUR_STICKERS_SEARCH) {
+        delete this.getStickersByEmoticonsPromises[cacheKey];
+      }
+    }
+
+    this.rootScope.dispatchEvent(name, set);
   }
 
   public toggleStickerSets(sets: StickerSet.stickerSet[]) {
@@ -1002,7 +1020,7 @@ export class AppStickersManager extends AppManager {
   }) {
     const emoticonArray = toArray(emoticon).map((emoji) => fixEmoji(emoji));
     emoticon = emoticonArray.join('');
-    const cacheKey = emoticon + (includeOurStickers ? '1' : '0') + (includeServerStickers ? '1' : '0');
+    const cacheKey = (includeOurStickers ? OUR_STICKERS_SEARCH : '0') + (includeServerStickers ? '1' : '0') + emoticon;
     if(this.getStickersByEmoticonsPromises[cacheKey] && !overwrite) {
       return this.getStickersByEmoticonsPromises[cacheKey];
     }

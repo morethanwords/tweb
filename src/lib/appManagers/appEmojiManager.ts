@@ -20,13 +20,19 @@ type EmojiLangPack = {
     [keyword: string]: string[],
   },
   version: number,
-  langCode: string
+  langCode: string,
+  // * how its differences were applied: a pack kept before they added and took out emoji (it replaced a keyword's emoji
+  // * with those to add or to take out) may hold keywords with wrong emoji, and is fetched whole once more
+  format: number
 };
+
+const EMOJI_LANG_PACK_FORMAT = 2;
 
 const EMOJI_LANG_PACK: EmojiLangPack = {
   keywords: {},
   version: 0,
-  langCode: App.langPackCode
+  langCode: App.langPackCode,
+  format: EMOJI_LANG_PACK_FORMAT
 };
 
 const RECENT_MAX_LENGTH = 32;
@@ -130,6 +136,13 @@ export class AppEmojiManager extends AppManager {
 
     const storageKey: any = 'emojiKeywords_' + langCode;
     return this.getKeywordsPromises[langCode] = this.appStateManager.storage.get(storageKey).then((pack: EmojiLangPack) => {
+      // * one of an older format is fetched whole once more - and is what there is, should that fail
+      let older: EmojiLangPack;
+      if(isObject(pack) && pack.format !== EMOJI_LANG_PACK_FORMAT) {
+        older = pack;
+        pack = undefined;
+      }
+
       if(!isObject(pack)) {
         pack = {} as any;
       }
@@ -146,11 +159,21 @@ export class AppEmojiManager extends AppManager {
       }).then((keywordsDifference) => {
         pack.version = keywordsDifference.version;
 
+        // * a difference adds the emoji of an `emojiKeyword` to its keyword and takes those of an `emojiKeywordDeleted`
+        // * out of it, as tdesktop's ApplyDifference does: the keyword's other emoji stay (from version 0 every keyword
+        // * comes as an addition)
         const packKeywords = pack.keywords;
-        const keywords = keywordsDifference.keywords;
-        for(let i = 0, length = keywords.length; i < length; ++i) {
-          const {keyword, emoticons} = keywords[i];
-          packKeywords[keyword] = emoticons;
+        for(const entry of keywordsDifference.keywords) {
+          const {keyword, emoticons} = entry;
+          // * its own emoji only: a keyword can be a name an object has already ('constructor')
+          const kept = Object.prototype.hasOwnProperty.call(packKeywords, keyword) ? packKeywords[keyword] : [];
+          if(entry._ === 'emojiKeywordDeleted') {
+            const left = kept.filter((emoticon) => !emoticons.includes(emoticon));
+            if(left.length) packKeywords[keyword] = left;
+            else delete packKeywords[keyword];
+          } else {
+            packKeywords[keyword] = filterUnique(kept.concat(emoticons));
+          }
         }
 
         this.appStateManager.storage.set({
@@ -159,6 +182,12 @@ export class AppEmojiManager extends AppManager {
 
         return pack;
       }, () => {
+        if(older) {
+          older.langCode = langCode;
+          this.keywordLangPacks[langCode] = older;
+          return older;
+        }
+
         return pack;
       });
     });
@@ -379,11 +408,14 @@ export class AppEmojiManager extends AppManager {
       do {
         const ids = allIds.splice(0, 100);
         const promise = this.getCustomEmojiDocuments(ids).then((docs) => {
-          docs.forEach((doc, idx) => {
-            const docId = ids[idx];
+          // * by id, as the other clients take them (tdesktop, tdlib, Android): the answer is not bound to the order
+          // * asked, and an id the server does not know may be left out of it - every id asked is answered, that one
+          // * with nothing, or it would be asked for again and again and its emoji wait for ever
+          const byId = new Map(docs.filter(Boolean).map((doc) => ['' + doc.id, doc]));
+          ids.forEach((docId) => {
             const deferred = this.getCustomEmojiDocumentPromises.get(docId);
             this.getCustomEmojiDocumentPromises.delete(docId);
-            deferred.resolve(doc);
+            deferred.resolve(byId.get('' + docId));
           });
         });
 

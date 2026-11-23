@@ -3,6 +3,7 @@ import {AppStickersManager} from '@appManagers/appStickersManager';
 import {AppEmojiManager} from '@appManagers/appEmojiManager';
 import {AppReactionsManager} from '@appManagers/appReactionsManager';
 import {getStickerSetInputByStickerSet} from '@lib/appManagers/utils/stickers/getStickerSetInput';
+import {ids} from '@/tests/helpers/listChangeRefusals';
 
 const set = (id: string) => ({_: 'stickerSet', id, access_hash: '1', title: 'Set ' + id, short_name: 'set' + id, count: 1, pFlags: {}} as any);
 const covered = (id: string) => ({_: 'stickerSetNoCovered', set: set(id)} as any);
@@ -260,5 +261,72 @@ describe('AppReactionsManager.clearRecentReactions', () => {
     expect(invokeApi).toHaveBeenCalledWith('messages.clearRecentReactions');
     expect(manager.getRecentReactions()).toEqual([]);
     expect(invokeApiHashable).not.toHaveBeenCalled();
+  });
+});
+
+// * the composer's suggestions for an emoji (and the panel's search of the user's own stickers) read the sets the user
+// * has: a set added or taken out since an emoji was searched changes what that emoji suggests
+describe('stickers by emoji from the user\'s own sets', () => {
+  function createSearch() {
+    const {manager, answers} = createStickersManager();
+    const stickerSets: {[id: string]: any} = {};
+    const docs: {[id: string]: any} = {};
+    const addSet = (id: string) => {
+      const doc = {_: 'document', id: 'doc' + id, attributes: [] as any[]};
+      docs[doc.id] = doc;
+      stickerSets[id] = {set: {...set(id), installed_date: 100}, packs: [{emoticon: '🐱', documents: [doc.id]}], documents: [doc]};
+    };
+
+    Object.assign(manager as any, {
+      appDocsManager: {saveDoc: (doc: any) => doc, getDoc: (id: string) => docs[id]},
+      rootScope: {dispatchEvent: vi.fn()},
+      getStickerSet: ({id}: {id: string}) => stickerSets[id]
+    });
+    answers['messages.getAllStickers'] = () => ({
+      _: 'messages.allStickers',
+      hash: 0,
+      sets: Object.values(stickerSets).map((stickerSet) => stickerSet.set)
+    });
+    answers['messages.getRecentStickers'] = () => ({_: 'messages.recentStickers', hash: 0, packs: [], stickers: [], dates: []});
+
+    const search = () => manager.getStickersByEmoticon({emoticon: '🐱', includeOurStickers: true}).then(ids);
+    return {manager, stickerSets, addSet, search};
+  }
+
+  it('suggests the stickers of a set added since', async() => {
+    const {manager, addSet, search} = createSearch();
+    addSet('1');
+    expect(await search()).toEqual(['doc1']);
+
+    addSet('2');
+    await manager.toggleStickerSet(set('2'));
+
+    expect(await search()).toEqual(['doc1', 'doc2']);
+  });
+
+  it('no longer suggests the stickers of a set taken out or archived since', async() => {
+    const {manager, stickerSets, addSet, search} = createSearch();
+    addSet('1');
+    addSet('2');
+    addSet('3');
+    expect(await search()).toEqual(['doc1', 'doc2', 'doc3']);
+
+    const removed = stickerSets['2'].set;
+    delete stickerSets['2'];
+    await manager.toggleStickerSet(removed);
+    expect(await search()).toEqual(['doc1', 'doc3']);
+
+    const archived = stickerSets['3'].set;
+    delete stickerSets['3'];
+    await manager.archiveStickerSet(archived);
+    expect(await search()).toEqual(['doc1']);
+  });
+
+  it('keeps the search for an emoji while the sets stay as they are', async() => {
+    const {manager, addSet, search} = createSearch();
+    addSet('1');
+    const first = manager.getStickersByEmoticon({emoticon: '🐱', includeOurStickers: true});
+    expect(manager.getStickersByEmoticon({emoticon: '🐱', includeOurStickers: true})).toBe(first);
+    expect(await search()).toEqual(['doc1']);
   });
 });

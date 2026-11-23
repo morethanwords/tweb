@@ -1,7 +1,5 @@
 import {FOLDER_ID_ALL} from '@appManagers/constants';
-import {createAllChatsStorage} from '@/tests/helpers/dialogsStorage';
-
-const DATE = 1770733527;
+import {createAllChatsStorage, DIALOG_DATE as DATE} from '@/tests/helpers/dialogsStorage';
 
 // * a folder's count is how many chats it holds, the ones not loaded yet too (the server's total, kept up locally):
 // * a chat that only moves within it (a new message puts it higher) is still one of them, and only a chat coming in

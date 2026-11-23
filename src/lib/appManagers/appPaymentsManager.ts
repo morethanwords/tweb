@@ -448,7 +448,8 @@ export default class AppPaymentsManager extends AppManager {
 
     (starsStatus as PaymentsStarsStatus).balance = balance;
     this.rootScope.dispatchEvent('stars_balance', {
-      balance: formatStarsAmount(balance),
+      // * the tab keeps a TON balance in nanotons, as the server gives it (stores/stars.ts)
+      balance: ton ? balance.amount : formatStarsAmount(balance),
       ton
     });
   }

@@ -670,7 +670,8 @@ export default class AppGiftsManager extends AppManager {
       if(savedGifts) {
         this.appPeersManager.saveApiPeers(savedGifts);
         for(const it of ownedGifts) {
-          const savedGift = savedGifts.gifts.find((it) => (it.gift as StarGift.starGiftUnique).slug === (it.gift as StarGift.starGiftUnique).slug);
+          const {slug} = it.raw as StarGift.starGiftUnique;
+          const savedGift = savedGifts.gifts.find((saved) => (saved.gift as StarGift.starGiftUnique).slug === slug);
           if(savedGift) {
             it.saved = savedGift;
           }

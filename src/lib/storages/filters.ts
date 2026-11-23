@@ -762,7 +762,12 @@ export default class FiltersStorage extends AppManager {
         }
       }
 
+      // * the folder's place is this storage's own: a folder handed back keeps the place it had when it was read (an
+      // * edit screen's copy), which a reorder since may have given another folder - two folders of one place share
+      // * the index of their chats
+      const {localId} = oldFilter;
       filter = Object.assign(oldFilter, filter);
+      filter.localId = localId;
     } else {
       this.filters[filter.id] = filter;
     }

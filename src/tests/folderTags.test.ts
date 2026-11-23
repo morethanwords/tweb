@@ -7,6 +7,7 @@ import {getDialogFolderTags, getFolderTagColor} from '@stores/folderTags';
 import {getSortableDragStep} from '@helpers/dom/sortable';
 import pause from '@helpers/schedulers/pause';
 import deferred from '@/tests/helpers/deferred';
+import makeFiltersStorage from '@/tests/helpers/filtersStorage';
 
 const folder = (id: number, localId: number, color?: number) => makeDialogFilter(id, localId, color === undefined ? undefined : {color});
 
@@ -94,12 +95,7 @@ describe('getSortableDragStep', () => {
 describe('FiltersStorage folder tags', () => {
   // * the server: the folders it sends, and the switch it keeps
   const makeStorage = (serverTagsEnabled = false, serverFilters: any[] = []) => {
-    const storage: any = new FiltersStorage();
-    storage.dialogsStorage = {getPinnedOrders: (): PeerId[] => []};
-    storage.clear(true);
-    storage.rootScope = {dispatchEvent: vi.fn()};
-    storage.appStateManager = {pushToState: vi.fn()};
-    storage.appPeersManager = {getPeerId: (peer: any) => peer.user_id};
+    const storage = makeFiltersStorage();
     storage.apiManager = {
       invokeApiSingle: vi.fn(() => Promise.resolve({
         _: 'messages.dialogFilters',

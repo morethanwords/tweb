@@ -1,7 +1,5 @@
 import {FOLDER_ID_ALL} from '@appManagers/constants';
-import {createAllChatsStorage} from '@/tests/helpers/dialogsStorage';
-
-const DATE = 1770733527;
+import {createAllChatsStorage, DIALOG_DATE as DATE} from '@/tests/helpers/dialogsStorage';
 
 // * dialogs of one date stand in the order they took their places in: the chat list must not reorder them when
 // * one is opened, read or refreshed from the server, only when one of them gets a new top message

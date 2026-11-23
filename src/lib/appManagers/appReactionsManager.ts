@@ -778,7 +778,8 @@ export class AppReactionsManager extends AppManager {
     const unsetReactions: ReactionCount[] = [];
     const chosenReactionIdx = chosenReactions.findIndex((reactionCount) => reactionsEqual(reactionCount.reaction, reaction as Reaction));
     if(chosenReactionIdx !== -1) unsetReactions.push(...chosenReactions.splice(chosenReactionIdx, 1));
-    unsetReactions.push(...chosenReactions.splice(limit - +(chosenReactionIdx === -1)));
+    // * stars sent are not one of the chosen reactions the limit counts: they push none of them out (tdesktop)
+    if(!isPaidReaction) unsetReactions.push(...chosenReactions.splice(limit - +(chosenReactionIdx === -1)));
     unsetReactions.forEach((reactionCount) => {
       chosenReactions.forEach((chosenReactionCount) => {
         if(chosenReactionCount.chosen_order > reactionCount.chosen_order) {

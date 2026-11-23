@@ -4,6 +4,9 @@ import {FOLDER_ID_ALL} from '@appManagers/constants';
 import makeDialogFilter from '@/tests/helpers/dialogFilter';
 import '@helpers/peerIdPolyfill';
 
+/** The date the dialogs storage tests give their chats' top messages, give or take */
+export const DIALOG_DATE = 1770733527;
+
 const makeHistoryStorage = () => ({
   history: {
     slice: Object.assign([] as number[], {isEnd: () => false}),
@@ -130,13 +133,14 @@ export function createAllChatsStorage() {
     }
   });
 
-  const save = (userId: number, topMessage: number, date: number, options: {keepPlace?: boolean} = {}) => {
+  // * `fields`: the rest of the dialog the server sends
+  const save = (userId: number, topMessage: number, date: number, options: {keepPlace?: boolean, fields?: Partial<MTDialog.dialog>} = {}) => {
     dates.set(`${userId}_${topMessage}`, date);
-    const dialog = makeDialog(userId, {top_message: topMessage});
-    storage.saveDialog({dialog: dialog as any, ...options});
+    const dialog = makeDialog(userId, {top_message: topMessage, ...options.fields});
+    storage.saveDialog({dialog: dialog as any, keepPlace: options.keepPlace});
     return dialog;
   };
-  const order = () => storage.getFolderDialogs(FOLDER_ID_ALL, false).map((dialog) => +dialog.peerId);
+  const order = (folderId: number = FOLDER_ID_ALL) => storage.getFolderDialogs(folderId, false).map((dialog) => +dialog.peerId);
 
   return {storage, dates, save, order};
 }
