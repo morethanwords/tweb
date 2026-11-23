@@ -177,7 +177,11 @@ export class RtmpCallsController extends EventListenerBase<{
       throw new Error('Not the call asked for');
     }
 
-    const call = await managers.appGroupCallsManager.getGroupCallFull(callId);
+    const [call, admin] = await Promise.all([
+      managers.appGroupCallsManager.getGroupCallFull(callId),
+      // * who manages the stream: the owner, or an admin with the right to manage calls (tdesktop canManageGroupCall)
+      managers.appChatsManager.hasRights(chatId, 'manage_call')
+    ]);
     if(call._ !== 'groupCall') {
       throw new Error('Not a group call');
     }
@@ -197,7 +201,7 @@ export class RtmpCallsController extends EventListenerBase<{
         peerId,
         ssrc,
         pip: false,
-        admin: Boolean(chat.pFlags?.can_delete_channel),
+        admin,
         lastKnownTime: '0',
         ...account
       });

@@ -19,6 +19,7 @@ import {
 } from '@appManagers/utils/polls/pollVoteRestriction';
 import getDocumentInput from './utils/docs/getDocumentInput';
 import getMessageThreadId from './utils/messages/getMessageThreadId';
+import getPeerChannelId from '@appManagers/utils/peers/getPeerChannelId';
 import getPhotoInput from './utils/photos/getPhotoInput';
 import makeError from '@helpers/makeError';
 
@@ -155,8 +156,8 @@ export class AppPollsManager extends AppManager {
     const messageRefs: Array<{peerId: PeerId, mid: number}> = [];
     if(update.peer && update.msg_id) {
       const peerId = this.appPeersManager.getPeerId(update.peer);
-      const channelId = peerId.isAnyChat() ? peerId.toChatId() : 0;
-      const mid = this.appMessagesIdsManager.generateMessageId(update.msg_id, channelId);
+      // * only a channel's message ids are its own: a basic group's are the server's, as a private chat's
+      const mid = this.appMessagesIdsManager.generateMessageId(update.msg_id, getPeerChannelId(update.peer));
       messageRefs.push({peerId, mid});
     } else {
       const pollMessageKeys = this.pollToMessages[update.poll_id];

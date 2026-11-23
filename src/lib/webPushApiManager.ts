@@ -22,6 +22,7 @@ import App from '@config/app';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import appNavigationController from '@components/appNavigationController';
 import Modes from '@config/modes';
+import {getMiddleware} from '@helpers/middleware';
 
 export type PushSubscriptionNotifyType = 'init' | 'subscribe' | 'unsubscribe';
 export type PushSubscriptionNotifyEvent = `push_${PushSubscriptionNotifyType}`;
@@ -40,6 +41,7 @@ export class WebPushApiManager extends EventListenerBase<{
   private localNotificationsAvailable = true;
   private settings: NotificationSettings & {baseUrl?: string} = {} as any;
   private isAliveTO: any;
+  private isAliveMiddlewareHelper = getMiddleware();
   private isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
   private userVisibleOnly = this.isFirefox ? false : true;
   private log = logger('PUSH-API');
@@ -144,6 +146,12 @@ export class WebPushApiManager extends EventListenerBase<{
       return;
     }
 
+    // * one ping at a time: a newer one (a settings change, the start's two) takes the place of one still on its way,
+    // * which would otherwise go on as a loop of its own
+    clearTimeout(this.isAliveTO);
+    this.isAliveMiddlewareHelper.clean();
+    const middleware = this.isAliveMiddlewareHelper.get();
+
     this.settings.baseUrl = (location.href || '').replace(/#.*$/, '');
 
     const lang: ServicePushPingTaskPayload['lang'] = {} as any;
@@ -166,6 +174,10 @@ export class WebPushApiManager extends EventListenerBase<{
       AccountController.getAccounts(),
       apiManagerProxy.pushSingleManager.getKeysIdsBase64()
     ]);
+    if(!middleware()) {
+      return;
+    }
+
     signedInAccounts.forEach(([accountNumber, accountData]) => {
       accounts[accountNumber] = accountData.userId;
     });

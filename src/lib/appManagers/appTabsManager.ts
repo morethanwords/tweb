@@ -22,9 +22,13 @@ export class AppTabsManager {
       tab.state = state;
 
       this.onTabStateChange();
-
-      port.invokeVoid('tabsUpdated', [...this.tabs.values()].map(({state}) => state));
+      this.sendTabsUpdated();
     });
+  }
+
+  // * a tab connected a moment ago has not said its state yet: it is not one of them until it does
+  private sendTabsUpdated() {
+    MTProtoMessagePort.getInstance<false>().invokeVoid('tabsUpdated', this.getTabs().map(({state}) => state));
   }
 
   public onTabStateChange = () => {};
@@ -46,7 +50,7 @@ export class AppTabsManager {
   public deleteTab(source: MessageEventSource) {
     this.tabs.delete(source);
     this.onTabStateChange();
-    MTProtoMessagePort.getInstance<false>().invokeVoid('tabsUpdated', [...this.tabs.values()].map(({state}) => state));
+    this.sendTabsUpdated();
   }
 }
 

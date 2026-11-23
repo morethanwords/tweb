@@ -36,12 +36,18 @@ function joinUpdate(data = '{"rtmp":true}'): Update.updateGroupCallConnection & 
   };
 }
 
-function makeController(joinGroupCall: (...args: any[]) => Promise<ReturnType<typeof joinUpdate>>) {
+function makeController(
+  joinGroupCall: (...args: any[]) => Promise<ReturnType<typeof joinUpdate>>,
+  canManageCalls = false
+) {
   const hangUp = vi.fn(async() => {});
   const leaveGroupCall = vi.fn(async() => {});
   const controller = new RtmpCallsController();
   Object.assign(controller as any, {
     managers: {
+      appChatsManager: {
+        hasRights: vi.fn(async(_chatId: ChatId, action: string) => action === 'manage_call' && canManageCalls)
+      },
       appProfileManager: {
         getChatFull: vi.fn(async() => ({
           _: 'channelFull',
@@ -159,5 +165,18 @@ describe('RtmpCallsController joining the stream asked for', () => {
 
     expect(joinGroupCall).not.toHaveBeenCalled();
     expect(controller.currentCall).toBeUndefined();
+  });
+});
+
+describe('RtmpCallsController stream management', () => {
+  // The channel's owner and any admin allowed to manage its calls run the stream (tdesktop
+  // canManageGroupCall); `can_delete_channel` is the owner's alone.
+  it.each([
+    ['lets an admin with the right to manage calls run the stream', true],
+    ['keeps a viewer without that right a viewer', false]
+  ])('%s', async(_title, canManageCalls) => {
+    const {controller} = makeController(vi.fn().mockResolvedValue(joinUpdate()), canManageCalls);
+    await controller.joinCall(7 as ChatId);
+    expect(controller.currentCall.admin).toBe(canManageCalls);
   });
 });

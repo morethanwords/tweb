@@ -232,10 +232,22 @@ export default class AppAttachMenuBotsManager extends AppManager {
         bot: this.appUsersManager.getUserInput(botId),
         silent,
         url,
-        reply_to: this.appMessagesManager.getInputReplyTo(options),
+        reply_to: this.getWebViewReplyTo(options),
         from_bot_menu: fromBotMenu,
         send_as: sendAsPeerId ? this.appPeersManager.getInputPeerById(sendAsPeerId) : undefined
       }
+    });
+  }
+
+  // * an app opened in a forum topic or a comments thread answers into it, as a message sent there goes (checkSendOptions):
+  // * with no message to reply to, the thread's root is what reply_to points at - tdesktop's ReplyToForMTP. A saved
+  // * dialog's thread is a peer, no message: an app opened there answers into Saved Messages as it is
+  private getWebViewReplyTo(options: MessageSendingParams) {
+    const {peerId, threadId} = options;
+    const isThreadRoot = threadId && !this.appPeersManager.isSavedDialog(peerId, threadId);
+    return this.appMessagesManager.getInputReplyTo({
+      ...options,
+      replyToMsgId: options.replyToMsgId || (isThreadRoot ? threadId : undefined)
     });
   }
 
@@ -251,7 +263,7 @@ export default class AppAttachMenuBotsManager extends AppManager {
         bot: this.appUsersManager.getUserInput(options.botId),
         query_id: options.queryId,
         silent: options.silent,
-        reply_to: this.appMessagesManager.getInputReplyTo(options),
+        reply_to: this.getWebViewReplyTo(options),
         send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined
       }
     });

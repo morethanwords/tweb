@@ -470,3 +470,35 @@ describe('a profile\'s stories, page by page', () => {
     expect(await page(manager.getPinnedStories(stranger, PAGE, 11))).toEqual(range(10, 1));
   });
 });
+
+// * an updateStory is applied to the story wherever it is held (tdesktop: `Stories::apply` -> `parseAndApply`). A
+// * peer whose active stories are not held yet has them asked for - and those bring only the active ones: a story
+// * held from the profile, taken off it or changed (on another device, or one's own audience saved for an old one),
+// * kept its old self until a reload
+describe('a story changed while the peer\'s active stories are not held', () => {
+  // * the profile of a peer with no active story, its stories held
+  const withProfile = async() => {
+    const server = withServer((method) => method === 'stories.getPinnedStories' ?
+      {_: 'stories.stories', count: 3, stories: [3, 2, 1].map((id) => story(id, {pinned: true})), chats: [], users: []} :
+      {_: 'stories.peerStories', stories: peerStories(stranger, []), chats: [], users: []});
+    Object.assign((server.manager as any).apiUpdatesManager, {isInitialSync: () => false});
+    await server.manager.getPinnedStories(stranger, 30);
+    return server;
+  };
+
+  const update = (storyItem: StoryItem): Update.updateStory => ({_: 'updateStory', peer: peerOf(stranger), story: storyItem});
+
+  it('is changed where the profile holds it', async() => {
+    const {manager} = await withProfile();
+
+    (manager as any).onUpdateStory(update({...story(2, {pinned: true}), caption: 'changed'}));
+    expect(manager.getStoryByIdCached(stranger, 2)).toMatchObject({caption: 'changed'});
+  });
+
+  it('leaves the profile once taken off it', async() => {
+    const {manager} = await withProfile();
+
+    (manager as any).onUpdateStory(update(story(2)));
+    expect(manager.getPinnedStoriesCacheSnapshot(stranger).stories.map(({id}) => id)).toEqual([3, 1]);
+  });
+});

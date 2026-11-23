@@ -2478,6 +2478,12 @@ export default class AppStoriesManager extends AppManager {
     }
 
     if(!cache.loaded) {
+      // * the active stories asked for below bring only the active ones: one held from elsewhere (the profile's, a
+      // * link's) takes the change now, as tdesktop applies it to any story it holds
+      if(cache.storiesMap.has(story.id)) {
+        this.saveStoryItems([story], cache, undefined, true);
+      }
+
       Promise.resolve(this.getPeerStories(peerId)).then((userStories) => {
         this.rootScope.dispatchEvent('stories_stories', userStories);
         // * the peer's stories weren't cached yet (e.g. their very first story), so the
