@@ -3,6 +3,7 @@ import {AppProfileManager} from '@appManagers/appProfileManager';
 import {AppMessagesManager} from '@appManagers/appMessagesManager';
 import ApiManagerMethods from '@appManagers/apiManagerMethods';
 import {createDialogsStorage, makeDialog} from '@/tests/helpers/dialogsStorage';
+import outputPeer from '@/tests/helpers/outputPeer';
 import {PeerNotifySettings, ReactionsNotifySettings} from '@layer';
 import '@helpers/peerIdPolyfill';
 
@@ -13,10 +14,6 @@ const deletedPeerId = (101 as UserId).toPeerId(false);
 const groupPeerId = (200 as ChatId).toPeerId(true);
 // * a chat with comment threads, no forum
 const discussionPeerId = (201 as ChatId).toPeerId(true);
-
-const outputPeer = (peerId: PeerId) => peerId.isUser() ?
-  {_: 'peerUser', user_id: peerId.toUserId()} as const :
-  {_: 'peerChat', chat_id: peerId.toChatId()} as const;
 
 const inputNotifyPeer = (peerId: PeerId) => ({_: 'inputNotifyPeer', peer: {_: 'inputPeerMock', peerId}}) as any;
 // * every answer already given handed over

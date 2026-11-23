@@ -1,9 +1,6 @@
-import '@helpers/peerIdPolyfill';
-import {ApiUpdatesManager} from '@appManagers/apiUpdatesManager';
-import getPeerId from '@appManagers/utils/peers/getPeerId';
 import noop from '@helpers/noop';
-import {logger, LogTypes} from '@lib/logger';
-import {Update, Updates} from '@layer';
+import createUpdatesManager from '@/tests/helpers/updatesManager';
+import {Updates} from '@layer';
 
 // The answer to a message sent while the app is catching up (a getDifference at start or after a
 // reconnect) names the sent message's id by its random id. That update has no pts of its own and no
@@ -14,16 +11,8 @@ import {Update, Updates} from '@layer';
 const channelId = 50 as ChatId;
 
 function setup() {
-  const manager = new ApiUpdatesManager() as any;
-  const saved: Update[] = [];
-  Object.assign(manager, {
-    log: logger('UPDATES', LogTypes.None),
-    appUsersManager: {saveApiUsers: vi.fn(), hasUser: () => true},
-    appChatsManager: {saveApiChats: vi.fn(), hasChat: () => true},
-    appPeersManager: {getPeerId},
-    saveUpdate: (update: Update) => saved.push(update)
-  });
-  Object.assign(manager.updatesState, {pts: 1, seq: 1, date: 1, syncLoading: new Promise(noop)});
+  const {manager, saved} = createUpdatesManager();
+  manager.updatesState.syncLoading = new Promise(noop);
   manager.addChannelState(channelId, 10);
 
   return {manager, saved};

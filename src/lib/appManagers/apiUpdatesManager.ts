@@ -143,6 +143,29 @@ class ApiUpdatesManager {
       return false;
     }
 
+    // * one the state has passed meanwhile — a local update taken while a difference ran, which brought it, or one a
+    // * counted update of several steps went past — goes as one coming now would (processUpdate; tdesktop's
+    // * PtsWaiter::updated): a counted one has nothing left to fill - taken as a step still to make, it took the state
+    // * back to its own pts, and could take a gap that is still there for filled; one of no count (a read marker) still
+    // * has its effect, and is applied with no step of its own
+    const passed: typeof curState.pendingPtsUpdates = [];
+    curState.pendingPtsUpdates = curState.pendingPtsUpdates.filter((update) => {
+      if(update.pts > curState.pts) {
+        return true;
+      }
+
+      if(!update.pts_count) {
+        passed.push(update);
+      }
+
+      return false;
+    });
+    passed.sort((a, b) => a.pts - b.pts).forEach((update) => this.saveUpdate(update));
+    if(!curState.pendingPtsUpdates.length) {
+      this.releasePtsAwaiting(curState);
+      return !!passed.length;
+    }
+
     curState.pendingPtsUpdates.sort((a, b) => {
       return a.pts - b.pts;
     });
@@ -174,16 +197,20 @@ class ApiUpdatesManager {
       this.saveUpdate(update);
     }
     curState.pendingPtsUpdates.splice(0, goodIndex + 1);
-
-    if(!curState.pendingPtsUpdates.length && curState.syncPending) {
-      if(!curState.syncPending.seqAwaiting) {
-        this.clearStatePendingSync(curState);
-      } else {
-        delete curState.syncPending.ptsAwaiting;
-      }
-    }
+    this.releasePtsAwaiting(curState);
 
     return true;
+  }
+
+  /** with no update waiting for a pts gap any more, the gap's difference is not needed, but for a seq gap's */
+  private releasePtsAwaiting(state: UpdatesState) {
+    if(!state.pendingPtsUpdates.length && state.syncPending) {
+      if(!state.syncPending.seqAwaiting) {
+        this.clearStatePendingSync(state);
+      } else {
+        delete state.syncPending.ptsAwaiting;
+      }
+    }
   }
 
   public forceGetDifference() {
@@ -250,6 +277,7 @@ class ApiUpdatesManager {
             date: updateMessage.date,
             message: updateMessage.message,
             fwd_from: updateMessage.fwd_from,
+            via_bot_id: updateMessage.via_bot_id,
             reply_to: updateMessage.reply_to,
             entities: updateMessage.entities,
             ttl_period: updateMessage.ttl_period
@@ -663,7 +691,11 @@ class ApiUpdatesManager {
     }
 
     const {pts, pts_count} = update as Update.updateNewMessage;
-    const curState = channelId ? this.getChannelState(channelId, pts) : this.updatesState;
+    // * a channel with no state yet (its dialog is not loaded, or the states went with a difference too long)
+    // * starts right before this update, which is applied, as tdesktop's PtsWaiter starts on its first one:
+    // * a state started at the update's own pts took the update for a duplicate of itself
+    const startPts = pts - (pts_count || 0);
+    const curState = channelId ? this.getChannelState(channelId, startPts > 0 ? startPts : pts) : this.updatesState;
 
     const log = this.log.bindPrefix(`processUpdate${channelId ? `-${channelId}` : ''}`);
     log('process', curState.pts, copy(update));
@@ -698,12 +730,19 @@ class ApiUpdatesManager {
       const message = update.message as Message.message;
       const toPeerId = this.appPeersManager.getPeerId(message.peer_id);
       const fwdHeader: MessageFwdHeader.messageFwdHeader = message.fwd_from || {} as any;
+      // * an author or a forward's origin may be a channel as well as a user (tdesktop's peerLoaded)
+      const hasPeer = (peer: Peer, allowMinUser?: boolean) => {
+        const peerId = this.appPeersManager.getPeerId(peer);
+        return peerId.isUser() ?
+          this.appUsersManager.hasUser(peerId.toUserId(), allowMinUser) :
+          this.appChatsManager.hasChat(peerId.toChatId(), true);
+      };
       let reason: string;
-      if(message.from_id && !this.appUsersManager.hasUser(this.appPeersManager.getPeerId(message.from_id), message.pFlags.post/* || channelId*/) && (reason = 'author') ||
-          fwdHeader.from_id && !this.appUsersManager.hasUser(this.appPeersManager.getPeerId(fwdHeader.from_id), !!(fwdHeader.from_id as Peer.peerChannel).channel_id) && (reason = 'fwdAuthor') ||
-          (fwdHeader.from_id as Peer.peerChannel)?.channel_id && !this.appChatsManager.hasChat((fwdHeader.from_id as Peer.peerChannel).channel_id, true) && (reason = 'fwdChannel') ||
+      if(message.from_id && !hasPeer(message.from_id, message.pFlags.post) && (reason = 'author') ||
+          fwdHeader.from_id && !hasPeer(fwdHeader.from_id) && (reason = 'fwdAuthor') ||
           toPeerId.isUser() && !this.appUsersManager.hasUser(toPeerId) && (reason = 'toPeer User') ||
-          toPeerId.isAnyChat() && !this.appChatsManager.hasChat(toPeerId.toChatId()) && (reason = 'toPeer Chat')) {
+          toPeerId.isAnyChat() && !this.appChatsManager.hasChat(toPeerId.toChatId()) && (reason = 'toPeer Chat') ||
+          message.via_bot_id && !this.appUsersManager.hasUser(message.via_bot_id, true) && (reason = 'viaBot')) {
         log.warn('not enough data for message update', toPeerId, reason, message);
         if(channelId && this.appChatsManager.hasChat(channelId)) {
           this.getChannelDifference(channelId);
@@ -879,8 +918,10 @@ class ApiUpdatesManager {
     ++subscription.count;
 
     const cb = () => {
-      const state = this.getChannelState(channelId);
-      if(!state.syncLoading && (!state.lastDifferenceTime || (Date.now() - state.lastDifferenceTime) > 2500)) {
+      // * a channel's difference starts from its pts: one not known yet (the dialog or the history is still on its
+      // * way) is polled once it is, and a basic group, which has no channel difference, never
+      const state = this.channelStates[channelId];
+      if(state && !state.syncLoading && (!state.lastDifferenceTime || (Date.now() - state.lastDifferenceTime) > 2500)) {
         this.getChannelDifference(channelId);
       }
     };
