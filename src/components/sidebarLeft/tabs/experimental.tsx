@@ -148,7 +148,10 @@ const ExperimentalTab = () => {
     const cancelButton: PopupPeerButton = {langKey: 'Cancel'};
     confirmationPopup({
       titleLangKey: 'Experimental.Restart.Title',
-      descriptionLangKey: on ? 'Experimental.A11y.RestartOn' : 'Experimental.A11y.RestartOff',
+      // * the restart takes every switch held for the check in the header along: then it speaks of them all
+      descriptionLangKey: changed().length > 1 ?
+        'Experimental.Restart.EveryTab' :
+        on ? 'Experimental.A11y.RestartOn' : 'Experimental.A11y.RestartOff',
       button,
       cancelButton,
       onShow: () => {

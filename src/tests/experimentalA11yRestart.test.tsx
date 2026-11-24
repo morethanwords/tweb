@@ -1,19 +1,13 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {JSX} from 'solid-js';
 import {render} from 'solid-js/web';
+import type {PopupConfirmationOptions} from '@components/confirmationPopup';
+import pause from '@helpers/schedulers/pause';
 
 // * the switch of the keyboard and screen-reader layer in Settings → Experimental asks about the restart itself,
 // * instead of waiting for the check in the header (#746)
 
 const STORAGE_KEY = 'experimental_flags';
-
-type PopupOptions = {
-  titleLangKey: string,
-  descriptionLangKey: string,
-  button: {langKey: string, element?: HTMLButtonElement},
-  cancelButton?: {langKey: string, element?: HTMLButtonElement},
-  onShow?: () => void
-};
 
 const mocks = vi.hoisted(() => ({
   tab: undefined as any,
@@ -29,7 +23,7 @@ vi.mock('@components/solidJsTabs/superTabProvider', () => ({
 
 // * as the popup does it: the button is in the page by the time it shows, and the promise settles with the answer
 vi.mock('@components/confirmationPopup', () => ({
-  default: (options: PopupOptions) => new Promise<void>((resolve, reject) => {
+  default: (options: PopupConfirmationOptions) => new Promise<void>((resolve, reject) => {
     const element = document.createElement('button');
     document.body.append(element);
     options.button.element = element;
@@ -102,12 +96,6 @@ vi.mock('@stores/appSettings', () => ({
   useAppSettings: () => [{showPeerIds: false}, vi.fn()]
 }));
 
-const flushTimers = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
-const flush = async() => {
-  await Promise.resolve();
-  await Promise.resolve();
-};
-
 async function mount(options: {kept?: string[], a11y?: boolean} = {}) {
   if(options.kept) localStorage.setItem(STORAGE_KEY, JSON.stringify(options.kept));
   vi.resetModules();
@@ -168,7 +156,7 @@ describe('Settings → Experimental: the keyboard and screen-reader switch', () 
     expect(mocks.reloadEveryTab).not.toHaveBeenCalled();
 
     mocks.popups[0].confirm();
-    await flush();
+    await pause(0);
     expect(mounted.kept()).toEqual(['a11y']);
     expect(mocks.reloadEveryTab).toHaveBeenCalledTimes(1);
     expect(mocks.reload).not.toHaveBeenCalled();
@@ -181,7 +169,7 @@ describe('Settings → Experimental: the keyboard and screen-reader switch', () 
     expect(mounted.hasChanges()).toBe(true);
 
     mocks.popups[0].cancel();
-    await flush();
+    await pause(0);
     expect(mounted.input.checked).toBe(false);
     expect(mounted.hasChanges()).toBe(false);
     expect(mounted.kept()).toEqual([]);
@@ -196,11 +184,11 @@ describe('Settings → Experimental: the keyboard and screen-reader switch', () 
     mounted = await mount();
     mounted.input.focus();
     mounted.input.click();
-    await flushTimers();
+    await pause(0);
     expect(document.activeElement).toBe(mocks.popups[0].options.button.element);
 
     mocks.popups[0].cancel();
-    await flush();
+    await pause(0);
     expect(document.activeElement).toBe(mounted.input);
   });
 
@@ -231,12 +219,12 @@ describe('Settings → Experimental: the keyboard and screen-reader switch', () 
     const focus = vi.spyOn(mounted.input, 'focus');
 
     mounted.input.click();
-    await flushTimers();
+    await pause(0);
     expect(mocks.popups[0].options.descriptionLangKey).toBe('Experimental.A11y.RestartOff');
     expect(document.activeElement).not.toBe(mocks.popups[0].options.button.element);
 
     mocks.popups[0].cancel();
-    await flush();
+    await pause(0);
     expect(mounted.input.checked).toBe(true);
     expect(focus).not.toHaveBeenCalled();
     expect(mounted.kept()).toEqual(['a11y']);
@@ -246,10 +234,21 @@ describe('Settings → Experimental: the keyboard and screen-reader switch', () 
     mounted = await mount({kept: ['a11y'], a11y: true});
     mounted.input.click();
     mocks.popups[0].confirm();
-    await flush();
+    await pause(0);
     expect(mounted.kept()).toEqual([]);
     expect(mocks.reloadEveryTab).toHaveBeenCalledTimes(1);
     expect(mocks.reloadEveryTab.mock.calls[0][0]).toEqual(['a11y']);
+  });
+
+  it('with another switch held for the check in the header, the dialog speaks of every change it restarts with', async() => {
+    mounted = await mount();
+    mounted.other.click();
+    mounted.input.click();
+    expect(mocks.popups[0].options.descriptionLangKey).toBe('Experimental.Restart.EveryTab');
+
+    mocks.popups[0].confirm();
+    await pause(0);
+    expect(mounted.kept().sort()).toEqual(['a11y', 'debug']);
   });
 
   it('the other restart switches still wait for the check in the header', async() => {
