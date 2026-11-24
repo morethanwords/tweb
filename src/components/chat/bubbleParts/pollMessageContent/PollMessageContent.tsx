@@ -14,6 +14,7 @@ import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import SuperIntersectionObserver from '@helpers/dom/superIntersectionObserver';
 import {keepMe} from '@helpers/keepMe';
 import mediaSizes from '@helpers/mediaSizes';
+import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 import {attachHotClassName} from '@helpers/solid/classname';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {I18nTsx} from '@helpers/solid/i18n';
@@ -38,7 +39,7 @@ import {sliceTextWithEntities} from '@lib/richTextProcessor/sliceTextWithEntitie
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {useAppConfig} from '@stores/appState';
 import {usePeer} from '@stores/peers';
-import {batch, createEffect, createMemo, createSelector, createSignal, For, Match, onCleanup, Show, Switch, untrack} from 'solid-js';
+import {batch, createEffect, createMemo, createSelector, createSignal, createUniqueId, For, JSX, Match, onCleanup, Show, Switch, untrack} from 'solid-js';
 import {createStore, reconcile, unwrap} from 'solid-js/store';
 import {Transition, TransitionGroup} from 'solid-transition-group';
 import {AddOption} from './AddOption';
@@ -108,6 +109,8 @@ export const PollMessageContent =
     const {rootScope, AppMediaViewerStatic, appSidebarRight, AppPollResultsTab, TranslatableMessageTsx, DocumentTsx} = useHotReloadGuard();
     const {maxOptionLength} = useCreatePollLimits();
     const middleware = createMiddleware().get();
+    const questionId = createUniqueId();
+    const optionGroupName = createUniqueId();
 
     // ----- Local state -----
     const [explanationToggled, setExplanationToggled] = createSignal(false);
@@ -291,7 +294,7 @@ export const PollMessageContent =
     });
 
     // Make the footer unclickable immediately when there are pending requests
-    const isFooterClickable = createMemo(() => canFooterBeClickable() && !sendVoteMutation.isPending() && !addOptionMutation.isPending() && newOption.attachment?.type !== 'pending');
+    const isFooterClickable = createMemo(() => willFooterBeClickable() && canFooterBeClickable() && !sendVoteMutation.isPending() && !addOptionMutation.isPending() && newOption.attachment?.type !== 'pending');
 
     // ----- Media viewer payload -----
     const mediaViewerPayload = createMemo(() => {
@@ -325,6 +328,21 @@ export const PollMessageContent =
     });
 
     // ----- Event handlers -----
+    const onOptionsKeyDown: JSX.EventHandler<HTMLDivElement, KeyboardEvent> = (event) => {
+      if(allowMultipleAnswers() || event.altKey || event.ctrlKey || event.metaKey || event.isComposing) return;
+      const direction = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 :
+        event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
+      if(!direction) return;
+
+      const options = Array.from(event.currentTarget.querySelectorAll<HTMLInputElement>('input[type="radio"]:not([aria-disabled="true"])'));
+      const index = options.findIndex(option => option === event.target);
+      if(index === -1) return;
+
+      // Browser radio navigation also selects the next answer. A selection here submits a vote.
+      event.preventDefault();
+      options[(index + direction + options.length) % options.length].focus();
+    };
+
     const handleToggle = (index: number) => {
       const restriction = activeVoteRestriction();
       if(restriction) {
@@ -381,6 +399,7 @@ export const PollMessageContent =
     };
 
     const onFooterClick = wrapAsyncClickHandler(async() => {
+      if(!isFooterClickable()) return;
       if(canShowViewResults()) openViewResults();
       else if(hasSelectedSomething()) await sendVoteMutation.mutateAsync(chosenIndexes());
       else if(hasTypedNewOption()) await wrappedAddOption();
@@ -518,7 +537,7 @@ export const PollMessageContent =
         </Show>
         <div class={styles.header}>
           <div class={styles.headerTitleContainer}>
-            <div class={styles.headerTitle}>
+            <div class={styles.headerTitle} id={questionId}>
               <TranslatableMessageTsx
                 peerId={props.peerId}
                 textWithEntities={unwrap(question())}
@@ -553,38 +572,42 @@ export const PollMessageContent =
           />
         </Show>
 
-        <TransitionGroup name='fade-2' moveClass='t-move'>
-          <For each={pollOptions}>
-            {(option, index) => {
-              const initialIdx = createMemo(() => initialIdxFromShuffledIdx(index()));
+        <div role={allowMultipleAnswers() ? 'group' : 'radiogroup'} aria-labelledby={questionId} on:keydown={onOptionsKeyDown}>
+          <TransitionGroup name='fade-2' moveClass='t-move'>
+            <For each={pollOptions}>
+              {(option, index) => {
+                const initialIdx = createMemo(() => initialIdxFromShuffledIdx(index()));
 
-              return (
-                <PollOption
-                  text={option.text}
-                  withMedia={hasMediaInOptions()}
-                  photo={getPhotoForOption(initialIdx())}
-                  video={getVideoForOption(initialIdx())}
-                  sticker={getStickerForOption(initialIdx())}
-                  geo={getGeoForOption(initialIdx())}
-                  webPage={getWebPageForOption(initialIdx())}
-                  allowMultipleAnswers={allowMultipleAnswers()}
-                  hasCorrectAnswer={hasCorrectAnswer()}
-                  checked={isChecked(index())}
-                  onToggle={() => handleToggle(index())}
-                  pollViewerPayload={[mediaViewerPayload().indexes.options.get(initialIdx()), elementByIndexMap]}
-                  initialIdx={initialIdx()}
-                  result={getResultForOption(initialIdx())}
-                  voteRestricted={!!activeVoteRestriction()}
-                  isPendingVote={delayedSendVotePending()}
-                  hideResults={hideResults()}
-                  highlighted={highlightedIndexes().includes(initialIdx())}
-                  slowHighlighted={slowHighlightedIndexes().includes(initialIdx())}
-                  uploadingFileName={props.uploadingFileNames?.answers?.[initialIdx()]}
-                />
-              );
-            }}
-          </For>
-        </TransitionGroup>
+                return (
+                  <PollOption
+                    text={option.text}
+                    groupName={optionGroupName}
+                    withMedia={hasMediaInOptions()}
+                    photo={getPhotoForOption(initialIdx())}
+                    video={getVideoForOption(initialIdx())}
+                    sticker={getStickerForOption(initialIdx())}
+                    geo={getGeoForOption(initialIdx())}
+                    webPage={getWebPageForOption(initialIdx())}
+                    allowMultipleAnswers={allowMultipleAnswers()}
+                    hasCorrectAnswer={hasCorrectAnswer()}
+                    checked={isChecked(index())}
+                    onToggle={() => handleToggle(index())}
+                    pollViewerPayload={[mediaViewerPayload().indexes.options.get(initialIdx()), elementByIndexMap]}
+                    initialIdx={initialIdx()}
+                    result={getResultForOption(initialIdx())}
+                    voteRestricted={!!activeVoteRestriction()}
+                    isPendingVote={delayedSendVotePending()}
+                    votePending={sendVoteMutation.isPending()}
+                    hideResults={hideResults()}
+                    highlighted={highlightedIndexes().includes(initialIdx())}
+                    slowHighlighted={slowHighlightedIndexes().includes(initialIdx())}
+                    uploadingFileName={props.uploadingFileNames?.answers?.[initialIdx()]}
+                  />
+                );
+              }}
+            </For>
+          </TransitionGroup>
+        </div>
 
         <Show when={canShowAddOption()}>
           <div style={{overflow: 'hidden'}}>
@@ -605,12 +628,16 @@ export const PollMessageContent =
         <div class={styles.footer}>
           <div
             class={styles.footerButton}
+            role={willFooterBeClickable() ? 'button' : undefined}
+            tabIndex={willFooterBeClickable() ? 0 : undefined}
+            aria-disabled={willFooterBeClickable() ? !isFooterClickable() : undefined}
             classList={{
               [styles.clickable]: isFooterClickable(),
               [styles.outgoing]: props.isOutgoing
             }}
             use:ripple={isFooterClickable()}
             onClick={onFooterClick}
+            on:keydown={buttonKeyDown}
           >
             <Transition
               name='fade-2'

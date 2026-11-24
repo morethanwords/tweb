@@ -208,6 +208,11 @@
 
   @include hoverable;
 
+  &:has(input:focus-visible) {
+    outline: var(--focus-ring-width, 2px) solid var(--focus-ring-color, var(--primary-color));
+    outline-offset: var(--focus-ring-offset, -2px);
+  }
+
   &.hoveredTransition {
     transition: background-color 0.4s ease-in-out;
   }
