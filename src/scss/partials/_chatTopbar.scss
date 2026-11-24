@@ -165,8 +165,14 @@ body.is-pinned-audio-shown, body.is-calling.forwards {
     }
 	}
 
+  // * the search field covers the header on a phone: it leaves the keyboard's way once the field has faded in over it
+  // * (the crossfade of chat.ts animateElements), and comes back at once when search closes
   &.is-searching-mobile .chat-info-container {
     visibility: hidden;
+
+    @include animation-level(1) {
+      transition: visibility 0s .2s;
+    }
   }
 
 	.chat-utils {

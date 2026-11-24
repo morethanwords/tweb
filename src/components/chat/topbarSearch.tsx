@@ -118,7 +118,7 @@ export const createSearchLoader = (options: LoadOptions) => {
     threadId: searchType === 'this' || !searchType ? threadId : undefined,
     monoforumThreadId,
     query,
-    inputFilter: query?.trim() || fromPeerId || reaction || searchType ? {_: 'inputMessagesFilterEmpty'} : undefined,
+    inputFilter: {_: 'inputMessagesFilterEmpty'},
     limit: 30,
     fromPeerId,
     savedReaction: reaction ? [reaction as Reaction.reactionEmoji] : undefined,
@@ -908,7 +908,7 @@ export default function TopbarSearch(props: {
 
     const current = {searchType: _searchType, query};
 
-    if(!isSender && !fromPeerId && !_reaction && isEmptyQuery && (!isSmallScreen() || _isHashtag)) {
+    if(!isSender && !fromPeerId && !_reaction && isEmptyQuery) {
       setCount();
       setTotalCount();
       onLoad();
