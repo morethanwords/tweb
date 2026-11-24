@@ -221,15 +221,20 @@ describe('StreamedMessageDrafts', () => {
       threadId: 7,
       authorId,
       kind: 'text',
-      matchText: 'Completely different'
-    })).toBeUndefined();
-    expect(drafts.adopt({
-      peerId,
-      threadId: 7,
-      authorId,
-      kind: 'text',
       matchText: 'The result is 42'
     })).toEqual(draft);
+  });
+
+  test.each(['Draft message...', ''])('adopts a plain draft %j when the final text is entirely different', (value) => {
+    const drafts = new StreamedMessageDrafts();
+    const draft = upsert(drafts, textContent(value)).draft;
+    const candidate = {peerId, threadId: 7, authorId, kind: 'text' as const, matchText: 'This is the final message.'};
+
+    expect(drafts.adopt({...candidate, peerId: 11 as PeerId})).toBeUndefined();
+    expect(drafts.adopt({...candidate, threadId: 8})).toBeUndefined();
+    expect(drafts.adopt({...candidate, authorId: 21 as PeerId})).toBeUndefined();
+    expect(drafts.adopt(candidate)).toEqual(draft);
+    expect(drafts.size).toBe(0);
   });
 
   test('prefers same-kind content, supports a kind transition and never matches empty plain text', () => {

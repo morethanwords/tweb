@@ -302,7 +302,7 @@ export function chooseStreamedMessageDraftForFinal(
   let bestSameKindPrefix = 0;
   let bestOtherKind: StreamedMessageDraft;
   let bestOtherKindPrefix = 0;
-  let newestRich: StreamedMessageDraft;
+  let newestSameKind: StreamedMessageDraft;
 
   for(const draft of drafts) {
     if(!isSameScope(draft, candidate)) {
@@ -310,10 +310,10 @@ export function chooseStreamedMessageDraftForFinal(
     }
 
     if(
-      draft.content.kind === 'rich' &&
-      (!newestRich || draft.updatedAt > newestRich.updatedAt)
+      draft.content.kind === candidate.kind &&
+      (!newestSameKind || draft.updatedAt > newestSameKind.updatedAt)
     ) {
-      newestRich = draft;
+      newestSameKind = draft;
     }
 
     const prefix = getCommonPrefixLength(
@@ -341,10 +341,10 @@ export function chooseStreamedMessageDraftForFinal(
     }
   }
 
-  // A rich message can contain only media and therefore have no flattened text.
-  // Desktop adopts the newest rich draft in that case, and also uses it as the
-  // final fallback when a rich stream rewrites all visible text at once.
-  return bestSameKind || bestOtherKind || (candidate.kind === 'rich' ? newestRich : undefined);
+  // A final message may rewrite the entire draft, including a thinking placeholder.
+  // Empty plain finals can be unrelated media; only rich finals may have no text.
+  return bestSameKind || bestOtherKind ||
+    (candidate.kind === 'rich' || candidate.matchText ? newestSameKind : undefined);
 }
 
 function isSameScope(a: StreamedMessageDraftScope, b: StreamedMessageDraftScope) {
