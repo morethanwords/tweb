@@ -7,6 +7,7 @@ import {i18n} from '@lib/langPack';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import rootScope from '@lib/rootScope';
 import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
+import {isTempId} from '@appManagers/utils/messages/isTempId';
 import Chat from '@components/chat/chat';
 import {showPickUser3Popup} from '@components/popups/pickUser';
 import selectRequestPeers from '@components/popups/requestPeer';
@@ -94,6 +95,15 @@ function getButtonTypeHandler({
   const messageMedia = message?.media;
   const messageMid = (replyMarkup as ReplyMarkup.replyKeyboardMarkup)?.mid || message?.mid;
   const botId = (replyMarkup as ReplyMarkup.replyKeyboardMarkup)?.fromId || message?.viaBotId || message?.fromId;
+  // * a message sent through an inline bot keeps its bubble when the server confirms it, only the bubble's mid changes
+  // * (bubbles' message_sent): a button built for the temporary message acts on the sent one, and on none while it is
+  // * not sent yet - the temporary id would reach the message before it, as tdesktop drops a press on a pending one
+  const getSentMessageMid = () => {
+    if(!isTempId(messageMid)) return messageMid;
+    const bubble = buttonEl && findUpClassName(buttonEl, 'bubble');
+    const mid = bubble && +bubble.dataset.mid;
+    return mid && !isTempId(mid) ? mid : undefined;
+  };
 
   switch(type._) {
     case 'inlineButtonTypeUrl': {
@@ -164,10 +174,12 @@ function getButtonTypeHandler({
       const {url, button_id} = type;
 
       result.onClick = () => {
+        const mid = getSentMessageMid();
+        if(!mid) return;
         const toggle = toggleDisability([buttonEl], true);
         chat.appImManager.handleUrlAuth({
           peerId,
-          mid: messageMid,
+          mid,
           url,
           buttonId: button_id
         }).then(() => {
@@ -227,7 +239,9 @@ function getButtonTypeHandler({
 
     case 'inlineButtonTypeCallback': {
       result.onClick = () => {
-        rootScope.managers.appInlineBotsManager.callbackButtonClick(peerId, messageMid, type.data)
+        const mid = getSentMessageMid();
+        if(!mid) return;
+        rootScope.managers.appInlineBotsManager.callbackButtonClick(peerId, mid, type.data)
         .then((callbackAnswer) => {
           if(typeof callbackAnswer.message === 'string' && callbackAnswer.message.length) {
             if(callbackAnswer.pFlags.alert) {
@@ -251,14 +265,10 @@ function getButtonTypeHandler({
       result.classNames.push('is-game');
 
       result.onClick = () => {
-        if(!message) return;
-        // Inline-sent game messages are not re-rendered after the server confirms.
-        // The bubble's data-mid is patched in place — re-read it so we use the
-        // server mid instead of the captured temp one.
-        const bubble = findUpClassName(buttonEl, 'bubble');
-        const currentMid = bubble && +bubble.dataset.mid;
-        const target = (currentMid && currentMid !== message.mid ?
-          chat.getMessageByPeer(message.peerId, currentMid) as Message.message :
+        const mid = message && getSentMessageMid();
+        if(!mid) return;
+        const target = (mid !== message.mid ?
+          chat.getMessageByPeer(message.peerId, mid) as Message.message :
           undefined) || message;
         chat.appImManager.playGame(target);
       };

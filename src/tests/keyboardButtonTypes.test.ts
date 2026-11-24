@@ -4,6 +4,7 @@ import type {KeyboardButton, KeyboardInlineButton, PageButton, ReplyMarkup} from
 import * as mocked1 from '@lib/appImManager';
 import * as mocked2 from '@components/sidebarRight';
 import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {makeMessageBubble} from '@/tests/helpers/messageBubble';
 
 // the code under test reads the top level from the registry, not from the modules mocked above
 registerHotReloadGuard({
@@ -17,7 +18,8 @@ const mocks = vi.hoisted(() => ({
   toggleSidebar: vi.fn(),
   copyTextToClipboard: vi.fn(),
   toastNew: vi.fn(),
-  sendText: vi.fn()
+  sendText: vi.fn(),
+  callbackButtonClick: vi.fn(async() => ({_: 'messages.botCallbackAnswer', pFlags: {}, cache_time: 0}))
 }));
 
 vi.mock('@environment/webpSupport', () => ({default: false}));
@@ -28,7 +30,14 @@ vi.mock('@components/confirmationPopup', () => ({default: vi.fn()}));
 vi.mock('@components/toast', () => ({toast: vi.fn(), toastNew: mocks.toastNew}));
 vi.mock('@components/wrappers/customEmoji', () => ({default: vi.fn()}));
 vi.mock('@components/chat/bubbleParts/replyMarkupLayout', () => ({default: {Button: vi.fn()}}));
-vi.mock('@lib/rootScope', () => ({default: {managers: {appMessagesManager: {sendText: mocks.sendText}}, addEventListener: vi.fn(), dispatchEvent: vi.fn()}}));
+vi.mock('@lib/rootScope', () => ({default: {
+  managers: {
+    appMessagesManager: {sendText: mocks.sendText},
+    appInlineBotsManager: {callbackButtonClick: mocks.callbackButtonClick}
+  },
+  addEventListener: vi.fn(),
+  dispatchEvent: vi.fn()
+}}));
 vi.mock('@helpers/clipboard', () => ({copyTextToClipboard: mocks.copyTextToClipboard}));
 vi.mock('@lib/appImManager', () => ({default: {setInnerPeer: mocks.setInnerPeer}}));
 vi.mock('@components/sidebarRight', () => ({default: {toggleSidebar: mocks.toggleSidebar}}));
@@ -163,5 +172,45 @@ describe('a reply keyboard shown in a topic answers in that topic', () => {
     }).onClick(new MouseEvent('click'));
 
     expect(chat.appImManager.requestPhone).toHaveBeenCalledWith({peerId: chat.peerId, threadId: 42});
+  });
+});
+
+// * a message sent through an inline bot keeps its bubble when the server confirms it: only the bubble's mid changes,
+// * and a button under it answers for the sent message - never for the one before it, which its temporary id would reach
+describe('a callback button under a message sent through an inline bot', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  const DATA = new Uint8Array([1]);
+  const button: KeyboardInlineButton = {
+    _: 'keyboardInlineButton',
+    text: 'Vote',
+    type: {_: 'inlineButtonTypeCallback', pFlags: {}, data: DATA}
+  };
+
+  function pressIn(messageMid: number, bubbleMid: number) {
+    const chat = makeChat();
+    const message = {_: 'message', mid: messageMid, peerId: chat.peerId, pFlags: {}} as any;
+    const handler = getKeyboardButtonHandler({button, chat: chat as any, message});
+    const bubble = makeMessageBubble(chat.peerId, bubbleMid);
+    const buttonEl = document.createElement('button');
+    bubble.append(buttonEl);
+    handler.refCallbacks.forEach((callback) => callback(buttonEl));
+    handler.onClick(new MouseEvent('click'));
+    return chat;
+  }
+
+  test('once sent, answers for the sent message', () => {
+    const chat = pressIn(1234.0001, 1235);
+    expect(mocks.callbackButtonClick).toHaveBeenCalledWith(chat.peerId, 1235, DATA);
+  });
+
+  test('while it is being sent, answers for none', () => {
+    pressIn(1234.0001, 1234.0001);
+    expect(mocks.callbackButtonClick).not.toHaveBeenCalled();
+  });
+
+  test('under a message that came from the server, answers for it', () => {
+    const chat = pressIn(77, 77);
+    expect(mocks.callbackButtonClick).toHaveBeenCalledWith(chat.peerId, 77, DATA);
   });
 });

@@ -113,7 +113,14 @@ export default class TelegramWebView extends EventListenerBase<{
     // ! targeting the origin makes the browser drop the event when the frame has navigated away —
     // ! otherwise an answer to a request the mini app made (its location, the clipboard, a custom
     // ! method result) would be handed to whatever document occupies the frame by the time it arrives
-    this.iframe.contentWindow.postMessage(JSON.stringify({
+    // * a frame that is gone has no one to answer: the app closed itself while a popup of its was open, whose close
+    // * answers it - throwing on its missing window there would leave that popup on the screen for good
+    const contentWindow = this.iframe.isConnected && this.iframe.contentWindow;
+    if(!contentWindow) {
+      return;
+    }
+
+    contentWindow.postMessage(JSON.stringify({
       eventType,
       eventData
     }), this.origin || '*');

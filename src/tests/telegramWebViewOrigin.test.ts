@@ -99,4 +99,13 @@ describe('TelegramWebView origin binding', () => {
 
     expect(postMessage).toHaveBeenCalledWith(expect.any(String), '*');
   });
+
+  // * the app closed itself while a popup of its was open: the popup's close answers it, and must still close
+  test('an answer to a frame that is gone is dropped', () => {
+    const webView = track(createWebView(MINI_APP_ORIGIN));
+    webView.destroy();
+    webView.iframe.remove();
+
+    expect(() => webView.dispatchWebViewEvent('popup_closed', {button_id: 'ok'})).not.toThrow();
+  });
 });

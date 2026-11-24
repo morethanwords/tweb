@@ -1478,8 +1478,15 @@ export class AppImManager extends EventListenerBase<{
 
     // ! the url comes off a keyboard button, i.e. off the wire, so it opens through the same helper
     // ! as every other url in the client — protocol filter and lookalike-host confirmation included
-    const onUrlAuthResultAccepted = (urlAuthResult: UrlAuthResult.urlAuthResultAccepted) => {
-      safeWindowOpen(urlAuthResult.url);
+    // * the link the login gave, else the button's own
+    const openUrlAuthResult = (urlAuthResult?: UrlAuthResult) => {
+      safeWindowOpen(urlAuthResult?._ === 'urlAuthResultAccepted' ? urlAuthResult.url : url);
+    };
+    // * a request the server refused opens the link all the same, as tdesktop does (but for an account left meanwhile)
+    const onUrlAuthError = (err: ApiError) => {
+      if(err?.type !== 'MIDDLEWARE') {
+        openUrlAuthResult();
+      }
     };
 
     const onUrlAuthResult = async(urlAuthResult: UrlAuthResult): Promise<void> => {
@@ -1535,19 +1542,17 @@ export class AppImManager extends EventListenerBase<{
           return;
         }
 
-        const result = await managers.appSeamlessLoginManager.acceptUrlAuth(
+        // * the link opens whatever the answer, as tdesktop's UrlAuthBox does: a refusal, or the question asked again,
+        // * opens it as it is
+        return managers.appSeamlessLoginManager.acceptUrlAuth(
           url,
           peerId,
           mid,
           buttonId,
           allowMessagesChecked
-        );
-
-        return onUrlAuthResult(result);
-      } else if(urlAuthResult._ === 'urlAuthResultAccepted') {
-        onUrlAuthResultAccepted(urlAuthResult);
+        ).then(openUrlAuthResult, onUrlAuthError);
       } else {
-        safeWindowOpen(url);
+        openUrlAuthResult(urlAuthResult);
       }
     };
 
@@ -1558,12 +1563,7 @@ export class AppImManager extends EventListenerBase<{
       buttonId
     ).then((urlAuthResult) => {
       onUrlAuthResult(urlAuthResult);
-    }, (err: ApiError) => {
-      // * a request the server refused opens the link all the same, as tdesktop does (but for an account left meanwhile)
-      if(err?.type !== 'MIDDLEWARE') {
-        safeWindowOpen(url);
-      }
-    });
+    }, onUrlAuthError);
   }
 
   private handleAutologinDomains() {
