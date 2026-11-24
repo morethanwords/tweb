@@ -13,7 +13,6 @@ import LottiePlayer from '@lib/lottie/lottiePlayer';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '@appManagers/constants';
 import Sortable from '@helpers/dom/sortable';
 import whichChild from '@helpers/dom/whichChild';
-import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import showLimitPopup from '@components/popups/limit';
 import {joinDeepPath} from '@helpers/object/setDeepProperty';
 import wrapFolderTitle from '@components/wrappers/folderTitle';
@@ -386,19 +385,14 @@ const ChatFolders: Component = () => {
       list: list,
       middleware: tab.middlewareHelper.get(),
       onSort: (prevIdx, newIdx) => {
-        let order: number[] = [];
+        const order: number[] = [];
         for(const filterId in filtersRendered) {
           const row = filtersRendered[filterId];
           const idx = whichChild(row.container);
           order[idx] = +filterId;
         }
 
-        order = order.filter((filterId) => filterId !== undefined);
-        if(!rootScope.premium) {
-          indexOfAndSplice(order, FOLDER_ID_ALL);
-        }
-
-        tab.managers.filtersStorage.updateDialogFiltersOrder(order);
+        tab.managers.filtersStorage.updateDialogFiltersOrder(order.filter((filterId) => filterId !== undefined));
       },
       scrollable: tab.scrollable
     });

@@ -42,7 +42,7 @@ export function FoldersSidebarContent(props: {
     I18n
   } = useHotReloadGuard();
 
-  const {selectedFolderId, onClick, folderItems} = useFolders();
+  const {selectedFolderId, onClick, folderItems, getFolderIndex} = useFolders();
   const [addFoldersOffset, setAddFoldersOffset] = createSignal(0);
   const [canShowAddFolders, setCanShowAddFolders] = createSignal(false);
   const [menuTarget, setMenuTarget] = createSignal<HTMLDivElement>();
@@ -66,8 +66,7 @@ export function FoldersSidebarContent(props: {
   let folderItemsContainer: HTMLDivElement;
 
   async function _onClick(folderId: number) {
-    const index = folderItems.findIndex(({filter}) => filter.id === folderId);
-    if(!(await onClick()(index))) {
+    if(!(await onClick()(getFolderIndex(folderId)))) {
       return false;
     }
 

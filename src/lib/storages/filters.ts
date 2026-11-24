@@ -58,6 +58,9 @@ export default class FiltersStorage extends AppManager {
   private editsInFlight = 0;
   private changesSeen = 0;
   private syncAfterEdits: boolean;
+  // * the ids of folders on their way to the server: a folder is kept once the server has taken it, and one made
+  // * meanwhile would take the same id - and overwrite the first one there
+  private creatingFilterIds = new Set<number>();
 
   protected after() {
     this.clear(true);
@@ -426,10 +429,14 @@ export default class FiltersStorage extends AppManager {
   }
 
   public createDialogFilter(filter: MyDialogFilter, prepend?: boolean) {
-    const maxId = Math.max(1, ...Object.keys(this.filters).map((i) => +i));
+    const maxId = Math.max(1, ...Object.keys(this.filters).map((i) => +i), ...this.creatingFilterIds);
     filter = copy(filter);
-    filter.id = maxId + 1;
-    return this.updateDialogFilter(filter, undefined, prepend);
+    const id = filter.id = maxId + 1;
+    this.creatingFilterIds.add(id);
+    const promise = this.updateDialogFilter(filter, undefined, prepend);
+    const release = () => this.creatingFilterIds.delete(id);
+    promise.then(release, release);
+    return promise;
   }
 
   public updateDialogFilter(filter: MyDialogFilter, remove = false, prepend = false) {
@@ -452,6 +459,9 @@ export default class FiltersStorage extends AppManager {
           _: 'updateDialogFilterOrder',
           order
         });
+
+        // * and on the server, which puts a new folder last, as Android sends it (FilterCreateActivity, atBegin)
+        this.sendDialogFiltersOrder(this.getServerFiltersOrder(order)).catch(noop);
       }
 
       return filter;
@@ -459,14 +469,22 @@ export default class FiltersStorage extends AppManager {
   }
 
   public updateDialogFiltersOrder(order: number[]) {
-    return this.trackEdit(this.apiManager.invokeApi('messages.updateDialogFiltersOrder', {
-      order
-    }).then(() => {
+    order = this.getServerFiltersOrder(order);
+    return this.sendDialogFiltersOrder(order).then(() => {
       this.onUpdateDialogFilterOrder({
         _: 'updateDialogFilterOrder',
         order
       });
-    }));
+    });
+  }
+
+  /** The folders' order as the server takes it: All chats has a place in it for Premium only */
+  private getServerFiltersOrder(order: number[]) {
+    return this.rootScope.premium ? order : order.filter((filterId) => filterId !== FOLDER_ID_ALL);
+  }
+
+  private sendDialogFiltersOrder(order: number[]) {
+    return this.trackEdit(this.apiManager.invokeApi('messages.updateDialogFiltersOrder', {order}));
   }
 
   private trackEdit<T>(promise: Promise<T>) {

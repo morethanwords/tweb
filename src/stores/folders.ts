@@ -32,7 +32,9 @@ async function getNotificationCountForFilter(filterId: number, managers: Reading
 const useFoldersStore = createRoot(() => {
   const [selectedFolderId, _setSelectedFolderId] = createSignal<number>(FOLDER_ID_ALL);
   const [folderItems, setFolderItems] = createStore<StoredFolder[]>([]);
-  const selectedFolderIndex = createMemo(() => folderItems.findIndex(({id}) => id === selectedFolderId()));
+  // * a tab is picked by its place in the row, not by its folder's id
+  const getFolderIndex = (folderId: number) => folderItems.findIndex((item) => item.id === folderId);
+  const selectedFolderIndex = createMemo(() => getFolderIndex(selectedFolderId()));
 
   let setSelectedFolderId: (index: number, dontAnimate?: boolean) => any;
   const [onClick, setOnClick] = createSignal<typeof setSelectedFolderId>();
@@ -40,6 +42,25 @@ const useFoldersStore = createRoot(() => {
   createEffect(() => {
     setSelectedFolderId = onClick();
   });
+
+  // * a folder joined by a link is opened once it has a tab - whichever read puts it there - unless it is gone first
+  const [joinedFolderId, setJoinedFolderId] = createSignal<number>();
+  createEffect(() => {
+    const folderId = joinedFolderId();
+    const index = folderId === undefined ? -1 : getFolderIndex(folderId);
+    if(index === -1) {
+      return;
+    }
+
+    setJoinedFolderId(undefined);
+    untrack(() => setSelectedFolderId(index));
+  });
+
+  const forgetJoinedFolder = (folderId: number) => {
+    if(untrack(joinedFolderId) === folderId) {
+      setJoinedFolderId(undefined);
+    }
+  };
 
   // * the folders' events come in bursts - a reload is updates, removals and an order at once - while what a tab
   // * shows of a folder is read from the worker in between. So what comes back is written onto the tabs as they are
@@ -63,7 +84,7 @@ const useFoldersStore = createRoot(() => {
   };
 
   function updateFolderItem(folderId: number, payload: Partial<StoredFolder>) {
-    const idx = folderItems.findIndex((item) => item.id === folderId);
+    const idx = getFolderIndex(folderId);
     if(idx === -1) {
       return;
     }
@@ -123,18 +144,18 @@ const useFoldersStore = createRoot(() => {
     // * before anything else: the folder may be on its way in still, and is not to come
     markFolder(filterId);
     indexOfAndSplice(order, filterId);
+    forgetJoinedFolder(filterId);
 
     const items = [...folderItems];
-    const existingItemIndex = items.findIndex((item) => item.id === filterId);
+    const existingItemIndex = getFolderIndex(filterId);
 
     if(existingItemIndex === -1) return;
 
     items.splice(existingItemIndex, 1);
-    const length = items.length;
     setFolderItems(items);
 
-    const selectedId = untrack(selectedFolderId);
-    if(length >= selectedId || selectedId === filterId) {
+    // * only the folder open goes back to All chats: the open tab and its list follow their folder to its new place
+    if(untrack(selectedFolderId) === filterId) {
       setSelectedFolderId(0);
     }
   }
@@ -175,6 +196,7 @@ const useFoldersStore = createRoot(() => {
       if(isLatestMark(folderId, mark)) {
         gone.add(folderId);
         indexOfAndSplice(order, folderId);
+        forgetJoinedFolder(folderId);
       }
     });
 
@@ -205,6 +227,7 @@ const useFoldersStore = createRoot(() => {
     ++lastHydrationId;
     marks.clear();
     order = [];
+    setJoinedFolderId(undefined);
     setFolderItems([]);
     _setSelectedFolderId(FOLDER_ID_ALL);
   }
@@ -236,8 +259,11 @@ const useFoldersStore = createRoot(() => {
       updateItemsOrder(order);
     });
 
+    // * the folder joined came with an event of its own just before, and its tab may still be read then
     rootScope.addEventListener('filter_joined', (filter) => {
-      setSelectedFolderId(filter.id);
+      if(filter) {
+        setJoinedFolderId(filter.id);
+      }
     });
 
     rootScope.addEventListener('premium_toggle', async(isPremium) => {
@@ -259,6 +285,7 @@ const useFoldersStore = createRoot(() => {
     setSelectedFolderId: _setSelectedFolderId,
     selectedFolderIndex,
     folderItems,
+    getFolderIndex,
     hydrateFilters,
     resetForAccountSwitch,
     onClick,

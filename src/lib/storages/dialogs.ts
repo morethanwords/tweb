@@ -999,9 +999,11 @@ export default class DialogsStorage extends AppManager {
         forumUnreadCount.then(({count, hasUnmuted}) => {
           dialog = this.getDialogOnly(peerId);
           const folder = this.getFolder(folderId);
+          // * shown as messages meanwhile: what is unread of it is its messages now, counted by that switch's own recount
           if(
             !dialog ||
             !this.appPeersManager.isForum(peerId) ||
+            dialog.pFlags.view_forum_as_messages ||
             !folder ||
             !folder.dialogs.some((dialog) => dialog.peerId === peerId)
           ) {
@@ -1020,9 +1022,12 @@ export default class DialogsStorage extends AppManager {
 
         return;
       } else {
+        // * the forum's unread state as it is read everywhere else: its unread topics, or an unread mark it keeps with
+        // * none (set while it was shown as messages, or elsewhere)
+        const state = this.getDialogUnreadState(dialog as Dialog, !this.isDialogUnmuted(dialog));
         addMessagesCount = 0;
-        toggleDialog = forumUnreadCount.count > 0;
-        toggleUnmuted = forumUnreadCount.hasUnmuted;
+        toggleDialog = state.count > 0;
+        toggleUnmuted = state.unmuted;
       }
     }
 
@@ -2901,8 +2906,15 @@ export default class DialogsStorage extends AppManager {
       return;
     }
 
+    if(!!dialog.pFlags.view_forum_as_messages === update.enabled) {
+      return;
+    }
+
     if(update.enabled) dialog.pFlags.view_forum_as_messages = true;
     else delete dialog.pFlags.view_forum_as_messages;
     this.setDialogToState(dialog);
+    // * what is unread of a forum is its topics, of one shown as messages its messages: its folders count it, and its
+    // * row shows it, the new way
+    this.processChangedUnreadOrUnmuted(peerId);
   };
 }

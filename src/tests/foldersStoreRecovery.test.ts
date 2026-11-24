@@ -83,6 +83,8 @@ async function openStore(filters: MyDialogFilter[]) {
 
 const folderIds = (store: Awaited<ReturnType<typeof openStore>>) => store.folderItems.map(({id}) => id);
 
+const allChats = makeDialogFilter(0, 0);
+
 beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
@@ -94,7 +96,6 @@ beforeEach(() => {
 
 describe('folders store recovery', () => {
   it('restores filters after state clear without reloading the tab', async() => {
-    const allChats = makeDialogFilter(0, 0);
     const firstFolder = makeDialogFilter(2, 2);
     const secondFolder = makeDialogFilter(3, 3);
 
@@ -119,7 +120,6 @@ describe('folders store recovery', () => {
   });
 
   it('lets go of the previous account\'s folders at once on a switch, a hydration on its way included', async() => {
-    const allChats = makeDialogFilter(0, 0);
     const folder = makeDialogFilter(2, 2);
     const store = await openStore([allChats, folder]);
     store.setSelectedFolderId(2);
@@ -138,7 +138,6 @@ describe('folders store recovery', () => {
 // * the events of the folders come in bursts, and each tab is read from the worker in between: what comes back
 // * has to land on the tabs as they are by then
 describe('folders store under a burst of folder events', () => {
-  const allChats = makeDialogFilter(0, 0);
   const renamed = (filter: MyDialogFilter, text: string) => ({...filter, title: {...filter.title, text}});
 
   it('takes a reload that found folders added and removed elsewhere as the worker has it, in its order', async() => {
@@ -259,5 +258,94 @@ describe('folders store under a burst of folder events', () => {
     await Promise.all([hydration, added]);
 
     expect(folderIds(store)).toEqual([0]);
+  });
+});
+
+// * the folder tabs are picked by their place in the row (`onClick` is the row's `selectTab`), never by a folder's id
+describe('folders store picking a tab', () => {
+  const pickTab = (store: Awaited<ReturnType<typeof openStore>>) => store.onClick() as ReturnType<typeof vi.fn>;
+
+  // * as the worker sends a join: the folder, then the word that it was joined - while the folder is still read
+  const join = (joined: MyDialogFilter) => {
+    mocks.hold();
+    return Promise.all([
+      mocks.emit('filter_update', joined),
+      mocks.emit('filter_joined', joined)
+    ]);
+  };
+
+  it('opens a folder joined by a link at its tab, once the tab is there', async() => {
+    const store = await openStore([allChats, makeDialogFilter(2, 2), makeDialogFilter(3, 3)]);
+    const joined = makeDialogFilter(9, 4);
+
+    const sent = join(joined);
+    await mocks.release();
+    await sent;
+
+    expect(folderIds(store)).toEqual([0, 2, 3, 9]);
+    expect(pickTab(store).mock.calls).toEqual([[3]]);
+  });
+
+  it('opens a folder joined by a link at its tab when a later change of it is what puts the tab there', async() => {
+    const store = await openStore([allChats, makeDialogFilter(2, 2)]);
+    const joined = makeDialogFilter(9, 3);
+
+    const sent = join(joined);
+    const changed = mocks.emit('filter_update', {...joined, title: {...joined.title, text: 'Changed'}});
+    await mocks.release();
+    await Promise.all([sent, changed]);
+
+    expect(folderIds(store)).toEqual([0, 2, 9]);
+    expect(pickTab(store).mock.calls).toEqual([[2]]);
+  });
+
+  it('opens the tab a folder joined already has, at once', async() => {
+    const joined = makeDialogFilter(9, 3);
+    const store = await openStore([allChats, makeDialogFilter(2, 2), joined]);
+
+    await mocks.emit('filter_joined', joined);
+
+    expect(pickTab(store).mock.calls).toEqual([[2]]);
+  });
+
+  it('opens nothing for a folder joined and removed before its tab came', async() => {
+    const store = await openStore([allChats, makeDialogFilter(2, 2)]);
+    const joined = makeDialogFilter(9, 3);
+
+    const sent = join(joined);
+    void mocks.emit('filter_delete', joined);
+    await mocks.release();
+    await sent;
+
+    expect(folderIds(store)).toEqual([0, 2]);
+    expect(pickTab(store)).not.toHaveBeenCalled();
+  });
+
+  it('leaves the open folder open when another one is removed', async() => {
+    const store = await openStore([allChats, makeDialogFilter(2, 2), makeDialogFilter(3, 3), makeDialogFilter(4, 4)]);
+    store.setSelectedFolderId(3);
+
+    await mocks.emit('filter_delete', makeDialogFilter(2, 2));
+
+    expect(folderIds(store)).toEqual([0, 3, 4]);
+    expect(store.selectedFolderId()).toBe(3);
+    expect(pickTab(store), 'went back to All chats').not.toHaveBeenCalled();
+  });
+
+  it('leaves All chats where it is scrolled when a folder is removed', async() => {
+    const store = await openStore([allChats, makeDialogFilter(2, 2), makeDialogFilter(3, 3)]);
+
+    await mocks.emit('filter_delete', makeDialogFilter(3, 3));
+
+    expect(pickTab(store), 'All chats picked again, which scrolls it to the top').not.toHaveBeenCalled();
+  });
+
+  it('goes back to All chats when the open folder is removed', async() => {
+    const store = await openStore([allChats, makeDialogFilter(2, 2), makeDialogFilter(3, 3)]);
+    store.setSelectedFolderId(3);
+
+    await mocks.emit('filter_delete', makeDialogFilter(3, 3));
+
+    expect(pickTab(store).mock.calls).toEqual([[0]]);
   });
 });

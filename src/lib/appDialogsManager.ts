@@ -649,8 +649,8 @@ export class AppDialogsManager {
       // * opened again (`onTabChange`)
       const leaving = this.xd.scrollable.container;
       leaving.style.paddingTop = getComputedStyle(leaving).paddingTop;
-      const {folderItems, onClick} = useFolders();
-      onClick()(folderItems.findIndex((item) => item.id === filterId));
+      const {getFolderIndex, onClick} = useFolders();
+      onClick()(getFolderIndex(filterId));
     }
 
     // * the bar comes in place, over the list that slides away; a refill cut short ends here
@@ -2531,10 +2531,9 @@ export class AppDialogsManager {
       setStatusMessage = lastMessage;
     }
 
+    // * a forum by topics is unread by them, or by an unread mark it keeps with none: `isDialogUnread` counts it so, as
+    // * its folders do
     const unreadCount = unreadTopicsCount ?? (isSaved ? 0 : dialog.unread_count);
-    if(unreadTopicsCount !== undefined) {
-      isDialogUnread = !!unreadCount;
-    }
 
     if(isTopic && !isDialogUnread) {
       isDialogUnread = !getServerMessageId(dialog.read_inbox_max_id);
