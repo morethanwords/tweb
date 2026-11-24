@@ -5638,6 +5638,7 @@ const lang = {
   'Schedule.SendToday': 'Send today at %@',
   'Schedule.SendDate': 'Send on %@ at %@',
   'Schedule.SendWhenOnline': 'Send When Online',
+  'Schedule.TimeInPast': 'This time has already passed. Choose a time in the future.',
   'Schedule.Repeat': 'Repeat',
   'Schedule.Repeat.Daily': 'Daily',
   'Schedule.Repeat.Weekly': 'Weekly',

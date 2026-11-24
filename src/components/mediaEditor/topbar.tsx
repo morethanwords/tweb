@@ -1,6 +1,7 @@
 import {batch, onCleanup, onMount} from 'solid-js';
 
 import {addShortcutListener} from '@helpers/shortcutListener';
+import {IS_APPLE} from '@environment/userAgent';
 import I18n, {i18n} from '@lib/langPack';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
 import ripple from '@components/ripple';
@@ -44,7 +45,9 @@ export default function Topbar(props: {onClose: () => void; onFinish: () => void
   onMount(() => {
     ripple(doneButton);
 
-    const removeListener = addShortcutListener(['Ctrl+KeyZ', 'Ctrl+Shift+KeyZ', 'Ctrl+KeyY'], (combo) => {
+    // * Ctrl+Y redoes off a Mac only: there it yanks in the text being typed
+    const combos = ['Ctrl+KeyZ', 'Ctrl+Shift+KeyZ', ...(IS_APPLE ? [] : ['Ctrl+KeyY'])];
+    const removeListener = addShortcutListener(combos, (combo) => {
       if(combo === 'Ctrl+KeyZ') {
         onUndo();
       } else {

@@ -6,6 +6,11 @@ import type {ChatInputRichMediaLayout, ChatInputRichMediaType, ChatInputRichMedi
 import {getDocumentRowBlockId, type DocumentRowBlock} from '@lib/richMessage';
 import {MESSAGES_ALBUM_MAX_SIZE} from '@appManagers/constants';
 
+/** Media still on its way, which is nothing yet; an Add or a Replace on its way stands on media already there */
+export function isNewRichMediaUpload(attrs: Record<string, unknown>) {
+  return !!attrs?.uploadId && !attrs?.uploadAction;
+}
+
 export function withoutRichMediaUpload<T extends Record<string, unknown>>(attrs: T) {
   return {
     ...attrs,

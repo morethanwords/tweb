@@ -10,6 +10,7 @@ import {hideToast, toastNew} from '@components/toast';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import {SEND_WHEN_ONLINE_TIMESTAMP} from '@appManagers/constants';
 import rootScope from '@lib/rootScope';
+import tsNow from '@helpers/tsNow';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const DAY = 86400;
@@ -23,6 +24,22 @@ const REPEAT_OPTIONS: {value: number, label: () => HTMLElement}[] = [
   {value: 182 * DAY, label: () => i18n('Schedule.Repeat.Every6Months')},
   {value: 365 * DAY, label: () => i18n('Schedule.Repeat.Yearly')}
 ];
+
+/** tdesktop's least distance into the future a message can be scheduled at */
+const SCHEDULE_MIN_SECONDS = 10;
+
+/**
+ * Whether a time picked to send at has gone already, or is too close to be told from now — then it is refused, and
+ * the user is told so: such a time is not "now"
+ */
+export function refuseScheduleTimeInPast(timestamp: number) {
+  if(timestamp === SEND_WHEN_ONLINE_TIMESTAMP || timestamp > tsNow(true) + SCHEDULE_MIN_SECONDS) {
+    return false;
+  }
+
+  toastNew({langPackKey: 'Schedule.TimeInPast'});
+  return true;
+}
 
 export type ScheduleSendingPopupOptions = {
   initDate?: Date,
@@ -56,8 +73,15 @@ export default function showScheduleSendingPopup(opts: ScheduleSendingPopupOptio
   showDatePickerPopup({
     initDate: opts.initDate ?? new Date(),
     addMinutes: opts.addMinutes ?? (opts.initDate === undefined),
+    // * the days before today cannot be picked, as in tdesktop's schedule box
+    minDate: new Date(),
     withTime: true,
     onPick: (timestamp) => {
+      // * a time already gone (picked so, or gone by while the picker was open): the picker stays
+      if(refuseScheduleTimeInPast(timestamp)) {
+        return false;
+      }
+
       opts.onPick(timestamp, selectedRepeatPeriod || undefined, selectedSilent);
     },
     headerActions: opts.canSendSilently === false ? undefined : () => (

@@ -1,6 +1,6 @@
 import type {PageBlock, PageButton, PageListItem, PageListOrderedItem, RichMessage, RichText} from '@layer';
 import {getOrderedListTypePresentation} from '@lib/richTextProcessor/orderedList';
-import {richButtonFromInlineType} from '@components/chat/inputEditor/richButtonModel';
+import {MAX_BUTTONS_PER_ROW, richButtonFromInlineType} from '@components/chat/inputEditor/richButtonModel';
 
 function isEmptyRichText(text: RichText) {
   return text._ === 'textEmpty' ||
@@ -27,6 +27,21 @@ type RichTextMark =
   'superscript' |
   'underline' |
   'url';
+
+// the marks the wrappers of rich text put on what they hold
+const RICH_TEXT_MARK_BY_TYPE: {[type in RichText['_']]?: RichTextMark} = {
+  textBold: 'bold',
+  textItalic: 'italic',
+  textUnderline: 'underline',
+  textStrike: 'strike',
+  textFixed: 'fixed',
+  textSubscript: 'subscript',
+  textSuperscript: 'superscript',
+  textMarked: 'marked',
+  textSpoiler: 'spoiler',
+  textMentionName: 'mentionName',
+  textDate: 'date'
+};
 
 function withMark(
   text: RichText & {text: RichText},
@@ -84,23 +99,15 @@ function isEditableRichText(text: RichText, marks: ReadonlySet<RichTextMark> = n
     case 'textConcat':
       return text.texts.every((child) => isEditableRichText(child, marks));
     case 'textBold':
-      return withMark(text, marks, 'bold');
     case 'textItalic':
-      return withMark(text, marks, 'italic');
     case 'textUnderline':
-      return withMark(text, marks, 'underline');
     case 'textStrike':
-      return withMark(text, marks, 'strike');
     case 'textFixed':
-      return withMark(text, marks, 'fixed');
     case 'textSubscript':
-      return withMark(text, marks, 'subscript');
     case 'textSuperscript':
-      return withMark(text, marks, 'superscript');
     case 'textMarked':
-      return withMark(text, marks, 'marked');
     case 'textSpoiler':
-      return withMark(text, marks, 'spoiler');
+      return withMark(text, marks, RICH_TEXT_MARK_BY_TYPE[text._]);
     case 'textUrl':
       return !isEmptyRichText(text.text) && withMark(text, marks, 'url');
     case 'textEmail':
@@ -115,9 +122,9 @@ function isEditableRichText(text: RichText, marks: ReadonlySet<RichTextMark> = n
         isEditableRichText(text.text, marks)
       );
     case 'textMentionName':
-      return !isEmptyRichText(text.text) && withMark(text, marks, 'mentionName');
+      return !isEmptyRichText(text.text) && withMark(text, marks, RICH_TEXT_MARK_BY_TYPE[text._]);
     case 'textDate':
-      return Number.isInteger(text.date) && !isEmptyRichText(text.text) && withMark(text, marks, 'date');
+      return Number.isInteger(text.date) && !isEmptyRichText(text.text) && withMark(text, marks, RICH_TEXT_MARK_BY_TYPE[text._]);
     case 'textImage':
       return false;
     case 'textDiff':
@@ -228,6 +235,33 @@ function isSafeOpaqueCaption(caption: PageBlock.pageBlockPhoto['caption']) {
   return isSafeOpaqueRichText(caption.text) && isSafeOpaqueRichText(caption.credit);
 }
 
+// * the caption's text is the composer's to edit, as a paragraph's is; its credit is kept as it is
+function isEditableCaption(caption: PageBlock.pageBlockPhoto['caption']) {
+  return isEditableRichText(caption.text) && isSafeOpaqueRichText(caption.credit);
+}
+
+/**
+ * Whether a text loads with a link, which a details title, the block's toggle, is loaded without
+ * (`detailsBlockToTiptap`): an anchor does around text that can hold one (`canAnchorTextHoldLink`)
+ */
+function loadsWithLink(text: RichText, marks: ReadonlySet<RichTextMark> = new Set()): boolean {
+  switch(text._) {
+    case 'textUrl':
+    case 'textEmail':
+    case 'textPhone':
+      return true;
+    case 'textAnchor':
+      return !isEmptyRichText(text.text) && withMark(text, marks, 'url') || loadsWithLink(text.text, marks);
+    case 'textConcat':
+      return text.texts.some((child) => loadsWithLink(child, marks));
+    default: {
+      if(!('text' in text) || typeof(text.text) !== 'object') return false;
+      const mark = RICH_TEXT_MARK_BY_TYPE[text._];
+      return loadsWithLink(text.text, mark ? new Set([...marks, mark]) : marks);
+    }
+  }
+}
+
 function isEditableBlock(block: PageBlock): boolean {
   switch(block._) {
     case 'pageBlockParagraph':
@@ -247,6 +281,7 @@ function isEditableBlock(block: PageBlock): boolean {
       return isEditableRichText(block.text) && isEditableRichText(block.caption);
     case 'pageBlockDetails':
       return isEditableRichText(block.title) &&
+        !loadsWithLink(block.title) &&
         block.blocks.length > 0 &&
         block.blocks.every(isEditableBlock);
     case 'pageBlockList': {
@@ -275,27 +310,30 @@ function isEditableBlock(block: PageBlock): boolean {
     case 'pageBlockMath':
       return !!block.source;
     case 'pageBlockFooter':
-      return isSafeOpaqueRichText(block.text);
+      return isEditableRichText(block.text);
     case 'pageBlockDivider':
       return true;
     case 'pageBlockButtonRow':
-      return block.buttons.length > 0 && block.buttons.every(isEditableButton);
+      return block.buttons.length > 0 &&
+        block.buttons.length <= MAX_BUTTONS_PER_ROW &&
+        block.buttons.every(isEditableButton);
     case 'pageBlockAnchor':
       return !!block.name;
     case 'pageBlockPhoto':
     case 'pageBlockVideo':
     case 'pageBlockAudio':
     case 'pageBlockDocument':
-      return isSafeOpaqueCaption(block.caption);
+      return isEditableCaption(block.caption);
     case 'pageBlockCollage':
     case 'pageBlockSlideshow':
-      return isSafeOpaqueCaption(block.caption) && block.items.every((item) => (
+      // * its items' own captions are kept as they are, with the block (`richMediaToTiptap`)
+      return isEditableCaption(block.caption) && block.items.every((item) => (
         (item._ === 'pageBlockPhoto' || item._ === 'pageBlockVideo') &&
-        isEditableBlock(item)
+        isSafeOpaqueCaption(item.caption)
       ));
     case 'pageBlockMap':
     case 'inputPageBlockMap':
-      return isSafeOpaqueCaption(block.caption);
+      return isEditableCaption(block.caption);
     default:
       return false;
   }

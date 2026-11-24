@@ -185,6 +185,34 @@ describe('rich-message editability', () => {
     }]))).toBe(true);
   });
 
+  const details = (title: RichText): PageBlock => ({
+    _: 'pageBlockDetails',
+    pFlags: {},
+    title,
+    blocks: [{_: 'pageBlockParagraph', text: text('Body')}]
+  });
+
+  // * a details title holds no link (it is the toggle): one there would be its text only
+  test.each([
+    {name: 'a link', title: {_: 'textUrl', url: 'https://telegram.org', webpage_id: 0, text: text('Docs')} as RichText},
+    {name: 'an email', title: {_: 'textEmail', email: 'a@telegram.org', text: text('Mail')} as RichText},
+    {name: 'a phone', title: {_: 'textPhone', phone: '+100', text: text('Call')} as RichText},
+    {name: 'an anchor around text', title: {_: 'textAnchor', name: 'part', text: text('Part')} as RichText}
+  ])('does not edit a details block whose title holds $name', ({title}) => {
+    expect(canSafelyEditRichMessage(richMessage([details(title)]))).toBe(false);
+    expect(canSafelyEditRichMessage(richMessage([details({_: 'textBold', text: text('Docs')})]))).toBe(true);
+  });
+
+  // * one around text that cannot hold a link loads as a marker where its text starts, and keeps it
+  test.each([
+    {name: 'code', title: {_: 'textAnchor', name: 'part', text: {_: 'textFixed', text: text('Part')}} as RichText},
+    {name: 'a date', title: {_: 'textAnchor', name: 'part', text: {_: 'textDate', date: 1, pFlags: {}, text: text('Today')}} as RichText},
+    {name: 'code around it', title: {_: 'textFixed', text: {_: 'textAnchor', name: 'part', text: text('Part')}} as RichText},
+    {name: 'nothing', title: {_: 'textConcat', texts: [{_: 'textAnchor', name: 'part', text: empty}, text('Part')]} as RichText}
+  ])('edits a details block whose title has an anchor around $name', ({title}) => {
+    expect(canSafelyEditRichMessage(richMessage([details(title)]))).toBe(true);
+  });
+
   test('accepts server-resolved links and output-only wrappers that safely unwrap', () => {
     expect(canSafelyEditRichMessage(richMessage([{
       _: 'pageBlockParagraph',

@@ -58,7 +58,7 @@ import ButtonIcon from '@components/buttonIcon';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import ListenerSetter from '@helpers/listenerSetter';
 import Button, {replaceButtonIcon} from '@components/button';
-import showScheduleSendingPopup from '@components/popups/scheduleSendingPopup';
+import showScheduleSendingPopup, {refuseScheduleTimeInPast} from '@components/popups/scheduleSendingPopup';
 import SendMenu from '@components/chat/sendContextMenu';
 import rootScope from '@lib/rootScope';
 import showPinMessagePopup from '@components/popups/unpinMessage';
@@ -315,7 +315,10 @@ export default class ChatInput {
     const {peerId, threadId} = this.chat;
     const editMsgId = this.editMsgId;
     const inputGeneration = this.inputValueGeneration;
-    const middleware = this.getMiddleware();
+    // * the chat's, not its bubbles': those are let go of by a jump within the chat (a pinned message, a reply's
+    // * quote, a search result not loaded) and by a search in it, while the field stays with what it holds - an upload
+    // * in it would be thrown away as it ends
+    const middleware = this.chat.middlewareHelper.get();
     return () => middleware() && this.chat.peerId === peerId && this.chat.threadId === threadId &&
       this.editMsgId === editMsgId && this.inputValueGeneration === inputGeneration;
   }
@@ -2679,9 +2682,9 @@ export default class ChatInput {
 
   public setScheduleTimestamp(timestamp: number, callback: () => void, repeatPeriod?: number) {
     const middleware = this.getMiddleware();
-    const minTimestamp = (Date.now() / 1000 | 0) + 10;
-    if(timestamp <= minTimestamp) {
-      timestamp = undefined;
+    // * a time already gone is not "now": nothing is sent, the message waits for a time that is to come
+    if(refuseScheduleTimeInPast(timestamp)) {
+      return;
     }
 
     this.scheduleDate = timestamp;

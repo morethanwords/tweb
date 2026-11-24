@@ -74,7 +74,8 @@ const isWeekend = (date: Date) => getWeekendDays().has(date.getDay());
 
 export type DatePickerPopupOptions = {
   initDate: Date,
-  onPick: (timestamp: number) => void,
+  /** `false` keeps the picker open: the time picked will not do */
+  onPick: (timestamp: number) => void | boolean,
   minDate?: Date,
   maxDate?: Date,
   withTime?: boolean,
@@ -630,7 +631,7 @@ export default function showDatePickerPopup(opts: DatePickerPopupOptions): void 
       if(opts.withTime) {
         date.setHours(+hoursValue() || 0, +minutesValue() || 0, 0, 0);
       }
-      opts.onPick(date.getTime() / 1000 | 0);
+      return opts.onPick(date.getTime() / 1000 | 0);
     }
 
     function onDanger() {

@@ -1,9 +1,16 @@
 import {useChatInputEditorHarness, tableDocument} from '@/tests/helpers/chatInputEditorHarness';
 import {richMessageToTiptap, tiptapToRichMessage} from '@components/chat/inputEditor/richMessage';
 import canSafelyEditRichMessage from '@components/chat/inputEditor/richMessageEditability';
-import type {PageBlock, RichMessage, RichText} from '@layer';
+import {MAX_BUTTONS_PER_ROW} from '@components/chat/inputEditor/richButtonModel';
+import type {PageBlock, PageButton, RichMessage, RichText} from '@layer';
 
 const plain = (text: string): RichText.textPlain => ({_: 'textPlain', text});
+// * a bot's button, which a user cannot put into a message
+const callbackButton: RichText = {
+  _: 'textButton',
+  text: plain('Buy'),
+  type: {_: 'inlineButtonTypeCallback', pFlags: {}, data: new Uint8Array([1])}
+};
 
 function richMessage(blocks: PageBlock[]): RichMessage.richMessage {
   return {_: 'richMessage', pFlags: {}, blocks, photos: [], documents: []};
@@ -155,6 +162,58 @@ describe('Tiptap chat input editor: layer 229 buttons', () => {
         type: {_: 'inlineButtonTypeCallback', pFlags: {}, data: new Uint8Array([1])}
       }]
     }]))).toBe(false);
+  });
+
+  // * wherever it stands: a footer and a media caption are the composer's text too, where it would be its label only
+  test.each([
+    {name: 'a footer', block: (button: RichText): PageBlock => ({
+      _: 'pageBlockFooter',
+      text: {_: 'textConcat', texts: [plain('Press '), button]}
+    })},
+    {name: 'a photo\'s caption', block: (button: RichText): PageBlock => ({
+      _: 'pageBlockPhoto',
+      pFlags: {},
+      photo_id: 1,
+      caption: {_: 'pageCaption', text: button, credit: {_: 'textEmpty'}}
+    })}
+  ])('a bot\'s button in $name is not the composer\'s either', ({block}) => {
+    const url: RichText = {_: 'textButton', text: plain('Site'), type: {_: 'inlineButtonTypeUrl', url: 'https://telegram.org'}};
+
+    expect(canSafelyEditRichMessage(richMessage([block(callbackButton)]))).toBe(false);
+    expect(canSafelyEditRichMessage(richMessage([block(url)]))).toBe(true);
+  });
+
+  // * a collage's items keep their own captions as they are, with the collage: only its caption is the composer's text
+  test('a collage is edited with whatever its items\' own captions hold', () => {
+    const photo = (photo_id: number, caption: RichText): PageBlock.pageBlockPhoto => ({
+      _: 'pageBlockPhoto',
+      pFlags: {},
+      photo_id,
+      caption: {_: 'pageCaption', text: caption, credit: {_: 'textEmpty'}}
+    });
+    const collage = (caption: RichText): PageBlock => ({
+      _: 'pageBlockCollage',
+      items: [photo(1, {_: 'textFixed', text: {_: 'textBold', text: plain('one')}}), photo(2, callbackButton)],
+      caption: {_: 'pageCaption', text: caption, credit: {_: 'textEmpty'}}
+    });
+
+    expect(canSafelyEditRichMessage(richMessage([collage(plain('Both'))]))).toBe(true);
+    expect(canSafelyEditRichMessage(richMessage([collage(callbackButton)]))).toBe(false);
+  });
+
+  test('a row of more buttons than the composer keeps is not edited', () => {
+    const row = (count: number): PageBlock => ({
+      _: 'pageBlockButtonRow',
+      pFlags: {},
+      buttons: Array.from({length: count}, (_, index): PageButton => ({
+        _: 'pageButton',
+        text: plain(`${index}`),
+        type: {_: 'inlineButtonTypeUrl', url: `https://telegram.org/${index}`}
+      }))
+    });
+
+    expect(canSafelyEditRichMessage(richMessage([row(MAX_BUTTONS_PER_ROW)]))).toBe(true);
+    expect(canSafelyEditRichMessage(richMessage([row(MAX_BUTTONS_PER_ROW + 1)]))).toBe(false);
   });
 
   test('keeps a compact table compact (layer 229)', () => {

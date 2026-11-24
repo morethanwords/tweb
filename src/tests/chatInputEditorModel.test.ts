@@ -168,6 +168,106 @@ describe('chat input editor Telegram entity model', () => {
     expect(serialized.entities).toEqual(source);
   });
 
+  // * a code block's own last line break ends its line, and so the line of a quote it ends: no empty line follows it
+  test('does not duplicate a trailing newline covered by pre at the end of a quote', () => {
+    const text = 'code\nnext';
+    const source: MessageEntity[] = [
+      {_: 'messageEntityPre', offset: 0, length: 5, language: ''},
+      {_: 'messageEntityBlockquote', offset: 0, length: 5, pFlags: {}}
+    ];
+    const editor = makeEditor(text, source);
+    const document = editor.getJSON();
+    const serialized = tiptapToTelegram(editor.state.doc);
+
+    expect(document.content?.map((node) => node.type)).toEqual(['blockquote', 'paragraph']);
+    expect(document.content?.[0].content).toMatchObject([{type: 'codeBlock', content: [{type: 'text', text: 'code\n'}]}]);
+    expect(serialized.text).toBe(text);
+    expect(serialized.entities).toEqual(expect.arrayContaining(source));
+    expect(serialized.entities).toHaveLength(source.length);
+  });
+
+  test('keeps a quote a code block ends as it is through a save and a load', () => {
+    const editor = makeEditor('');
+    editor.commands.setContent({
+      type: 'doc',
+      content: [
+        {type: 'blockquote', content: [{type: 'codeBlock', attrs: {language: ''}, content: [{type: 'text', text: 'code\n'}]}]},
+        {type: 'paragraph', content: [{type: 'text', text: 'next'}]}
+      ]
+    });
+    const saved = tiptapToTelegram(editor.state.doc);
+    const loaded = makeEditor(saved.text, saved.entities);
+
+    expect(saved.text).toBe('code\nnext');
+    expect(loaded.getJSON().content).toMatchObject([
+      {type: 'blockquote', content: [{type: 'codeBlock', content: [{type: 'text', text: 'code\n'}]}]},
+      {type: 'paragraph', content: [{type: 'text', text: 'next'}]}
+    ]);
+    expect(loaded.getJSON().content).toHaveLength(2);
+    expect(tiptapToTelegram(loaded.state.doc)).toMatchObject({text: saved.text, entities: saved.entities});
+  });
+
+  test.each([
+    {name: 'a code block', next: {type: 'codeBlock', attrs: {language: 'js'}, content: [{type: 'text', text: 'next'}]}},
+    {name: 'an empty line and a code block joined to it', next: [
+      {type: 'paragraph'},
+      {type: 'codeBlock', attrs: {language: 'js', joinBefore: true}, content: [{type: 'text', text: 'next'}]}
+    ]},
+    {name: 'a code block joined to the line before', next: {
+      type: 'codeBlock', attrs: {language: 'js', joinBefore: true}, content: [{type: 'text', text: 'next'}]
+    }},
+    {name: 'a quote of a code block', next: {type: 'blockquote', content: [
+      {type: 'codeBlock', attrs: {language: 'js'}, content: [{type: 'text', text: 'next'}]}
+    ]}},
+    {name: 'a quote of an empty line and a code block joined to it', next: {type: 'blockquote', content: [
+      {type: 'paragraph'},
+      {type: 'codeBlock', attrs: {language: 'js', joinBefore: true}, content: [{type: 'text', text: 'next'}]}
+    ]}}
+  ])('keeps the code of a quote apart from $name after it of the same language', ({next}) => {
+    const editor = makeEditor('');
+    editor.commands.setContent({
+      type: 'doc',
+      content: [
+        {type: 'blockquote', content: [{type: 'codeBlock', attrs: {language: 'js'}, content: [{type: 'text', text: 'code\n'}]}]},
+        ...[next].flat()
+      ]
+    });
+    const saved = tiptapToTelegram(editor.state.doc);
+    const loaded = makeEditor(saved.text, saved.entities);
+    const resaved = tiptapToTelegram(loaded.state.doc);
+
+    expect(saved.entities.filter((entity) => entity._ === 'messageEntityPre')).toHaveLength(2);
+    expect(resaved.text).toBe(saved.text);
+    expect(resaved.text.match(/next/g)).toHaveLength(1);
+  });
+
+  // * the quote's last line break is the code's only where the code ends there: code going on past it keeps its text once
+  test.each([
+    {name: 'code running on past it', source: [
+      {_: 'messageEntityPre', offset: 0, length: 3, language: ''},
+      {_: 'messageEntityBlockquote', offset: 0, length: 2, pFlags: {}}
+    ]},
+    {name: 'no code', source: [{_: 'messageEntityBlockquote', offset: 0, length: 2, pFlags: {}}]}
+  ] as {name: string, source: MessageEntity[]}[])('loads a quote ending with a line break and $name once', ({source}) => {
+    const serialized = tiptapToTelegram(makeEditor('a\nb', source).state.doc);
+
+    expect(serialized.text).toBe('a\nb');
+  });
+
+  test('adds no line between the code of a quote and code of another language right after it', () => {
+    const text = 'code\nnext';
+    const source: MessageEntity[] = [
+      {_: 'messageEntityPre', offset: 0, length: 5, language: 'js'},
+      {_: 'messageEntityBlockquote', offset: 0, length: 5, pFlags: {}},
+      {_: 'messageEntityPre', offset: 5, length: 4, language: 'python'}
+    ];
+    const serialized = tiptapToTelegram(makeEditor(text, source).state.doc);
+
+    expect(serialized.text).toBe(text);
+    expect(serialized.entities).toEqual(expect.arrayContaining(source));
+    expect(serialized.entities).toHaveLength(source.length);
+  });
+
   test.each(['code\n\nnext', 'code\n\n\nnext', 'code\n\n'])('keeps the empty lines after a pre covering its trailing newline: %j', (text) => {
     const source: MessageEntity[] = [{_: 'messageEntityPre', offset: 0, length: 5, language: ''}];
     const serialized = tiptapToTelegram(makeEditor(text, source).state.doc);

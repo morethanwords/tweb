@@ -49,8 +49,7 @@ function mountAudioInsert({canSend, prepareRichMessageMedia = async() => ({docum
   const host = Object.assign(Object.create(ChatInput.prototype), {
     richMessageInput: {editor, expanded: true, insertMedia: undefined as RichMediaUploads['insert']},
     editMsgId: undefined,
-    chat: {peerId: 42, threadId: 1, canSend},
-    getMiddleware: () => middleware.get(),
+    chat: {peerId: 42, threadId: 1, canSend, middlewareHelper: middleware},
     inputValueGeneration: 0,
     managers: {appMessagesManager: {prepareRichMessageMedia, cancelRichMessageMedia}}
   });
@@ -119,10 +118,9 @@ test.each(['none', 'normal-close', 'peer', 'thread', 'edit', 'new-editor', 'dest
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
     const source = createSource();
     const host = Object.assign(Object.create(ChatInput.prototype), {
-      chat: {peerId: 42, threadId: 1},
+      chat: {peerId: 42, threadId: 1, middlewareHelper: middleware},
       editMsgId: undefined,
       richMessageInput: {editor: {captureSelection: () => ({revision: 0, from: 1, to: 2, type: 'node'})}},
-      getMiddleware: () => middleware.get(),
       inputValueGeneration: 0,
       insertMedia: vi.fn(async() => true)
     });
@@ -177,11 +175,10 @@ for(const stage of ['download', 'source'] as const) test.each([
   let revision = 0;
   const editor = {captureSelection: () => ({revision, from: 1, to: 2, type: 'node'})};
   const host = Object.assign(Object.create(ChatInput.prototype), {
-    chat: {peerId: 42, threadId: 1},
+    chat: {peerId: 42, threadId: 1, middlewareHelper: middleware},
     richMessageInput: {editor},
     editMsgId: undefined,
-    inputValueGeneration: 0,
-    getMiddleware: () => middleware.get()
+    inputValueGeneration: 0
   });
   const contextIsCurrent = host.captureMessageInputContext();
   const task = editRichMediaItem({
@@ -260,4 +257,28 @@ for(const stage of ['permission', 'picker'] as const) test.each([
     expect(host.fileSelectionIsCurrent).toBeUndefined();
   }
   middleware.destroy();
+});
+
+// * a jump within the chat (a pinned message, a reply's quote, a search result not loaded) and a search in it reload
+// * the bubbles and let go of what holds on to them; the field stays as it is, and so do the uploads in it
+test('a jump within the chat keeps the uploads of the field going', () => {
+  const chat = getMiddleware();
+  const bubbles = getMiddleware();
+  const host = Object.assign(Object.create(ChatInput.prototype), {
+    chat: {peerId: 42, threadId: 1, middlewareHelper: chat},
+    editMsgId: undefined,
+    getMiddleware: () => bubbles.get(),
+    inputValueGeneration: 0
+  });
+  const session = host.createMediaServices().capture();
+  try {
+    bubbles.clean();
+    expect(session.isCurrent()).toBe(true);
+    // * another chat does let go of them
+    chat.clean();
+    expect(session.isCurrent()).toBe(false);
+  } finally {
+    bubbles.destroy();
+    chat.destroy();
+  }
 });

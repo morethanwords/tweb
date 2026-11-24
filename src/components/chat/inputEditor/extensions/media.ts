@@ -28,7 +28,7 @@ import {
 } from '@components/chat/inputEditor/placeholders';
 import type {ChatInputRichMediaUploadItem} from '@components/chat/inputEditor/types';
 import {richTextPlainText} from '@components/chat/inputEditor/richMessage';
-import {getRichMediaPreviewUrls, richMediaItemBlock, ungroupRichMediaNode} from '@components/chat/inputEditor/richMedia';
+import {getRichMediaPreviewUrls, isNewRichMediaUpload, richMediaItemBlock, ungroupRichMediaNode} from '@components/chat/inputEditor/richMedia';
 import {getDocumentRowBlockId, isDocumentRowBlock, type DocumentRowBlock} from '@lib/richMessage';
 import {
   getRichMediaPreviewPoster,
@@ -1300,6 +1300,7 @@ export const ChatRichMedia = Node.create({
         const uploadPreviewUrls = node.attrs.uploadPreviewUrls as string[] || [];
         const previewUrls = getRichMediaPreviewUrls(node, items.length);
         const uploadAction = `${node.attrs.uploadAction || ''}`;
+        const newUpload = isNewRichMediaUpload(node.attrs);
         const uploadActiveIndex = Number(node.attrs.uploadActiveIndex);
         if(
           uploadAction &&
@@ -1319,13 +1320,13 @@ export const ChatRichMedia = Node.create({
             item: replacing && uploadItems[0] ?
               pendingUploadMediaItem(uploadItems[0], 0) :
               item,
-            previewUrl: uploadId && !uploadAction ?
+            previewUrl: newUpload ?
               uploadPreviewUrls[sourceIndex] || '' :
               replacing ?
                 uploadPreviewUrls[0] || '' :
                 previewUrls[sourceIndex] || '',
             sourceIndex,
-            uploadIndex: uploadId && !uploadAction ? sourceIndex : undefined
+            uploadIndex: newUpload ? sourceIndex : undefined
           };
         });
         const addedEntries: RenderedMediaEntry[] = uploadAction === 'add' ?

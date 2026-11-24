@@ -21,7 +21,7 @@ function press(combos: string[], init: Press) {
   return {fired, prevented: event.defaultPrevented};
 }
 
-const SEARCH = ['ctrl+f', 'alt+f', 'meta+f'];
+const SEARCH = ['mod+f', 'alt+f', 'meta+f'];
 
 describe('shortcut listener', () => {
   afterEach(() => {
@@ -29,23 +29,34 @@ describe('shortcut listener', () => {
   });
 
   test('a Latin layout matches by the letter it types', () => {
-    expect(press(SEARCH, {key: 'f', code: 'KeyF', ctrlKey: true})).toEqual({fired: ['ctrl+f'], prevented: true});
+    expect(press(SEARCH, {key: 'f', code: 'KeyF', ctrlKey: true})).toEqual({fired: ['mod+f'], prevented: true});
     // * Dvorak: F sits where QWERTY has Y, and the F place types U
-    expect(press(SEARCH, {key: 'f', code: 'KeyY', ctrlKey: true}).fired).toEqual(['ctrl+f']);
+    expect(press(SEARCH, {key: 'f', code: 'KeyY', ctrlKey: true}).fired).toEqual(['mod+f']);
     expect(press(SEARCH, {key: 'u', code: 'KeyF', ctrlKey: true})).toEqual({fired: [], prevented: false});
   });
 
   test('a non-Latin layout matches by the key\'s place', () => {
     // * the F key on Russian (also with Shift), Greek, Hebrew, Arabic and Korean layouts
     for(const key of ['а', 'А', 'φ', 'כ', 'ب', 'ㄹ']) {
-      expect(press(SEARCH, {key, code: 'KeyF', ctrlKey: true}), key).toEqual({fired: ['ctrl+f'], prevented: true});
+      expect(press(SEARCH, {key, code: 'KeyF', ctrlKey: true}), key).toEqual({fired: ['mod+f'], prevented: true});
     }
 
     // * Alt types nothing on Windows and Linux
     expect(press(SEARCH, {key: 'а', code: 'KeyF', altKey: true}).fired).toEqual(['alt+f']);
 
     appleEnv.isApple = true;
-    expect(press(SEARCH, {key: 'а', code: 'KeyF', metaKey: true}).fired).toEqual(['meta+f']);
+    expect(press(SEARCH, {key: 'а', code: 'KeyF', metaKey: true}).fired).toEqual(['mod+f']);
+  });
+
+  test('on a Mac the app takes Cmd and leaves Ctrl with a letter to the text it is typed in', () => {
+    appleEnv.isApple = true;
+    // * Ctrl+F moves the caret a character forward there
+    expect(press(SEARCH, {key: 'f', code: 'KeyF', ctrlKey: true})).toEqual({fired: [], prevented: false});
+    expect(press(SEARCH, {key: 'f', code: 'KeyF', metaKey: true})).toEqual({fired: ['mod+f'], prevented: true});
+    expect(press(['mod+0', 'meta+0'], {key: '0', code: 'Digit0', ctrlKey: true})).toEqual({fired: [], prevented: false});
+
+    appleEnv.isApple = false;
+    expect(press(['mod+0', 'meta+0'], {key: '0', code: 'Digit0', ctrlKey: true}).fired).toEqual(['mod+0']);
   });
 
   test('a non-Latin letter typed with AltGr or Option is text, not a shortcut', () => {

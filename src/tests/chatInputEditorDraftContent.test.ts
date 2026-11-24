@@ -3,6 +3,7 @@ import {mountChatInputEditor} from '@/tests/helpers/chatInputEditor';
 import type {ChatInputEditor} from '@components/chat/inputEditor/types';
 import deriveEditorDraftContent from '@components/chat/inputEditor/draftContent';
 import type {PageBlock} from '@layer';
+import makePhoto from '@/tests/mocks/photo';
 
 describe('chat input editor draft content', () => {
   const beginPhotoUpload = (
@@ -82,6 +83,38 @@ describe('chat input editor draft content', () => {
         _: 'pageBlockParagraph',
         text: {_: 'textPlain', text: 'Draft text'}
       });
+    } finally {
+      editor.destroy();
+      input.remove();
+    }
+  });
+
+  // * an Add or a Replace uploads onto media already there, which stays in the draft as it stands meanwhile
+  test.each(['add', 'replace'] as const)('keeps the media a pending %s stands on in a rich draft', (action) => {
+    const {editor, input, tiptap} = mountChatInputEditor();
+
+    try {
+      expect(editor.insertRichMedia([
+        {type: 'photo', photo: makePhoto(1), previewUrl: 'blob:draft-first'},
+        {type: 'photo', photo: makePhoto(2), previewUrl: 'blob:draft-second'}
+      ], {grouped: true})).toBe(true);
+      const before = deriveEditorDraftContent(editor).richMessage;
+      expect(before?.input.blocks).toMatchObject([{_: 'pageBlockCollage'}]);
+
+      const id = `draft-${action}`;
+      expect(editor.beginRichMediaUpload({
+        action,
+        activeIndex: 0,
+        grouped: false,
+        id,
+        items: [{id: `${id}-0`, progress: 0, state: 'uploading', type: 'photo'}],
+        previewUrls: [`blob:${id}`],
+        selection: {from: 0, to: tiptap.state.doc.firstChild.nodeSize, type: 'node'}
+      })).toBe(true);
+
+      const content = deriveEditorDraftContent(editor);
+      expect(content.richMessage?.input.blocks).toEqual(before.input.blocks);
+      expect(content.richMessage?.output.photos).toEqual(before.output.photos);
     } finally {
       editor.destroy();
       input.remove();

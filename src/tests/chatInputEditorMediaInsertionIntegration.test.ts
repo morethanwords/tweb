@@ -4,6 +4,7 @@ import {getIconContent} from '@components/icon';
 import {instantViewStyles} from '@components/instantViewFormatting';
 import type {Document, PageBlock, Photo} from '@layer';
 import {MESSAGES_ALBUM_MAX_SIZE} from '@appManagers/constants';
+import makePhoto from '@/tests/mocks/photo';
 
 describe('Tiptap chat input editor: MediaInsertion', () => {
   const {mountEditor, expectSingleTerminalParagraph} = useChatInputEditorHarness();
@@ -206,12 +207,6 @@ describe('Tiptap chat input editor: MediaInsertion', () => {
 
   test('uses audio as a boundary between visual collage runs', () => {
     const {editor} = mountEditor();
-    const photo = (id: number) => ({
-      _: 'photo',
-      id: String(id),
-      access_hash: String(id + 100),
-      file_reference: new Uint8Array([id])
-    }) as Photo.photo;
     const audio = {
       _: 'document',
       id: '303',
@@ -222,9 +217,9 @@ describe('Tiptap chat input editor: MediaInsertion', () => {
     } as Document.document;
 
     expect(editor.insertRichMedia([
-      {type: 'photo', photo: photo(301)},
+      {type: 'photo', photo: makePhoto(301)},
       {type: 'audio', document: audio},
-      {type: 'photo', photo: photo(302)}
+      {type: 'photo', photo: makePhoto(302)}
     ], {grouped: true})).toBe(true);
 
     expect(editor.getRichMessage().input.blocks.map((block) => block._)).toEqual([

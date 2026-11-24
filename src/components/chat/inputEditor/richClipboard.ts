@@ -285,11 +285,13 @@ type AtomText = (element: Element) => string | undefined;
  * writes it (`leafText`: an emoji's character, nothing for an anchor). Undefined for an empty wrapper
  * of formatting, which is nothing.
  */
-function atomReader(schema: Schema, ownerDocument: Document): AtomText {
+function atomReader(schema: Schema): AtomText {
   const parser = ProseMirrorDOMParser.fromSchema(schema);
   return (element) => {
     if(element.tagName === 'BR' || element.hasChildNodes()) return;
-    const container = ownerDocument.createElement('div');
+    // * read where it was parsed, the paste's inert document: put into the app's, even a detached node of it, a
+    // * pasted `<img>` would load there and run its `onerror`
+    const container = element.ownerDocument.createElement('div');
     container.append(element.cloneNode(true));
     const {content} = parser.parseSlice(container);
     if(!content.size) return;
@@ -460,7 +462,7 @@ function paragraphsInText(root: DocumentFragment, plain: PlainWord[], atomText: 
  */
 function keepPastedParagraphsApart(root: DocumentFragment, text: string | undefined, view: EditorView) {
   const ownerDocument = view.dom.ownerDocument;
-  const atomText = atomReader(view.state.schema, ownerDocument);
+  const atomText = atomReader(view.state.schema);
   const paragraphs = Array.from(root.querySelectorAll('p')).filter((paragraph) => !isBlankParagraph(paragraph, atomText));
   if(paragraphs.length < 2) return false;
   const plain = text ? plainTextWords(text) : [];

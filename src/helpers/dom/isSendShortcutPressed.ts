@@ -1,5 +1,6 @@
 import {useAppSettings} from '@stores/appSettings';
 import {IS_MOBILE, IS_APPLE} from '@environment/userAgent';
+import isModKeyPressed from '@helpers/dom/isModKeyPressed';
 
 export default function isSendShortcutPressed(e: KeyboardEvent) {
   if(e.key === 'Enter' && !IS_MOBILE && !e.isComposing) {
@@ -17,7 +18,7 @@ export default function isSendShortcutPressed(e: KeyboardEvent) {
 
       return true;
     } else {
-      const secondaryKey = IS_APPLE ? e.metaKey : e.ctrlKey;
+      const secondaryKey = isModKeyPressed(e);
       if(e.shiftKey || (IS_APPLE ? e.ctrlKey : e.metaKey)) {
         return;
       }

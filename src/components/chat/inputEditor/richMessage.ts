@@ -27,6 +27,7 @@ import {
   CHAT_TABLE_WRAPPER_NODE_NAME
 } from '@components/chat/inputEditor/tableSchema';
 import {getEffectiveCodeBlockLanguage} from '@components/chat/inputEditor/codeLanguage';
+import {isNewRichMediaUpload} from '@components/chat/inputEditor/richMedia';
 import {
   BUTTON_ROW_NODE_NAME,
   MAX_BUTTONS_PER_ROW,
@@ -735,7 +736,7 @@ function nodeToPageBlocks(node: JSONContent, draft: boolean): PageBlock[] {
       return block ? [block] : [];
     }
     case 'richMedia': {
-      if(node.attrs?.uploadId) return [];
+      if(isNewRichMediaUpload(node.attrs)) return [];
       const block = richMediaPageBlock(node);
       return block?._ === 'pageBlockCollage' ?
         splitOversizedRichMediaCollage(block) :
@@ -986,7 +987,7 @@ function collectDocumentMediaResources(document: JSONContent) {
   const photos = new Map<string, Photo.photo>();
   const documents = new Map<string, Document.document>();
   const visit = (node: JSONContent) => {
-    if(node.type === 'richMedia' && !node.attrs?.uploadId) {
+    if(node.type === 'richMedia' && !isNewRichMediaUpload(node.attrs)) {
       (node.attrs?.photos || []).forEach((photo: Photo) => {
         if(photo?._ === 'photo') photos.set(String(photo.id), photo);
       });

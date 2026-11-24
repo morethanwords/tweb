@@ -483,7 +483,7 @@ export class AppSidebarLeft extends SidebarSlider {
       this.onSomethingOpenInsideChange();
     };
 
-    addShortcutListener(['ctrl+f', 'alt+f', 'meta+f'], () => {
+    addShortcutListener(['mod+f', 'alt+f', 'meta+f'], () => {
       if(appNavigationController.findItemByType('popup')) return;
       // * from inside the archive the search stays in it
       if(lastItem(this.getHistory()) instanceof AppArchivedTab) {
@@ -494,7 +494,7 @@ export class AppSidebarLeft extends SidebarSlider {
       this.initSearch().open();
     });
 
-    addShortcutListener(['ctrl+0', 'meta+0'], () => {
+    addShortcutListener(['mod+0', 'meta+0'], () => {
       if(appNavigationController.findItemByType('popup') ||
         appImManager.chat.peerId === appImManager.myId) return;
       appImManager.setPeer({

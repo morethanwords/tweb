@@ -91,10 +91,21 @@ function entityEnd(entity: MessageEntity) {
   return entity.offset + entity.length;
 }
 
-function isStructuralBlockquote(text: string, entity: MessageEntity.messageEntityBlockquote) {
+function isStructuralBlockquote(
+  text: string,
+  entity: MessageEntity.messageEntityBlockquote,
+  preformatted: MessageEntity.messageEntityPre[]
+) {
   const end = entityEnd(entity);
-  return (entity.offset === 0 || text[entity.offset - 1] === '\n') &&
-    (end === text.length || text[end] === '\n');
+  // * whole lines: up to a line break, or taking in the last line break of a code block of its own, which ends the
+  // * quote's line - unless code runs on past the quote's end
+  return (entity.offset === 0 || text[entity.offset - 1] === '\n') && (
+    end === text.length ||
+    text[end] === '\n' ||
+    text[end - 1] === '\n' &&
+      preformatted.some((pre) => entityEnd(pre) === end && pre.offset >= entity.offset) &&
+      !preformatted.some((pre) => pre.offset < end && entityEnd(pre) > end)
+  );
 }
 
 function isBlockEntity(entity: MessageEntity, blockEntities: Set<MessageEntity>) {
@@ -480,12 +491,12 @@ export function telegramTextToTiptapInlineContent(text: string, sourceEntities: 
 export function telegramTextToTiptap(text: string, sourceEntities: MessageEntity[] = []): JSONContent {
   const entities = normalizeEntities(text, sourceEntities);
   const lines = splitLines(text);
-  const blockquotes = entities.filter((entity): entity is MessageEntity.messageEntityBlockquote => (
-    entity._ === 'messageEntityBlockquote' && isStructuralBlockquote(text, entity)
-  ));
   const preformatted = entities.filter((entity): entity is MessageEntity.messageEntityPre => (
     entity._ === 'messageEntityPre'
   )).sort((a, b) => a.offset - b.offset);
+  const blockquotes = entities.filter((entity): entity is MessageEntity.messageEntityBlockquote => (
+    entity._ === 'messageEntityBlockquote' && isStructuralBlockquote(text, entity, preformatted)
+  ));
   const blockEntities = new Set<MessageEntity>([...blockquotes, ...preformatted]);
   const content: JSONContent[] = [];
 
@@ -569,6 +580,29 @@ function markKey(mark: ProseMirrorMark) {
   return `${mark.type.name}:${JSON.stringify(mark.attrs)}`;
 }
 
+/** The block whose text a node's text starts with: blocks with nothing in them give none */
+function firstTextBlock(node: ProseMirrorNode): ProseMirrorNode | undefined {
+  if(node.isTextblock) return node.content.size ? node : undefined;
+  if(node.isLeaf) return node;
+  for(let index = 0; index < node.childCount; ++index) {
+    const block = firstTextBlock(node.child(index));
+    if(block) return block;
+  }
+}
+
+/**
+ * The code block the text of the blocks after `index` starts with, with no line break before it: past a block with
+ * nothing in it only when code joined to that block follows it, since any other block after it has its line break
+ */
+function codeBlockAfter(blocks: Array<{node: ProseMirrorNode}>, index: number): ProseMirrorNode | undefined {
+  for(let next = index + 1; next < blocks.length; ++next) {
+    const block = firstTextBlock(blocks[next].node);
+    if(block) return block.type.name === 'codeBlock' ? block : undefined;
+    const after = blocks[next + 1]?.node;
+    if(!(after?.type.name === 'codeBlock' && after.attrs.joinBefore)) return;
+  }
+}
+
 function firstTextPosition(node: ProseMirrorNode, position: number): number {
   if(node.isTextblock || !node.childCount) return position + 1;
   return firstTextPosition(node.firstChild, position + 1);
@@ -602,6 +636,9 @@ export function tiptapToTelegram(
   const points: TextPositionPoint[] = [];
   const segments: TextPositionSegment[] = [];
   const lastEntityByMark = new Map<string, MessageEntity>();
+  // * where a code block's own last newline ended the text, the block last serialized: that line is ended already,
+  // * and so is a quote the code block ends; and that code's language
+  let preNewlineEnd = -1, preNewlineLanguage: string;
 
   const addPoint = (pm: number) => points.push({pm, text: text.length});
   const addMarks = (marks: readonly ProseMirrorMark[], offset: number, length: number) => {
@@ -764,11 +801,17 @@ export function tiptapToTelegram(
       const offset = text.length;
       serializeInline(node, position + 1);
       if(text.length > offset) {
+        const language = getEffectiveCodeBlockLanguage(node.attrs, node.textContent);
+        if(text.endsWith('\n')) {
+          preNewlineEnd = text.length;
+          preNewlineLanguage = language;
+        }
+
         entities.push({
           _: 'messageEntityPre',
           offset,
           length: text.length - offset,
-          language: getEffectiveCodeBlockLanguage(node.attrs, node.textContent)
+          language
         });
       }
       return;
@@ -803,16 +846,22 @@ export function tiptapToTelegram(
     });
     children.forEach((child, index) => {
       const textStart = text.length;
+      preNewlineEnd = -1;
       addPoint(firstTextPosition(child.node, child.position));
       serializeBlock(child.node, child.position, listDepth);
       addPoint(lastTextPosition(child.node, child.position));
       const next = children[index + 1];
-      const hasTrailingPreNewline = child.node.type.name === 'codeBlock' &&
-        text.length > textStart &&
-        text.endsWith('\n');
+      const endsWithPreNewline = text.length > textStart && preNewlineEnd === text.length;
+      // * a quote a code block ends is kept apart from code of the same language right after it all the same:
+      // * touching, their entities would become one across the quote's end (`combineSameEntities`, here and as the
+      // * text is sent)
+      const codeAfter = endsWithPreNewline && child.node.type.name !== 'codeBlock' && codeBlockAfter(children, index);
+      const keepsCodeApart = !!codeAfter &&
+        getEffectiveCodeBlockLanguage(codeAfter.attrs, codeAfter.textContent) === preNewlineLanguage;
+      const hasTrailingPreNewline = endsWithPreNewline && !keepsCodeApart;
       const joinsNext = child.node.type.name === 'codeBlock' && child.node.attrs.joinAfter;
       const joinsPrevious = next?.node.type.name === 'codeBlock' && next.node.attrs.joinBefore;
-      if(next && !hasTrailingPreNewline && !joinsNext && !joinsPrevious) {
+      if(next && (keepsCodeApart || !hasTrailingPreNewline && !joinsNext && !joinsPrevious)) {
         append(
           '\n',
           lastTextPosition(child.node, child.position),

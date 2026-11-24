@@ -1,5 +1,6 @@
 import {bindActiveWindowListener} from '@helpers/appWindow';
 import {IS_APPLE} from '@environment/userAgent';
+import isModKeyPressed from '@helpers/dom/isModKeyPressed';
 
 const positionKeyRegexp = /^key[a-zA-Z]$/i;
 const latinLetterRegexp = /^[a-z]$/i;
@@ -23,6 +24,9 @@ function matchNonMetaKey(event: KeyboardEvent, key: string) {
 
 function matchComboKey(event: KeyboardEvent, key: string) {
   return (
+    // * the app's own modifier: Cmd on a Mac, where Ctrl with a letter edits the text it is typed in (Ctrl+F moves
+    // * the caret forward, Ctrl+Y yanks), and Ctrl elsewhere
+    (key === 'mod' && isModKeyPressed(event)) ||
     (key === 'ctrl' && event.ctrlKey) ||
     (key === 'shift' && event.shiftKey) ||
     (key === 'alt' && event.altKey) ||
