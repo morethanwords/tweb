@@ -11905,7 +11905,8 @@ export default class ChatBubbles {
               loadPromises,
               controls: context.pollMessageContentControls = {},
               // * only a poll being sent from here has files on their way
-              uploadingFileNames: message.pFlags.is_outgoing ? await this.managers.appPollsManager.getUploadingFileNamesForPoll(context.messageMedia.poll.id) : undefined
+              uploadingFileNames: message.pFlags.is_outgoing ? await this.managers.appPollsManager.getUploadingFileNamesForPoll(context.messageMedia.poll.id) : undefined,
+              selection: this.chat.selection
             });
 
             renderComponent({

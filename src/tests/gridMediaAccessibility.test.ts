@@ -1,5 +1,6 @@
 import {afterEach, describe, expect, test, vi} from 'vitest';
 import '@/tests/helpers/a11yLayer';
+import pressKey from '@/tests/helpers/pressKey';
 import Modes from '@config/modes';
 import I18n from '@lib/langPack';
 import {makeGridMediaAccessible} from '@helpers/dom/mediaPreviewAccessibility';
@@ -30,12 +31,6 @@ function renderTile(media: Photo.photo | Document.document, spoiler?: HTMLElemen
   return {grid, tile, opened};
 }
 
-function press(tile: HTMLElement, key: string) {
-  const event = new KeyboardEvent('keydown', {key, bubbles: true, cancelable: true});
-  tile.dispatchEvent(event);
-  return event;
-}
-
 describe('a media grid tile', () => {
   afterEach(() => {
     Modes.a11y = true;
@@ -56,12 +51,12 @@ describe('a media grid tile', () => {
     const {tile, opened} = renderTile(photo);
     expect(tile.tabIndex).toBe(0);
 
-    expect(press(tile, 'Enter').defaultPrevented).toBe(true);
+    expect(pressKey(tile, 'Enter').defaultPrevented).toBe(true);
     expect(opened).toHaveBeenCalledTimes(1);
-    expect(press(tile, ' ').defaultPrevented).toBe(true);
+    expect(pressKey(tile, ' ').defaultPrevented).toBe(true);
     expect(opened).toHaveBeenCalledTimes(2);
 
-    press(tile, 'a');
+    pressKey(tile, 'a');
     expect(opened).toHaveBeenCalledTimes(2);
   });
 
@@ -70,8 +65,8 @@ describe('a media grid tile', () => {
     const {tile, opened} = renderTile(video);
     expect(tile.hasAttribute('tabindex')).toBe(false);
 
-    expect(press(tile, 'Enter').defaultPrevented).toBe(false);
-    press(tile, ' ');
+    expect(pressKey(tile, 'Enter').defaultPrevented).toBe(false);
+    pressKey(tile, ' ');
     expect(opened).not.toHaveBeenCalled();
   });
 
@@ -83,7 +78,7 @@ describe('a media grid tile', () => {
       spoiler.classList.add('media-spoiler-container');
       const {tile, opened} = renderTile(gif, spoiler);
       expect(['role', 'tabindex', 'aria-label'].map((name) => tile.getAttribute(name))).toEqual([null, null, null]);
-      press(tile, 'Enter');
+      pressKey(tile, 'Enter');
       expect(opened).not.toHaveBeenCalled();
 
       spoiler.focus();
@@ -94,7 +89,7 @@ describe('a media grid tile', () => {
       expect([tile.getAttribute('role'), tile.tabIndex, tile.getAttribute('aria-label')])
       .toEqual(['button', 0, I18n.format('AttachGif', true)]);
       expect(document.activeElement).toBe(tile);
-      press(tile, 'Enter');
+      pressKey(tile, 'Enter');
       expect(opened).toHaveBeenCalledTimes(1);
     } finally {
       vi.useRealTimers();

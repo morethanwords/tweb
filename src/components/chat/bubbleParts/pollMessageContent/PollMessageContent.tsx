@@ -3,6 +3,7 @@ import {AppMediaViewerStaticTargetType} from '@components/mediaViewer/static';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
 import InputField from '@components/inputField';
 import type LazyLoadQueue from '@components/lazyLoadQueue';
+import type ChatSelection from '@components/chat/selection';
 import {useCreatePollLimits} from '@components/popups/createPoll/useCreatePollLimits';
 import {RemainingTime} from '@components/remainingTime';
 import ripple from '@components/ripple';
@@ -10,18 +11,18 @@ import Space from '@components/space';
 import {toastNew} from '@components/toast';
 import PhotoTsx from '@components/wrappers/photoTsx';
 import VideoTsx from '@components/wrappers/videoTsx';
+import Modes from '@config/modes';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import SuperIntersectionObserver from '@helpers/dom/superIntersectionObserver';
 import {keepMe} from '@helpers/keepMe';
 import mediaSizes from '@helpers/mediaSizes';
-import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 import {attachHotClassName} from '@helpers/solid/classname';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import type {ChatAutoDownloadSettings} from '@hooks/useAutoDownloadSettings';
-import {Chat, Document, Message, MessageMedia, Photo, Poll, PollResults} from '@layer';
+import {Chat, Document, Message, MessageMedia, Photo, Poll, PollAnswer, PollResults} from '@layer';
 import {ChatRights} from '@lib/appManagers/appChatsManager';
 import {PollUploadingFileNames} from '@lib/appManagers/appPollsManager';
 import {
@@ -39,10 +40,11 @@ import {sliceTextWithEntities} from '@lib/richTextProcessor/sliceTextWithEntitie
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {useAppConfig} from '@stores/appState';
 import {usePeer} from '@stores/peers';
-import {batch, createEffect, createMemo, createSelector, createSignal, createUniqueId, For, JSX, Match, onCleanup, Show, Switch, untrack} from 'solid-js';
+import {batch, createEffect, createMemo, createSelector, createSignal, createUniqueId, For, Match, on, onCleanup, Show, Switch, untrack} from 'solid-js';
 import {createStore, reconcile, unwrap} from 'solid-js/store';
 import {Transition, TransitionGroup} from 'solid-transition-group';
 import {AddOption} from './AddOption';
+import {getAnswers, moveFocusBetweenAnswers} from './answerFocus';
 import {PollMessageContentPropsContext} from './context';
 import {AutoStartedConfetti, AvatarGroup, Explanation, GeoPreview, PollType, PollVotes} from './parts';
 import {PollOption} from './PollOption';
@@ -78,6 +80,7 @@ export type PollMessageContentProps = {
   loadPromises: Promise<any>[];
   controls: Partial<PollMessageContentControls>;
   uploadingFileNames?: PollUploadingFileNames;
+  selection?: ChatSelection;
 };
 
 export type PollMessageContentControls = {
@@ -110,7 +113,6 @@ export const PollMessageContent =
     const {maxOptionLength} = useCreatePollLimits();
     const middleware = createMiddleware().get();
     const questionId = createUniqueId();
-    const optionGroupName = createUniqueId();
 
     // ----- Local state -----
     const [explanationToggled, setExplanationToggled] = createSignal(false);
@@ -126,8 +128,10 @@ export const PollMessageContent =
     const [highlightedIndexes, setHighlightedIndexes] = createSignal<number[]>([]);
     const [slowHighlightedIndexes, setSlowHighlightedIndexes] = createSignal<number[]>([]);
     const [serverVoteRestriction, setServerVoteRestriction] = createSignal<PollVoteRestrictionState>();
+    // * a radio group is one tab stop: the answer focused last, the first one before that (or once it is deleted)
+    const [focusedOption, setFocusedOption] = createSignal<PollAnswer.pollAnswer>();
 
-    let inputField: InputField;
+    let inputField: InputField, answersElement: HTMLDivElement, footerElement: HTMLDivElement;
     let voteRestrictionExpiryTimeout: number;
     const elementByIndexMap = new Map<number, HTMLElement>();
 
@@ -294,7 +298,32 @@ export const PollMessageContent =
     });
 
     // Make the footer unclickable immediately when there are pending requests
-    const isFooterClickable = createMemo(() => willFooterBeClickable() && canFooterBeClickable() && !sendVoteMutation.isPending() && !addOptionMutation.isPending() && newOption.attachment?.type !== 'pending');
+    const isFooterPending = createMemo(() => sendVoteMutation.isPending() || addOptionMutation.isPending() || newOption.attachment?.type === 'pending');
+    const isFooterClickable = createMemo(() => canFooterBeClickable() && !isFooterPending());
+    const optionTabStop = createMemo(() => {
+      const option = focusedOption();
+      return option && pollOptions.includes(option) ? option : pollOptions[0];
+    });
+
+    // * the footer stops being a button while it holds the focus (the vote has gone, the option is added): the focus
+    // * goes to the answers, or the next Enter, an auto-repeated one too, would reach the composer and send its draft
+    createEffect(on(willFooterBeClickable, (clickable) => {
+      if(clickable || !Modes.a11y || !footerElement.matches(':focus')) return;
+      const answers = getAnswers(answersElement);
+      (answers.find((answer) => answer.getAttribute('aria-checked') === 'true') ||
+        answers.find((answer) => answer.getAttribute('tabindex') === '0') ||
+        answers[0])?.focus();
+    }, {defer: true}));
+
+    // * messages being selected: the poll takes no keys, as the bubble takes the pointer's presses from it - the click
+    // * a key gives an answer or the footer would vote instead of selecting (only the a11y layer has such keys)
+    const selection = props.selection;
+    if(selection && Modes.a11y) {
+      const onSelecting = (selecting: boolean) => props.element.inert = selecting;
+      onSelecting(selection.isSelecting);
+      selection.addEventListener('toggle', onSelecting);
+      onCleanup(() => selection.removeEventListener('toggle', onSelecting));
+    }
 
     // ----- Media viewer payload -----
     const mediaViewerPayload = createMemo(() => {
@@ -328,21 +357,6 @@ export const PollMessageContent =
     });
 
     // ----- Event handlers -----
-    const onOptionsKeyDown: JSX.EventHandler<HTMLDivElement, KeyboardEvent> = (event) => {
-      if(allowMultipleAnswers() || event.altKey || event.ctrlKey || event.metaKey || event.isComposing) return;
-      const direction = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 :
-        event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
-      if(!direction) return;
-
-      const options = Array.from(event.currentTarget.querySelectorAll<HTMLInputElement>('input[type="radio"]:not([aria-disabled="true"])'));
-      const index = options.findIndex(option => option === event.target);
-      if(index === -1) return;
-
-      // Browser radio navigation also selects the next answer. A selection here submits a vote.
-      event.preventDefault();
-      options[(index + direction + options.length) % options.length].focus();
-    };
-
     const handleToggle = (index: number) => {
       const restriction = activeVoteRestriction();
       if(restriction) {
@@ -399,7 +413,8 @@ export const PollMessageContent =
     };
 
     const onFooterClick = wrapAsyncClickHandler(async() => {
-      if(!isFooterClickable()) return;
+      // * by what the footer is now: its look follows only after the fade
+      if(!willFooterBeClickable() || isFooterPending()) return;
       if(canShowViewResults()) openViewResults();
       else if(hasSelectedSomething()) await sendVoteMutation.mutateAsync(chosenIndexes());
       else if(hasTypedNewOption()) await wrappedAddOption();
@@ -572,7 +587,7 @@ export const PollMessageContent =
           />
         </Show>
 
-        <div role={allowMultipleAnswers() ? 'group' : 'radiogroup'} aria-labelledby={questionId} on:keydown={onOptionsKeyDown}>
+        <div ref={answersElement} role={allowMultipleAnswers() ? 'group' : 'radiogroup'} aria-labelledby={questionId} onKeyDown={moveFocusBetweenAnswers}>
           <TransitionGroup name='fade-2' moveClass='t-move'>
             <For each={pollOptions}>
               {(option, index) => {
@@ -581,7 +596,6 @@ export const PollMessageContent =
                 return (
                   <PollOption
                     text={option.text}
-                    groupName={optionGroupName}
                     withMedia={hasMediaInOptions()}
                     photo={getPhotoForOption(initialIdx())}
                     video={getVideoForOption(initialIdx())}
@@ -591,7 +605,9 @@ export const PollMessageContent =
                     allowMultipleAnswers={allowMultipleAnswers()}
                     hasCorrectAnswer={hasCorrectAnswer()}
                     checked={isChecked(index())}
+                    tabStop={allowMultipleAnswers() || option === optionTabStop()}
                     onToggle={() => handleToggle(index())}
+                    onFocus={() => setFocusedOption(option)}
                     pollViewerPayload={[mediaViewerPayload().indexes.options.get(initialIdx()), elementByIndexMap]}
                     initialIdx={initialIdx()}
                     result={getResultForOption(initialIdx())}
@@ -627,17 +643,18 @@ export const PollMessageContent =
         <Space amount='0.25rem' />
         <div class={styles.footer}>
           <div
+            ref={footerElement}
             class={styles.footerButton}
             role={willFooterBeClickable() ? 'button' : undefined}
-            tabIndex={willFooterBeClickable() ? 0 : undefined}
-            aria-disabled={willFooterBeClickable() ? !isFooterClickable() : undefined}
+            // * -1 while it is not a button: it keeps the focus it holds until the focus is moved on
+            tabIndex={Modes.a11y ? (willFooterBeClickable() ? 0 : -1) : undefined}
+            aria-disabled={willFooterBeClickable() ? isFooterPending() : undefined}
             classList={{
               [styles.clickable]: isFooterClickable(),
               [styles.outgoing]: props.isOutgoing
             }}
             use:ripple={isFooterClickable()}
             onClick={onFooterClick}
-            on:keydown={buttonKeyDown}
           >
             <Transition
               name='fade-2'

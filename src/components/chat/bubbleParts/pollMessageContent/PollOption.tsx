@@ -4,10 +4,12 @@ import {Spinner} from '@components/spinner';
 import {StickerPreview} from '@components/stickerPreview';
 import PhotoTsx from '@components/wrappers/photoTsx';
 import VideoTsx from '@components/wrappers/videoTsx';
+import Modes from '@config/modes';
 import {animateValue} from '@helpers/animateValue';
 import {keepMe} from '@helpers/keepMe';
 import clamp from '@helpers/number/clamp';
 import formatNumber from '@helpers/number/formatNumber';
+import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 import {createDelayed} from '@helpers/solid/createDelayed';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {I18nTsx} from '@helpers/solid/i18n';
@@ -20,6 +22,7 @@ import {Accessor, createEffect, createMemo, createSignal, createUniqueId, JSX, M
 import {unwrap} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
 import {InMessageCheckbox} from '../inMessageCheckbox';
+import {leaveAnswers} from './answerFocus';
 import {usePollMessageContentProps} from './context';
 import {AvatarGroup, GeoPreview} from './parts';
 import PathDot from './PathDot';
@@ -43,9 +46,11 @@ export const PollOption = (props: {
   geo?: MessageMedia.messageMediaGeo | MessageMedia.messageMediaVenue;
   webPage?: GetWebPageMediaResult;
   text: LocalTextWithEntities;
-  groupName: string;
   checked: boolean;
+  /** The option Tab stops at: every one of a checkbox group, one of a radio group. */
+  tabStop: boolean;
   onToggle: () => void;
+  onFocus: () => void;
   allowMultipleAnswers: boolean;
   hasCorrectAnswer: boolean;
   pollViewerPayload?: DataPollViewerIdxDirectivePayload;
@@ -76,7 +81,6 @@ export const PollOption = (props: {
     if(canActivate() && !props.votePending) props.onToggle();
   };
 
-
   const [canAnimate, setCanAnimate] = createSignal(false);
 
   // On initial render with existing result, the percentage will be shown immediately
@@ -101,6 +105,8 @@ export const PollOption = (props: {
       setCanAnimate(true);
     });
   });
+
+  onCleanup(() => leaveAnswers(clickableAreaElement));
 
   createEffect(() => {
     if(isShowingResult()) {
@@ -137,37 +143,18 @@ export const PollOption = (props: {
           [styles.outgoing]: contextProps.isOutgoing,
           [styles.hovered]: props.highlighted && !props.slowHighlighted
         }}
+        role={props.allowMultipleAnswers ? 'checkbox' : 'radio'}
+        aria-checked={checked()}
+        aria-labelledby={labelId}
+        aria-describedby={showResultStats() ? resultId : undefined}
+        aria-disabled={!canActivate() || props.votePending}
+        // * a voted option keeps -1, so the focus stays on it when the results come
+        tabindex={Modes.a11y ? (canActivate() && props.tabStop ? 0 : -1) : undefined}
         use:ripple
         onClick={activate}
-      >
-        <input
-          class='sr-only'
-          type={props.allowMultipleAnswers ? 'checkbox' : 'radio'}
-          name={props.groupName}
-          checked={checked()}
-          tabIndex={canActivate() ? 0 : -1}
-          aria-labelledby={labelId}
-          aria-describedby={showResultStats() ? resultId : undefined}
-          aria-disabled={!canActivate() || props.votePending}
-          onClick={(event) => {
-            event.stopPropagation();
-            if(!canActivate() || props.votePending || props.voteRestricted) {
-              event.preventDefault();
-              activate();
-              return;
-            }
-
-            activate();
-            // A native click toggles checked before firing. Keep it in sync with the vote state.
-            event.currentTarget.checked = checked();
-          }}
-          on:keydown={(event) => {
-            if(event.key !== 'Enter' || event.isComposing) return;
-            event.preventDefault();
-            if(!event.repeat) event.currentTarget.click();
-          }}
-        />
-      </div>
+        onKeyDown={buttonKeyDown}
+        onFocus={() => props.onFocus()}
+      />
       <div class={styles.checkContainer} aria-hidden='true'>
         <Transition name='fade'>
           <Switch>
@@ -208,8 +195,8 @@ export const PollOption = (props: {
           </span>
         </Show>
         <Show when={isShowingResult() && props.result.voters}>
-          <div class={styles.labelStats} aria-hidden={showResultStats()}>
-            <div class={styles.labelNumber}>
+          <div class={styles.labelStats}>
+            <div class={styles.labelNumber} aria-hidden={showResultStats()}>
               {formatNumber(props.result.voters, 1)}
             </div>
             <Show when={props.result.peerIds?.length > 0}>
