@@ -3,6 +3,7 @@ import {Portal} from 'solid-js/web';
 import appNavigationController from '@components/appNavigationController';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import confirmationPopup from '@components/confirmationPopup';
+import type {PopupPeerButton} from '@components/popups/peer';
 import MediaHeader from '@components/mediaHeader';
 import {shareToPeers} from '@components/popups/shareUrl';
 import RadioFieldTsx from '@components/radioFieldTsx';
@@ -132,6 +133,35 @@ const ExperimentalTab = () => {
       descriptionLangKey: isEveryTabRestarted() ? 'Experimental.Restart.EveryTab' : 'Experimental.Restart.ThisTab',
       button: {langKey: 'Experimental.Restart'}
     }).then(restart, noop);
+  };
+
+  // * the switch of the keyboard and screen-reader layer asks about the restart itself: whoever needs the layer
+  // * cannot be left to find the check in the header, and a reload without it would drop the change unsaid.
+  // * Without the layer a popup neither takes the focus nor gives it back, so this one does both by itself, and
+  // * keeps Enter on its Cancel from reaching the popup's shortcut, which would confirm
+  const onA11yChange = (on: boolean, input: HTMLInputElement) => {
+    setFlag('a11y', on);
+    const startedOn = startedWith.has('a11y');
+    if(on === startedOn) return;
+
+    const button: PopupPeerButton = {langKey: 'Experimental.Restart'};
+    const cancelButton: PopupPeerButton = {langKey: 'Cancel'};
+    confirmationPopup({
+      titleLangKey: 'Experimental.Restart.Title',
+      descriptionLangKey: on ? 'Experimental.A11y.RestartOn' : 'Experimental.A11y.RestartOff',
+      button,
+      cancelButton,
+      onShow: () => {
+        if(Modes.a11y) return;
+        cancelButton.element?.addEventListener('keydown', (e) => {
+          if(e.key === 'Enter') e.stopPropagation();
+        });
+        setTimeout(() => button.element?.focus(), 0);
+      }
+    }).then(restart, () => {
+      setFlag('a11y', startedOn);
+      if(!Modes.a11y) input.focus({preventScroll: true});
+    });
   };
 
   tab.isConfirmationNeededOnClose = useIsConfirmationNeededOnClose({
@@ -300,9 +330,12 @@ const ExperimentalTab = () => {
     title: LangPackKey,
     subtitle: LangPackKey,
     // * the switch shows what the flag turns off: on while the flag is not
-    inverted?: boolean
+    inverted?: boolean,
+    // * instead of holding the change until the check in the header
+    onChange?: (on: boolean, input: HTMLInputElement) => void
   }) => {
     const forced = !!FORCED[props.flag];
+    let input: HTMLInputElement;
     return (
       <Row disabled={forced}>
         <Row.CheckboxFieldToggle>
@@ -310,7 +343,12 @@ const ExperimentalTab = () => {
             toggle
             checked={isSet(props.flag) !== !!props.inverted}
             disabled={forced}
-            onChange={(checked) => setFlag(props.flag, checked !== !!props.inverted)}
+            ref={(checkboxField) => input = checkboxField.input}
+            onChange={(checked) => {
+              const on = checked !== !!props.inverted;
+              if(props.onChange) props.onChange(on, input);
+              else setFlag(props.flag, on);
+            }}
           />
         </Row.CheckboxFieldToggle>
         <Row.Title>{i18n(props.title)}</Row.Title>
@@ -392,7 +430,7 @@ const ExperimentalTab = () => {
           checked={rtl()}
           onChange={onRtlChange}
         />
-        <RestartToggle flag="a11y" title="Experimental.A11y" subtitle="Experimental.A11y.Subtitle" />
+        <RestartToggle flag="a11y" title="Experimental.A11y" subtitle="Experimental.A11y.Subtitle" onChange={onA11yChange} />
       </Section>
 
       <Section name="Experimental.Connection">

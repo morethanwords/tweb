@@ -33,7 +33,6 @@ import {openSettingsSearchItem} from '@lib/settingsSearch/navigate';
 import {ROOT_SECTION_ID} from '@lib/settingsSearch/registry';
 import {bumpRecentSettingsSearch} from '@lib/settingsSearch/recent';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
-import A11yButton from '@components/a11yButton';
 import {getAppVersionText} from '@config/app';
 import {getKeptFlags} from '@config/modes';
 import styles from '@components/sidebarLeft/tabs/settings.module.scss';
@@ -514,12 +513,14 @@ const Settings = () => {
           <Row.Title>{i18n('AskAQuestion')}</Row.Title>
         </Row>
       </Section>
-      <A11yButton class={styles.version} onClick={openExperimental}>
+      {/* a button without the a11y layer too: it is the way to the switch that turns the layer on */}
+      <button type="button" class={styles.version} onClick={openExperimental}>
+        <span class="sr-only">{i18n('Experimental.OpenHint')}</span>
         <span dir="ltr">{getAppVersionText()}</span>
         <Show when={experimentalOn()}>
           <span class={styles.versionOn}>{i18n('Experimental.OnNotice')}</span>
         </Show>
-      </A11yButton>
+      </button>
     </>
   );
 };
