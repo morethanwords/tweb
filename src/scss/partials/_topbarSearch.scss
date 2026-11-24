@@ -13,7 +13,8 @@
     z-index: 1;
 
     @include respond-to(handhelds) {
-      inset-inline: .5rem;
+      inset-inline: 0;
+      border-radius: inherit;
       background-color: var(--surface-color);
     }
   }
@@ -51,6 +52,10 @@
       .is-focused & {
         box-shadow: 0px 0px 10px 0px #00000040;
         background-color: var(--surface-color);
+      }
+
+      @include respond-to(handhelds) {
+        display: none;
       }
 
       // @include respond-to(medium-screens) {

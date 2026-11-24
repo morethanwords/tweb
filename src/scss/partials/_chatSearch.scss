@@ -1,3 +1,5 @@
+@use "../shared" as *;
+
 .chat-search {
 	position: absolute !important;
 	top: 0;
@@ -6,6 +8,10 @@
 	z-index: 2;
 
 	&-footer {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    border-radius: $border-radius-big;
 		height: 3rem;
 		padding: 0 8px;
 		flex: 0 0 auto;
@@ -88,7 +94,6 @@
     position: absolute;
     top: 100%;
     inset-inline: 0;
-    background-color: var(--surface-color);
     height: 3rem;
   }
 
