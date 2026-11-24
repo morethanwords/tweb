@@ -221,6 +221,13 @@ describe('StreamedMessageDrafts', () => {
       threadId: 7,
       authorId,
       kind: 'text',
+      matchText: 'Completely different'
+    })).toBeUndefined();
+    expect(drafts.adopt({
+      peerId,
+      threadId: 7,
+      authorId,
+      kind: 'text',
       matchText: 'The result is 42'
     })).toEqual(draft);
   });
@@ -228,13 +235,33 @@ describe('StreamedMessageDrafts', () => {
   test.each(['Draft message...', ''])('adopts a plain draft %j when the final text is entirely different', (value) => {
     const drafts = new StreamedMessageDrafts();
     const draft = upsert(drafts, textContent(value)).draft;
-    const candidate = {peerId, threadId: 7, authorId, kind: 'text' as const, matchText: 'This is the final message.'};
+    const candidate = {
+      peerId,
+      threadId: 7,
+      authorId,
+      kind: 'text' as const,
+      matchText: 'This is the final message.',
+      canRewrite: true
+    };
 
     expect(drafts.adopt({...candidate, peerId: 11 as PeerId})).toBeUndefined();
     expect(drafts.adopt({...candidate, threadId: 8})).toBeUndefined();
     expect(drafts.adopt({...candidate, authorId: 21 as PeerId})).toBeUndefined();
+    expect(drafts.adopt({...candidate, canRewrite: false})).toBeUndefined();
+    expect(drafts.adopt(candidate, false)).toBeUndefined();
+    expect(drafts.adopt({...candidate, matchText: ''})).toBeUndefined();
     expect(drafts.adopt(candidate)).toEqual(draft);
     expect(drafts.size).toBe(0);
+  });
+
+  test('takes only a continued draft without the fallback, rich ones included', () => {
+    const drafts = new StreamedMessageDrafts();
+    const rich = upsert(drafts, richContent('Streaming rich')).draft;
+    const candidate = {peerId, threadId: 7, authorId, kind: 'rich' as const, matchText: 'Unrelated rich'};
+
+    expect(drafts.adopt(candidate, false)).toBeUndefined();
+    expect(drafts.adopt({...candidate, matchText: ''}, false)).toBeUndefined();
+    expect(drafts.adopt({...candidate, matchText: 'Streaming rich complete'}, false)).toEqual(rich);
   });
 
   test('prefers same-kind content, supports a kind transition and never matches empty plain text', () => {

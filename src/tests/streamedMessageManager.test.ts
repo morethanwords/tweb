@@ -1,4 +1,4 @@
-import {Message, RichMessage, SendMessageAction, Update} from '@layer';
+import {Message, MessageReplyHeader, RichMessage, SendMessageAction, Update} from '@layer';
 import {ApiUpdatesManager} from '@appManagers/apiUpdatesManager';
 import {AppMessagesManager, HistoryStorage, MessagesStorage} from '@appManagers/appMessagesManager';
 import {AppProfileManager} from '@appManagers/appProfileManager';
@@ -68,7 +68,8 @@ function makeHarness(options: {isBotforum?: boolean, isForum?: boolean} = {}) {
           {_: 'peerChannel', channel_id: -id} :
           {_: 'peerUser', user_id: id};
       },
-      isBotforum: (id: PeerId) => options.isBotforum !== false && id === peerId
+      isBotforum: (id: PeerId) => options.isBotforum !== false && id === peerId,
+      isBot: (id: PeerId) => id === peerId
     },
     appMessagesIdsManager: {
       generateMessageId: (id: number, channelId?: number) => channelId ? 1_000_000 + id : id
@@ -145,6 +146,32 @@ function richAction(value: string, randomId = '100'): SendMessageAction.sendMess
 
 function userTyping(action: SendMessageAction, threadId = 7): Update.updateUserTyping {
   return {_: 'updateUserTyping', user_id: peerId as UserId, top_msg_id: threadId, action};
+}
+
+function chatTyping(action: SendMessageAction): Update.updateChatUserTyping {
+  return {_: 'updateChatUserTyping', chat_id: 60, from_id: {_: 'peerUser', user_id: 26}, action};
+}
+
+/** A message of the bot in its private chat, as the server delivers it. */
+function botMessage(
+  id: number,
+  text: string,
+  replyTo?: Partial<MessageReplyHeader.messageReplyHeader>
+): Message.message {
+  return {
+    _: 'message',
+    id,
+    mid: id,
+    peer_id: {_: 'peerUser', user_id: peerId},
+    peerId,
+    from_id: {_: 'peerUser', user_id: authorId},
+    fromId: authorId,
+    pFlags: {},
+    date: 1_000,
+    message: text,
+    entities: [],
+    reply_to: replyTo && {_: 'messageReplyHeader', pFlags: {}, ...replyTo}
+  } as Message.message;
 }
 
 describe('AppMessagesManager streamed drafts', () => {
@@ -282,13 +309,7 @@ describe('AppMessagesManager streamed drafts', () => {
     expect(channelPayload.draft.authorId).toBe(25);
     expect(channelPayload.draft.threadId).toBe(1_000_009);
 
-    const chatUpdate: Update.updateChatUserTyping = {
-      _: 'updateChatUserTyping',
-      chat_id: 60,
-      from_id: {_: 'peerUser', user_id: 26},
-      action: textAction('chat', '300')
-    };
-    expect(manager.handleStreamedMessageTypingUpdate(chatUpdate)).toBe(true);
+    expect(manager.handleStreamedMessageTypingUpdate(chatTyping(textAction('chat', '300')))).toBe(true);
   });
 
   test('keeps rich draft snapshots immutable while saveMessage normalizes its working copy', () => {
@@ -497,23 +518,10 @@ describe('AppMessagesManager streamed drafts', () => {
   test('adopts rewritten final text from the same author and dispatches finalize before the legacy history adapter', () => {
     const {manager, dispatchEvent, storage, mainHistory, threadHistory} = makeHarness();
     manager.handleStreamedMessageTypingUpdate(userTyping(textAction('Draft message...')));
-    const tempMessage = storage.get(1.0001);
+    const tempMessage = storage.get(1.0001) as Message.message;
     expect(tempMessage).toBeTruthy();
 
-    const unrelated = {
-      _: 'message',
-      id: 98,
-      mid: 98,
-      peer_id: {_: 'peerUser', user_id: peerId},
-      peerId,
-      from_id: {_: 'peerUser', user_id: authorId},
-      fromId: authorId,
-      pFlags: {},
-      date: 1_000,
-      message: 'unrelated',
-      entities: [],
-      reply_to: tempMessage.reply_to
-    } as Message.message;
+    const unrelated = botMessage(98, 'unrelated', tempMessage.reply_to as MessageReplyHeader.messageReplyHeader);
     dispatchEvent.mockClear();
     (manager as any).adoptStreamedMessageDraft({...unrelated, fromId: 21 as PeerId});
     expect(dispatchEvent).not.toHaveBeenCalled();
@@ -551,24 +559,7 @@ describe('AppMessagesManager streamed drafts', () => {
     const {manager, dispatchEvent, storage} = makeHarness({isBotforum: false});
     manager.handleStreamedMessageTypingUpdate(userTyping(textAction('reply'), 0));
 
-    const finalMessage = {
-      _: 'message',
-      id: 100,
-      mid: 100,
-      peer_id: {_: 'peerUser', user_id: peerId},
-      peerId,
-      from_id: {_: 'peerUser', user_id: authorId},
-      fromId: authorId,
-      pFlags: {},
-      date: 1_000,
-      message: 'reply complete',
-      entities: [],
-      reply_to: {
-        _: 'messageReplyHeader',
-        pFlags: {},
-        reply_to_msg_id: 55
-      }
-    } as Message.message;
+    const finalMessage = botMessage(100, 'reply complete', {reply_to_msg_id: 55});
     storage.set(finalMessage.mid, finalMessage);
     dispatchEvent.mockClear();
 
@@ -589,24 +580,7 @@ describe('AppMessagesManager streamed drafts', () => {
     const {manager, dispatchEvent, storage} = makeHarness({isBotforum: false});
     manager.handleStreamedMessageTypingUpdate(userTyping(textAction('scoped'), 7));
 
-    const finalMessage = {
-      _: 'message',
-      id: 102,
-      mid: 102,
-      peer_id: {_: 'peerUser', user_id: peerId},
-      peerId,
-      from_id: {_: 'peerUser', user_id: authorId},
-      fromId: authorId,
-      pFlags: {},
-      date: 1_000,
-      message: 'scoped complete',
-      entities: [],
-      reply_to: {
-        _: 'messageReplyHeader',
-        pFlags: {},
-        reply_to_msg_id: 7
-      }
-    } as Message.message;
+    const finalMessage = botMessage(102, 'scoped complete', {reply_to_msg_id: 7});
     storage.set(finalMessage.mid, finalMessage);
     dispatchEvent.mockClear();
 
@@ -619,29 +593,138 @@ describe('AppMessagesManager streamed drafts', () => {
     expect(storage.has(1.0001)).toBe(false);
   });
 
+  test('prefers the reply scope draft the final continues to the unthreaded draft it would only rewrite', () => {
+    const {manager, dispatchEvent, storage} = makeHarness({isBotforum: false});
+    manager.handleStreamedMessageTypingUpdate(userTyping(textAction('Thinking...', '100'), 0));
+    manager.handleStreamedMessageTypingUpdate(userTyping(textAction('scoped', '200'), 7));
+    expect(storage.has(1.0001)).toBe(true);
+    expect(storage.has(1.0002)).toBe(true);
+
+    const finalMessage = botMessage(104, 'scoped complete', {reply_to_msg_id: 7});
+    storage.set(finalMessage.mid, finalMessage);
+    dispatchEvent.mockClear();
+
+    (manager as any).adoptStreamedMessageDraft(finalMessage);
+
+    expect(dispatchEvent).toHaveBeenCalledWith(
+      'streamed_message_finalize',
+      expect.objectContaining({tempId: 1.0002, finalMessage})
+    );
+    expect(storage.has(1.0001)).toBe(true);
+    expect(storage.has(1.0002)).toBe(false);
+  });
+
+  test('a bot message in a group takes over only a draft it continues', () => {
+    const {manager, dispatchEvent, storage, mainHistory} = makeHarness({isBotforum: false});
+    const groupPeerId = -60 as PeerId;
+    manager.messagesStorageByPeerId[groupPeerId] = storage;
+    manager.historiesStorage[groupPeerId] = mainHistory;
+    manager.handleStreamedMessageTypingUpdate(chatTyping(textAction('Thinking...')));
+    expect(storage.has(1.0001)).toBe(true);
+
+    const notice = {
+      _: 'message',
+      id: 105,
+      mid: 105,
+      peer_id: {_: 'peerChat', chat_id: 60},
+      peerId: groupPeerId,
+      from_id: {_: 'peerUser', user_id: 26},
+      fromId: 26 as PeerId,
+      pFlags: {},
+      date: 1_000,
+      message: 'A reply to someone else',
+      entities: []
+    } as Message.message;
+    storage.set(notice.mid, notice);
+    dispatchEvent.mockClear();
+
+    (manager as any).adoptStreamedMessageDraft(notice);
+    expect(dispatchEvent).not.toHaveBeenCalled();
+    expect(storage.has(1.0001)).toBe(true);
+
+    const finalMessage = {...notice, id: 106, mid: 106, message: 'Thinking... done'};
+    storage.set(finalMessage.mid, finalMessage);
+    (manager as any).adoptStreamedMessageDraft(finalMessage);
+    expect(dispatchEvent).toHaveBeenCalledWith(
+      'streamed_message_finalize',
+      expect.objectContaining({tempId: 1.0001, finalMessage})
+    );
+    expect(storage.has(1.0001)).toBe(false);
+  });
+
+  /** A bot forum whose topic 7 is loaded or not, ready for a message delivered through onUpdateNewMessage. */
+  function makeDeliveryHarness(isTopicLoaded: boolean) {
+    const harness = makeHarness();
+    Object.assign(harness.manager, {
+      dialogsStorage: {getAnyDialog: () => ({}), getForumTopic: () => isTopicLoaded ? {} : undefined},
+      scheduleHandleNewDialogs: vi.fn(),
+      createMessageStorage: () => harness.storage,
+      updateMessageRepliesIfNeeded: vi.fn(),
+      updateMessageContextForInserting: vi.fn(),
+      updateChatBackgroundOnNewMessage: vi.fn(),
+      appUsersManager: {forceUserOnline: vi.fn()},
+      apiUpdatesManager: {processLocalUpdate: vi.fn()}
+    });
+    harness.manager.appPeersManager.isForum = () => false;
+    return harness;
+  }
+
+  function deliver(manager: any, message: Message.message) {
+    // a history loaded meanwhile already has the message, so it is not inserted into the mocked slices
+    manager.historiesStorage[peerId].mids.push(message.mid);
+    manager.threadsStorage[peerId][7].mids.push(message.mid);
+    manager.onUpdateNewMessage({_: 'updateNewMessage', message, pts: 10, pts_count: 1});
+  }
+
+  test('a message and its topic copy take one stream between them', () => {
+    const {manager, dispatchEvent, storage} = makeDeliveryHarness(true);
+    manager.handleStreamedMessageTypingUpdate(userTyping(textAction('Unrelated stream', '100'), 7));
+    manager.handleStreamedMessageTypingUpdate(userTyping(textAction('Topic answer', '200'), 55));
+    dispatchEvent.mockClear();
+
+    deliver(manager, botMessage(104, 'Topic answer complete', {
+      pFlags: {forum_topic: true},
+      reply_to_top_id: 7,
+      reply_to_msg_id: 55
+    }));
+
+    const finalized = dispatchEvent.mock.calls.filter(([event]) => event === 'streamed_message_finalize');
+    expect(finalized).toHaveLength(1);
+    expect(finalized[0][1].tempId).toBe(1.0002);
+    expect(storage.has(1.0001)).toBe(true);
+  });
+
+  test('a topic copy replayed once its topic is loaded leaves the bot next stream alone', () => {
+    const {manager, dispatchEvent, storage} = makeDeliveryHarness(false);
+    manager.handleStreamedMessageTypingUpdate(userTyping(textAction('First answer', '100'), 7));
+
+    deliver(manager, botMessage(104, 'First answer complete', {
+      pFlags: {forum_topic: true},
+      reply_to_top_id: 7,
+      reply_to_msg_id: 7
+    }));
+    expect(storage.has(1.0001)).toBe(false);
+    const [queued] = [...manager.newUpdatesAfterReloadToHandle[`${peerId}_7`]];
+    expect(queued._).toBe('updateNewDiscussionMessage');
+
+    manager.handleStreamedMessageTypingUpdate(userTyping(textAction('Second stream', '200'), 7));
+    expect(storage.has(1.0002)).toBe(true);
+    dispatchEvent.mockClear();
+
+    // what DialogsStorage.applyDialogs does once the topic is loaded
+    manager.onUpdateNewMessage(queued);
+    expect(dispatchEvent.mock.calls.some(([event]) => event === 'streamed_message_finalize')).toBe(false);
+    expect(storage.has(1.0002)).toBe(true);
+  });
+
   test('leaves a draft alone when the plain reply target belongs to another peer', () => {
     const {manager, dispatchEvent, storage} = makeHarness({isBotforum: false});
     manager.handleStreamedMessageTypingUpdate(userTyping(textAction('scoped'), 7));
 
-    const finalMessage = {
-      _: 'message',
-      id: 103,
-      mid: 103,
-      peer_id: {_: 'peerUser', user_id: peerId},
-      peerId,
-      from_id: {_: 'peerUser', user_id: authorId},
-      fromId: authorId,
-      pFlags: {},
-      date: 1_000,
-      message: 'scoped complete',
-      entities: [],
-      reply_to: {
-        _: 'messageReplyHeader',
-        pFlags: {},
-        reply_to_msg_id: 7,
-        reply_to_peer_id: {_: 'peerUser', user_id: 77}
-      }
-    } as Message.message;
+    const finalMessage = botMessage(103, 'scoped complete', {
+      reply_to_msg_id: 7,
+      reply_to_peer_id: {_: 'peerUser', user_id: 77}
+    });
     storage.set(finalMessage.mid, finalMessage);
     dispatchEvent.mockClear();
 
@@ -658,25 +741,11 @@ describe('AppMessagesManager streamed drafts', () => {
     const {manager, dispatchEvent, storage} = makeHarness({isBotforum: false});
     manager.handleStreamedMessageTypingUpdate(userTyping(textAction('topic reply'), 7));
 
-    const finalMessage = {
-      _: 'message',
-      id: 101,
-      mid: 101,
-      peer_id: {_: 'peerUser', user_id: peerId},
-      peerId,
-      from_id: {_: 'peerUser', user_id: authorId},
-      fromId: authorId,
-      pFlags: {},
-      date: 1_000,
-      message: 'topic reply complete',
-      entities: [],
-      reply_to: {
-        _: 'messageReplyHeader',
-        pFlags: {forum_topic: true},
-        reply_to_top_id: 7,
-        reply_to_msg_id: 55
-      }
-    } as Message.message;
+    const finalMessage = botMessage(101, 'topic reply complete', {
+      pFlags: {forum_topic: true},
+      reply_to_top_id: 7,
+      reply_to_msg_id: 55
+    });
     storage.set(finalMessage.mid, finalMessage);
     dispatchEvent.mockClear();
 

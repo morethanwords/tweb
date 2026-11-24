@@ -11470,6 +11470,7 @@ export class AppMessagesManager extends AppManager {
       // return;
     }
 
+    let isHandledByTopicCopy = false;
     if(threadId && !isLocalThreadUpdate) {
       const threadStorage = this.threadsStorage[peerId]?.[threadId];
       const update = {
@@ -11495,6 +11496,7 @@ export class AppMessagesManager extends AppManager {
         this.handleNewUpdateAfterReload(peerId, update, threadId);
       } else if(threadStorage) {
         this.onUpdateNewMessage(update);
+        isHandledByTopicCopy = true;
       }
     }
 
@@ -11546,7 +11548,11 @@ export class AppMessagesManager extends AppManager {
       this.log('updateNewMessage', message);
     } */
 
-    this.checkPendingMessage(message);
+    // * so message can exist if reloadConversation came back earlier with mid
+    const ignoreExisting: boolean = (update as any).ignoreExisting;
+    // * a message is offered to its bot's stream once: by its topic copy handled above, else by itself — a topic copy
+    // * replayed once the topic is loaded comes after it. Offered again, it could take another of the bot's streams
+    this.checkPendingMessage(message, isHandledByTopicCopy || (isLocalThreadUpdate && ignoreExisting));
     const historyStorage = this.getHistoryStorage(peerId, isLocalThreadUpdate ? threadId : undefined);
 
     if(!isLocalThreadUpdate) {
@@ -11555,8 +11561,6 @@ export class AppMessagesManager extends AppManager {
       this.updateChatBackgroundOnNewMessage(message);
     }
 
-    // * so message can exist if reloadConversation came back earlier with mid
-    const ignoreExisting: boolean = (update as any).ignoreExisting;
     const isExisting = !!historyStorage.history.findSlice(message.mid);
     this.updateMessageContextForInserting(message);
     if(isExisting) {
@@ -13306,7 +13310,7 @@ export class AppMessagesManager extends AppManager {
     return promise;
   }
 
-  private checkPendingMessage(message: MyMessage) {
+  private checkPendingMessage(message: MyMessage, isRepeatedDelivery?: boolean) {
     const randomId = this.pendingByMessageId[message.mid] ?? this.adoptGramTransferDraft(message);
 
     let pendingMessage: ReturnType<AppMessagesManager['finalizePendingMessage']>;
@@ -13325,7 +13329,9 @@ export class AppMessagesManager extends AppManager {
       delete this.pendingByMessageId[message.mid];
     }
 
-    this.adoptStreamedMessageDraft(message);
+    if(!isRepeatedDelivery) {
+      this.adoptStreamedMessageDraft(message);
+    }
     return pendingMessage;
   }
 
@@ -16873,19 +16879,27 @@ export class AppMessagesManager extends AppManager {
       scopes.push(secondaryThreadId);
     }
 
-    let draft: StreamedMessageDraft;
-    for(const scopeThreadId of scopes) {
-      draft = this.streamedMessageDrafts.adopt({
-        peerId,
-        threadId: scopeThreadId,
-        authorId,
-        kind,
-        matchText
-      });
-      if(draft) {
-        break;
+    // In a private chat with the bot each message of its answers the user, so its final text may
+    // rewrite the draft entirely (Android adopts the newest draft there); not in a group.
+    const canRewrite = this.appPeersManager.isBot(peerId);
+    // Every scope is asked for a draft the final continues before any falls back to its newest
+    // draft, or the topic root's stream would be taken for a reply whose own scope has the match.
+    const adoptInScopes = (fallback: boolean) => {
+      for(const scopeThreadId of scopes) {
+        const draft = this.streamedMessageDrafts.adopt({
+          peerId,
+          threadId: scopeThreadId,
+          authorId,
+          kind,
+          matchText,
+          canRewrite
+        }, fallback);
+        if(draft) {
+          return draft;
+        }
       }
-    }
+    };
+    const draft = adoptInScopes(false) || adoptInScopes(true);
 
     if(!draft) {
       return;
