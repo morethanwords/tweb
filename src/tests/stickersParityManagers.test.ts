@@ -4,8 +4,9 @@ import {AppEmojiManager} from '@appManagers/appEmojiManager';
 import {AppReactionsManager} from '@appManagers/appReactionsManager';
 import {getStickerSetInputByStickerSet} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 import {ids} from '@/tests/helpers/listChangeRefusals';
+import makeStickerSet from '@/tests/mocks/stickerSet';
 
-const set = (id: string) => ({_: 'stickerSet', id, access_hash: '1', title: 'Set ' + id, short_name: 'set' + id, count: 1, pFlags: {}} as any);
+const set = (id: string) => makeStickerSet(id);
 const covered = (id: string) => ({_: 'stickerSetNoCovered', set: set(id)} as any);
 
 function createStickersManager() {

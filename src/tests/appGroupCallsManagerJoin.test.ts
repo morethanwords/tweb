@@ -7,7 +7,8 @@
 
 import {describe, expect, it, vi} from 'vitest';
 import '@helpers/peerIdPolyfill';
-import {AppGroupCallsManager} from '@appManagers/appGroupCallsManager';
+import {AppGroupCallsManager, CallRecordParams} from '@appManagers/appGroupCallsManager';
+import {TLDeserialization, TLSerialization} from '@lib/mtproto/tl_utils';
 import {
   DataJSON,
   GroupCall,
@@ -1607,5 +1608,60 @@ describe('AppGroupCallsManager RTMP state migrations', () => {
 
     await expect(manager._fetchRtmpState(call)).rejects.toMatchObject({type: 'CALL_MIGRATE_'});
     expect(invokeApi).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('AppGroupCallsManager.startRecording', () => {
+  // What reaches the server: `video` and `video_portrait` share flags.2 of
+  // phone.toggleGroupCallRecord, and video_portrait=true is a vertical video.
+  async function sentRecordRequest(recordParams: CallRecordParams) {
+    const manager = makeManager({apiResponse: buildUpdatesReply(null)});
+    const call: InputGroupCall.inputGroupCall = {_: 'inputGroupCall', id: '1', access_hash: '2'};
+    await manager.startRecording(call, recordParams);
+
+    const [method, sentParams] = (manager as any).apiManager.invokeApi.mock.calls[0];
+    const serializer = new TLSerialization();
+    serializer.storeMethod(method, sentParams);
+    const deserializer = new TLDeserialization(serializer.getBuffer());
+    deserializer.fetchInt(); // method id
+    const flags = deserializer.fetchInt();
+    deserializer.fetchObject('InputGroupCall');
+    const title = flags & (1 << 1) ? deserializer.fetchString() : undefined;
+    const videoPortrait = flags & (1 << 2) ? deserializer.fetchBool() : undefined;
+    return {
+      start: !!(flags & (1 << 0)),
+      video: !!(flags & (1 << 2)),
+      title,
+      videoPortrait
+    };
+  }
+
+  it('records sound only when video is off, whatever orientation is picked', async() => {
+    for(const videoHorizontal of [true, false]) {
+      expect(await sentRecordRequest({name: '', recordVideo: false, videoHorizontal})).toEqual({
+        start: true,
+        video: false,
+        title: undefined,
+        videoPortrait: undefined
+      });
+    }
+  });
+
+  it('records a horizontal video when horizontal is picked', async() => {
+    expect(await sentRecordRequest({name: 'talk', recordVideo: true, videoHorizontal: true})).toEqual({
+      start: true,
+      video: true,
+      title: 'talk',
+      videoPortrait: false
+    });
+  });
+
+  it('records a vertical video when vertical is picked', async() => {
+    expect(await sentRecordRequest({name: '', recordVideo: true, videoHorizontal: false})).toEqual({
+      start: true,
+      video: true,
+      title: undefined,
+      videoPortrait: true
+    });
   });
 });

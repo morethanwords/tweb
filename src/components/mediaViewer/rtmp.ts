@@ -157,12 +157,13 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
           }, {
             icon: 'radioon',
             text: 'Rtmp.MediaViewer.Menu.StartRecording',
-            verify: () => getCall()?.admin && !getCall().call.pFlags.record_video_active,
+            // * a recording of sound alone has no record_video_active: its start date is what says it runs (tdesktop)
+            verify: () => getCall()?.admin && !getCall().call.record_start_date,
             onClick: () => showRtmpRecordPopup()
           }, {
             icon: 'radiooff',
             text: 'Rtmp.MediaViewer.Menu.StopRecording',
-            verify: () => getCall()?.admin && getCall().call.pFlags.record_video_active,
+            verify: () => getCall()?.admin && !!getCall().call.record_start_date,
             onClick: () => {
               const call = getCall();
               if(!call) return;
@@ -414,7 +415,8 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
           toastNew({
             langPackKey: 'Error.AnError'
           });
-          this.close(undefined, true);
+          // * leave, never end: the stream goes on for everyone else, admin or not
+          this.close();
         } else {
           this.retryTimeout = window.setTimeout(retry, 1000);
         }

@@ -1,6 +1,7 @@
 import {createRoot} from 'solid-js';
 import {createButtonMenuSelect} from '@components/buttonMenuSelect';
 import {CLICK_EVENT_NAME} from '@helpers/dom/clickEvent';
+import {queueAnimationFrames} from '@/tests/helpers/animationFrames';
 
 vi.mock('@components/emoticonsDropdown/tabs/SuperStickerRenderer', () => ({
   default: class SuperStickerRenderer {}
@@ -71,11 +72,7 @@ describe('button menu select', () => {
   });
 
   test('cancels an opening menu when its owner is disposed', async() => {
-    const animationFrames: FrameRequestCallback[] = [];
-    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
-      animationFrames.push(callback);
-      return animationFrames.length;
-    });
+    const {frames: animationFrames} = queueAnimationFrames();
     const trigger = document.createElement('button');
     document.body.append(trigger);
     let dispose: () => void;

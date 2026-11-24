@@ -1,6 +1,7 @@
 import {AnimatedSuper} from '@components/animatedSuper';
 import {AnimatedCounter} from '@components/animatedCounter';
 import {setAppWindow} from '@helpers/appWindow';
+import {queueAnimationFrames} from '@/tests/helpers/animationFrames';
 
 /*
  * A row a change leaves is taken away once its transition is over. The transition starts in the frame
@@ -11,8 +12,7 @@ import {setAppWindow} from '@helpers/appWindow';
 let frames: FrameRequestCallback[];
 
 beforeEach(() => {
-  frames = [];
-  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => frames.push(callback));
+  ({frames} = queueAnimationFrames());
   vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((handle) => {
     frames[handle - 1] = undefined;
   });
@@ -26,8 +26,7 @@ afterEach(() => {
 });
 
 function renderFrame() {
-  const callbacks = frames;
-  frames = [];
+  const callbacks = frames.splice(0);
   callbacks.forEach((callback) => callback?.(performance.now()));
 }
 

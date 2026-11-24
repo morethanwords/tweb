@@ -18,6 +18,7 @@ import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import toastError from '@components/toastError';
 import makeError from '@helpers/makeError';
+import rootScope from '@lib/rootScope';
 
 // * a trending set counts as seen once (all but a sliver of) it is on the screen
 const READ_VISIBLE_RATIO = 0.95;
@@ -34,6 +35,13 @@ const Stickers: Component = () => {
   // * the old trending sets loaded below the current ones: undefined once there are no more
   let oldFeaturedOffset = 0, loadingOldFeatured = false;
   let readObserver: IntersectionObserver;
+
+  // * whether the set is among the user's: drawn anew whenever that changes, by this button or anywhere else (its popup,
+  // * another device) - the set this tab holds is a copy that a change in the manager does not reach
+  const setButtonAdded = (button: HTMLElement, added: boolean) => {
+    button.replaceChildren(i18n(added ? 'Stickers.SearchAdded' : 'Stickers.SearchAdd'));
+    button.classList.toggle('gray', added);
+  };
 
   const renderSet = (set: StickerSet.stickerSet) => {
     const div = document.createElement('div');
@@ -55,12 +63,7 @@ const Stickers: Component = () => {
 
     const button = document.createElement('button');
     button.classList.add('btn-primary', 'btn-color-primary', 'sticker-set-button');
-    const added = isStickerSetAdded(set);
-    button.append(i18n(added ? 'Stickers.SearchAdded' : 'Stickers.SearchAdd'));
-
-    if(added) {
-      button.classList.add('gray');
-    }
+    setButtonAdded(button, isStickerSetAdded(set));
 
     header.append(details, button);
 
@@ -238,6 +241,16 @@ const Stickers: Component = () => {
 
     tab.scrollable.onScrolledBottom = loadOldFeatured;
 
+    const onStickerSetChange = (set: StickerSet.stickerSet) => {
+      const button = getRenderedSet(set.id)?.querySelector<HTMLElement>('.sticker-set-button');
+      if(button) {
+        setButtonAdded(button, isStickerSetAdded(set));
+      }
+    };
+
+    tab.listenerSetter.add(rootScope)('stickers_installed', onStickerSetChange);
+    tab.listenerSetter.add(rootScope)('stickers_deleted', onStickerSetChange);
+
     attachMediaPeekListeners({listenTo: setsDiv, listenerSetter: tab.listenerSetter});
 
     attachClickEvent(setsDiv, (e) => {
@@ -270,14 +283,8 @@ const Stickers: Component = () => {
             throw makeError('UNKNOWN');
           }
 
-          return tab.managers.appStickersManager.toggleStickerSet(full.set).then((changed) => {
-            if(changed) {
-              button.textContent = '';
-              const added = isStickerSetAdded(full.set);
-              button.append(i18n(added ? 'Stickers.SearchAdded' : 'Stickers.SearchAdd'));
-              button.classList.toggle('gray', added);
-            }
-          });
+          // * the change comes back as stickers_installed / stickers_deleted, which redraw the button
+          return tab.managers.appStickersManager.toggleStickerSet(full.set);
         }).catch((err: ApiError) => {
           toastError(err, 'toggle sticker set error');
         }).finally(() => {

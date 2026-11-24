@@ -1516,7 +1516,9 @@ export class AppGroupCallsManager extends AppManager {
       start: true,
       call,
       video: params.recordVideo,
-      video_portrait: params.videoHorizontal,
+      // `video` and `video_portrait` share flags.2: a defined orientation sets the
+      // bit, so it goes only with a video recording (tdesktop toggleRecording).
+      video_portrait: params.recordVideo ? !params.videoHorizontal : undefined,
       title: params.name || undefined
     });
 

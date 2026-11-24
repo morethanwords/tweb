@@ -209,7 +209,7 @@ export default class AiSendFlight {
     // * back into it softly
     window.setTimeout(() => {
       uncover.disconnect();
-      aura.remove();
+      removeWithAnimations(aura);
       this.land();
       if(this.button.classList.contains('send')) {
         this.glyph.animate([{opacity: 0, scale: .6}, {opacity: 1, scale: 1}], {duration: 250, easing: 'ease-out'});
@@ -236,7 +236,7 @@ export default class AiSendFlight {
     this.cover.animate([{opacity: 1}, {opacity: 1, offset: .5}, {opacity: 0}], options);
     plane.animate([{translate: from.drift, rotate: from.sway}, {translate: '0 0', rotate: '0deg'}], options)
     .finished.catch(() => {}).then(() => {
-      aura.remove();
+      removeWithAnimations(aura);
       this.land();
     });
   }

@@ -1,5 +1,6 @@
 import fitPullquoteWidth from '@components/chat/inputEditor/pullquoteWidth';
 import {observeResize} from '@components/resizeObserver';
+import {queueAnimationFrames} from '@/tests/helpers/animationFrames';
 
 vi.mock('@components/resizeObserver', () => ({observeResize: vi.fn()}));
 
@@ -18,11 +19,7 @@ describe('Pullquote width observer lifecycle', () => {
       resizeCallbacks.push(callback);
       return dispose;
     });
-    const frames: FrameRequestCallback[] = [];
-    const request = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
-      frames.push(callback);
-      return frames.length;
-    });
+    const {frames, request} = queueAnimationFrames();
     const cancel = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
     const parent = document.createElement('div');
     const quote = document.createElement('div');

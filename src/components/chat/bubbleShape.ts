@@ -169,6 +169,9 @@ export function startOnNextFrame(animations: Animation[]) {
   getAppWindow().requestAnimationFrame(() => {
     for(const animation of animations) {
       const time = animation.timeline?.currentTime;
+      // * one cancelled before this frame (the change finished at once: a window change, the safety timeout of a hidden
+      // * tab) has no start time either, and given one it would run again - and hold its last frame for good
+      if(animation.playState === 'idle') continue;
       if(animation.startTime === null && time !== null) {
         animation.startTime = time;
       }

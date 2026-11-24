@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   baseClose: vi.fn(async(_e?: MouseEvent) => {}),
   createObjectURL: vi.fn(() => 'blob:capture'),
   currentCall: undefined as any,
+  isCurrentCallDead: vi.fn(async(_checkJoined?: boolean) => 'alive' as const),
   exitPictureInPicture: vi.fn(async() => {}),
   leaveCall: vi.fn(async(_discard?: boolean, _expectedCall?: unknown) => true),
   openBaseMedia: vi.fn(async(_options?: unknown) => {}),
@@ -23,7 +24,7 @@ vi.mock('@components/mediaViewer/base', () => ({
       zoomin: document.createElement('button')
     };
     public content = {mover: document.createElement('div')};
-    public log = {error: vi.fn(), bindPrefix: vi.fn(() => vi.fn())};
+    public log = {error: vi.fn(), bindPrefix: vi.fn(() => Object.assign(vi.fn(), {error: vi.fn()}))};
     public managers = {appGroupCallsManager: {stopRecording: vi.fn()}};
     public wholeDiv = document.createElement('div');
 
@@ -68,6 +69,7 @@ vi.mock('@lib/calls/rtmpCallsController', () => ({
   default: {
     addEventListener: vi.fn(),
     get currentCall() { return mocks.currentCall; },
+    isCurrentCallDead: mocks.isCurrentCallDead,
     leaveCall: mocks.leaveCall,
     rejoinCall: mocks.rejoinCall
   }
@@ -247,5 +249,25 @@ describe('RTMP media viewer call ownership', () => {
     expect(schedule).not.toHaveBeenCalled();
     expect(mocks.currentCall).toBe(call);
     schedule.mockRestore();
+  });
+
+  it('leaves a stream it cannot reach any more, never ends it for everyone', async() => {
+    vi.useFakeTimers();
+    try {
+      mocks.isCurrentCallDead.mockRejectedValue(new Error('GROUPCALL_INVALID'));
+      const call = {...makeCall('same', (-1001).toPeerId()), admin: true};
+      const viewer = makeViewer(call);
+      mocks.currentCall = call;
+
+      (viewer as any).retryLoadStream((viewer as any).videoPlayer.video, 'test');
+      await vi.advanceTimersByTimeAsync(10e3);
+
+      expect(mocks.isCurrentCallDead).toHaveBeenCalledTimes(6);
+      expect(mocks.leaveCall).toHaveBeenCalledTimes(1);
+      expect(mocks.leaveCall).toHaveBeenCalledWith(false, call);
+    } finally {
+      mocks.isCurrentCallDead.mockResolvedValue('alive');
+      vi.useRealTimers();
+    }
   });
 });

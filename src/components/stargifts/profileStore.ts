@@ -3,6 +3,7 @@ import {StarGiftCollection} from '@layer';
 import {batch, onMount} from 'solid-js';
 import {MyStarGift} from '@appManagers/appGiftsManager';
 import rootScope from '@lib/rootScope';
+import noop from '@helpers/noop';
 import type {AppManagers} from '@lib/managers';
 import createListenerSetter from '@helpers/solid/createListenerSetter';
 import {updateStarGift} from '@appManagers/utils/gifts/updateStarGift';
@@ -121,8 +122,15 @@ export function createProfileGiftsStore(props: {
 
   const collectionCache = new Map<number, {items: MyStarGift[], offset: string, loaded: boolean}>();
 
+  // * a refresh that failed: the page that asks again replaces the list too, rather than adding to what it was to replace
+  let retryAsReload = false
+  // * whether the page on its way makes the list (its first page, a refresh) rather than adding to it
+  let loadingFirstPage = false
   async function loadNext(reload = false) {
     if(!reload && (store.loading || store.loaded)) return
+    reload ||= retryAsReload
+    retryAsReload = false
+    loadingFirstPage = reload || !currentOffset
     setStore('loading', true);
 
     const id = ++nextReqId
@@ -144,7 +152,14 @@ export function createProfileGiftsStore(props: {
         limit: 99 // divisible by 3 to avoid grid jumping
       }),
       fetchedCanManageGifts ? Promise.resolve(store.canManageGifts) : fetchCanManageGifts()
-    ]);
+    ]).catch((err) => {
+      // * a page that failed is asked for again by the next scroll, not waited for for good
+      if(id === nextReqId) {
+        retryAsReload = reload
+        setStore('loading', false)
+      }
+      throw err
+    });
 
     if(id !== nextReqId) return;
     currentOffset = res.next;
@@ -202,11 +217,17 @@ export function createProfileGiftsStore(props: {
 
       if(switchingCollection) {
         // save current collection state
-        collectionCache.set(store.chosenCollection, {
-          items: unwrap(store.items),
-          offset: currentOffset,
-          loaded: store.loaded
-        })
+        if(store.loading && loadingFirstPage) {
+          // * the page on its way that would make its list is dropped once another collection shows: coming back asks
+          // * for it anew (a next page dropped is asked for again by the next scroll, from the pages kept)
+          collectionCache.delete(store.chosenCollection)
+        } else {
+          collectionCache.set(store.chosenCollection, {
+            items: unwrap(store.items),
+            offset: currentOffset,
+            loaded: store.loaded
+          })
+        }
       }
 
       setStore(filters)
@@ -214,6 +235,9 @@ export function createProfileGiftsStore(props: {
       if(switchingCollection) {
         const cached = collectionCache.get(store.chosenCollection)
         if(cached) {
+          // * a page still on its way is the other collection's: it must not land in this one
+          ++nextReqId
+          retryAsReload = false
           currentOffset = cached.offset
           batch(() => {
             setStore('items', cached.items)
@@ -353,7 +377,7 @@ export function createProfileGiftsStore(props: {
       // refetch list. wait a bit so that the server can process it.
       setTimeout(() => {
         currentOffset = ''
-        loadNext(true)
+        loadNext(true).catch(noop) // * the next scroll asks again
       }, 500)
     })
   })
