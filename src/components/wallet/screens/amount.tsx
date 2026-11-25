@@ -23,9 +23,10 @@ import {IconTsx} from '@components/iconTsx';
 import A11yButton from '@components/a11yButton';
 import Row from '@components/rowTsx';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
+import {ButtonMenuToggleTsx} from '@components/buttonMenuToggleTsx';
 import type {PopupPeerHandle} from '@components/popups/peer';
 import {useWallet} from '@components/wallet/context';
-import {copyWalletAddress, WalletHeader, WalletHeaderBalance} from '@components/wallet/parts';
+import {copyWalletAddress, WalletHeader} from '@components/wallet/parts';
 import WalletAddressGroups from '@components/wallet/addressGroups';
 import WalletCommentField, {WalletCommentFieldHandle} from '@components/wallet/commentField';
 import {addWalletFrameClient} from '@components/wallet/frameLoop';
@@ -222,6 +223,7 @@ export default function WalletAmountScreen(props: {
   const [manual, setManual] = createSignal(!props.params.nanograms);
   const [entryDecimal, setEntryDecimal] = createSignal('0');
   const [comment, setComment] = createSignal(props.params.comment || '');
+  const [commentVisible, setCommentVisible] = createSignal(!!props.params.comment);
   const [makePublic, setMakePublic] = createSignal(!!props.params.publicComment);
   // * whether the recipient can read a private comment: unknown until checked, and meanwhile the comment is no
   // * private one — the screen claims neither, a send waits for the answer (Android: no key, no encryption)
@@ -1044,7 +1046,29 @@ export default function WalletAmountScreen(props: {
   return (
     <div ref={root} class={styles.root}>
       <WalletHeader title="WalletSendGrams" back>
-        <WalletHeaderBalance nanos={balance()} />
+        <ButtonMenuToggleTsx
+          buttonOptions={{ariaLabel: 'MultiAccount.More'}}
+          direction="bottom-left"
+          buttons={[{
+            icon: 'add',
+            text: 'WalletAddFunds',
+            onClick: () => wallet.router.push('receive', {face: 'qr'})
+          }, {
+            icon: 'edit',
+            text: 'Report2Comment',
+            onClick: () => setCommentVisible(true),
+            verify: () => !commentVisible()
+          }, {
+            icon: 'delete',
+            text: 'Chat.Alert.Forward.Action.HideCaption',
+            textArgs: [1],
+            onClick: () => {
+              setCommentVisible(false);
+              setComment('');
+            },
+            verify: () => commentVisible()
+          }]}
+        />
       </WalletHeader>
 
       <div class={styles.body}>
@@ -1160,6 +1184,7 @@ export default function WalletAmountScreen(props: {
         </div>
 
         {/* * faded out while the gem is sent, it is out of reach too */}
+        <Collapse open={commentVisible()}>
         <div ref={inertWhen(busy)} class={classNames(styles.comment, busy() && styles.leaving)}>
           <WalletCommentField
             value={comment()}
@@ -1167,21 +1192,20 @@ export default function WalletAmountScreen(props: {
             onEnter={() => handle('send')}
             handleRef={(handle) => commentField = handle}
           />
-          <Show when={comment().trim()}>
-            <Show when={canEncrypt()}>
-              <Row class={styles.commentPrivacy}>
-                <Row.CheckboxField>
-                  <CheckboxFieldTsx checked={makePublic()} onChange={setMakePublic} />
-                </Row.CheckboxField>
-                <Row.Title>{i18n('WalletMakeCommentPublic')}</Row.Title>
-              </Row>
-            </Show>
-            {/* * nothing is claimed while it is not known whether the recipient can read a private one */}
-            <Show when={canEncrypt() !== undefined || makePublic()}>
-              <div class={styles.commentCaption}>{i18n(encrypting() ? 'WalletPrivateCommentInfo' : 'WalletPublicCommentInfo')}</div>
-            </Show>
-          </Show>
+          <Collapse open={!!comment().trim() && canEncrypt() === true}>
+            <Row class={styles.commentPrivacy}>
+              <Row.CheckboxField>
+                <CheckboxFieldTsx checked={makePublic()} onChange={setMakePublic} />
+              </Row.CheckboxField>
+              <Row.Title>{i18n('WalletMakeCommentPublic')}</Row.Title>
+            </Row>
+          </Collapse>
+          {/* * nothing is claimed while it is not known whether the recipient can read a private one */}
+          <Collapse open={!!comment().trim() && (canEncrypt() !== undefined || makePublic())}>
+            <div class={styles.commentCaption}>{i18n(encrypting() ? 'WalletPrivateCommentInfo' : 'WalletPublicCommentInfo')}</div>
+          </Collapse>
         </div>
+        </Collapse>
 
         <div ref={summary} class={styles.summary}>
           <div class={styles.balanceSlot}>
