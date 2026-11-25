@@ -468,6 +468,15 @@
   text-shadow: 0 1px 0 rgba(255, 255, 255, .06);
 }
 
+// A public preview moves as one surface; its static face needs no independent compositor layers.
+.cardStill {
+  .cardFold,
+  .cardFace,
+  .cardShadow {
+    will-change: auto;
+  }
+}
+
 // * the gem is clipped by the card's edge: growing, it never leaves it
 .cardGemClip {
   position: absolute;

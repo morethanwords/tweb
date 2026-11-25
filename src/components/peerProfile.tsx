@@ -5,13 +5,13 @@ import Section from '@components/section';
 import getLinkedCommunityId from '@appManagers/utils/communities/getLinkedCommunityId';
 import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
 import {useChat, usePeer} from '@stores/peers';
-import {BusinessWorkHours, Chat, ChatFull, GeoPoint, GroupCall, HelpTimezonesList, InputGroupCall, Photo, StoryItem, Document, MessageMedia, Timezone, User, UserFull, UserStatus} from '@layer';
+import {BusinessWorkHours, Chat, ChatFull, GeoPoint, GroupCall, HelpTimezonesList, InputGroupCall, Photo, StoryItem, Document, MessageMedia, Timezone, User, UserFull, UserStatus, WalletCard} from '@layer';
 import getAudioTitles from '@appManagers/utils/docs/getAudioTitles';
 import {useFullPeer} from '@stores/fullPeers';
 import {appSettings} from '@stores/appSettings';
 import getPeerPhoto from '@appManagers/utils/peers/getPeerPhoto';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import {bindManagersToSession, getSessionOf} from '@lib/accounts/bindManagersToAccount';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {Skeleton} from '@components/skeleton';
 import {Middleware} from '@helpers/middleware';
@@ -38,6 +38,7 @@ import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvi
 import type Scrollable from '@components/scrollable';
 import {wrapStarsRatingLevel} from '@components/wrappers/starsRating';
 import cancelEvent from '@helpers/dom/cancelEvent';
+import loadFonts from '@helpers/dom/loadFonts';
 import {HIDDEN_PEER_ID} from '@appManagers/constants';
 import {rgbIntToHex} from '@helpers/color';
 import type {MyStarGift} from '@appManagers/appGiftsManager';
@@ -91,6 +92,12 @@ import {useCurrentRtmpCall} from '@components/rtmp/hooks';
 import addContact from '@components/addContact';
 import showMutePopup from '@components/popups/mute';
 import IS_CALL_SUPPORTED from '@environment/callSupport';
+import A11yButton from '@components/a11yButton';
+import type {WalletStatus} from '@appManagers/appWalletManager';
+import {isWalletAvailable} from '@lib/wallet/release';
+import {splitGrams} from '@components/wallet/format';
+import {formatGramsWithUnit} from '@components/wallet/transferText';
+import {isSessionLeaving} from '@lib/accounts/getCurrentAccount';
 
 keepMe(ripple);
 
@@ -135,6 +142,7 @@ type PeerProfileContextValue = {
   isTopic: boolean,
   isBotforum: boolean,
   hasSavedMusic: boolean,
+  walletCard?: Pick<WalletCard, 'balance' | 'address'>,
   getDetailsForUse: () => {peerId: PeerId, threadId?: number},
   verifyContext: (peerId: PeerId, threadId?: number) => boolean,
 };
@@ -198,6 +206,22 @@ const PeerProfile = (props: {
   const {rootScope, appSidebarRight} = useHotReloadGuard();
   const fullPeer = useFullPeer(props.peerId);
   const [needWhite, setNeedWhite] = createSignal(false);
+  const [walletStatus, setWalletStatus] = createSignal<WalletStatus>();
+  const appConfig = useAppConfig();
+  createEffect(() => {
+    if(props.peerId !== rootScope.myId || props.threadId || !isWalletAvailable(appConfig)) return;
+    const managers = bindManagersToSession(rootScope.managers);
+    let disposed = false;
+    const updateStatus = (status: WalletStatus) => {
+      if(!disposed && status && (!walletStatus() || status.date >= walletStatus().date)) setWalletStatus(status);
+    };
+    subscribeOn(rootScope)('wallet_status', updateStatus);
+    managers.appWalletManager.getStatus().then(updateStatus, noop);
+    onCleanup(() => {
+      disposed = true;
+      setWalletStatus(undefined);
+    });
+  });
   const value: PeerProfileContextValue = {
     peerId: props.peerId,
     threadId: props.threadId,
@@ -228,6 +252,10 @@ const PeerProfile = (props: {
     },
     get hasSavedMusic() {
       return !!(value.fullPeer as UserFull)?.saved_music;
+    },
+    get walletCard() {
+      if(props.threadId || !props.peerId.isUser() || !isWalletAvailable(appConfig)) return;
+      return props.peerId === rootScope.myId ? walletStatus()?.state : (value.fullPeer as UserFull)?.wallet_card;
     },
     canBeDetailed: () => value.peerId !== rootScope.myId || !value.isDialog,
     getDetailsForUse: () => {
@@ -275,7 +303,7 @@ const PeerProfile = (props: {
       <div
         class={classNames(
           'profile-content',
-          value.hasSavedMusic && 'has-music',
+          (value.hasSavedMusic || value.walletCard) && 'has-music',
           value.hasActions && 'has-actions',
           value.peerId === rootScope.myId && 'is-me'
         )}
@@ -684,6 +712,34 @@ PeerProfile.PersonalChannel = () => {
 
 PeerProfile.PinnedMusic = () => {
   const context = useContext(PeerProfileContext);
+  const {rootScope, i18n, I18n} = useHotReloadGuard();
+  const managers = bindManagersToSession(rootScope.managers);
+  let openingWallet = false;
+  createEffect(() => {
+    const card = context.walletCard;
+    if(!card) return;
+    const peer = context.peer as User.user;
+    void loadFonts({monospace: [[peer.first_name, peer.last_name].filter(Boolean).join(' ').toUpperCase(), card.address, '0123456789 GRAM']});
+  });
+  const openWallet = async(e: Event) => {
+    cancelEvent(e);
+    if(openingWallet) return;
+    const source = e.currentTarget as HTMLElement;
+    const card = context.walletCard;
+    const peerId = context.peerId;
+    const peer = context.peer as User.user;
+    const name = [peer.first_name, peer.last_name].filter(Boolean).join(' ');
+    openingWallet = true;
+    try {
+      const {default: showWalletProfileCard} = await import('@components/wallet/profileCardPopup');
+      const session = getSessionOf(managers);
+      if(card && source?.isConnected && (!session || !isSessionLeaving(session))) {
+        showWalletProfileCard({source, peerId, card, managers, name});
+      }
+    } finally {
+      openingWallet = false;
+    }
+  };
   const openSavedMusic = (e: Event) => {
     cancelEvent(e);
     openSavedMusicTab(context.slider, context.peerId);
@@ -693,30 +749,55 @@ PeerProfile.PinnedMusic = () => {
   const titles = createMemo(() => getAudioTitles(music()));
 
   return (
-    <div class="profile-music-container">
-      <div class="profile-music" ref={attachClickEventRef(openSavedMusic)} use:ripple>
-        <div class="profile-music-inner">
-          <IconTsx icon="note_filled" class="profile-music-icon" />
-          {/* `EmojiTextTsx` rather than a bare `wrapEmojiText`: that returns a fragment, and a
-            reactive expression handing Solid a fragment with a sibling beside it — the dash below —
-            appends the new value next to the old one instead of replacing it, so the row read as two
-            track names run together the moment the top track changed */}
-          <Show when={titles()?.performer}>
-            {(performer) => (
-              <span class="profile-music-performer text-overflow-no-wrap">
-                <EmojiTextTsx text={performer()} />
-              </span>
-            )}
-          </Show>
-          <span class={`profile-music-title text-overflow-no-wrap ${titles()?.performer ? '' : 'only-title'}`}>
+    <div class={classNames('profile-music-container', context.walletCard && 'profile-music-container-with-wallet')}>
+      <Show when={context.hasSavedMusic}>
+        <A11yButton class="profile-music" ref={attachClickEventRef(openSavedMusic)} ripple>
+          <div class="profile-music-inner">
+            <IconTsx icon="note_filled" class="profile-music-icon" />
+            {/* `EmojiTextTsx` rather than a bare `wrapEmojiText`: that returns a fragment, and a
+              reactive expression handing Solid a fragment with a sibling beside it — the dash below —
+              appends the new value next to the old one instead of replacing it, so the row read as two
+              track names run together the moment the top track changed */}
             <Show when={titles()?.performer}>
-              &nbsp;-&nbsp;
+              {(performer) => (
+                <span class="profile-music-performer text-overflow-no-wrap">
+                  <EmojiTextTsx text={performer()} />
+                </span>
+              )}
             </Show>
-            <EmojiTextTsx text={titles()?.title || ''} />
-          </span>
-          <IconTsx icon="next" />
-        </div>
-      </div>
+            <span class={`profile-music-title text-overflow-no-wrap ${titles()?.performer ? '' : 'only-title'}`}>
+              <Show when={titles()?.performer}>
+                &nbsp;-&nbsp;
+              </Show>
+              <EmojiTextTsx text={titles()?.title || ''} />
+            </span>
+            <IconTsx icon="next" />
+          </div>
+        </A11yButton>
+      </Show>
+      <Show when={context.walletCard}>
+        {(state) => {
+          const amount = () => {
+            const {whole, fraction} = splitGrams(state().balance);
+            return whole + fraction;
+          };
+          return (
+            <A11yButton
+              class="profile-music profile-wallet"
+              ref={attachClickEventRef(openWallet)}
+              aria-label={I18n.format('WalletBalanceAmount', true, [formatGramsWithUnit(state().balance, amount())])}
+              ripple
+            >
+              <span class="profile-music-inner">
+                {i18n('StarsBalance')}:&nbsp;
+                <IconTsx icon="gram_filled" aria-hidden="true" />
+                <span dir="ltr">{amount()}</span>
+                <IconTsx icon="next" aria-hidden="true" />
+              </span>
+            </A11yButton>
+          );
+        }}
+      </Show>
     </div>
   );
 };

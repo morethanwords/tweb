@@ -1203,6 +1203,39 @@
 
 .profile-music {
   cursor: pointer;
+  display: block;
+  width: 100%;
+  border: 0;
+  color: inherit;
+  font-family: inherit;
+
+  :where(.a11y) &:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: -2px;
+  }
+}
+
+.profile-music-container-with-wallet {
+  bottom: .5rem;
+  display: flex;
+  justify-content: center;
+  gap: .375rem;
+  padding-inline: .5rem;
+
+  .profile-music {
+    width: auto;
+    min-width: 0;
+    border-radius: .75rem;
+    flex: 0 1 auto;
+
+    @include animation-level-below(2) {
+      transition: none;
+    }
+  }
+
+  .profile-wallet {
+    flex: 0 0 auto;
+  }
 }
 
 .search-super-content-gifts {

@@ -10,6 +10,7 @@ import type {WalletRates, WalletStatus} from '@appManagers/appWalletManager';
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import MediaHeader from '@components/mediaHeader';
 import WalletCardView, {formatWalletBalanceFiat} from '@components/wallet/card';
+import {WalletCard} from '@components/wallet/visual/card/card';
 import {readCurrency} from '@components/wallet/store';
 import {PopupCloser, TonConnectAppIcon, TonConnectText} from '@components/wallet/tonConnect/parts';
 import getPeerTitle from '@components/wrappers/getPeerTitle';
@@ -100,6 +101,7 @@ export default function showTonConnectConnectPopup(options: TonConnectConnectPop
               <Show when={state}>
                 <div class={styles.card}>
                   <WalletCardView
+                    renderer={WalletCard}
                     balance={balance}
                     fiat={() => fiatPerGram() ? formatWalletBalanceFiat(balance(), fiatPerGram(), currency) : ''}
                     fiatPerGram={fiatPerGram}
