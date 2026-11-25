@@ -86,6 +86,35 @@ test('columns share the width equally whatever their text, in the composer and a
   }
 });
 
+test('mobile message tables keep wider columns and scroll within the message', async({page}) => {
+  await page.setViewportSize({width: 390, height: 844});
+  const message = page.locator('[data-rich-table-surface="message"]');
+  await message.evaluate((element) => {
+    element.style.width = '320px';
+    element.style.flexBasis = '320px';
+  });
+
+  for(const compact of [false, true]) {
+    await setTable(page, table([
+      ['Product', 'Description', 'Quantity', 'Price'].map((label) => header(label))
+    ], {compact}));
+
+    const columns = await widths(page, 'message');
+    expectEqual(columns, 'mobile message');
+    expect(Math.min(...columns)).toBeGreaterThan(80);
+
+    const scroller = message.locator('table').locator('..');
+    const {viewportWidth, scrollLeft, maxScroll} = await scroller.evaluate((element) => {
+      const maxScroll = element.scrollWidth - element.clientWidth;
+      element.scrollLeft = element.scrollWidth;
+      return {viewportWidth: element.clientWidth, scrollLeft: element.scrollLeft, maxScroll};
+    });
+    expect(viewportWidth).toBeLessThanOrEqual(320);
+    expect(maxScroll).toBeGreaterThan(0);
+    expect(scrollLeft).toBeCloseTo(maxScroll, 0);
+  }
+});
+
 for(const monospace of [false, true]) test(`a long word, number or link${monospace ? ' in monospace' : ''} breaks inside its cell and moves no column`, async({page}) => {
   for(const text of UNBREAKABLE) {
     await setTable(page, table([
