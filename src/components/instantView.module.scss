@@ -175,6 +175,22 @@
   }
 }
 
+@include respond-to(handhelds) {
+  :global(.bubbles-inner .bubble:not(.service, .is-sponsored)):has(.RichMessageWrapperFull) {
+    width: 100%;
+
+    &:not(:global(.with-beside-button)) {
+      --message-handhelds-margin: 0px;
+    }
+
+    > :global(.bubble-content-wrapper) {
+      // Let flex sizing subtract any avatar margin from the available width.
+      flex: 1 1 0;
+      min-width: 0;
+    }
+  }
+}
+
 .RichMessageMore {
   align-self: flex-start;
   border: 0;
@@ -900,6 +916,20 @@
     --table-cell-padding-inline: calc(.75rem * var(--iv-scale));
     --table-cell-padding: var(--table-cell-padding-block) var(--table-cell-padding-inline);
     --table-font-size: .875em;
+  }
+
+  .RichMessage & {
+    > :global(.no-scrollbar) {
+      overscroll-behavior-x: contain;
+    }
+
+    @include respond-to(handhelds) {
+      --table-cell-min-width: calc(7rem * var(--iv-scale));
+
+      &.TableCompact {
+        --table-cell-min-width: calc(6rem * var(--iv-scale));
+      }
+    }
   }
 
   &Name {

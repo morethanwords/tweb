@@ -315,9 +315,9 @@ export default class Chat extends EventListenerBase<{
   private topbarBarsPx = 0;
   private preservePaddingScrollAbort?: () => void;
 
-  public updateChatInputHeight(surplus: number) {
+  public updateChatInputHeight(surplus: number, duration?: number) {
     this.inputSurplusPx = surplus;
-    this.applyChatInputSurplus();
+    this.applyChatInputSurplus(duration);
   }
 
   /**
@@ -328,25 +328,22 @@ export default class Chat extends EventListenerBase<{
   public setBottomPanelHeight(height: number | undefined, duration?: number) {
     this.bottomRoomFinish.panel?.();
     this.bottomPanelSurplusPx = height === undefined ? undefined : height - CHAT_INPUT_BASE_HEIGHT;
-    if(duration === undefined) {
-      this.applyChatInputSurplus();
-      return;
-    }
-
-    const surplus = this.bottomPanelSurplusPx ?? this.inputSurplusPx;
-    const delta = surplus - this.chatInputSurplusPx;
-    if(!delta) return;
-    this.chatInputSurplusPx = surplus;
-    this.moveBottomRoom('panel', delta, () => {
-      // * as it is once laid out: the composer back meanwhile may have changed it (a reply's helper)
-      this.setChatInputRuleProperty('--chat-input-height-surplus', this.chatInputSurplusPx);
-      this.recomputePaddings(true);
-    }, duration);
+    this.applyChatInputSurplus(duration);
   }
 
-  private applyChatInputSurplus() {
+  private applyChatInputSurplus(duration?: number) {
     const surplus = this.bottomPanelSurplusPx ?? this.inputSurplusPx;
     if(this.chatInputSurplusPx === surplus) return;
+    this.bottomRoomFinish.panel?.();
+    if(duration !== undefined) {
+      const delta = surplus - this.chatInputSurplusPx;
+      this.chatInputSurplusPx = surplus;
+      this.moveBottomRoom('panel', delta, () => {
+        this.setChatInputRuleProperty('--chat-input-height-surplus', this.chatInputSurplusPx);
+        this.recomputePaddings(true);
+      }, duration);
+      return;
+    }
     this.preservePaddingScroll();
     this.chatInputSurplusPx = surplus;
     this.setChatInputRuleProperty('--chat-input-height-surplus', surplus);

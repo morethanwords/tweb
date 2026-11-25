@@ -40,6 +40,10 @@ export function isRichMessageButtonTarget(target: EventTarget) {
   return !!findUpClassName(target, styles.PageButton);
 }
 
+export function isRichMessageTableTarget(target: EventTarget) {
+  return !!findUpClassName(target, styles.TableWrapper);
+}
+
 /**
  * How a rich message meets its bubble, for the bubble to lay out what is around it: whether it starts with
  * media (which stands under a header as a message's photo does), and where the message's time floats — at

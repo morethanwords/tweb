@@ -25,6 +25,7 @@ import Modes from '@config/modes';
 import liteMode from '@helpers/liteMode';
 import noop from '@helpers/noop';
 import {EASING_Y} from '@components/chat/bubbleShape';
+import {KEYBOARD_DURATION} from '@components/chat/keyboardTiming';
 import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
 import {APP_TABS, LEFT_COLUMN_ACTIVE_CLASSNAME, RIGHT_COLUMN_ACTIVE_CLASSNAME} from '@lib/appColumns';
 import overlayCounter from '@helpers/overlayCounter';
@@ -32,7 +33,7 @@ import contextMenuController from '@helpers/contextMenuController';
 
 let keyboardId = 0;
 // * Android's keyboard time (AdjustPanLayoutHelper.keyboardDuration), in its curve (`EASING_Y`)
-export const KEYBOARD_DURATION = 250;
+export {KEYBOARD_DURATION} from '@components/chat/keyboardTiming';
 export const KEYBOARD_FADE_IN = 200;
 
 /**

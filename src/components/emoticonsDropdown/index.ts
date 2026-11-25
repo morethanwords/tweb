@@ -24,6 +24,8 @@ import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import overlayCounter from '@helpers/overlayCounter';
 import {getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import noop from '@helpers/noop';
+import liteMode from '@helpers/liteMode';
+import {KEYBOARD_DURATION} from '@components/chat/keyboardTiming';
 import {FocusDirection, ScrollOptions} from '@helpers/fastSmoothScroll';
 import BezierEasing from '@vendor/bezierEasing';
 import RichInputHandler from '@helpers/dom/richInputHandler';
@@ -127,6 +129,11 @@ export class EmoticonsDropdown extends DropdownHover {
   public animationGroup: AnimationItemGroup;
 
   private destroyed: boolean;
+
+  protected getCloseDelay() {
+    return this.element.classList.contains('is-under') && liteMode.isAvailable('motion') ?
+      KEYBOARD_DURATION : super.getCloseDelay();
+  }
 
   constructor(options: {
     customParentElement?: HTMLElement | (() => HTMLElement),

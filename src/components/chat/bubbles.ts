@@ -278,7 +278,7 @@ import {richMessageToPage} from '@lib/richMessage';
 import {getWidgetSource, isWidgetRenderingEnabled, whenWidgetRenderingEnabled} from '@lib/widgetSandbox/payload';
 import {getWidgetHeightAtLeast, getWidgetKey, onWidgetHeightRemembered, WIDGET_MIN_WIDTH} from '@lib/widgetSandbox/sizing';
 import {getManagersSession} from '@lib/accounts/getCurrentAccount';
-import {RichMessageBubble, RichMessageBubbleLayout, isRichMessageButtonTarget, isRichMessageTarget} from '@components/chat/bubbles/richMessage';
+import {RichMessageBubble, RichMessageBubbleLayout, isRichMessageButtonTarget, isRichMessageTableTarget, isRichMessageTarget} from '@components/chat/bubbles/richMessage';
 import {isPagingSlideshowTarget} from '@components/slideshow';
 import {isWidgetHorizontalDragTarget} from '@lib/widgetSandbox/gestures';
 import {keepWidgetHeights} from '@lib/widgetSandbox/heights';
@@ -2142,6 +2142,7 @@ export default class ChatBubbles {
         verifyTouchTarget: async(e) => {
           if(this.chat.type === ChatType.Pinned ||
             this.chat.selection.isSelecting ||
+            isRichMessageTableTarget(e.target) ||
             !(await this.chat.canSend())) {
             return false;
           }
@@ -2400,6 +2401,7 @@ export default class ChatBubbles {
           this.chat.type === ChatType.Logs ||
           this.chat.selection.isSelecting ||
           !this.chat.input.canSendPlain() ||
+          isRichMessageTableTarget(e.target) ||
           childCanScrollX(e.target as HTMLElement, !isRTL) ||
           isPagingSlideshowTarget(e.target)) { // * pages through its items instead
           axis = 'y'; // vertical / wrong-direction / not repliable — ignore for the rest of the gesture
